@@ -1,0 +1,8 @@
+{
+  "name": "algorithm-j-in-rescript",
+  "version": "0.1.0",
+  "sources": {
+    "dir" : "src",
+    "subdirs" : true
+  }
+}
