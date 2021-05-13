@@ -1,5 +1,5 @@
 {
-  "name": "algorithm-j-in-rescript",
+  "name": "mls",
   "version": "0.1.0",
   "scripts": {
     "clean": "rescript clean",
