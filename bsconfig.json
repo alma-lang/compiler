@@ -4,5 +4,6 @@
   "sources": {
     "dir": "src",
     "subdirs": true
-  }
+  },
+  "bsc-flags": ["-open Belt"]
 }
