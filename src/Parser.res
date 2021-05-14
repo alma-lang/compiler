@@ -1,4 +1,5 @@
-let parse = (_input: string): Ast.expr => {
-  // TODO
+let parse = (input: string): Ast.expr => {
+  let (tokens, errors) = Tokenizer.parse(input)
+  Js.log2(tokens, errors)
   Ast.Unit
 }

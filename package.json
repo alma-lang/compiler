@@ -4,7 +4,8 @@
   "scripts": {
     "clean": "rescript clean",
     "build": "rescript build",
-    "watch": "rescript build -w"
+    "watch": "rescript build -w",
+    "dev-repl": "onchange -i -k 'lib/js/src/**/*.js' -- node lib/js/src/Cli.js repl"
   },
   "keywords": [
     "ReScript"
@@ -12,6 +13,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "onchange": "^7.1.0",
     "rescript": "^9.1.1"
   }
 }
