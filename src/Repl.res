@@ -7,15 +7,21 @@ let run = () => {
           Js.log(`👋`)
           readline->Readline.close
         }
-      | _ =>
-        try {
-          input->Parser.parse->Infer.infer(TypeEnv.empty()) |> Type.print
-        } catch {
-        | Infer.TypeError => Js.log("type error")
-        | Not_found => Js.log("variable not found")
-        | Failure(_s) => Js.log("lexing failure, invalid symbol")
+      | _ => switch Tokenizer.parse(input) {
+        | Error(errors) => Array.forEach(errors, Js.log)
+        | Ok(tokens) =>
+          switch Parser.parse(input, tokens) {
+          | Error(errors) => Array.forEach(errors, Js.log)
+          | Ok(ast) =>
+            try {
+              ast->Infer.infer(TypeEnv.empty()) |> Type.print
+            } catch {
+            | Infer.TypeError => Js.log("type error")
+            | Not_found => Js.log("variable not found")
+            }
+            loop()
+          }
         }
-        loop()
       }
     })
   }

@@ -82,12 +82,12 @@ let resetForNextToken = state => {
   state.status = SingleToken
 }
 
-let addToken = (state, kind) => {
-  let lexeme = state.input->String.substring(~from=state.start, ~to_=state->nextTokenStart)
+let lexeme = state => state.input->String.substring(~from=state.start, ~to_=state->nextTokenStart)
 
+let addToken = (state, kind) => {
   state->pushToken({
     kind: kind,
-    lexeme: lexeme,
+    lexeme: state->lexeme,
     line: state.line,
     column: state.start - state.lineStartPosition,
     position: state.start,
@@ -117,55 +117,54 @@ let rec parseToken = (state: state): unit => {
   switch state.status {
   | SingleToken =>
     switch state.currentChar {
-    | "(" => state->addToken(Token.LeftParen)
-    | ")" => state->addToken(Token.RightParen)
-    | "{" => state->addToken(Token.LeftBrace)
-    | "}" => state->addToken(Token.RightBrace)
-    | "," => state->addToken(Token.Comma)
-    | "." => state->addToken(Token.Dot)
-    | "-" => state->addToken(Token.Minus)
-    | "+" => state->addToken(Token.Plus)
-    | ";" => state->addToken(Token.Semicolon)
-    | ":" => state->addToken(Token.Colon)
-    | "*" => state->addToken(Token.Star)
+    | "(" => state->addToken(LeftParen)
+    | ")" => state->addToken(RightParen)
+    | "{" => state->addToken(LeftBrace)
+    | "}" => state->addToken(RightBrace)
+    | "," => state->addToken(Comma)
+    | "." => state->addToken(Dot)
+    | "-" => state->addToken(Minus)
+    | "+" => state->addToken(Plus)
+    | ";" => state->addToken(Semicolon)
+    | ":" => state->addToken(Colon)
+    | "*" => state->addToken(Star)
 
     | "!" =>
       switch state->peek {
-      | Some("=") => state.status = DoubleToken(Token.BangEqual)
-      | _ => state->addToken(Token.Bang)
+      | Some("=") => state.status = DoubleToken(BangEqual)
+      | _ => state->addToken(Bang)
       }
 
     | "=" =>
       switch state->peek {
-      | Some("=") => state.status = DoubleToken(Token.EqualEqual)
-      | _ => state->addToken(Token.Equal)
+      | Some("=") => state.status = DoubleToken(EqualEqual)
+      | _ => state->addToken(Equal)
       }
 
     | "<" =>
       switch state->peek {
-      | Some("=") => state.status = DoubleToken(Token.LessEqual)
-      | _ => state->addToken(Token.Less)
+      | Some("=") => state.status = DoubleToken(LessEqual)
+      | _ => state->addToken(Less)
       }
 
     | ">" =>
       switch state->peek {
-      | Some("=") => state.status = DoubleToken(Token.GreaterEqual)
-      | _ => state->addToken(Token.Greater)
+      | Some("=") => state.status = DoubleToken(GreaterEqual)
+      | _ => state->addToken(Greater)
       }
 
     | "/" =>
       switch state->peek {
       | Some("/") => state.status = LineCommentToken
-      | _ => state->addToken(Token.Slash)
+      | _ => state->addToken(Slash)
       }
 
     | "\"" => state.status = StringToken
 
     | "\n" => {
-        // Ignore newlines, but set line meta in the tokenizer state
         state.line = state.line + 1
         state.lineStartPosition = state.current + 1
-        state->resetForNextToken
+        state->addToken(Newline)
       }
 
     | " "
@@ -191,13 +190,13 @@ let rec parseToken = (state: state): unit => {
 
   | LineCommentToken =>
     switch state.currentChar {
-    | "" | "\n" => state->addToken(Token.Comment)
+    | "" | "\n" => state->addToken(Comment)
     | _ => ()
     }
 
   | StringToken =>
     switch state.currentChar {
-    | "\"" => state->addToken(Token.String)
+    | "\"" => state->addToken(String)
     | "" => state->addError("Unclosed string.")
     | _ => ()
     }
@@ -218,7 +217,7 @@ let rec parseToken = (state: state): unit => {
       | Some(c) if isDigit(c) => ()
 
       // Anything else we find ends the number token
-      | _ => state->addToken(Token.Number)
+      | _ => state->addToken(Number)
       }
 
     | _ => Js.Exn.raiseError("Got to the number tokenizer without a valid number digit.")
@@ -230,7 +229,24 @@ let rec parseToken = (state: state): unit => {
       switch state->peek {
       | Some(c) if isIdentifierChar(c) => ()
       // Anything else we find ends the identifier token
-      | _ => state->addToken(Token.Identifier)
+      | _ =>
+        state->addToken(
+          switch state->lexeme {
+          | "and" => And
+          | "or" => Or
+          | "if" => If
+          | "else" => Else
+          | "fn" => Fun
+          | "true" => True
+          | "false" => False
+          | "let" => Let
+          | "import" => Import
+          | "as" => As
+          | "exports" => Exports
+          | "module" => Module
+          | _ => Identifier
+          },
+        )
       }
 
     | _ => Js.Exn.raiseError("Got to the identifier tokenizer without a valid number digit.")
@@ -238,7 +254,7 @@ let rec parseToken = (state: state): unit => {
   }
 }
 
-let parse = (input): (array<Token.t>, array<error>) => {
+let parse = (input): result<array<Token.t>, array<error>> => {
   let state: state = {
     status: SingleToken,
     tokens: [],
@@ -264,7 +280,7 @@ let parse = (input): (array<Token.t>, array<error>) => {
   state.currentChar = ""
   parseToken(state)
   state->pushToken({
-    kind: Token.Eof,
+    kind: Eof,
     lexeme: "[End of file]",
     line: state.line,
     // If the last char is a \n, then lineStartPosition may be bigger than the last \n
@@ -273,5 +289,9 @@ let parse = (input): (array<Token.t>, array<error>) => {
     position: input->String.length,
   })
 
-  (state.tokens, state.errors)
+  if state.errors->Array.length > 0 {
+    Error(state.errors)
+  } else {
+    Ok(state.tokens)
+  }
 }

@@ -44,7 +44,7 @@ module State = {
     state.currentTypeVar.contents
   }
 
-  let newTypeVar = state => TVar(ref(Unbound(newVar(state), state.currentLevel.contents)))
+  let newTypeVar = state => Var(ref(Unbound(newVar(state), state.currentLevel.contents)))
 }
 
 /* specializes the polytype s by copying the term and replacing the
@@ -55,9 +55,10 @@ let inst = (s: typ, state: State.t): typ => {
    * associated value in the same table, leave them otherwise */
   let rec replaceTvs = (tbl, x) =>
     switch x {
-    | TUnit => TUnit
-    | TVar({contents: Bound(t)}) => replaceTvs(tbl, t)
-    | TVar({contents: Unbound(n, _level)}) as t =>
+    | Unit => Unit
+    | Named(_) => x
+    | Var({contents: Bound(t)}) => replaceTvs(tbl, t)
+    | Var({contents: Unbound(n, _level)}) as t =>
       switch tbl->HashMap.Int.get(n) {
       | Some(t_) => t_
       | None => t
@@ -83,13 +84,14 @@ let inst = (s: typ, state: State.t): typ => {
 /* The find for our union-find like algorithm */
 /* Go through the given type, replacing all typevars with their bound types when possible */
 
-/* Can a monomorphic TVar(a) be found inside this type? */
+/* Can a monomorphic Var(a) be found inside this type? */
 let rec occurs = (aId: typeVarId, aLevel: level, x: typ) =>
   /* in */
   switch x {
-  | TUnit => false
-  | TVar({contents: Bound(t)}) => occurs(aId, aLevel, t)
-  | TVar({contents: Unbound(bId, bLevel)} as bTypevar) =>
+  | Unit => false
+  | Named(_) => false
+  | Var({contents: Bound(t)}) => occurs(aId, aLevel, t)
+  | Var({contents: Unbound(bId, bLevel)} as bTypevar) =>
     let minLevel = min(aLevel, bLevel)
     bTypevar := Unbound(bId, minLevel)
     aId == bId
@@ -105,14 +107,14 @@ let rec occurs = (aId: typeVarId, aLevel: level, x: typ) =>
 
 let rec unify = (t1: typ, t2: typ): unit =>
   switch (t1, t2) {
-  | (TUnit, TUnit) => ()
+  | (Unit, Unit) => ()
 
   /* These two recursive calls to the bound typeVar replace
    * the 'find' in the union-find algorithm */
-  | (TVar({contents: Bound(a')}), b) => unify(a', b)
-  | (a, TVar({contents: Bound(b')})) => unify(a, b')
+  | (Var({contents: Bound(a')}), b) => unify(a', b)
+  | (a, Var({contents: Bound(b')})) => unify(a, b')
 
-  | (TVar({contents: Unbound(aId, aLevel)} as a), b) =>
+  | (Var({contents: Unbound(aId, aLevel)} as a), b) =>
     /* create binding for boundTy that is currently empty */
     if t1 == t2 {
       ()
@@ -125,7 +127,7 @@ let rec unify = (t1: typ, t2: typ): unit =>
       a := Bound(b)
     }
 
-  | (a, TVar({contents: Unbound(bId, bLevel)} as b)) =>
+  | (a, Var({contents: Unbound(bId, bLevel)} as b)) =>
     /* create binding for boundTy that is currently empty */
     if t1 == t2 {
       ()
@@ -152,9 +154,11 @@ let generalize = (t: typ, state: State.t): typ => {
   /* collect all the monomorphic typevars */
   let rec findAllTvs = x =>
     switch x {
-    | TUnit => list{}
-    | TVar({contents: Bound(t)}) => findAllTvs(t)
-    | TVar({contents: Unbound(n, level)}) =>
+    | Unit => list{}
+    // TODO: Dumb conversions to list / array here :/
+    | Named(_, args) => args->List.map(findAllTvs)->List.toArray->List.concatMany
+    | Var({contents: Bound(t)}) => findAllTvs(t)
+    | Var({contents: Unbound(n, level)}) =>
       if level > state.currentLevel.contents {
         list{n}
       } else {
@@ -174,12 +178,16 @@ let generalize = (t: typ, state: State.t): typ => {
 /* All branches (except for the trivial Unit) of the first match in this function
  are translated directly from the rules for algorithm J, given in comments */
 /* infer : typ SMap.t -> Expr -> Type */
-let infer = (x: Ast.expr, env: TypeEnv.t): typ => {
+let infer = (x: Node.t<Ast.expr>, env: TypeEnv.t): typ => {
   let state = State.empty()
 
-  let rec inferRec = (env: TypeEnv.t, x: Ast.expr): typ => {
-    switch x {
-    | Unit => TUnit
+  let rec inferRec = (env: TypeEnv.t, x: Node.t<Ast.expr>): typ => {
+    switch x.value {
+    | Unit => Unit
+
+    | Bool(_) => Type.bool_
+    | Number(_) => Type.number
+    | String(_) => Type.string_
 
     /* Var
      *   x : s ∊ env

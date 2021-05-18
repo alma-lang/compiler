@@ -3,7 +3,10 @@ type level = int
 
 type rec typ =
   | /* unit type */
-  TUnit
+  Unit
+
+  | /* Named type */
+  Named(string, list<typ>)
 
   /* 'a, 'b, etc.
    *
@@ -14,7 +17,7 @@ type rec typ =
    * declared in. This is used to prevent generalization of typevars that
    * escape outside the current let-binding scope.
    */
-  | TVar(ref<typeVar>)
+  | Var(ref<typeVar>)
 
   /* 'a -> 'b, all functions are single-argument only
    * e.g. \a b c.c  is automatically translated to \a.\b.\c.c
@@ -37,7 +40,7 @@ and typeVar =
  */
 let rec shouldParenthesize = x =>
   switch x {
-  | TVar({contents: Bound(t')}) => shouldParenthesize(t')
+  | Var({contents: Bound(t')}) => shouldParenthesize(t')
   | Fn(_, _) | PolyType(_, _) => true
   | _ => false
   }
@@ -63,9 +66,14 @@ let toString = (t: typ): string => {
    */
   let rec toStringRec = (curTypeVarName, typeVarNames, x) =>
     switch x {
-    | TUnit => "unit"
-    | TVar({contents: Bound(t_)}) => toStringRec(curTypeVarName, typeVarNames, t_)
-    | TVar({contents: Unbound(n, _)}) =>
+    | Unit => "unit"
+    | Named(name, params) => {
+        let paramsString: string =
+          params->List.toArray->Array.joinWith(" ", toStringRec(curTypeVarName, typeVarNames))
+        `${name} ${paramsString}`
+      }
+    | Var({contents: Bound(t_)}) => toStringRec(curTypeVarName, typeVarNames, t_)
+    | Var({contents: Unbound(n, _)}) =>
       switch typeVarNames->HashMap.Int.get(n) {
       | Some(s) => s
       | None =>
@@ -87,7 +95,7 @@ let toString = (t: typ): string => {
         toStringRec(
           curTypeVarName,
           typeVarNames,
-          TVar(ref(Unbound(t, Js.Int.max /* This level doesn't matter for printing */))),
+          Var(ref(Unbound(t, Js.Int.max /* This level doesn't matter for printing */))),
         )
       let tvsStr = List.reduce(tvs, "", (s, tv) => s ++ (" '" ++ typeVarToString(tv)))
       "∀" ++ (tvsStr ++ (" . " ++ toStringRec(curTypeVarName, typeVarNames, t)))
@@ -97,3 +105,9 @@ let toString = (t: typ): string => {
 }
 
 let print = (t: typ): unit => Js.log(toString(t))
+
+// Primitive types
+
+let number = Named("Number", list{})
+let bool_ = Named("Bool", list{})
+let string_ = Named("String", list{})

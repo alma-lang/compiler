@@ -43,6 +43,7 @@ type typ =
   | Module
 
   | Comment
+  | Newline
   | Eof
 
 type t = {

@@ -5,5 +5,5 @@
     "dir": "src",
     "subdirs": true
   },
-  "bsc-flags": ["-open Belt"]
+  "bsc-flags": ["-open Belt", "-bs-g"]
 }
