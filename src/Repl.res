@@ -7,7 +7,8 @@ let run = () => {
           Js.log(`👋`)
           readline->Readline.close
         }
-      | _ => switch Tokenizer.parse(input) {
+      | _ =>
+        switch Tokenizer.parse(input) {
         | Error(errors) => Array.forEach(errors, Js.log)
         | Ok(tokens) =>
           switch Parser.parse(input, tokens) {
@@ -19,9 +20,10 @@ let run = () => {
             | Infer.TypeError => Js.log("type error")
             | Not_found => Js.log("variable not found")
             }
-            loop()
+            Js.log(Ast.exprToString(ast.value))
           }
         }
+        loop()
       }
     })
   }

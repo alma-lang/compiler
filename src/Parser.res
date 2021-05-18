@@ -16,13 +16,14 @@
     ○ multiplication → unary ( ( "/" | "*" ) unary )*
     ○ unary          → ( "!" | "-" ) unary | call
     // Other primitives
-    ○ call           → primary ( "(" arguments? ")" )*
-    ○ arguments      → expression ( "," expression )*
+    ● call           → primary ( "(" arguments? ")" )*
+    ● arguments      → expression ( "," expression )*
     ● primary        → NUMBER | STRING | IDENTIFIER | "false" | "true"
-                    | "(" expression ")"
+                     | "(" expression ")"
 */
 
 module String = Js.String2
+module JsArray = Js.Array2
 
 module ParseError = {
   type t = {
@@ -41,98 +42,179 @@ module ParseError = {
   }
 }
 
+type parseResult<'a> = result<'a, ParseError.t>
+
 type state = {
   input: string,
   tokens: array<Token.t>,
   mutable current: int,
 }
 
-let peek = (state): Token.t => {
-  switch state.tokens[state.current] {
+let peek = (parser): Token.t => {
+  switch parser.tokens[parser.current] {
   | Some(token) => token
   | None => Js.Exn.raiseTypeError("Out of bounds access to tokens array")
   }
 }
 
-let advance = state => {
-  let token = state->peek
+let advance = parser => {
+  let token = parser->peek
   if token.kind != Token.Eof {
-    state.current = state.current + 1
+    parser.current = parser.current + 1
   }
 }
 
-/*
-let previous = (state): Token.t => {
-  state.tokens[
-    if state.current > 0 {
-      state.current - 1
-    } else {
-      0
+let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  parser->call
+}
+
+and call = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  let firstToken = parser->peek
+  parser->primary->Result.flatMap(expr => parser->callR(firstToken, expr))
+}
+
+and callR = (parser: state, firstToken: Token.t, returnExpr: Node.t<Ast.expr>): parseResult<
+  Node.t<Ast.expr>,
+> => {
+  let callFirstToken = parser->peek
+  switch callFirstToken.kind {
+  | LeftParen => {
+      parser->advance
+
+      switch (parser->peek).kind {
+      | RightParen => {
+          let lastToken = parser->peek
+          parser->advance
+          Ok(
+            Node.make(
+              Ast.FnCall(returnExpr, Node.make(Ast.Unit, callFirstToken, lastToken)),
+              firstToken,
+              lastToken,
+            ),
+          )
+        }
+
+      | _ =>
+        parser
+        ->arguments([])
+        ->Result.flatMap(args => {
+          let lastToken = parser->peek
+          switch lastToken.kind {
+          | RightParen => {
+              parser->advance
+              // Convert args lists with commas to single argument lambdas
+              let expr = args->Array.reduce(returnExpr, (expr, arg) => {
+                Node.make(Ast.FnCall(expr, arg), firstToken, lastToken)
+              })
+              parser->callR(firstToken, expr)
+            }
+          | _ =>
+            Error(
+              ParseError.expectedButFound(
+                parser.input,
+                parser->peek,
+                "Expected a ',' and more arguments or a closing ')' for the list of arguments of the function call",
+              ),
+            )
+          }
+        })
+      }
     }
-  ]->Option.getUnsafe
-}
-*/
 
-let rec expression = (state: state): result<Node.t<Ast.expr>, ParseError.t> => {
-  state->primary
+  // Not a parenthesized call, return parsed up to now
+  | _ => Ok(returnExpr)
+  }
 }
 
-and primary = (state: state): result<Node.t<Ast.expr>, ParseError.t> => {
-  let token = state->peek
-  switch token.kind {
+and arguments = (parser: state, args: array<Node.t<Ast.expr>>): result<
+  array<Node.t<Ast.expr>>,
+  ParseError.t,
+> => {
+  parser
+  ->expression
+  ->Result.flatMap(expr => {
+    args->JsArray.push(expr)->ignore
+
+    switch (parser->peek).kind {
+    | Comma => {
+        parser->advance
+        parser->arguments(args)
+      }
+
+    | _ => Ok(args)
+    }
+  })
+}
+
+and primary = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  let token = parser->peek
+  let result = switch token.kind {
   | False => Ok(Node.make(Ast.Bool(false), token, token))
   | True => Ok(Node.make(Ast.Bool(true), token, token))
+
   | Identifier => Ok(Node.make(Ast.Identifier(token.lexeme), token, token))
+
   | Number =>
     switch Float.fromString(token.lexeme) {
     | Some(n) => Ok(Node.make(Ast.Number(n), token, token))
     | None =>
-      Error(ParseError.make(state.input, token, `Failed to parse number token '${token.lexeme}'`))
+      Error(ParseError.make(parser.input, token, `Failed to parse number token '${token.lexeme}'`))
     }
+
   | String => {
       let value = token.lexeme->String.substring(~from=1, ~to_=token.lexeme->String.length - 1)
       Ok(Node.make(Ast.String(value), token, token))
     }
+
   | LeftParen =>
-    state->advance
-    state
+    parser->advance
+    parser
     ->expression
     ->Result.flatMap(expr => {
-      let token = state->peek
+      let token = parser->peek
       switch token.kind {
       | Token.RightParen => Ok(expr)
       | _ =>
         Error(
           ParseError.expectedButFound(
-            state.input,
+            parser.input,
             token,
             "Expected ')' after parenthesized expression",
           ),
         )
       }
     })
+
   | _ =>
     Error(
       ParseError.expectedButFound(
-        state.input,
+        parser.input,
         token,
         "Expected an expression (let, if, a lambda, some math, or primitive types)",
       ),
     )
   }
+
+  // None of the branches advance after the last successful token, so we do it
+  // here to avoid repetition
+  if result->Result.isOk {
+    parser->advance
+  }
+
+  result
 }
 
 let parse = (input: string, tokens: array<Token.t>): result<
   Node.t<Ast.expr>,
   array<ParseError.t>,
 > => {
-  let state = {
+  let parser = {
     input: input,
     tokens: tokens,
     current: 0,
   }
 
-  let result = primary(state)
+  let result = parser->expression
 
   switch result {
   | Error(e) => Error([e])

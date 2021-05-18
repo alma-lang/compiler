@@ -67,11 +67,16 @@ let toString = (t: typ): string => {
   let rec toStringRec = (curTypeVarName, typeVarNames, x) =>
     switch x {
     | Unit => "unit"
-    | Named(name, params) => {
+
+    | Named(name, params) =>
+      if params->List.length == 0 {
+        name
+      } else {
         let paramsString: string =
           params->List.toArray->Array.joinWith(" ", toStringRec(curTypeVarName, typeVarNames))
         `${name} ${paramsString}`
       }
+
     | Var({contents: Bound(t_)}) => toStringRec(curTypeVarName, typeVarNames, t_)
     | Var({contents: Unbound(n, _)}) =>
       switch typeVarNames->HashMap.Int.get(n) {
@@ -82,6 +87,7 @@ let toString = (t: typ): string => {
         nextLetter(curTypeVarName)
         s
       }
+
     | Fn(a, b) =>
       let aStr = toStringRec(curTypeVarName, typeVarNames, a)
       let bStr = toStringRec(curTypeVarName, typeVarNames, b)
@@ -90,6 +96,7 @@ let toString = (t: typ): string => {
       } else {
         aStr ++ (" -> " ++ bStr)
       }
+
     | PolyType(tvs, t) =>
       let typeVarToString = t =>
         toStringRec(

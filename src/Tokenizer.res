@@ -47,7 +47,7 @@ let isDigit = {
 }
 
 let isIdentifierChar = s => {
-  let word = %re("/[\p{L}\p{S}\p{P}]/u")
+  let word = %re("/[\p{L}\p{S}]/u")
   Js.Re.test_(word, s)
 }
 

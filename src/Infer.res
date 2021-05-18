@@ -109,6 +109,13 @@ let rec unify = (t1: typ, t2: typ): unit =>
   switch (t1, t2) {
   | (Unit, Unit) => ()
 
+  | (Named(name, args), Named(name2, args2)) => {
+      if name != name2 {
+        raise(TypeError)
+      }
+      List.forEach2U(args, args2, (. a1, a2) => unify(a1, a2))
+    }
+
   /* These two recursive calls to the bound typeVar replace
    * the 'find' in the union-find algorithm */
   | (Var({contents: Bound(a')}), b) => unify(a', b)

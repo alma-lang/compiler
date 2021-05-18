@@ -5,7 +5,8 @@
     "clean": "rescript clean",
     "build": "rescript build",
     "watch": "rescript build -w",
-    "dev-repl": "onchange -i -k 'lib/js/src/**/*.js' -- node lib/js/src/Cli.js repl"
+    "dev-repl": "onchange -i -k 'lib/js/src/**/*.js' -- node lib/js/src/Cli.js repl",
+    "cli": "node lib/js/src/Cli.js"
   },
   "keywords": [
     "ReScript"
