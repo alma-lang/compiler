@@ -23,6 +23,6 @@ let rec exprToString = (expr: expr) => {
   | Lambda(param, expr) => `${param} => ${exprToString(expr.value)}`
   | FnCall(callee, arg) => `${exprToString(callee.value)}(${exprToString(arg.value)})`
   | Let(binding, value, body) =>
-    `let ${binding} = ${exprToString(value.value)}; ${exprToString(body.value)}`
+    `let ${binding} = (${exprToString(value.value)}); ${exprToString(body.value)}`
   }
 }
