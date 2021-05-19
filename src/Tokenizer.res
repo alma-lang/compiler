@@ -21,7 +21,7 @@ type status =
   | LineCommentToken
   | StringToken
   | NumberToken(bool)
-  | IdentifierToken
+  | IdentifierToken(bool)
 
 type state = {
   mutable status: status,
@@ -46,9 +46,11 @@ let isDigit = {
   }
 }
 
-let isIdentifierChar = s => {
-  let word = %re("/[\p{L}\p{S}]/u")
-  Js.Re.test_(word, s)
+let identifierStartRe = %re("/[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}_]/u")
+let identifierRestRe = %re("/[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}_]/u")
+let isIdentifierChar = (s, ~isStart) => {
+  // Similar to https://es5.github.io/#x7.6
+  Js.Re.test_(isStart ? identifierStartRe : identifierRestRe, s)
 }
 
 let peek = state => {
@@ -96,11 +98,21 @@ let addToken = (state, kind) => {
   state->resetForNextToken
 }
 
-let addError = (state, message) => {
-  let column = state.current - state.lineStartPosition
+let addError = (state, ~useStart=false, message) => {
+  let (position, column) = if useStart {
+    (state.start, state.start - state.lineStartPosition)
+  } else {
+    (state.current, state.current - state.lineStartPosition)
+  }
 
-  // TODO: Better tokenizer error messages
-  let message = `${state.line->Int.toString}:${column->Int.toString}\n${message}`
+  let message =
+    `${state.line->Int.toString}:${column->Int.toString}\n${message}\n` ++
+    Input.linesReportAtPositionWithPointer(
+      state.input,
+      ~position,
+      ~lineNumber=state.line,
+      ~columnNumber=column,
+    )->Option.getWithDefault("")
 
   state.errors
   ->JsArray.push({
@@ -178,8 +190,8 @@ let rec parseToken = (state: state): unit => {
         parseToken(state)
       }
 
-    | ch if isIdentifierChar(ch) => {
-        state.status = IdentifierToken
+    | ch if isIdentifierChar(ch, ~isStart=true) => {
+        state.status = IdentifierToken(true)
         parseToken(state)
       }
 
@@ -197,7 +209,7 @@ let rec parseToken = (state: state): unit => {
   | StringToken =>
     switch state.currentChar {
     | "\"" => state->addToken(String)
-    | "" => state->addError("Unclosed string.")
+    | "" => state->addError("Unclosed string.", ~useStart=true)
     | _ => ()
     }
 
@@ -223,11 +235,14 @@ let rec parseToken = (state: state): unit => {
     | _ => Js.Exn.raiseError("Got to the number tokenizer without a valid number digit.")
     }
 
-  | IdentifierToken =>
+  | IdentifierToken(isStart) =>
     switch state.currentChar {
-    | c if isIdentifierChar(c) =>
+    | c if isIdentifierChar(c, ~isStart) =>
+      let isStart = false
+      state.status = IdentifierToken(isStart)
+
       switch state->peek {
-      | Some(c) if isIdentifierChar(c) => ()
+      | Some(c) if isIdentifierChar(c, ~isStart) => ()
       // Anything else we find ends the identifier token
       | _ =>
         state->addToken(
@@ -286,7 +301,10 @@ let parse = (input): result<array<Token.t>, array<error>> => {
     // If the last char is a \n, then lineStartPosition may be bigger than the last \n
     // position. Default to column 0 then.
     column: max(state.current - state.lineStartPosition, 0),
-    position: input->String.length,
+    // Set the position of the token in the string to the last character in the
+    // string so that somewhere in the string can be pointed at. The column will
+    // be offset one+ from this one.
+    position: input->String.length - 1,
   })
 
   if state.errors->Array.length > 0 {
