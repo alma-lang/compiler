@@ -60,15 +60,15 @@ let lineAt = (input: t, position: int): option<(int, int)> => {
 
 let rec linesBeforePosition = (
   input: t,
-  position: int,
-  howManyLines: int,
   lines: array<string>,
+  ~position: int,
+  ~howManyLines: int,
 ): array<string> => {
   switch input->lineAt(position) {
   | Some((lineStart, lineEnd)) if howManyLines > 0 => {
       let line = input->lineSubstring(~from=lineStart, ~to_=lineEnd)
       lines->JsArray.push(line)->ignore
-      input->linesBeforePosition(lineStart - 1, howManyLines - 1, lines)
+      input->linesBeforePosition(lines, ~position=lineStart - 1, ~howManyLines=howManyLines - 1)
     }
   | _ => lines->JsArray.reverseInPlace
   }
@@ -76,15 +76,15 @@ let rec linesBeforePosition = (
 
 let rec linesAfterPosition = (
   input: t,
-  position: int,
-  howManyLines: int,
   lines: array<string>,
+  ~position: int,
+  ~howManyLines: int,
 ): array<string> => {
   switch input->lineAt(position) {
   | Some((lineStart, lineEnd)) if howManyLines > 0 => {
       let line = input->lineSubstring(~from=lineStart, ~to_=lineEnd)
       lines->JsArray.push(line)->ignore
-      input->linesAfterPosition(lineEnd + 1, howManyLines - 1, lines)
+      input->linesAfterPosition(lines, ~position=lineEnd + 1, ~howManyLines=howManyLines - 1)
     }
   | _ => lines
   }
@@ -99,23 +99,23 @@ let linesAroundPosition = (input: t, position: int, numberOfLines: int): option<
   ->lineAt(position)
   ->Option.flatMap(((lineStart, lineEnd)) => {
     let line = input->lineSubstring(~from=lineStart, ~to_=lineEnd)
-    let linesBefore = input->linesBeforePosition(lineStart - 1, numberOfLines, [])
-    let linesAfter = input->linesAfterPosition(lineEnd + 1, numberOfLines, [])
+    let linesBefore =
+      input->linesBeforePosition([], ~position=lineStart - 1, ~howManyLines=numberOfLines)
+    let linesAfter =
+      input->linesAfterPosition([], ~position=lineEnd + 1, ~howManyLines=numberOfLines)
     Some(linesBefore, line, linesAfter)
   })
 }
 
 let linesReportAtPositionWithPointer = (
   input: string,
-  position: int,
-  lineNumber: int,
-  columnNumber: int,
+  ~position: int,
+  ~lineNumber: int,
+  ~columnNumber: int,
 ): option<string> =>
   input
   ->linesAroundPosition(position, 2)
   ->Option.flatMap(((linesBefore, line, linesAfter)) => {
-    Js.log3(linesBefore, line, linesAfter)
-
     let out = []
 
     let lineNumberWidth = (lineNumber + linesAfter->Array.length)->Int.toString->String.length
