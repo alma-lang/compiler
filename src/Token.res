@@ -31,6 +31,7 @@ type typ =
   // Keywords.
   | And
   | Or
+  | Not
   | If
   | Else
   | True

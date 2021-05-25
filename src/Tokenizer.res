@@ -249,6 +249,7 @@ let rec parseToken = (state: state): unit => {
           switch state->lexeme {
           | "and" => And
           | "or" => Or
+          | "not" => Not
           | "if" => If
           | "else" => Else
           | "fn" => Fun

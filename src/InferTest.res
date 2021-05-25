@@ -1,6 +1,6 @@
 let test = (name: string, ast: Node.t<Ast.expr>, expected: string) => {
   try {
-    let typ = Infer.infer(ast, TypeEnv.empty())
+    let typ = Infer.infer(ast)
     let correct = expected == Type.toString(typ)
     Js.log(`  ${correct ? "" : name} ${correct ? "" : ":"} ${correct ? "" : Type.toString(typ)}`)
     Js.log(`${correct ? " " : "x"} ${name} : ${Type.toString(typ)}`)

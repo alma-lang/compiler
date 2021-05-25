@@ -185,8 +185,9 @@ let generalize = (t: typ, state: State.t): typ => {
 /* All branches (except for the trivial Unit) of the first match in this function
  are translated directly from the rules for algorithm J, given in comments */
 /* infer : typ SMap.t -> Expr -> Type */
-let infer = (x: Node.t<Ast.expr>, env: TypeEnv.t): typ => {
+let infer = (x: Node.t<Ast.expr>): typ => {
   let state = State.empty()
+  let env = TypeEnv.empty()
 
   let rec inferRec = (env: TypeEnv.t, x: Node.t<Ast.expr>): typ => {
     switch x.value {
@@ -195,6 +196,30 @@ let infer = (x: Node.t<Ast.expr>, env: TypeEnv.t): typ => {
     | Bool(_) => Type.bool_
     | Number(_) => Type.number
     | String(_) => Type.string_
+
+    | Unary(op, e) => {
+        let t = inferRec(env, e)
+        switch op.value {
+        | Ast.Not => unify(t, Type.bool_)
+        | Ast.Minus => unify(t, Type.number)
+        }
+        t
+      }
+
+    | Binary(left, op, right) => {
+        let fnCall = {
+          ...x,
+          value: Ast.FnCall(
+            {
+              value: Ast.FnCall({...op, value: Ast.Identifier(op.value.fn)}, left),
+              start: left.start,
+              end: op.end,
+            },
+            right,
+          ),
+        }
+        inferRec(env, fnCall)
+      }
 
     /* Var
      *   x : s ∊ env

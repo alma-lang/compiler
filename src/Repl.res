@@ -18,7 +18,7 @@ let run = () => {
 
           | Ok(ast) =>
             try {
-              ast->Infer.infer(TypeEnv.empty()) |> Type.print
+              ast->Infer.infer->Type.print
             } catch {
             | Infer.TypeError => Js.log("type error")
             | Not_found => Js.log("variable not found")

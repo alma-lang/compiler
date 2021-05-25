@@ -1,20 +1,16 @@
 /* Grammar draft (●○):
     ○ file           → expression EOF
     ○ expression     → elet | lambda | if | operators
-    ○ elet           → "let" binding "=" expression "\n" expression
+    ○ elet           → let expression
+    ○ let            → "let" binding "=" expression "\n"
     ○ lambda         → "fn" params? "{" expression "}"
     ○ params         → "(" binding ( "," binding )* ")"
     ○ binding        → IDENTIFIER ( ":" IDENTIFIER )?
     ○ if             → "if" operators "{" expression "}" ( else "{" expression "}" )?
     // Operators
-    ○ operators      → logic_or
-    ○ logic_or       → logic_and ( "or" logic_and )*
-    ○ logic_and      → equality ( "and" equality )*
-    ○ equality       → comparison ( ( "!=" | "==" ) comparison )*
-    ○ comparison     → addition ( ( ">" | ">=" | "<" | "<=" ) addition )*
-    ○ addition       → multiplication ( ( "+" | "-" ) multiplication )*
-    ○ multiplication → unary ( ( "/" | "*" ) unary )*
-    ○ unary          → ( "!" | "-" ) unary | call
+    ● binary         → binary ( binop binary )*
+    ● binop          → // parsed from Ast.Binop operator list
+    ● unary          → ( "not" | "-" )? call
     // Other primitives
     ● call           → primary ( primary )*
     ● primary        → NUMBER | STRING | IDENTIFIER | "false" | "true"
@@ -75,16 +71,129 @@ let advance = parser => {
   }
 }
 
-let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
-  parser->call'
+let rec organizeBinops = (
+  left: Node.t<Ast.expr>,
+  binops: array<(Node.t<Ast.Binop.t>, Node.t<Ast.expr>)>,
+  current: ref<int>,
+  minPrecedence: int,
+): Node.t<Ast.expr> => {
+  open Ast.Binop
+  // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+  // better than the wikipedia article for precedence climibing
+
+  let left = ref(left)
+  let outerBreak = ref(false)
+
+  while !outerBreak.contents {
+    switch binops[current.contents] {
+    | Some((op, rhs)) if op.value.precedence >= minPrecedence => {
+        current := current.contents + 1
+
+        let nextMinPrecedence = op.value.precedence + (op.value.associativity == LTR ? 1 : 0)
+
+        let right = organizeBinops(rhs, binops, current, nextMinPrecedence)
+
+        left := {
+            Node.value: Ast.Binary(left.contents, op, right),
+            start: left.contents.start,
+            end: right.end,
+          }
+      }
+    | _ => outerBreak := true
+    }
+  }
+
+  left.contents
 }
 
-and call' = (parser: state): parseResult<Node.t<Ast.expr>> => {
+let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  parser->binary
+}
+
+and binary = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  parser
+  ->unary
+  ->Result.flatMap(expr =>
+    parser->binaryStep([])->Result.map(binops => organizeBinops(expr, binops, ref(0), 0))
+  )
+}
+and binaryStep = (
+  parser: state,
+  binops: array<(Node.t<Ast.Binop.t>, Node.t<Ast.expr>)>,
+): parseResult<array<(Node.t<Ast.Binop.t>, Node.t<Ast.expr>)>> => {
+  let token = parser->getToken
+
+  let op = switch token.kind {
+  | Slash => Some(Ast.Binop.division)
+  | Star => Some(Ast.Binop.multiplication)
+  | Plus => Some(Ast.Binop.addition)
+  | Minus => Some(Ast.Binop.substraction)
+  | BangEqual => Some(Ast.Binop.notEqual)
+  | EqualEqual => Some(Ast.Binop.equal)
+  | Greater => Some(Ast.Binop.greaterThan)
+  | GreaterEqual => Some(Ast.Binop.greaterEqualThan)
+  | Less => Some(Ast.Binop.lessThan)
+  | LessEqual => Some(Ast.Binop.lessEqualThan)
+  | And => Some(Ast.Binop.and_)
+  | Or => Some(Ast.Binop.or)
+  | _ => None
+  }
+
+  switch op {
+  | Some(op) => {
+      let opNode = Node.make(op, token, token)
+
+      parser->advance
+      parser
+      ->unary
+      ->Result.flatMap(right => {
+        binops->JsArray.push((opNode, right))->ignore
+        parser->binaryStep(binops)
+      })
+    }
+
+  | None => Ok(binops)
+  }
+}
+
+and unary = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  let token = parser->getToken
+
+  let u = switch token.kind {
+  | Not => {
+      parser->advance
+      Some(Ast.Not)
+    }
+  | Minus => {
+      parser->advance
+      Some(Ast.Minus)
+    }
+  | _ => None
+  }
+
+  parser
+  ->call
+  ->Result.flatMap(expr =>
+    switch u {
+    | Some(u) => {
+        let op = Node.make(u, token, token)
+        Ok({
+          Node.value: Ast.Unary(op, expr),
+          start: op.start,
+          end: expr.end,
+        })
+      }
+    | None => Ok(expr)
+    }
+  )
+}
+
+and call = (parser: state): parseResult<Node.t<Ast.expr>> => {
   parser
   ->primary
   ->Result.flatMap(expr =>
     switch expr {
-    | Some(expr) => parser->callR'(expr)
+    | Some(expr) => parser->callStep(expr)
     | None =>
       Error(
         ParseError.expectedButFound(
@@ -96,7 +205,7 @@ and call' = (parser: state): parseResult<Node.t<Ast.expr>> => {
     }
   )
 }
-and callR' = (parser: state, returnExpr: Node.t<Ast.expr>): parseResult<Node.t<Ast.expr>> => {
+and callStep = (parser: state, returnExpr: Node.t<Ast.expr>): parseResult<Node.t<Ast.expr>> => {
   parser
   ->primary
   ->Result.flatMap(arg =>
@@ -104,7 +213,7 @@ and callR' = (parser: state, returnExpr: Node.t<Ast.expr>): parseResult<Node.t<A
     // We tried to get an argument, but there was no match
     | None => Ok(returnExpr)
     | Some(arg) =>
-      parser->callR'({
+      parser->callStep({
         Node.value: Ast.FnCall(returnExpr, arg),
         start: returnExpr.start,
         end: arg.end,
