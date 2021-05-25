@@ -5,8 +5,8 @@
     "clean": "rescript clean",
     "build": "rescript build",
     "watch": "rescript build -w",
-    "dev-repl": "onchange -i -k 'lib/js/src/**/*.js' -- node lib/js/src/Cli.js repl",
-    "cli": "node lib/js/src/Cli.js"
+    "dev-repl": "onchange -i -k 'lib/es6_global/src/**/*.js' -- deno run lib/es6_global/src/Cli.js repl",
+    "cli": "deno run lib/es6_global/src/Cli.js"
   },
   "keywords": [
     "ReScript"

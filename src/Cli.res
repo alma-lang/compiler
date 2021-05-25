@@ -1,4 +1,4 @@
-let args: array<string> = %raw(`process.argv.slice(2)`)
+let args: array<string> = %raw(`Deno.args`)
 
 let help = () =>
   Js.log("
