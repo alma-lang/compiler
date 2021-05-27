@@ -174,9 +174,9 @@ let rec parseToken = (state: state): unit => {
     | "\"" => state.status = StringToken
 
     | "\n" => {
+        state->addToken(Newline)
         state.line = state.line + 1
         state.lineStartPosition = state.current + 1
-        state->addToken(Newline)
       }
 
     | " "
@@ -215,11 +215,17 @@ let rec parseToken = (state: state): unit => {
 
   | NumberToken(seenDot) =>
     switch state.currentChar {
-    | "." =>
-      if seenDot {
-        state->addError(`Multiple dots while parsing a number.`)
-      } else {
-        state.status = NumberToken(true)
+    | "." => {
+        if seenDot {
+          state->addError(`Multiple dots while parsing a number.`)
+        } else {
+          state.status = NumberToken(true)
+        }
+
+        switch state->peek {
+        | Some(c) if isDigit(c) => ()
+        | _ => state->addError(`Expected more digits after a dot in a number.`)
+        }
       }
 
     | c if isDigit(c) =>

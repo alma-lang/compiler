@@ -1,20 +1,5 @@
 {
-  "name": "mls",
-  "version": "0.1.0",
-  "scripts": {
-    "clean": "rescript clean",
-    "build": "rescript build",
-    "watch": "rescript build -w",
-    "dev-repl": "onchange -i -k 'lib/es6_global/src/**/*.js' -- deno run lib/es6_global/src/Cli.js repl",
-    "cli": "deno run lib/es6_global/src/Cli.js"
-  },
-  "keywords": [
-    "ReScript"
-  ],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
-    "onchange": "^7.1.0",
     "rescript": "^9.1.1"
   }
 }

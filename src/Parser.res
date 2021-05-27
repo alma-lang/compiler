@@ -1,12 +1,12 @@
 /* Grammar draft (●○):
-    ○ file           → expression EOF
-    ○ expression     → elet | lambda | if | operators
+  r ○ file           → expression EOF
+  r ○ expression     → elet | lambda | if | operators
     ○ elet           → let expression
     ○ let            → "let" binding "=" expression "\n"
-    ○ lambda         → "fn" params? "{" expression "}"
-    ○ params         → "(" binding ( "," binding )* ")"
-    ○ binding        → IDENTIFIER ( ":" IDENTIFIER )?
-    ○ if             → "if" operators "{" expression "}" ( else "{" expression "}" )?
+    ○ lambda         → "fn" params? "->" expression
+  r ○ params         → "(" binding ( "," binding )* ")"
+  r ○ binding        → IDENTIFIER ( ":" IDENTIFIER )?
+    ○ if             → "if" operators "then" expression ( "else" expression )?
     // Operators
     ● binary         → binary ( binop binary )*
     ● binop          → // parsed from Ast.Binop operator list
@@ -26,10 +26,16 @@ module ParseError = {
     token: Token.t,
   }
 
-  let make = (input: string, token: Token.t, message: string): t => {
-    let position = token.position
-    let lineNumber = token.line
-    let columnNumber = token.column
+  let make = (
+    input: string,
+    token: Token.t,
+    ~pointAtToken: option<Token.t>=?,
+    message: string,
+  ): t => {
+    let pointAtToken = pointAtToken->Option.getWithDefault(token)
+    let position = pointAtToken.position
+    let lineNumber = pointAtToken.line
+    let columnNumber = pointAtToken.column
 
     let message =
       `${token.line->Int.toString}:${token.column->Int.toString}: ${message}\n\n` ++
@@ -43,8 +49,13 @@ module ParseError = {
     {message: message, token: token}
   }
 
-  let expectedButFound = (input: string, token: Token.t, message: string): t => {
-    make(input, token, `${message}, but instead found: '${token.lexeme}'`)
+  let expectedButFound = (
+    input: string,
+    token: Token.t,
+    ~pointAtToken: option<Token.t>=?,
+    message: string,
+  ): t => {
+    make(input, token, `${message}, but instead found: '${token.lexeme}'`, ~pointAtToken?)
   }
 }
 
@@ -248,14 +259,15 @@ and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
     parser
     ->expression
     ->Result.flatMap(expr => {
-      let token = parser->getToken
-      switch token.kind {
+      let lastToken = parser->getToken
+      switch lastToken.kind {
       | Token.RightParen => Ok(Some(expr))
       | _ =>
         Error(
           ParseError.expectedButFound(
             parser.input,
-            token,
+            lastToken,
+            ~pointAtToken=token,
             "Expected ')' after parenthesized expression",
           ),
         )
