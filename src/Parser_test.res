@@ -31,6 +31,24 @@ Test.suite("Parser", ({test}) => {
         },
       ]),
     ),
+    (
+      `(((1))))`,
+      Error([
+        {
+          message: `1:7: Expected the end of input, but instead found: ')'
+
+  1│ (((1))))
+   │        ↑`,
+          token: {
+            column: 7,
+            kind: Token.RightParen,
+            lexeme: ")",
+            line: 1,
+            position: 7,
+          },
+        },
+      ]),
+    ),
   ]
 
   testCases->Array.forEachWithIndex((i, (input, expected)) =>
