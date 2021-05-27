@@ -57,6 +57,16 @@ Test.suite("Parser", ({test}) => {
       | Ok(tokens) => {
           let actual = Parser.parse(input, tokens)
           /* Js.log(actual->Js.Json.stringifyAny) */
+          if !Test.equal(actual, expected) {
+            Js.log2(
+              "\n",
+              actual
+              ->Js.Json.stringifyAny
+              ->Option.getExn
+              ->Js.Json.parseExn
+              ->Js.Json.stringifyWithSpace(4),
+            )
+          }
           Test.assertEquals(actual, expected, "")
         }
       | Error(es) => {
