@@ -22,10 +22,11 @@ Test.suite("Parser", ({test}) => {
   1│ (((1))
    │ ↑`,
           token: {
-            column: 6,
             kind: Token.Eof,
             lexeme: "[End of file]",
             line: 1,
+            indent: 0,
+            column: 6,
             position: 5,
           },
         },
@@ -40,15 +41,71 @@ Test.suite("Parser", ({test}) => {
   1│ (((1))))
    │        ↑`,
           token: {
-            column: 7,
             kind: Token.RightParen,
             lexeme: ")",
             line: 1,
+            indent: 0,
+            column: 7,
             position: 7,
           },
         },
       ]),
     ),
+    (
+      `(
+  ((1))
+)`,
+      Ok({value: Ast.Number(1.0), start: 6, end: 7}),
+    ),
+    (
+      `fun arg`,
+      Ok({
+        value: Ast.FnCall(
+          {value: Ast.Identifier("fun"), start: 0, end: 3},
+          {value: Ast.Identifier("arg"), start: 4, end: 7},
+        ),
+        start: 0,
+        end: 7,
+      }),
+    ),
+    (
+      `fun
+ arg`,
+      Ok({
+        value: Ast.FnCall(
+          {value: Ast.Identifier("fun"), start: 0, end: 3},
+          {value: Ast.Identifier("arg"), start: 5, end: 8},
+        ),
+        start: 0,
+        end: 8,
+      }),
+    ),
+    (
+      `  fun
+    arg`,
+      Ok({
+        value: Ast.FnCall(
+          {value: Ast.Identifier("fun"), start: 2, end: 5},
+          {value: Ast.Identifier("arg"), start: 10, end: 13},
+        ),
+        start: 2,
+        end: 13,
+      }),
+    ),
+    // TODO: This is a list of expressions, it shouldn't parse as an expression,
+    // now should it? Should they implicitly be assigned to let _ = expr? as an
+    // AST transform?
+    /* ( */
+    /* `fun\narg`, */
+    /* Ok({ */
+    /* value: Ast.FnCall( */
+    /* {value: Ast.Identifier("fun"), start: 2, end: 5}, */
+    /* {value: Ast.Identifier("arg"), start: 10, end: 13}, */
+    /* ), */
+    /* start: 2, */
+    /* end: 13, */
+    /* }), */
+    /* ), */
   ]
 
   testCases->Array.forEachWithIndex((i, (input, expected)) =>
@@ -56,16 +113,8 @@ Test.suite("Parser", ({test}) => {
       switch input->Tokenizer.parse {
       | Ok(tokens) => {
           let actual = Parser.parse(input, tokens)
-          /* Js.log(actual->Js.Json.stringifyAny) */
           if !Test.equal(actual, expected) {
-            Js.log2(
-              "\n",
-              actual
-              ->Js.Json.stringifyAny
-              ->Option.getExn
-              ->Js.Json.parseExn
-              ->Js.Json.stringifyWithSpace(4),
-            )
+            Js.log2("\n", actual->Json.stringifyAnyWithSpace(4))
           }
           Test.assertEquals(actual, expected, "")
         }

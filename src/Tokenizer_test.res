@@ -2,19 +2,19 @@ Test.suite("Tokenizer", ({test}) => {
   open Token
 
   let testCases: array<(string, result<array<Token.t>, array<Tokenizer.error>>)> = [
-    ("", Ok([{kind: Eof, lexeme: "[End of file]", position: -1, line: 1, column: 0}])),
+    ("", Ok([{kind: Eof, lexeme: "[End of file]", position: -1, line: 1, indent: 0, column: 0}])),
     (
       "123",
       Ok([
-        {kind: Number, lexeme: "123", position: 0, line: 1, column: 0},
-        {kind: Eof, lexeme: "[End of file]", position: 2, line: 1, column: 3},
+        {kind: Number, lexeme: "123", position: 0, line: 1, indent: 0, column: 0},
+        {kind: Eof, lexeme: "[End of file]", position: 2, line: 1, indent: 0, column: 3},
       ]),
     ),
     (
       "123.345",
       Ok([
-        {kind: Number, lexeme: "123.345", position: 0, line: 1, column: 0},
-        {kind: Eof, lexeme: "[End of file]", position: 6, line: 1, column: 7},
+        {kind: Number, lexeme: "123.345", position: 0, line: 1, indent: 0, column: 0},
+        {kind: Eof, lexeme: "[End of file]", position: 6, line: 1, indent: 0, column: 7},
       ]),
     ),
     (
@@ -33,11 +33,10 @@ Expected more digits after a dot in a number.
     (
       "123\n or \"abc\"",
       Ok([
-        {kind: Number, lexeme: "123", position: 0, line: 1, column: 0},
-        {kind: Newline, lexeme: "\n", position: 3, line: 1, column: 3},
-        {kind: Or, lexeme: "or", position: 5, line: 2, column: 1},
-        {kind: String, lexeme: "\"abc\"", position: 8, line: 2, column: 4},
-        {kind: Eof, lexeme: "[End of file]", position: 12, line: 2, column: 9},
+        {kind: Number, lexeme: "123", position: 0, line: 1, indent: 0, column: 0},
+        {kind: Or, lexeme: "or", position: 5, line: 2, indent: 1, column: 1},
+        {kind: String, lexeme: "\"abc\"", position: 8, line: 2, indent: 1, column: 4},
+        {kind: Eof, lexeme: "[End of file]", position: 12, line: 2, indent: 1, column: 9},
       ]),
     ),
     (

@@ -80,6 +80,7 @@ let advance = parser => {
   if token.kind != Token.Eof {
     parser.current = parser.current + 1
   }
+  parser
 }
 
 let rec organizeBinops = (
@@ -154,8 +155,8 @@ and binaryStep = (
   | Some(op) => {
       let opNode = Node.make(op, token, token)
 
-      parser->advance
       parser
+      ->advance
       ->unary
       ->Result.flatMap(right => {
         binops->JsArray.push((opNode, right))->ignore
@@ -172,11 +173,11 @@ and unary = (parser: state): parseResult<Node.t<Ast.expr>> => {
 
   let u = switch token.kind {
   | Not => {
-      parser->advance
+      parser->advance->ignore
       Some(Ast.Not)
     }
   | Minus => {
-      parser->advance
+      parser->advance->ignore
       Some(Ast.Minus)
     }
   | _ => None
@@ -255,8 +256,8 @@ and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
     }
 
   | LeftParen =>
-    parser->advance
     parser
+    ->advance
     ->expression
     ->Result.flatMap(expr => {
       let lastToken = parser->getToken
@@ -280,7 +281,7 @@ and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
   // None of the branches advance after the last successful token, so we do it
   // here to avoid repetition
   switch result {
-  | Ok(Some(_)) => parser->advance
+  | Ok(Some(_)) => parser->advance->ignore
   | _ => ()
   }
 

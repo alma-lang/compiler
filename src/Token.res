@@ -33,6 +33,7 @@ type typ =
   | Or
   | Not
   | If
+  | Then
   | Else
   | True
   | False
@@ -44,7 +45,6 @@ type typ =
   | Module
 
   | Comment
-  | Newline
   | Eof
 
 type t = {
@@ -53,4 +53,5 @@ type t = {
   position: int,
   line: int,
   column: int,
+  indent: int,
 }

@@ -19,6 +19,7 @@ type status =
   | SingleToken
   | DoubleToken(Token.typ)
   | LineCommentToken
+  | WhitespaceToken(bool)
   | StringToken
   | NumberToken(bool)
   | IdentifierToken(bool)
@@ -32,6 +33,7 @@ type state = {
   mutable current: int,
   mutable line: int,
   mutable lineStartPosition: int,
+  mutable indent: int,
   mutable currentChar: string,
 }
 
@@ -93,6 +95,7 @@ let addToken = (state, kind) => {
     line: state.line,
     column: state.start - state.lineStartPosition,
     position: state.start,
+    indent: state.indent,
   })
 
   state->resetForNextToken
@@ -173,13 +176,12 @@ let rec parseToken = (state: state): unit => {
 
     | "\"" => state.status = StringToken
 
+    | " "
     | "\n" => {
-        state->addToken(Newline)
-        state.line = state.line + 1
-        state.lineStartPosition = state.current + 1
+        state.status = WhitespaceToken(false)
+        parseToken(state)
       }
 
-    | " "
     | "\r"
     | "\t"
     | "" =>
@@ -204,6 +206,32 @@ let rec parseToken = (state: state): unit => {
     switch state.currentChar {
     | "" | "\n" => state->addToken(Comment)
     | _ => ()
+    }
+
+  | WhitespaceToken(lineStarted) => {
+      switch state.currentChar {
+      | " " =>
+        if lineStarted {
+          state.indent = state.indent + 1
+        }
+        state.status = WhitespaceToken(lineStarted)
+
+      | "\n" => {
+          state.status = WhitespaceToken(true)
+          state.line = state.line + 1
+          state.indent = 0
+          state.lineStartPosition = state.current + 1
+        }
+
+      | _ =>
+        Js.Exn.raiseError("Got to the whitespace tokenizer without a valid space or newline char.")
+      }
+
+      switch state->peek {
+      | Some("\n")
+      | Some(" ") => ()
+      | _ => state->resetForNextToken
+      }
     }
 
   | StringToken =>
@@ -257,6 +285,7 @@ let rec parseToken = (state: state): unit => {
           | "or" => Or
           | "not" => Not
           | "if" => If
+          | "then" => Then
           | "else" => Else
           | "fn" => Fun
           | "true" => True
@@ -285,6 +314,7 @@ let parse = (input): result<array<Token.t>, array<error>> => {
     current: 0,
     line: 1,
     lineStartPosition: 0,
+    indent: 0,
     input: input,
     currentChar: "",
   }
@@ -312,6 +342,7 @@ let parse = (input): result<array<Token.t>, array<error>> => {
     // string so that somewhere in the string can be pointed at. The column will
     // be offset one+ from this one.
     position: input->String.length - 1,
+    indent: state.indent,
   })
 
   if state.errors->Array.length > 0 {
