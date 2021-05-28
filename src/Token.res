@@ -11,6 +11,7 @@ type typ =
   | Semicolon
   | Colon
   | Slash
+  | Backslash
   | Star
 
   // One or two character tokens.
@@ -22,6 +23,7 @@ type typ =
   | GreaterEqual
   | Less
   | LessEqual
+  | Arrow
 
   // Literals.
   | Identifier
@@ -37,7 +39,6 @@ type typ =
   | Else
   | True
   | False
-  | Fun
   | Let
   | Import
   | As

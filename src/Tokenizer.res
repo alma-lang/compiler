@@ -138,11 +138,17 @@ let rec parseToken = (state: state): unit => {
     | "}" => state->addToken(RightBrace)
     | "," => state->addToken(Comma)
     | "." => state->addToken(Dot)
-    | "-" => state->addToken(Minus)
     | "+" => state->addToken(Plus)
     | ";" => state->addToken(Semicolon)
     | ":" => state->addToken(Colon)
     | "*" => state->addToken(Star)
+    | "\\" => state->addToken(Backslash)
+
+    | "-" =>
+      switch state->peek {
+      | Some(">") => state.status = DoubleToken(Arrow)
+      | _ => state->addToken(Minus)
+      }
 
     | "!" =>
       switch state->peek {
@@ -288,7 +294,6 @@ let rec parseToken = (state: state): unit => {
           | "if" => If
           | "then" => Then
           | "else" => Else
-          | "fn" => Fun
           | "true" => True
           | "false" => False
           | "let" => Let

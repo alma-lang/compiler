@@ -231,6 +231,244 @@ fun arg1
         end: 8,
       }),
     ),
+    (
+      `1 - 5`,
+      Ok({
+        value: Ast.Binary(
+          {
+            value: Ast.Float(1.),
+            start: 0,
+            end: 1,
+          },
+          {
+            value: Ast.Binop.substraction,
+            start: 2,
+            end: 3,
+          },
+          {
+            value: Ast.Float(5.),
+            start: 4,
+            end: 5,
+          },
+        ),
+        start: 0,
+        end: 5,
+      }),
+    ),
+    (
+      `1 - -5`,
+      Ok({
+        value: Ast.Binary(
+          {
+            value: Ast.Float(1.),
+            start: 0,
+            end: 1,
+          },
+          {
+            value: Ast.Binop.substraction,
+            start: 2,
+            end: 3,
+          },
+          {
+            value: Ast.Unary(
+              {
+                value: Ast.Minus,
+                start: 4,
+                end: 5,
+              },
+              {
+                value: Ast.Float(5.),
+                start: 5,
+                end: 6,
+              },
+            ),
+            start: 4,
+            end: 6,
+          },
+        ),
+        start: 0,
+        end: 6,
+      }),
+    ),
+    (
+      `1 + 2 / 3`,
+      Ok({
+        start: 0,
+        end: 9,
+        value: Ast.Binary(
+          {
+            start: 0,
+            end: 1,
+            value: Float(1.),
+          },
+          {
+            start: 2,
+            end: 3,
+            value: {
+              associativity: LTR,
+              fn: "(+)",
+              precedence: 14,
+              typ: Ast.Binop.Addition,
+            },
+          },
+          {
+            start: 4,
+            end: 9,
+            value: Binary(
+              {
+                start: 4,
+                end: 5,
+                value: Float(2.),
+              },
+              {
+                start: 6,
+                end: 7,
+                value: {
+                  associativity: LTR,
+                  fn: "(/)",
+                  precedence: 15,
+                  typ: Ast.Binop.Division,
+                },
+              },
+              {
+                start: 8,
+                end: 9,
+                value: Float(3.),
+              },
+            ),
+          },
+        ),
+      }),
+    ),
+    (
+      `1 == 2 / 3`,
+      Ok({
+        start: 0,
+        end: 10,
+        value: Ast.Binary(
+          {
+            start: 0,
+            end: 1,
+            value: Float(1.),
+          },
+          {
+            start: 2,
+            end: 4,
+            value: {
+              associativity: LTR,
+              fn: "(==)",
+              precedence: 11,
+              typ: Ast.Binop.Equal,
+            },
+          },
+          {
+            start: 5,
+            end: 10,
+            value: Binary(
+              {
+                start: 5,
+                end: 6,
+                value: Float(2.),
+              },
+              {
+                start: 7,
+                end: 8,
+                value: {
+                  associativity: LTR,
+                  fn: "(/)",
+                  precedence: 15,
+                  typ: Ast.Binop.Division,
+                },
+              },
+              {
+                start: 9,
+                end: 10,
+                value: Float(3.),
+              },
+            ),
+          },
+        ),
+      }),
+    ),
+    (
+      "\\a -> a",
+      Ok({
+        value: Ast.Lambda(
+          {
+            value: Ast.Pattern.Identifier("a"),
+            start: 1,
+            end: 2,
+          },
+          {
+            value: Ast.Identifier("a"),
+            start: 6,
+            end: 7,
+          },
+        ),
+        start: 0,
+        end: 7,
+      }),
+    ),
+    (
+      "\\a -> \\b -> a",
+      Ok({
+        value: Ast.Lambda(
+          {
+            value: Ast.Pattern.Identifier("a"),
+            start: 1,
+            end: 2,
+          },
+          {
+            value: Ast.Lambda(
+              {
+                value: Ast.Pattern.Identifier("b"),
+                start: 7,
+                end: 8,
+              },
+              {
+                value: Ast.Identifier("a"),
+                start: 12,
+                end: 13,
+              },
+            ),
+            start: 6,
+            end: 13,
+          },
+        ),
+        start: 0,
+        end: 13,
+      }),
+    ),
+    (
+      "\\a b -> a",
+      Ok({
+        value: Ast.Lambda(
+          {
+            value: Ast.Pattern.Identifier("a"),
+            start: 1,
+            end: 2,
+          },
+          {
+            value: Ast.Lambda(
+              {
+                value: Ast.Pattern.Identifier("b"),
+                start: 3,
+                end: 4,
+              },
+              {
+                value: Ast.Identifier("a"),
+                start: 8,
+                end: 9,
+              },
+            ),
+            start: 0,
+            end: 9,
+          },
+        ),
+        start: 0,
+        end: 9,
+      }),
+    ),
   ]
 
   testCases->Array.forEachWithIndex((i, (input, expected)) =>
@@ -240,6 +478,7 @@ fun arg1
           let actual = Parser.parse(input, tokens)
           if !Test.equal(actual, expected) {
             Js.log2("\n", actual->Json.stringifyAnyWithSpace(4))
+            Js.log2("\n", input)
           }
           Test.assertEquals(actual, expected, "")
         }

@@ -1,12 +1,12 @@
 /* Grammar draft (●○):
   r ○ file           → expression EOF
-  r ○ expression     → elet | lambda | if | operators
-    ○ elet           → let expression
-    ○ let            → "let" binding "=" expression "\n"
-    ○ lambda         → "fn" params? "->" expression
-  r ○ params         → "(" binding ( "," binding )* ")"
-  r ○ binding        → IDENTIFIER ( ":" IDENTIFIER )?
-    ○ if             → "if" operators "then" expression ( "else" expression )?
+  r ○ expression     → elet | lambda | if | binary
+  r ○ elet           → let expression
+  r ○ let            → "let" binding "=" expression "\n"
+    ○ lambda         → "\" params? "->" expression
+    ○ params         → "()" | pattern ( pattern )*
+    ○ pattern        → parsed from Ast.Pattern
+  r ○ if             → "if" binary "then" expression ( "else" expression )?
     // Operators
     ● binary         → binary ( binop binary )*
     ● binop          → // parsed from Ast.Binop operator list
@@ -125,7 +125,104 @@ let nestedIndent = (parser: state, parentToken: Token.t): bool => {
 }
 
 let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
-  parser->binary
+  switch parser->lambda {
+  | Ok(Some(lambda)) => Ok(lambda)
+  | Ok(None) => parser->binary
+  | Error(e) => Error(e)
+  }
+}
+
+and lambda = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
+  let token = parser->getToken
+
+  switch token.kind {
+  | Backslash =>
+    parser
+    ->advance
+    ->params
+    ->Result.flatMap(params => {
+      switch (parser->getToken).kind {
+      | Arrow =>
+        parser
+        ->advance
+        ->expression
+        ->Result.flatMap(expr => {
+          Ok(
+            Some(
+              params->Array.reduceReverse(expr, (expr, param) => {
+                value: Ast.Lambda(param, expr),
+                start: token.position,
+                end: expr.end,
+              }),
+            ),
+          )
+        })
+
+      | _ =>
+        Error(
+          ParseError.expectedButFound(
+            parser.input,
+            parser->getToken,
+            "Expected a -> after the list of parameters for the function",
+          ),
+        )
+      }
+    })
+  | _ => Ok(None)
+  }
+}
+
+and params = (parser: state): parseResult<array<Node.t<Ast.Pattern.t>>> => {
+  parser
+  ->pattern
+  ->Result.flatMap(pattern =>
+    switch pattern {
+    | Some(pattern) => parser->paramsStep([pattern])
+    | None =>
+      Error(
+        ParseError.expectedButFound(
+          parser.input,
+          parser->getToken,
+          "Expected a list of parameters",
+        ),
+      )
+    }
+  )
+}
+and paramsStep = (parser: state, patterns: array<Node.t<Ast.Pattern.t>>): parseResult<
+  array<Node.t<Ast.Pattern.t>>,
+> => {
+  parser
+  ->pattern
+  ->Result.flatMap(pattern => {
+    switch pattern {
+    | Some(pattern) => {
+        patterns->JsArray.push(pattern)->ignore
+        parser->paramsStep(patterns)
+      }
+    | None => Ok(patterns)
+    }
+  })
+}
+
+and pattern = (parser: state): parseResult<option<Node.t<Ast.Pattern.t>>> => {
+  let token = parser->getToken
+
+  switch token.kind {
+  | Identifier => {
+      parser->advance->ignore
+      Ok(Some(Node.make(Ast.Pattern.Identifier(token.lexeme), token, token)))
+    }
+  | _ => Ok(None)
+  }
+  /* For when we need to error out for more complex patterns:
+    Error(
+      ParseError.expectedButFound(
+        parser.input,
+        parser->getToken,
+        "Expected a pattern (an identifier, destructuring a data structure, etc)",
+      ),
+    ) */
 }
 
 and binary = (parser: state): parseResult<Node.t<Ast.expr>> => {

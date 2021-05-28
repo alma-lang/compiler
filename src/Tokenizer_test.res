@@ -61,7 +61,8 @@ Unexpected character '&'.
       ]),
     ),
   ]
+
   testCases->Array.forEachWithIndex((i, (input, expected)) =>
-    test(j`test $i`, () => Test.assertEquals(Tokenizer.parse(input), expected, ""))
+    test(j`test $i`, () => Test.assertEquals(Tokenizer.parse(input), expected, `\n${input}`))
   )
 })

@@ -42,6 +42,15 @@ module Binop = {
   let division = {typ: Division, precedence: 15, associativity: LTR, fn: "(/)"}
 }
 
+module Pattern = {
+  type t = Identifier(string)
+
+  let toString = p =>
+    switch p {
+    | Identifier(s) => s
+    }
+}
+
 type rec expr =
   | Unit
   | Bool(bool)
@@ -50,7 +59,7 @@ type rec expr =
   | Identifier(string)
   | Unary(Node.t<unary>, Node.t<expr>)
   | Binary(Node.t<expr>, Node.t<Binop.t>, Node.t<expr>)
-  | Lambda(string, Node.t<expr>)
+  | Lambda(Node.t<Pattern.t>, Node.t<expr>)
   | FnCall(Node.t<expr>, Node.t<expr>)
   | Let(string, Node.t<expr>, Node.t<expr>)
 
@@ -85,7 +94,7 @@ let rec exprToString = (expr: expr) => {
       }
       `(${exprToString(left.value)} ${opS} ${exprToString(right.value)})`
     }
-  | Lambda(param, expr) => `${param} => ${exprToString(expr.value)}`
+  | Lambda(param, expr) => `${Pattern.toString(param.value)} => ${exprToString(expr.value)}`
   | FnCall(callee, arg) => `${exprToString(callee.value)}(${exprToString(arg.value)})`
   | Let(binding, value, body) =>
     `let ${binding} = (${exprToString(value.value)}); ${exprToString(body.value)}`

@@ -1,16 +1,53 @@
-let test = (name: string, ast: Node.t<Ast.expr>, expected: string) => {
-  try {
-    let typ = Infer.infer(ast)
-    let correct = expected == Type.toString(typ)
-    Js.log(`  ${correct ? "" : name} ${correct ? "" : ":"} ${correct ? "" : Type.toString(typ)}`)
-    Js.log(`${correct ? " " : "x"} ${name} : ${Type.toString(typ)}`)
-    Js.log(`  ${name} : ${Ast.exprToString(ast.value)}`)
-  } catch {
-  | Infer.TypeError => Js.log("type error")
-  }
-}
+Test.suite("Infer", ({test}) => {
+  let testCases = []
+
+  testCases->Array.forEachWithIndex((i, (input, expected)) =>
+    test(j`$i`, () => {
+      switch input->Tokenizer.parse {
+      | Ok(tokens) =>
+        switch Parser.parse(input, tokens) {
+        | Ok(ast) =>
+          try {
+            let typ = Infer.infer(ast)
+            let typStr = Type.toString(typ)
+            let astStr = Ast.exprToString(ast.value)
+
+            if !Test.equal(typStr, expected) {
+              Js.log2("\n", typ->Json.stringifyAnyWithSpace(4))
+              Js.log2("\n", ast->Json.stringifyAnyWithSpace(4))
+
+              Js.log2("\n\n", typStr->Json.stringifyAnyWithSpace(4))
+              Js.log2("\n", astStr->Json.stringifyAnyWithSpace(4))
+            }
+
+            Test.assertEquals(typStr, expected, "")
+          } catch {
+          | Infer.TypeError => Test.assertEquals("type error", expected, "")
+          }
+
+        | Error(es) => {
+            let ss = es->Array.map(a => a.message)
+            ss
+            ->Js.Array2.spliceInPlace(~pos=0, ~remove=0, ~add=[`Error parsing test input`])
+            ->ignore
+            Test.fail(ss->Js.Array2.joinWith("\n\n"))
+          }
+        }
+
+      | Error(es) => {
+          let ss = es->Array.map(a => a.message)
+          ss
+          ->Js.Array2.spliceInPlace(~pos=0, ~remove=0, ~add=[`Error tokenizing test input`])
+          ->ignore
+          Test.fail(ss->Js.Array2.joinWith("\n\n"))
+        }
+      }
+    })
+  )
+})
 
 /* Tests */
+/*
 
 let node = (value): Node.t<Ast.expr> => {value: value, start: 0, end: 0}
 let lambda = (a, b) => Lambda(a, b)->node
@@ -132,3 +169,4 @@ let run = () => {
   // \x. let y = \z.x in y   : 'a -> 'b -> 'a
   test("let2", lambda("x", let_("y", lambda("z", identifier("x")), identifier("y"))), "a -> b -> a")
 }
+*/

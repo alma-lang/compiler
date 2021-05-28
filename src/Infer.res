@@ -253,7 +253,7 @@ let infer = (x: Node.t<Ast.expr>): typ => {
      *   -------------
      *   infer env (fun x -> e) = t -> t'
      */
-    | Lambda(x, e) =>
+    | Lambda({value: Ast.Pattern.Identifier(x)}, e) =>
       let t = State.newTypeVar(state)
       let t' = inferRec(Map.String.set(env, x, t), e)
       Fn(t, t')
