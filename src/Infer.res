@@ -187,21 +187,21 @@ let generalize = (t: typ, state: State.t): typ => {
 /* infer : typ SMap.t -> Expr -> Type */
 let infer = (x: Node.t<Ast.expr>): typ => {
   let state = State.empty()
-  let env = TypeEnv.empty()
+  let env = TypeEnv.empty(() => State.newTypeVar(state), t => generalize(t, state))
 
   let rec inferRec = (env: TypeEnv.t, x: Node.t<Ast.expr>): typ => {
     switch x.value {
     | Unit => Unit
 
     | Bool(_) => Type.bool_
-    | Number(_) => Type.number
+    | Float(_) => Type.float_
     | String(_) => Type.string_
 
     | Unary(op, e) => {
         let t = inferRec(env, e)
         switch op.value {
         | Ast.Not => unify(t, Type.bool_)
-        | Ast.Minus => unify(t, Type.number)
+        | Ast.Minus => unify(t, Type.float_)
         }
         t
       }

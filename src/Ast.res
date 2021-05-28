@@ -45,7 +45,7 @@ module Binop = {
 type rec expr =
   | Unit
   | Bool(bool)
-  | Number(float)
+  | Float(float)
   | String(string)
   | Identifier(string)
   | Unary(Node.t<unary>, Node.t<expr>)
@@ -63,7 +63,7 @@ let rec exprToString = (expr: expr) => {
     } else {
       "false"
     }
-  | Number(f) => Float.toString(f)
+  | Float(f) => Float.toString(f)
   | String(s) => `"${s}"`
   | Identifier(x) => x
   | Unary({value: Not}, expr) => `!${exprToString(expr.value)}`

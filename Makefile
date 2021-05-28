@@ -7,6 +7,10 @@ test:
 cli:
 	deno run lib/es6_global/src/Cli.js
 
+.PHONY=repl
+repl:
+	deno run lib/es6_global/src/Cli.js repl
+
 .PHONY=watch
 watch:
 	rescript build -w

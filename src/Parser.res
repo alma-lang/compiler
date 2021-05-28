@@ -118,6 +118,12 @@ let rec organizeBinops = (
   left.contents
 }
 
+let nestedIndent = (parser: state, parentToken: Token.t): bool => {
+  let token = parser->getToken
+  parentToken.line == token.line ||
+    (parentToken.line < token.line && token.indent > parentToken.indent)
+}
+
 let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
   parser->binary
 }
@@ -201,37 +207,50 @@ and unary = (parser: state): parseResult<Node.t<Ast.expr>> => {
 }
 
 and call = (parser: state): parseResult<Node.t<Ast.expr>> => {
+  let token = parser->getToken
+
   parser
   ->primary
   ->Result.flatMap(expr =>
     switch expr {
-    | Some(expr) => parser->callStep(expr)
+    | Some(expr) => parser->callStep(token, expr)
     | None =>
       Error(
         ParseError.expectedButFound(
           parser.input,
           parser->getToken,
-          "Expected an expression (let binding, function call, an identifier, etc.)",
+          "Expected an expression (a number, string, a let binding, function call, an identifier, etc.)",
         ),
       )
     }
   )
 }
-and callStep = (parser: state, returnExpr: Node.t<Ast.expr>): parseResult<Node.t<Ast.expr>> => {
-  parser
-  ->primary
-  ->Result.flatMap(arg =>
-    switch arg {
-    // We tried to get an argument, but there was no match
-    | None => Ok(returnExpr)
-    | Some(arg) =>
-      parser->callStep({
-        Node.value: Ast.FnCall(returnExpr, arg),
-        start: returnExpr.start,
-        end: arg.end,
-      })
-    }
-  )
+
+and callStep = (parser: state, firstToken: Token.t, returnExpr: Node.t<Ast.expr>): parseResult<
+  Node.t<Ast.expr>,
+> => {
+  if !(parser->nestedIndent(firstToken)) {
+    Ok(returnExpr)
+  } else {
+    parser
+    ->primary
+    ->Result.flatMap(arg =>
+      switch arg {
+      // We tried to get an argument, but there was no match, or it was not well indented
+      | None => Ok(returnExpr)
+
+      | Some(arg) =>
+        parser->callStep(
+          firstToken,
+          {
+            Node.value: Ast.FnCall(returnExpr, arg),
+            start: returnExpr.start,
+            end: arg.end,
+          },
+        )
+      }
+    )
+  }
 }
 
 and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
@@ -243,9 +262,9 @@ and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
 
   | Identifier => Ok(Some(Node.make(Ast.Identifier(token.lexeme), token, token)))
 
-  | Number =>
+  | Float =>
     switch Float.fromString(token.lexeme) {
-    | Some(n) => Ok(Some(Node.make(Ast.Number(n), token, token)))
+    | Some(n) => Ok(Some(Node.make(Ast.Float(n), token, token)))
     | None =>
       Error(ParseError.make(parser.input, token, `Failed to parse number token '${token.lexeme}'`))
     }

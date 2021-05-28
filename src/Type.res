@@ -115,6 +115,6 @@ let print = (t: typ): unit => Js.log(toString(t))
 
 // Primitive types
 
-let number = Named("Number", list{})
+let float_ = Named("Float", list{})
 let bool_ = Named("Bool", list{})
 let string_ = Named("String", list{})

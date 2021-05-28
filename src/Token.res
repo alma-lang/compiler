@@ -26,7 +26,7 @@ type typ =
   // Literals.
   | Identifier
   | String
-  | Number
+  | Float
 
   // Keywords.
   | And

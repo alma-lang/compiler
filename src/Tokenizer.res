@@ -263,7 +263,7 @@ let rec parseToken = (state: state): unit => {
       | Some(c) if isDigit(c) => ()
 
       // Anything else we find ends the number token
-      | _ => state->addToken(Number)
+      | _ => state->addToken(Float)
       }
 
     | _ => Js.Exn.raiseError("Got to the number tokenizer without a valid number digit.")
