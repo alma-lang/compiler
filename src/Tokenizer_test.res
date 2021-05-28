@@ -53,8 +53,14 @@ Unexpected character '&'.
         },
       ]),
     ),
+    (
+      `"asdf\\\"asdf"`,
+      Ok([
+        {kind: String, lexeme: `"asdf\\\"asdf"`, position: 0, line: 1, indent: 0, column: 0},
+        {kind: Eof, lexeme: "[End of file]", position: 11, line: 1, indent: 0, column: 12},
+      ]),
+    ),
   ]
-
   testCases->Array.forEachWithIndex((i, (input, expected)) =>
     test(j`test $i`, () => Test.assertEquals(Tokenizer.parse(input), expected, ""))
   )

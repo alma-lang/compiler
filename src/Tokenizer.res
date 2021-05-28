@@ -20,7 +20,7 @@ type status =
   | DoubleToken(Token.typ)
   | LineCommentToken
   | WhitespaceToken(bool)
-  | StringToken
+  | StringToken(bool)
   | NumberToken(bool)
   | IdentifierToken(bool)
 
@@ -174,7 +174,7 @@ let rec parseToken = (state: state): unit => {
       | _ => state->addToken(Slash)
       }
 
-    | "\"" => state.status = StringToken
+    | "\"" => state.status = StringToken(false)
 
     | " "
     | "\n" => {
@@ -234,11 +234,12 @@ let rec parseToken = (state: state): unit => {
       }
     }
 
-  | StringToken =>
+  | StringToken(prevWasBackslash) =>
     switch state.currentChar {
-    | "\"" => state->addToken(String)
+    | `\\` => state.status = StringToken(true)
+    | `"` if !prevWasBackslash => state->addToken(String)
     | "" => state->addError("Unclosed string.", ~useStart=true)
-    | _ => ()
+    | _ => prevWasBackslash ? state.status = StringToken(false) : ()
     }
 
   | NumberToken(seenDot) =>
