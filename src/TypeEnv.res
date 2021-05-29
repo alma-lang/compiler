@@ -30,3 +30,5 @@ let empty = (typeVar: unit => Type.typ, generalize: Type.typ => Type.typ): t => 
 }
 
 let getExn = (env: t, x: string) => Map.String.getExn(env, x)
+
+let set = (env: t, x: string, t: Type.typ): t => Map.String.set(env, x, t)

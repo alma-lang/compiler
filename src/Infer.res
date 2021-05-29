@@ -185,11 +185,11 @@ let generalize = (t: typ, state: State.t): typ => {
 /* All branches (except for the trivial Unit) of the first match in this function
  are translated directly from the rules for algorithm J, given in comments */
 /* infer : typ SMap.t -> Expr -> Type */
-let infer = (x: Node.t<Ast.expr>): typ => {
+let infer = (x: Node.t<Ast.Expression.t>): typ => {
   let state = State.empty()
   let env = TypeEnv.empty(() => State.newTypeVar(state), t => generalize(t, state))
 
-  let rec inferRec = (env: TypeEnv.t, x: Node.t<Ast.expr>): typ => {
+  let rec inferRec = (env: TypeEnv.t, x: Node.t<Ast.Expression.t>): typ => {
     switch x.value {
     | Unit => Unit
 
@@ -207,74 +207,94 @@ let infer = (x: Node.t<Ast.expr>): typ => {
       }
 
     | Binary(left, op, right) => {
+        // Convert the binary AST to function calls
         let fnCall = {
           ...x,
-          value: Ast.FnCall(
+          value: Ast.Expression.FnCall(
             {
-              value: Ast.FnCall({...op, value: Ast.Identifier(op.value.fn)}, left),
+              value: Ast.Expression.FnCall(
+                {...op, value: Ast.Expression.Identifier(op.value.fn)},
+                left,
+              ),
               start: left.start,
               end: op.end,
             },
             right,
           ),
         }
+
+        // Infer the binary op as a function call
         inferRec(env, fnCall)
       }
 
-    /* Var
-     *   x : s ∊ env
-     *   t = inst s
-     *   -----------
-     *   infer env x = t
-     */
-    | Identifier(x) =>
-      let s = TypeEnv.getExn(env, x)
-      let t = inst(s, state)
-      t
+    | Identifier(x) => {
+        /* Var
+         *   x : s ∊ env
+         *   t = inst s
+         *   -----------
+         *   infer env x = t
+         */
+        let s = TypeEnv.getExn(env, x)
+        let t = inst(s, state)
+        t
+      }
 
-    /* App
-     *   infer env f = t0
-     *   infer env x = t1
-     *   t' = newVar ()
-     *   unify t0 (t1 -> t')
-     *   ---------------
-     *   infer env (f x) = t'
-     */
-    | FnCall(f, x) =>
-      let t0 = inferRec(env, f)
-      let t1 = inferRec(env, x)
-      let t' = State.newTypeVar(state)
-      unify(t0, Fn(t1, t'))
-      t'
+    | FnCall(f, x) => {
+        /* App
+         *   infer env f = t0
+         *   infer env x = t1
+         *   t' = newVar ()
+         *   unify t0 (t1 -> t')
+         *   ---------------
+         *   infer env (f x) = t'
+         */
+        let t0 = inferRec(env, f)
+        let t1 = inferRec(env, x)
+        let t' = State.newTypeVar(state)
+        unify(t0, Fn(t1, t'))
+        t'
+      }
 
-    /* Abs
-     *   t = newVar ()
-     *   infer (SMap.add x t env) e = t'
-     *   -------------
-     *   infer env (fun x -> e) = t -> t'
-     */
-    | Lambda({value: Ast.Pattern.Identifier(x)}, e) =>
-      let t = State.newTypeVar(state)
-      let t' = inferRec(Map.String.set(env, x, t), e)
-      Fn(t, t')
+    | Lambda(params, e) => {
+        /* Abs
+         *   t = newVar ()
+         *   infer (SMap.add x t env) e = t'
+         *   -------------
+         *   infer env (fun x -> e) = t -> t'
+         */
 
-    /* Let
-     *   infer env e0 = t
-     *   infer (SMap.add x (generalize t) env) e1 = t'
-     *   -----------------
-     *   infer env (let x = e0 in e1) = t'
-     *
-     * enter/exitLevel optimizations are from
-     * http://okmij.org/ftp/ML/generalization.html
-     * In this implementation, they're required so we
-     * don't generalize types that escape into the environment.
-     */
-    | Let(x, e0, e1) =>
-      State.enterLevel(state)
-      let t = inferRec(env, e0)
-      State.exitLevel(state)
-      let t' = inferRec(Map.String.set(env, x, generalize(t, state)), e1)
-      t'
+        let paramsWithType = params->Array.map(p => (p, State.newTypeVar(state)))
+
+        let env = paramsWithType->Array.reduce(env, (env, (param, paramType)) =>
+          switch param {
+          | {value: Ast.Pattern.Identifier(x)} => TypeEnv.set(env, x, paramType)
+          }
+        )
+        let returnType = inferRec(env, e)
+        paramsWithType->Array.reduceReverse(returnType, (returnType, (_, paramType)) => Fn(
+          paramType,
+          returnType,
+        ))
+      }
+
+    | Let(x, e0, e1) => {
+        /* Let
+         *   infer env e0 = t
+         *   infer (SMap.add x (generalize t) env) e1 = t'
+         *   -----------------
+         *   infer env (let x = e0 in e1) = t'
+         *
+         * enter/exitLevel optimizations are from
+         * http://okmij.org/ftp/ML/generalization.html
+         * In this implementation, they're required so we don't generalize types
+         * that escape into the environment.
+         */
+        State.enterLevel(state)
+        let t = inferRec(env, e0)
+        State.exitLevel(state)
+        let t' = inferRec(TypeEnv.set(env, x, generalize(t, state)), e1)
+        t'
+      }
     }
   }
 

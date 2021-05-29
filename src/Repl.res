@@ -24,7 +24,7 @@ let run = () => {
           | Not_found => Js.log("variable not found")
           }
 
-          Js.log(Ast.exprToString(ast.value))
+          Js.log(Ast.Expression.toString(ast.value))
         }
       }
       loop()

@@ -1,3 +1,5 @@
+module JsArray = Js.Array2
+
 type unary =
   | Not
   | Minus
@@ -51,52 +53,57 @@ module Pattern = {
     }
 }
 
-type rec expr =
-  | Unit
-  | Bool(bool)
-  | Float(float)
-  | String(string)
-  | Identifier(string)
-  | Unary(Node.t<unary>, Node.t<expr>)
-  | Binary(Node.t<expr>, Node.t<Binop.t>, Node.t<expr>)
-  | Lambda(Node.t<Pattern.t>, Node.t<expr>)
-  | FnCall(Node.t<expr>, Node.t<expr>)
-  | Let(string, Node.t<expr>, Node.t<expr>)
+module Expression = {
+  type rec t =
+    | Unit
+    | Bool(bool)
+    | Float(float)
+    | String(string)
+    | Identifier(string)
+    | Unary(Node.t<unary>, Node.t<t>)
+    | Binary(Node.t<t>, Node.t<Binop.t>, Node.t<t>)
+    | Lambda(array<Node.t<Pattern.t>>, Node.t<t>)
+    | FnCall(Node.t<t>, Node.t<t>)
+    | Let(string, Node.t<t>, Node.t<t>)
 
-let rec exprToString = (expr: expr) => {
-  switch expr {
-  | Unit => "()"
-  | Bool(b) =>
-    if b {
-      "true"
-    } else {
-      "false"
-    }
-  | Float(f) => Float.toString(f)
-  | String(s) => `"${s}"`
-  | Identifier(x) => x
-  | Unary({value: Not}, expr) => `!${exprToString(expr.value)}`
-  | Unary({value: Minus}, expr) => `-${exprToString(expr.value)}`
-  | Binary(left, op, right) => {
-      let opS = switch op.value.typ {
-      | Or => "||"
-      | And => "&&"
-      | Equal => "=="
-      | NotEqual => "!="
-      | GreaterThan => ">"
-      | GreaterEqualThan => ">="
-      | LessThan => "<"
-      | LessEqualThan => "<="
-      | Addition => "+"
-      | Substraction => "-"
-      | Multiplication => "*"
-      | Division => "/"
+  let rec toString = (expr: t) => {
+    switch expr {
+    | Unit => "()"
+    | Bool(b) =>
+      if b {
+        "true"
+      } else {
+        "false"
       }
-      `(${exprToString(left.value)} ${opS} ${exprToString(right.value)})`
+    | Float(f) => Float.toString(f)
+    | String(s) => `"${s}"`
+    | Identifier(x) => x
+    | Unary({value: Not}, expr) => `!${toString(expr.value)}`
+    | Unary({value: Minus}, expr) => `-${toString(expr.value)}`
+    | Binary(left, op, right) => {
+        let opS = switch op.value.typ {
+        | Or => "||"
+        | And => "&&"
+        | Equal => "=="
+        | NotEqual => "!="
+        | GreaterThan => ">"
+        | GreaterEqualThan => ">="
+        | LessThan => "<"
+        | LessEqualThan => "<="
+        | Addition => "+"
+        | Substraction => "-"
+        | Multiplication => "*"
+        | Division => "/"
+        }
+        `(${toString(left.value)} ${opS} ${toString(right.value)})`
+      }
+    | Lambda(params, expr) => {
+        let paramsStr = params->Array.map(p => Pattern.toString(p.value))->JsArray.joinWith(", ")
+        `(${paramsStr}) => ${toString(expr.value)}`
+      }
+    | FnCall(callee, arg) => `${toString(callee.value)}(${toString(arg.value)})`
+    | Let(binding, value, body) =>
+      `let ${binding} = (${toString(value.value)}); ${toString(body.value)}`
     }
-  | Lambda(param, expr) => `${Pattern.toString(param.value)} => ${exprToString(expr.value)}`
-  | FnCall(callee, arg) => `${exprToString(callee.value)}(${exprToString(arg.value)})`
-  | Let(binding, value, body) =>
-    `let ${binding} = (${exprToString(value.value)}); ${exprToString(body.value)}`
   }
 }

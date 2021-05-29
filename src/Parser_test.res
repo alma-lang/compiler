@@ -1,18 +1,21 @@
 Test.suite("Parser", ({test}) => {
-  let testCases: array<(string, Parser.parseResultErrs<Node.t<Ast.expr>>)> = [
+  let testCases: array<(string, Parser.parseResultErrs<Node.t<Ast.Expression.t>>)> = [
     // Primary
-    (`123`, Ok({value: Ast.Float(123.0), start: 0, end: 3})),
-    (`123.2`, Ok({value: Ast.Float(123.2), start: 0, end: 5})),
-    (`true`, Ok({value: Ast.Bool(true), start: 0, end: 4})),
-    (`false`, Ok({value: Ast.Bool(false), start: 0, end: 5})),
-    (`variableOne`, Ok({value: Ast.Identifier(`variableOne`), start: 0, end: 11})),
-    (`variable_one`, Ok({value: Ast.Identifier(`variable_one`), start: 0, end: 12})),
-    (`espaÆàʥñÑol`, Ok({value: Ast.Identifier(`espaÆàʥñÑol`), start: 0, end: 11})),
-    (`"😄"`, Ok({value: Ast.String(`😄`), start: 0, end: 4})),
-    (`"\n"`, Ok({value: Ast.String(`\n`), start: 0, end: 3})),
-    (`""`, Ok({value: Ast.String(``), start: 0, end: 2})),
-    (`("")`, Ok({value: Ast.String(``), start: 1, end: 3})),
-    (`(((1)))`, Ok({value: Ast.Float(1.0), start: 3, end: 4})),
+    (`123`, Ok({value: Ast.Expression.Float(123.0), start: 0, end: 3})),
+    (`123.2`, Ok({value: Ast.Expression.Float(123.2), start: 0, end: 5})),
+    (`true`, Ok({value: Ast.Expression.Bool(true), start: 0, end: 4})),
+    (`false`, Ok({value: Ast.Expression.Bool(false), start: 0, end: 5})),
+    (`variableOne`, Ok({value: Ast.Expression.Identifier(`variableOne`), start: 0, end: 11})),
+    (`variable_one`, Ok({value: Ast.Expression.Identifier(`variable_one`), start: 0, end: 12})),
+    (
+      `espaÆàʥñÑol`,
+      Ok({value: Ast.Expression.Identifier(`espaÆàʥñÑol`), start: 0, end: 11}),
+    ),
+    (`"😄"`, Ok({value: Ast.Expression.String(`😄`), start: 0, end: 4})),
+    (`"\n"`, Ok({value: Ast.Expression.String(`\n`), start: 0, end: 3})),
+    (`""`, Ok({value: Ast.Expression.String(``), start: 0, end: 2})),
+    (`("")`, Ok({value: Ast.Expression.String(``), start: 1, end: 3})),
+    (`(((1)))`, Ok({value: Ast.Expression.Float(1.0), start: 3, end: 4})),
     (
       `(((1))`,
       Error([
@@ -55,14 +58,14 @@ Test.suite("Parser", ({test}) => {
       `(
   ((1))
 )`,
-      Ok({value: Ast.Float(1.0), start: 6, end: 7}),
+      Ok({value: Ast.Expression.Float(1.0), start: 6, end: 7}),
     ),
     (
       `fun arg`,
       Ok({
-        value: Ast.FnCall(
-          {value: Ast.Identifier("fun"), start: 0, end: 3},
-          {value: Ast.Identifier("arg"), start: 4, end: 7},
+        value: Ast.Expression.FnCall(
+          {value: Ast.Expression.Identifier("fun"), start: 0, end: 3},
+          {value: Ast.Expression.Identifier("arg"), start: 4, end: 7},
         ),
         start: 0,
         end: 7,
@@ -72,9 +75,9 @@ Test.suite("Parser", ({test}) => {
       `fun
  arg`,
       Ok({
-        value: Ast.FnCall(
-          {value: Ast.Identifier("fun"), start: 0, end: 3},
-          {value: Ast.Identifier("arg"), start: 5, end: 8},
+        value: Ast.Expression.FnCall(
+          {value: Ast.Expression.Identifier("fun"), start: 0, end: 3},
+          {value: Ast.Expression.Identifier("arg"), start: 5, end: 8},
         ),
         start: 0,
         end: 8,
@@ -84,9 +87,9 @@ Test.suite("Parser", ({test}) => {
       `  fun
     arg`,
       Ok({
-        value: Ast.FnCall(
-          {value: Ast.Identifier("fun"), start: 2, end: 5},
-          {value: Ast.Identifier("arg"), start: 10, end: 13},
+        value: Ast.Expression.FnCall(
+          {value: Ast.Expression.Identifier("fun"), start: 2, end: 5},
+          {value: Ast.Expression.Identifier("arg"), start: 10, end: 13},
         ),
         start: 2,
         end: 13,
@@ -114,20 +117,20 @@ fun arg1
   arg2 arg3
   arg4`,
       Ok({
-        value: Ast.FnCall(
+        value: Ast.Expression.FnCall(
           {
-            value: Ast.FnCall(
+            value: Ast.Expression.FnCall(
               {
-                value: Ast.FnCall(
+                value: Ast.Expression.FnCall(
                   {
-                    value: Ast.FnCall(
+                    value: Ast.Expression.FnCall(
                       {
-                        value: Ast.Identifier("fun"),
+                        value: Ast.Expression.Identifier("fun"),
                         start: 1,
                         end: 4,
                       },
                       {
-                        value: Ast.Identifier("arg1"),
+                        value: Ast.Expression.Identifier("arg1"),
                         start: 5,
                         end: 9,
                       },
@@ -136,7 +139,7 @@ fun arg1
                     end: 9,
                   },
                   {
-                    value: Ast.Identifier("arg2"),
+                    value: Ast.Expression.Identifier("arg2"),
                     start: 12,
                     end: 16,
                   },
@@ -145,7 +148,7 @@ fun arg1
                 end: 16,
               },
               {
-                value: Ast.Identifier("arg3"),
+                value: Ast.Expression.Identifier("arg3"),
                 start: 17,
                 end: 21,
               },
@@ -154,7 +157,7 @@ fun arg1
             end: 21,
           },
           {
-            value: Ast.Identifier("arg4"),
+            value: Ast.Expression.Identifier("arg4"),
             start: 24,
             end: 28,
           },
@@ -166,14 +169,14 @@ fun arg1
     (
       `not false`,
       Ok({
-        value: Ast.Unary(
+        value: Ast.Expression.Unary(
           {
             value: Ast.Not,
             start: 0,
             end: 3,
           },
           {
-            value: Ast.Bool(false),
+            value: Ast.Expression.Bool(false),
             start: 4,
             end: 9,
           },
@@ -185,14 +188,14 @@ fun arg1
     (
       `- 5`,
       Ok({
-        value: Ast.Unary(
+        value: Ast.Expression.Unary(
           {
             value: Ast.Minus,
             start: 0,
             end: 1,
           },
           {
-            value: Ast.Float(5.),
+            value: Ast.Expression.Float(5.),
             start: 2,
             end: 3,
           },
@@ -204,21 +207,21 @@ fun arg1
     (
       `incr (-5)`,
       Ok({
-        value: Ast.FnCall(
+        value: Ast.Expression.FnCall(
           {
-            value: Ast.Identifier("incr"),
+            value: Ast.Expression.Identifier("incr"),
             start: 0,
             end: 4,
           },
           {
-            value: Ast.Unary(
+            value: Ast.Expression.Unary(
               {
                 value: Ast.Minus,
                 start: 6,
                 end: 7,
               },
               {
-                value: Ast.Float(5.),
+                value: Ast.Expression.Float(5.),
                 start: 7,
                 end: 8,
               },
@@ -234,9 +237,9 @@ fun arg1
     (
       `1 - 5`,
       Ok({
-        value: Ast.Binary(
+        value: Ast.Expression.Binary(
           {
-            value: Ast.Float(1.),
+            value: Ast.Expression.Float(1.),
             start: 0,
             end: 1,
           },
@@ -246,7 +249,7 @@ fun arg1
             end: 3,
           },
           {
-            value: Ast.Float(5.),
+            value: Ast.Expression.Float(5.),
             start: 4,
             end: 5,
           },
@@ -258,9 +261,9 @@ fun arg1
     (
       `1 - -5`,
       Ok({
-        value: Ast.Binary(
+        value: Ast.Expression.Binary(
           {
-            value: Ast.Float(1.),
+            value: Ast.Expression.Float(1.),
             start: 0,
             end: 1,
           },
@@ -270,14 +273,14 @@ fun arg1
             end: 3,
           },
           {
-            value: Ast.Unary(
+            value: Ast.Expression.Unary(
               {
                 value: Ast.Minus,
                 start: 4,
                 end: 5,
               },
               {
-                value: Ast.Float(5.),
+                value: Ast.Expression.Float(5.),
                 start: 5,
                 end: 6,
               },
@@ -295,7 +298,7 @@ fun arg1
       Ok({
         start: 0,
         end: 9,
-        value: Ast.Binary(
+        value: Ast.Expression.Binary(
           {
             start: 0,
             end: 1,
@@ -345,7 +348,7 @@ fun arg1
       Ok({
         start: 0,
         end: 10,
-        value: Ast.Binary(
+        value: Ast.Expression.Binary(
           {
             start: 0,
             end: 1,
@@ -393,14 +396,16 @@ fun arg1
     (
       "\\a -> a",
       Ok({
-        value: Ast.Lambda(
+        value: Ast.Expression.Lambda(
+          [
+            {
+              value: Ast.Pattern.Identifier("a"),
+              start: 1,
+              end: 2,
+            },
+          ],
           {
-            value: Ast.Pattern.Identifier("a"),
-            start: 1,
-            end: 2,
-          },
-          {
-            value: Ast.Identifier("a"),
+            value: Ast.Expression.Identifier("a"),
             start: 6,
             end: 7,
           },
@@ -412,21 +417,25 @@ fun arg1
     (
       "\\a -> \\b -> a",
       Ok({
-        value: Ast.Lambda(
+        value: Ast.Expression.Lambda(
+          [
+            {
+              value: Ast.Pattern.Identifier("a"),
+              start: 1,
+              end: 2,
+            },
+          ],
           {
-            value: Ast.Pattern.Identifier("a"),
-            start: 1,
-            end: 2,
-          },
-          {
-            value: Ast.Lambda(
+            value: Ast.Expression.Lambda(
+              [
+                {
+                  value: Ast.Pattern.Identifier("b"),
+                  start: 7,
+                  end: 8,
+                },
+              ],
               {
-                value: Ast.Pattern.Identifier("b"),
-                start: 7,
-                end: 8,
-              },
-              {
-                value: Ast.Identifier("a"),
+                value: Ast.Expression.Identifier("a"),
                 start: 12,
                 end: 13,
               },
@@ -442,26 +451,22 @@ fun arg1
     (
       "\\a b -> a",
       Ok({
-        value: Ast.Lambda(
+        value: Ast.Expression.Lambda(
+          [
+            {
+              value: Ast.Pattern.Identifier("a"),
+              start: 1,
+              end: 2,
+            },
+            {
+              value: Ast.Pattern.Identifier("b"),
+              start: 3,
+              end: 4,
+            },
+          ],
           {
-            value: Ast.Pattern.Identifier("a"),
-            start: 1,
-            end: 2,
-          },
-          {
-            value: Ast.Lambda(
-              {
-                value: Ast.Pattern.Identifier("b"),
-                start: 3,
-                end: 4,
-              },
-              {
-                value: Ast.Identifier("a"),
-                start: 8,
-                end: 9,
-              },
-            ),
-            start: 0,
+            value: Ast.Expression.Identifier("a"),
+            start: 8,
             end: 9,
           },
         ),

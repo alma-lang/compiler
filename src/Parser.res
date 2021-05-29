@@ -84,11 +84,11 @@ let advance = parser => {
 }
 
 let rec organizeBinops = (
-  left: Node.t<Ast.expr>,
-  binops: array<(Node.t<Ast.Binop.t>, Node.t<Ast.expr>)>,
+  left: Node.t<Ast.Expression.t>,
+  binops: array<(Node.t<Ast.Binop.t>, Node.t<Ast.Expression.t>)>,
   current: ref<int>,
   minPrecedence: int,
-): Node.t<Ast.expr> => {
+): Node.t<Ast.Expression.t> => {
   open Ast.Binop
   // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
   // better than the wikipedia article for precedence climibing
@@ -106,7 +106,7 @@ let rec organizeBinops = (
         let right = organizeBinops(rhs, binops, current, nextMinPrecedence)
 
         left := {
-            Node.value: Ast.Binary(left.contents, op, right),
+            Node.value: Ast.Expression.Binary(left.contents, op, right),
             start: left.contents.start,
             end: right.end,
           }
@@ -124,7 +124,7 @@ let nestedIndent = (parser: state, parentToken: Token.t): bool => {
     (parentToken.line < token.line && token.indent > parentToken.indent)
 }
 
-let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
+let rec expression = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   switch parser->lambda {
   | Ok(Some(lambda)) => Ok(lambda)
   | Ok(None) => parser->binary
@@ -132,7 +132,7 @@ let rec expression = (parser: state): parseResult<Node.t<Ast.expr>> => {
   }
 }
 
-and lambda = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
+and lambda = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
   let token = parser->getToken
 
   switch token.kind {
@@ -148,13 +148,11 @@ and lambda = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
         ->expression
         ->Result.flatMap(expr => {
           Ok(
-            Some(
-              params->Array.reduceReverse(expr, (expr, param) => {
-                value: Ast.Lambda(param, expr),
-                start: token.position,
-                end: expr.end,
-              }),
-            ),
+            Some({
+              Node.value: Ast.Expression.Lambda(params, expr),
+              start: token.position,
+              end: expr.end,
+            }),
           )
         })
 
@@ -225,7 +223,7 @@ and pattern = (parser: state): parseResult<option<Node.t<Ast.Pattern.t>>> => {
     ) */
 }
 
-and binary = (parser: state): parseResult<Node.t<Ast.expr>> => {
+and binary = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   parser
   ->unary
   ->Result.flatMap(expr =>
@@ -234,8 +232,8 @@ and binary = (parser: state): parseResult<Node.t<Ast.expr>> => {
 }
 and binaryStep = (
   parser: state,
-  binops: array<(Node.t<Ast.Binop.t>, Node.t<Ast.expr>)>,
-): parseResult<array<(Node.t<Ast.Binop.t>, Node.t<Ast.expr>)>> => {
+  binops: array<(Node.t<Ast.Binop.t>, Node.t<Ast.Expression.t>)>,
+): parseResult<array<(Node.t<Ast.Binop.t>, Node.t<Ast.Expression.t>)>> => {
   let token = parser->getToken
 
   let op = switch token.kind {
@@ -271,7 +269,7 @@ and binaryStep = (
   }
 }
 
-and unary = (parser: state): parseResult<Node.t<Ast.expr>> => {
+and unary = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   let token = parser->getToken
 
   let u = switch token.kind {
@@ -293,7 +291,7 @@ and unary = (parser: state): parseResult<Node.t<Ast.expr>> => {
     | Some(u) => {
         let op = Node.make(u, token, token)
         Ok({
-          Node.value: Ast.Unary(op, expr),
+          Node.value: Ast.Expression.Unary(op, expr),
           start: op.start,
           end: expr.end,
         })
@@ -303,7 +301,7 @@ and unary = (parser: state): parseResult<Node.t<Ast.expr>> => {
   )
 }
 
-and call = (parser: state): parseResult<Node.t<Ast.expr>> => {
+and call = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   let token = parser->getToken
 
   parser
@@ -323,9 +321,11 @@ and call = (parser: state): parseResult<Node.t<Ast.expr>> => {
   )
 }
 
-and callStep = (parser: state, firstToken: Token.t, returnExpr: Node.t<Ast.expr>): parseResult<
-  Node.t<Ast.expr>,
-> => {
+and callStep = (
+  parser: state,
+  firstToken: Token.t,
+  returnExpr: Node.t<Ast.Expression.t>,
+): parseResult<Node.t<Ast.Expression.t>> => {
   if !(parser->nestedIndent(firstToken)) {
     Ok(returnExpr)
   } else {
@@ -340,7 +340,7 @@ and callStep = (parser: state, firstToken: Token.t, returnExpr: Node.t<Ast.expr>
         parser->callStep(
           firstToken,
           {
-            Node.value: Ast.FnCall(returnExpr, arg),
+            Node.value: Ast.Expression.FnCall(returnExpr, arg),
             start: returnExpr.start,
             end: arg.end,
           },
@@ -350,25 +350,25 @@ and callStep = (parser: state, firstToken: Token.t, returnExpr: Node.t<Ast.expr>
   }
 }
 
-and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
+and primary = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
   let token = parser->getToken
 
   let result = switch token.kind {
-  | False => Ok(Some(Node.make(Ast.Bool(false), token, token)))
-  | True => Ok(Some(Node.make(Ast.Bool(true), token, token)))
+  | False => Ok(Some(Node.make(Ast.Expression.Bool(false), token, token)))
+  | True => Ok(Some(Node.make(Ast.Expression.Bool(true), token, token)))
 
-  | Identifier => Ok(Some(Node.make(Ast.Identifier(token.lexeme), token, token)))
+  | Identifier => Ok(Some(Node.make(Ast.Expression.Identifier(token.lexeme), token, token)))
 
   | Float =>
     switch Float.fromString(token.lexeme) {
-    | Some(n) => Ok(Some(Node.make(Ast.Float(n), token, token)))
+    | Some(n) => Ok(Some(Node.make(Ast.Expression.Float(n), token, token)))
     | None =>
       Error(ParseError.make(parser.input, token, `Failed to parse number token '${token.lexeme}'`))
     }
 
   | String => {
       let value = token.lexeme->String.substring(~from=1, ~to_=token.lexeme->String.length - 1)
-      Ok(Some(Node.make(Ast.String(value), token, token)))
+      Ok(Some(Node.make(Ast.Expression.String(value), token, token)))
     }
 
   | LeftParen =>
@@ -404,7 +404,7 @@ and primary = (parser: state): parseResult<option<Node.t<Ast.expr>>> => {
   result
 }
 
-let file = (parser: state): parseResultErrs<Node.t<Ast.expr>> => {
+let file = (parser: state): parseResultErrs<Node.t<Ast.Expression.t>> => {
   let result = parser->expression
 
   switch result {
@@ -418,7 +418,7 @@ let file = (parser: state): parseResultErrs<Node.t<Ast.expr>> => {
   }
 }
 
-let parse = (input: string, tokens: array<Token.t>): parseResultErrs<Node.t<Ast.expr>> => {
+let parse = (input: string, tokens: array<Token.t>): parseResultErrs<Node.t<Ast.Expression.t>> => {
   let parser = {
     input: input,
     tokens: tokens,
