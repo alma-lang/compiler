@@ -1,8 +1,7 @@
 /* Grammar draft (●○):
-  r ○ file           → expression EOF
-  r ○ expression     → elet | lambda | if | binary
-  r ○ elet           → let expression
-  r ○ let            → "let" binding "=" expression "\n"
+    ● file           → expression EOF
+    ● expression     → let | lambda | if | binary
+    ● let            → "let" binding "=" expression expression
     ● lambda         → "\" params? "->" expression
     ● params         → "()" | pattern ( pattern )*
     ● pattern        → parsed from Ast.Pattern
@@ -118,10 +117,15 @@ let rec organizeBinops = (
   left.contents
 }
 
-let nestedIndent = (parser: state, parentToken: Token.t): bool => {
+let isNestedIndent = (parser: state, parentToken: Token.t): bool => {
   let token = parser->getToken
   parentToken.line == token.line ||
     (parentToken.line < token.line && token.indent > parentToken.indent)
+}
+
+let isNextLineSameIndent = (parser: state, parentToken: Token.t): bool => {
+  let token = parser->getToken
+  parentToken.line < token.line && token.indent == parentToken.indent
 }
 
 let rec expression = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
@@ -130,14 +134,81 @@ let rec expression = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   | Ok(None) =>
     switch parser->if_ {
     | Ok(Some(if_)) => Ok(if_)
-    | Ok(None) => parser->binary
+    | Ok(None) =>
+      switch parser->let_ {
+      | Ok(Some(let_)) => Ok(let_)
+      | Ok(None) => parser->binary
+      | Error(e) => Error(e)
+      }
     | Error(e) => Error(e)
     }
   | Error(e) => Error(e)
   }
 }
 
-// ○ if             → "if" binary "then" expression "else" expression
+and let_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
+  let token = parser->getToken
+
+  switch token.kind {
+  | Let =>
+    parser
+    ->advance
+    ->pattern
+    ->Result.flatMap(pattern => {
+      switch pattern {
+      | Some(pattern) =>
+        switch (parser->getToken).kind {
+        | Equal =>
+          parser
+          ->advance
+          ->expression
+          ->Result.flatMap(value => {
+            if parser->isNextLineSameIndent(token) {
+              parser
+              ->expression
+              ->Result.flatMap(body => {
+                Ok(
+                  Some({
+                    Node.value: Ast.Expression.Let(pattern, value, body),
+                    start: token.position,
+                    end: body.end,
+                  }),
+                )
+              })
+            } else {
+              Error(
+                ParseError.expectedButFound(
+                  parser.input,
+                  parser->getToken,
+                  "Expected the let definition to be followed by another let or expression in the next line and same indentation",
+                ),
+              )
+            }
+          })
+
+        | _ =>
+          Error(
+            ParseError.expectedButFound(
+              parser.input,
+              parser->getToken,
+              "Expected an = and an expression for the right side of let expression",
+            ),
+          )
+        }
+      | None =>
+        Error(
+          ParseError.expectedButFound(
+            parser.input,
+            parser->getToken,
+            "Expected a pattern for the left side of the let expression",
+          ),
+        )
+      }
+    })
+  | _ => Ok(None)
+  }
+}
+
 and if_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
   let token = parser->getToken
 
@@ -387,7 +458,7 @@ and callStep = (
   firstToken: Token.t,
   returnExpr: Node.t<Ast.Expression.t>,
 ): parseResult<Node.t<Ast.Expression.t>> => {
-  if !(parser->nestedIndent(firstToken)) {
+  if !(parser->isNestedIndent(firstToken)) {
     Ok(returnExpr)
   } else {
     parser

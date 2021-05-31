@@ -297,7 +297,7 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
         ))
       }
 
-    | Let(x, e0, e1) => {
+    | Let(p, e0, e1) => {
         /* Let
          *   infer env e0 = t
          *   infer (SMap.add x (generalize t) env) e1 = t'
@@ -309,10 +309,15 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
          * In this implementation, they're required so we don't generalize types
          * that escape into the environment.
          */
+
         State.enterLevel(state)
         let t = inferRec(env, e0)
         State.exitLevel(state)
-        let t' = inferRec(TypeEnv.set(env, x, generalize(t, state)), e1)
+
+        let env = switch p.value {
+        | Ast.Pattern.Identifier(x) => TypeEnv.set(env, x, generalize(t, state))
+        }
+        let t' = inferRec(env, e1)
         t'
       }
     }

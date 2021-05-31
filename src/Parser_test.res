@@ -639,6 +639,77 @@ else
         },
       ]),
     ),
+    (
+      "let x = 1\nx",
+      Ok({
+        value: Ast.Expression.Let(
+          {
+            value: Ast.Pattern.Identifier("x"),
+            start: 4,
+            end: 5,
+          },
+          {
+            value: Ast.Expression.Float(1.),
+            start: 8,
+            end: 9,
+          },
+          {
+            value: Ast.Expression.Identifier("x"),
+            start: 10,
+            end: 11,
+          },
+        ),
+        start: 0,
+        end: 11,
+      }),
+    ),
+    (
+      "let x = a\n  x",
+      Error([
+        {
+          message: `2:3: Expected the let definition to be followed by another let or expression in the next line and same indentation, but instead found: '[End of file]'
+
+  1│ let x = a
+  2│   x
+   │    ↑`,
+          token: {
+            kind: Token.Eof,
+            lexeme: "[End of file]",
+            position: 12,
+            line: 2,
+            column: 3,
+            indent: 2,
+          },
+        },
+      ]),
+    ),
+    (
+      "let x = a\n  x\nx",
+      Ok({
+        value: Ast.Expression.Let(
+          {
+            value: Ast.Pattern.Identifier("x"),
+            start: 4,
+            end: 5,
+          },
+          {
+            value: Ast.Expression.FnCall(
+              {value: Ast.Expression.Identifier("a"), start: 8, end: 9},
+              {value: Ast.Expression.Identifier("x"), start: 12, end: 13},
+            ),
+            start: 8,
+            end: 13,
+          },
+          {
+            value: Ast.Expression.Identifier("x"),
+            start: 14,
+            end: 15,
+          },
+        ),
+        start: 0,
+        end: 15,
+      }),
+    ),
   ]
 
   testCases->Array.forEachWithIndex((i, (input, expected)) =>

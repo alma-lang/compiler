@@ -64,7 +64,7 @@ module Expression = {
     | Binary(Node.t<t>, Node.t<Binop.t>, Node.t<t>)
     | Lambda(array<Node.t<Pattern.t>>, Node.t<t>)
     | FnCall(Node.t<t>, Node.t<t>)
-    | Let(string, Node.t<t>, Node.t<t>)
+    | Let(Node.t<Pattern.t>, Node.t<t>, Node.t<t>)
     | If(Node.t<t>, Node.t<t>, Node.t<t>)
 
   let rec toString = (expr: t) => {
@@ -103,8 +103,8 @@ module Expression = {
         `(${paramsStr}) => ${toString(expr.value)}`
       }
     | FnCall(callee, arg) => `${toString(callee.value)}(${toString(arg.value)})`
-    | Let(binding, value, body) =>
-      `let ${binding} = (${toString(value.value)}); ${toString(body.value)}`
+    | Let(pattern, value, body) =>
+      `let ${Pattern.toString(pattern.value)} = (${toString(value.value)}); ${toString(body.value)}`
     | If(condition, then, else_) =>
       `(${toString(condition.value)} ? ${toString(then.value)} : ${toString(else_.value)})`
     }
