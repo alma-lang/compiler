@@ -474,6 +474,171 @@ fun arg1
         end: 9,
       }),
     ),
+    (
+      "if true then 1 else 2",
+      Ok({
+        value: Ast.Expression.If(
+          {
+            value: Ast.Expression.Bool(true),
+            start: 3,
+            end: 7,
+          },
+          {
+            value: Ast.Expression.Float(1.),
+            start: 13,
+            end: 14,
+          },
+          {
+            value: Ast.Expression.Float(2.),
+            start: 20,
+            end: 21,
+          },
+        ),
+        start: 0,
+        end: 21,
+      }),
+    ),
+    (
+      "
+if true then
+  1
+
+else
+  2",
+      Ok({
+        value: Ast.Expression.If(
+          {
+            value: Ast.Expression.Bool(true),
+            start: 4,
+            end: 8,
+          },
+          {
+            value: Ast.Expression.Float(1.),
+            start: 16,
+            end: 17,
+          },
+          {
+            value: Ast.Expression.Float(2.),
+            start: 26,
+            end: 27,
+          },
+        ),
+        start: 1,
+        end: 27,
+      }),
+    ),
+    (
+      "if true then incr 1 else 2",
+      Ok({
+        value: Ast.Expression.If(
+          {
+            value: Ast.Expression.Bool(true),
+            start: 3,
+            end: 7,
+          },
+          {
+            value: Ast.Expression.FnCall(
+              {
+                value: Ast.Expression.Identifier("incr"),
+                start: 13,
+                end: 17,
+              },
+              {
+                value: Ast.Expression.Float(1.),
+                start: 18,
+                end: 19,
+              },
+            ),
+            start: 13,
+            end: 19,
+          },
+          {
+            value: Ast.Expression.Float(2.),
+            start: 25,
+            end: 26,
+          },
+        ),
+        start: 0,
+        end: 26,
+      }),
+    ),
+    (
+      "if true then if false then 1 else 3 else 2",
+      Ok({
+        value: Ast.Expression.If(
+          {
+            value: Ast.Expression.Bool(true),
+            start: 3,
+            end: 7,
+          },
+          {
+            value: Ast.Expression.If(
+              {
+                value: Ast.Expression.Bool(false),
+                start: 16,
+                end: 21,
+              },
+              {
+                value: Ast.Expression.Float(1.),
+                start: 27,
+                end: 28,
+              },
+              {
+                value: Ast.Expression.Float(3.),
+                start: 34,
+                end: 35,
+              },
+            ),
+            start: 13,
+            end: 35,
+          },
+          {
+            value: Ast.Expression.Float(2.),
+            start: 41,
+            end: 42,
+          },
+        ),
+        start: 0,
+        end: 42,
+      }),
+    ),
+    (
+      "if true { 1 } else 2",
+      Error([
+        {
+          message: `1:8: Expected the keyword \`then\` and an expression to parse the if expression, but instead found: '{'\n
+  1│ if true { 1 } else 2
+   │         ↑`,
+          token: {
+            kind: Token.LeftBrace,
+            lexeme: "{",
+            position: 8,
+            line: 1,
+            column: 8,
+            indent: 0,
+          },
+        },
+      ]),
+    ),
+    (
+      "if true then 1",
+      Error([
+        {
+          message: `1:14: Expected the \`else\` branch of the if expression, but instead found: '[End of file]'
+
+  1│ if true then 1
+   │               ↑`,
+          token: {
+            kind: Token.Eof,
+            lexeme: "[End of file]",
+            position: 13,
+            line: 1,
+            column: 14,
+            indent: 0,
+          },
+        },
+      ]),
+    ),
   ]
 
   testCases->Array.forEachWithIndex((i, (input, expected)) =>

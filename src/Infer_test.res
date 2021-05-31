@@ -13,6 +13,11 @@ Test.suite("Infer", ({test}) => {
       "\\n -> \\f -> \\x -> n (\\g -> \\h -> h (g f)) (\\u -> x) (\\u -> u)",
       "(((a -> b) -> (b -> c) -> c) -> (d -> e) -> (f -> f) -> g) -> a -> e -> g",
     ),
+    // if:
+    ("if 1 == 1 then true else false", "Bool"),
+    ("if 1 == 1 then 1 else 2", "Float"),
+    ("if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2", "Float"),
+    ("if 1 then 5 else 1", "type error"),
     // let generalization tests
     // ("\\x -> let y = x in y", "a -> a"),
     // ("\\x -> let y = \\z -> x in y", "a -> b -> a"),

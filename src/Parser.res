@@ -3,10 +3,10 @@
   r ○ expression     → elet | lambda | if | binary
   r ○ elet           → let expression
   r ○ let            → "let" binding "=" expression "\n"
-    ○ lambda         → "\" params? "->" expression
-    ○ params         → "()" | pattern ( pattern )*
-    ○ pattern        → parsed from Ast.Pattern
-  r ○ if             → "if" binary "then" expression ( "else" expression )?
+    ● lambda         → "\" params? "->" expression
+    ● params         → "()" | pattern ( pattern )*
+    ● pattern        → parsed from Ast.Pattern
+    ● if             → "if" binary "then" expression "else" expression
     // Operators
     ● binary         → binary ( binop binary )*
     ● binop          → // parsed from Ast.Binop operator list
@@ -127,8 +127,69 @@ let nestedIndent = (parser: state, parentToken: Token.t): bool => {
 let rec expression = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   switch parser->lambda {
   | Ok(Some(lambda)) => Ok(lambda)
-  | Ok(None) => parser->binary
+  | Ok(None) =>
+    switch parser->if_ {
+    | Ok(Some(if_)) => Ok(if_)
+    | Ok(None) => parser->binary
+    | Error(e) => Error(e)
+    }
   | Error(e) => Error(e)
+  }
+}
+
+// ○ if             → "if" binary "then" expression "else" expression
+and if_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
+  let token = parser->getToken
+
+  switch token.kind {
+  | If =>
+    parser
+    ->advance
+    ->binary
+    ->Result.flatMap(condition => {
+      switch (parser->getToken).kind {
+      | Then =>
+        parser
+        ->advance
+        ->expression
+        ->Result.flatMap(then => {
+          switch (parser->getToken).kind {
+          | Else =>
+            parser
+            ->advance
+            ->expression
+            ->Result.flatMap(else_ => {
+              Ok(
+                Some({
+                  Node.value: Ast.Expression.If(condition, then, else_),
+                  start: token.position,
+                  end: else_.end,
+                }),
+              )
+            })
+
+          | _ =>
+            Error(
+              ParseError.expectedButFound(
+                parser.input,
+                parser->getToken,
+                "Expected the `else` branch of the if expression",
+              ),
+            )
+          }
+        })
+
+      | _ =>
+        Error(
+          ParseError.expectedButFound(
+            parser.input,
+            parser->getToken,
+            "Expected the keyword `then` and an expression to parse the if expression",
+          ),
+        )
+      }
+    })
+  | _ => Ok(None)
   }
 }
 

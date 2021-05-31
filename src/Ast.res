@@ -65,6 +65,7 @@ module Expression = {
     | Lambda(array<Node.t<Pattern.t>>, Node.t<t>)
     | FnCall(Node.t<t>, Node.t<t>)
     | Let(string, Node.t<t>, Node.t<t>)
+    | If(Node.t<t>, Node.t<t>, Node.t<t>)
 
   let rec toString = (expr: t) => {
     switch expr {
@@ -104,6 +105,8 @@ module Expression = {
     | FnCall(callee, arg) => `${toString(callee.value)}(${toString(arg.value)})`
     | Let(binding, value, body) =>
       `let ${binding} = (${toString(value.value)}); ${toString(body.value)}`
+    | If(condition, then, else_) =>
+      `(${toString(condition.value)} ? ${toString(then.value)} : ${toString(else_.value)})`
     }
   }
 }

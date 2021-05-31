@@ -227,6 +227,26 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
         inferRec(env, fnCall)
       }
 
+    | If(condition, then, else_) => {
+        /* If
+         * infer env condition = t0
+         * unify t0 bool
+         * infer env then = t1
+         * infer env else_ = t2
+         * unify t1 t2
+         * infer env (if condition then else) = t2
+         */
+
+        let t = inferRec(env, condition)
+        unify(t, Type.bool_)
+
+        let t1 = inferRec(env, then)
+        let t2 = inferRec(env, else_)
+        unify(t1, t2)
+
+        t2
+      }
+
     | Identifier(x) => {
         /* Var
          *   x : s ∊ env
