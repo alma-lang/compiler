@@ -515,25 +515,33 @@ and primary = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => 
       Ok(Some(Node.make(Ast.Expression.String(value), token, token)))
     }
 
-  | LeftParen =>
-    parser
-    ->advance
-    ->expression
-    ->Result.flatMap(expr => {
-      let lastToken = parser->getToken
-      switch lastToken.kind {
-      | Token.RightParen => Ok(Some(expr))
+  | LeftParen => {
+      let nextToken = parser->advance->getToken
+
+      switch nextToken.kind {
+      | Token.RightParen => Ok(Node.make(Ast.Expression.Unit, token, nextToken))
+
       | _ =>
-        Error(
-          ParseError.expectedButFound(
-            parser.input,
-            lastToken,
-            ~pointAtToken=token,
-            "Expected ')' after parenthesized expression",
-          ),
-        )
-      }
-    })
+        parser
+        ->expression
+        ->Result.flatMap(expr => {
+          let lastToken = parser->getToken
+
+          switch lastToken.kind {
+          | Token.RightParen => Ok(expr)
+          | _ =>
+            Error(
+              ParseError.expectedButFound(
+                parser.input,
+                lastToken,
+                ~pointAtToken=token,
+                "Expected ')' after parenthesized expression",
+              ),
+            )
+          }
+        })
+      }->Result.map(ast => Some(ast))
+    }
 
   | _ => Ok(None)
   }

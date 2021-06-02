@@ -1,6 +1,7 @@
 Test.suite("Parser", ({test}) => {
   let testCases: array<(string, Parser.parseResultErrs<Node.t<Ast.Expression.t>>)> = [
     // Primary
+    (`()`, Ok({value: Ast.Expression.Unit, line: 1, column: 0, start: 0, end: 2})),
     (`123`, Ok({value: Ast.Expression.Float(123.0), line: 1, column: 0, start: 0, end: 3})),
     (`123.2`, Ok({value: Ast.Expression.Float(123.2), line: 1, column: 0, start: 0, end: 5})),
     (`true`, Ok({value: Ast.Expression.Bool(true), line: 1, column: 0, start: 0, end: 4})),
@@ -896,6 +897,19 @@ else
         column: 0,
         start: 0,
         end: 15,
+      }),
+    ),
+    (
+      "hello ()",
+      Ok({
+        value: Ast.Expression.FnCall(
+          {value: Ast.Expression.Identifier("hello"), start: 0, end: 5, line: 1, column: 0},
+          {value: Ast.Expression.Unit, start: 6, end: 8, line: 1, column: 6},
+        ),
+        start: 0,
+        end: 8,
+        line: 1,
+        column: 0,
       }),
     ),
   ]
