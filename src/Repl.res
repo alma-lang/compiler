@@ -1,4 +1,8 @@
 let run = () => {
+  Js.log(`mal repl.
+  .exit      Exit the repl session
+`)
+
   let rec loop = () => {
     let input = Readline.prompt(">")
     switch input {
@@ -9,24 +13,11 @@ let run = () => {
     | Some("") => loop()
 
     | Some(input) =>
-      switch Tokenizer.parse(input) {
-      | Error(errors) => Array.forEach(errors, error => Js.log(error.message))
-
-      | Ok(tokens) =>
-        switch Parser.parse(input, tokens) {
-        | Error(errors) => Array.forEach(errors, error => Js.log(error.message))
-
-        | Ok(ast) =>
-          try {
-            ast->Infer.infer->Type.print
-          } catch {
-          | Infer.TypeError => Js.log("type error")
-          | Not_found => Js.log("variable not found")
-          }
-
-          Js.log(Ast.Expression.toString(ast.value))
-        }
+      switch Compiler.compile(input) {
+      | Error(e) => Js.log(e)
+      | Ok(o) => Js.log(o)
       }
+
       loop()
     }
   }

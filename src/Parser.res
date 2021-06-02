@@ -106,6 +106,8 @@ let rec organizeBinops = (
 
         left := {
             Node.value: Ast.Expression.Binary(left.contents, op, right),
+            line: left.contents.line,
+            column: left.contents.column,
             start: left.contents.start,
             end: right.end,
           }
@@ -170,6 +172,8 @@ and let_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
                 Ok(
                   Some({
                     Node.value: Ast.Expression.Let(pattern, value, body),
+                    line: token.line,
+                    column: token.column,
                     start: token.position,
                     end: body.end,
                   }),
@@ -233,6 +237,8 @@ and if_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
               Ok(
                 Some({
                   Node.value: Ast.Expression.If(condition, then, else_),
+                  line: token.line,
+                  column: token.column,
                   start: token.position,
                   end: else_.end,
                 }),
@@ -282,6 +288,8 @@ and lambda = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
           Ok(
             Some({
               Node.value: Ast.Expression.Lambda(params, expr),
+              line: token.line,
+              column: token.column,
               start: token.position,
               end: expr.end,
             }),
@@ -424,6 +432,8 @@ and unary = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
         let op = Node.make(u, token, token)
         Ok({
           Node.value: Ast.Expression.Unary(op, expr),
+          line: op.line,
+          column: op.column,
           start: op.start,
           end: expr.end,
         })
@@ -473,6 +483,8 @@ and callStep = (
           firstToken,
           {
             Node.value: Ast.Expression.FnCall(returnExpr, arg),
+            line: returnExpr.line,
+            column: returnExpr.column,
             start: returnExpr.start,
             end: arg.end,
           },

@@ -1,11 +1,13 @@
-let args: array<string> = %raw(`Deno.args`)
+let args: list<string> = %raw(`Deno.args`)->List.fromArray
 
 let help = () =>
   Js.log("
   repl            Start the REPL
+  run [file.mal]      Run [file.mal]
 ")
 
 switch args {
-| ["repl"] => Repl.run()
+| list{"repl"} => Repl.run()
+| list{"run", filePath} => Run.file(filePath)
 | _ => help()
 }

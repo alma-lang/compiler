@@ -99,10 +99,13 @@ let linesAroundPosition = (input: t, position: int, numberOfLines: int): option<
   ->lineAt(position)
   ->Option.flatMap(((lineStart, lineEnd)) => {
     let line = input->lineSubstring(~from=lineStart, ~to_=lineEnd)
+
     let linesBefore =
       input->linesBeforePosition([], ~position=lineStart - 1, ~howManyLines=numberOfLines)
+
     let linesAfter =
       input->linesAfterPosition([], ~position=lineEnd + 1, ~howManyLines=numberOfLines)
+
     Some(linesBefore, line, linesAfter)
   })
 }
@@ -139,20 +142,3 @@ let linesReportAtPositionWithPointer = (
 
     Some(out->JsArray.joinWith("\n"))
   })
-
-/*
-Js.log("\n")
-Js.log(
-  linesReportAtPositionWithPointer(
-    "line1
-line2
-line3
-
-line5
-line6",
-    18,
-    4,
-    0,
-  ),
-)
-*/

@@ -31,10 +31,6 @@ let empty = (typeVar: unit => Type.typ, generalize: Type.typ => Type.typ): t => 
   ->Map.String.set("(/)", Type.Fn(Type.float_, Type.Fn(Type.float_, Type.float_)))
 }
 
-let getExn = (env: t, x: string) =>
-  switch Map.String.get(env, x) {
-  | Some(x) => x
-  | None => raise(Not_found(x))
-  }
+let get = (env: t, x: string) => Map.String.get(env, x)
 
 let set = (env: t, x: string, t: Type.typ): t => Map.String.set(env, x, t)

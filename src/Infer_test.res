@@ -17,7 +17,23 @@ Test.suite("Infer", ({test}) => {
     ("if 1 == 1 then true else false", "Bool"),
     ("if 1 == 1 then 1 else 2", "Float"),
     ("if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2", "Float"),
-    ("if 1 then 5 else 1", "type error"),
+    (
+      "if 1 then 5 else 1",
+      `1:3: Type mismatch:  Float  ≠  Bool
+
+Expected
+
+  1│ if 1 then 5 else 1
+   │    ↑
+
+to be
+
+Bool
+
+but seems to be
+
+Float`,
+    ),
     // let generalization tests
     (
       "
@@ -35,6 +51,27 @@ Test.suite("Infer", ({test}) => {
       ",
       "a -> b -> a",
     ),
+    (
+      "let incr = \\n -> n + 1
+
+incr true",
+      `3:0: Type mismatch:  Bool -> a  ≠  Float -> Float
+
+Expected
+
+  1│ let incr = \\\n -> n + 1
+  2│ 
+  3│ incr true
+   │ ↑
+
+to be
+
+Float -> Float
+
+but seems to be
+
+Bool -> a`,
+    ),
   ]
 
   testCases->Array.forEachWithIndex((i, (input, expected)) =>
@@ -43,22 +80,23 @@ Test.suite("Infer", ({test}) => {
       | Ok(tokens) =>
         switch Parser.parse(input, tokens) {
         | Ok(ast) =>
-          try {
-            let typ = Infer.infer(ast)
-            let typStr = Type.toString(typ)
-            let astStr = Ast.Expression.toString(ast.value)
+          switch Infer.infer(ast) {
+          | Ok(typ) => {
+              let typStr = Type.toString(typ)
+              let astStr = Ast.Expression.toString(ast.value)
 
-            if !Test.equal(typStr, expected) {
-              Js.log2("\n", typ->Json.stringifyAnyWithSpace(4))
-              Js.log2("\n", ast->Json.stringifyAnyWithSpace(4))
+              if !Test.equal(typStr, expected) {
+                Js.log2("\n", typ->Json.stringifyAnyWithSpace(4))
+                Js.log2("\n", ast->Json.stringifyAnyWithSpace(4))
 
-              Js.log2("\n\n", typStr->Json.stringifyAnyWithSpace(4))
-              Js.log2("\n", astStr->Json.stringifyAnyWithSpace(4))
+                Js.log2("\n\n", typStr->Json.stringifyAnyWithSpace(4))
+                Js.log2("\n", astStr->Json.stringifyAnyWithSpace(4))
+              }
+
+              Test.assertEquals(typStr, expected, "")
             }
-
-            Test.assertEquals(typStr, expected, "")
-          } catch {
-          | Infer.TypeError => Test.assertEquals("type error", expected, "")
+          | Error(errors) =>
+            errors->Infer.InferError.toStringMany(input)->Test.assertEquals(expected, "")
           }
 
         | Error(es) => {

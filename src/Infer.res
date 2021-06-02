@@ -23,7 +23,99 @@
 
 open Type
 
-exception TypeError
+module UnifyError = {
+  type t =
+    | TypeMismatch
+    | InfiniteType
+}
+exception TypeError(UnifyError.t)
+
+module InferError = {
+  type t =
+    | UndefinedIdentifier(Node.t<Ast.Expression.t>)
+    | TypeMismatch(Node.t<Ast.Expression.t>, Type.typ, option<Node.t<Ast.Expression.t>>, Type.typ)
+    | InfiniteType(Node.t<Ast.Expression.t>, Type.typ)
+
+  let toString = (e: t, input: string): string => {
+    let prefix = switch e {
+    | UndefinedIdentifier({line, column}) => j`$line:$column`
+    | TypeMismatch({line, column}, _, _, _) => j`$line:$column`
+    | InfiniteType({line, column}, _) => j`$line:$column`
+    }
+
+    let (position, lineNumber, columnNumber) = switch e {
+    | UndefinedIdentifier({line, column, start}) => (start, line, column)
+    | TypeMismatch({line, column, start}, _, _, _) => (start, line, column)
+    | InfiniteType({line, column, start}, _) => (start, line, column)
+    }
+
+    let code =
+      Input.linesReportAtPositionWithPointer(
+        input,
+        ~position,
+        ~lineNumber,
+        ~columnNumber,
+      )->Option.getWithDefault("")
+
+    j`$prefix: ` ++
+    switch e {
+    | UndefinedIdentifier(expr) => `Undefined identifier ${Ast.Expression.toString(expr.value)}`
+    | TypeMismatch(_expr, typ, None, typ2) => {
+        let t1 = Type.toString(typ)
+        let t2 = Type.toString(typ2)
+
+        `Type mismatch:  ${t1}  ≠  ${t2}
+
+Expected
+
+${code}
+
+to be
+
+${t2}
+
+but seems to be
+
+${t1}`
+      }
+    | TypeMismatch(_expr, typ, Some(expr2), typ2) => {
+        let code2 =
+          Input.linesReportAtPositionWithPointer(
+            input,
+            ~position=expr2.start,
+            ~lineNumber=expr2.line,
+            ~columnNumber=expr2.column,
+          )->Option.getWithDefault("")
+        let t1 = Type.toString(typ)
+        let t2 = Type.toString(typ2)
+
+        `Type mismatch:  ${t1}  ≠  ${t2}
+
+Expected
+
+${code}
+
+with type
+
+${t1}
+
+to have the same type as
+
+${code2}
+
+with type
+
+${t2}`
+      }
+    | InfiniteType(_expr, _typ) => `Infinite type\n\n${code}`
+    }
+  }
+
+  let toStringMany = (errors: array<t>, input): string =>
+    Array.joinWith(errors, "\n\n----------------------------------------\n\n", error =>
+      toString(error, input)
+    )
+}
 
 module State = {
   type t = {
@@ -50,7 +142,7 @@ module State = {
 /* specializes the polytype s by copying the term and replacing the
  * bound type variables consistently by new monotype variables
  * E.g.   inst (forall a b. a -> b -> a) = c -> d -> c */
-let inst = (s: typ, state: State.t): typ => {
+let inst = (s: Type.typ, state: State.t): Type.typ => {
   /* Replace any typevars found in the Hashtbl with the
    * associated value in the same table, leave them otherwise */
   let rec replaceTvs = (tbl, x) =>
@@ -85,7 +177,7 @@ let inst = (s: typ, state: State.t): typ => {
 /* Go through the given type, replacing all typevars with their bound types when possible */
 
 /* Can a monomorphic Var(a) be found inside this type? */
-let rec occurs = (aId: typeVarId, aLevel: level, x: typ) =>
+let rec occurs = (aId: typeVarId, aLevel: level, x: Type.typ) =>
   /* in */
   switch x {
   | Unit => false
@@ -105,59 +197,78 @@ let rec occurs = (aId: typeVarId, aLevel: level, x: typ) =>
     }
   }
 
-let rec unify = (t1: typ, t2: typ): unit =>
-  switch (t1, t2) {
-  | (Unit, Unit) => ()
+let unify = (
+  ast: Node.t<Ast.Expression.t>,
+  t1: Type.typ,
+  ast2: option<Node.t<Ast.Expression.t>>,
+  t2: Type.typ,
+): result<unit, InferError.t> => {
+  let rec unifyExn = (t1: Type.typ, t2: Type.typ): unit =>
+    switch (t1, t2) {
+    | (Unit, Unit) => ()
 
-  | (Named(name, args), Named(name2, args2)) => {
-      if name != name2 {
-        raise(TypeError)
+    | (Named(name, args), Named(name2, args2)) => {
+        if name != name2 {
+          raise(TypeError(TypeMismatch))
+        }
+        List.forEach2(args, args2, (a1, a2) => unifyExn(a1, a2))
       }
-      List.forEach2U(args, args2, (. a1, a2) => unify(a1, a2))
+
+    /* These two recursive calls to the bound typeVar replace
+     * the 'find' in the union-find algorithm */
+    | (Var({contents: Bound(a')}), b) => unifyExn(a', b)
+    | (a, Var({contents: Bound(b')})) => unifyExn(a, b')
+
+    | (Var({contents: Unbound(aId, aLevel)} as a), b) =>
+      /* create binding for boundTy that is currently empty */
+      if t1 == t2 {
+        ()
+      } else if (
+        /* a = a, but dont create a recursive binding to itself */
+        occurs(aId, aLevel, b)
+      ) {
+        raise(TypeError(InfiniteType))
+      } else {
+        a := Bound(b)
+      }
+
+    | (a, Var({contents: Unbound(bId, bLevel)} as b)) =>
+      /* create binding for boundTy that is currently empty */
+      if t1 == t2 {
+        ()
+      } else if occurs(bId, bLevel, a) {
+        raise(TypeError(InfiniteType))
+      } else {
+        b := Bound(a)
+      }
+
+    | (Fn(a, b), Fn(c, d)) =>
+      unifyExn(a, c)
+      unifyExn(b, d)
+
+    | (PolyType(_a, t), PolyType(_b, u)) =>
+      /* NOTE: Unneeded rule, never used due to [Var] and inst */
+      unifyExn(t, u)
+
+    | (_a, _b) => raise(TypeError(TypeMismatch))
     }
 
-  /* These two recursive calls to the bound typeVar replace
-   * the 'find' in the union-find algorithm */
-  | (Var({contents: Bound(a')}), b) => unify(a', b)
-  | (a, Var({contents: Bound(b')})) => unify(a, b')
-
-  | (Var({contents: Unbound(aId, aLevel)} as a), b) =>
-    /* create binding for boundTy that is currently empty */
-    if t1 == t2 {
-      ()
-    } else if (
-      /* a = a, but dont create a recursive binding to itself */
-      occurs(aId, aLevel, b)
-    ) {
-      raise(TypeError)
-    } else {
-      a := Bound(b)
-    }
-
-  | (a, Var({contents: Unbound(bId, bLevel)} as b)) =>
-    /* create binding for boundTy that is currently empty */
-    if t1 == t2 {
-      ()
-    } else if occurs(bId, bLevel, a) {
-      raise(TypeError)
-    } else {
-      b := Bound(a)
-    }
-
-  | (Fn(a, b), Fn(c, d)) =>
-    unify(a, c)
-    unify(b, d)
-
-  | (PolyType(_a, t), PolyType(_b, u)) =>
-    /* NOTE: Unneeded rule, never used due to [Var] and inst */
-    unify(t, u)
-
-  | (_a, _b) => raise(TypeError)
+  try {
+    Ok(unifyExn(t1, t2))
+  } catch {
+  | TypeError(e) =>
+    Error(
+      switch e {
+      | UnifyError.TypeMismatch => InferError.TypeMismatch(ast, t1, ast2, t2)
+      | UnifyError.InfiniteType => InferError.InfiniteType(ast, t1)
+      },
+    )
   }
+}
 
 /* Find all typevars and wrap the type in a PolyType */
 /* e.g.  generalize (a -> b -> b) = forall a b. a -> b -> b */
-let generalize = (t: typ, state: State.t): typ => {
+let generalize = (t: Type.typ, state: State.t): Type.typ => {
   /* collect all the monomorphic typevars */
   let rec findAllTvs = x =>
     switch x {
@@ -184,13 +295,18 @@ let generalize = (t: typ, state: State.t): typ => {
 /* The main entry point to type inference */
 /* All branches (except for the trivial Unit) of the first match in this function
  are translated directly from the rules for algorithm J, given in comments */
-/* infer : typ SMap.t -> Expr -> Type */
-let infer = (x: Node.t<Ast.Expression.t>): typ => {
+let infer = (ast: Node.t<Ast.Expression.t>): result<Type.typ, array<InferError.t>> => {
   let state = State.empty()
   let env = TypeEnv.empty(() => State.newTypeVar(state), t => generalize(t, state))
+  let errors: array<InferError.t> = []
+  let addError = (r: result<unit, InferError.t>) =>
+    switch r {
+    | Error(e) => errors->Js.Array2.push(e)->ignore
+    | _ => ()
+    }
 
-  let rec inferRec = (env: TypeEnv.t, x: Node.t<Ast.Expression.t>): typ => {
-    switch x.value {
+  let rec inferRec = (env: TypeEnv.t, ast: Node.t<Ast.Expression.t>): Type.typ => {
+    switch ast.value {
     | Unit => Unit
 
     | Bool(_) => Type.bool_
@@ -199,23 +315,27 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
 
     | Unary(op, e) => {
         let t = inferRec(env, e)
+
         switch op.value {
-        | Ast.Not => unify(t, Type.bool_)
-        | Ast.Minus => unify(t, Type.float_)
-        }
+        | Ast.Not => unify(e, t, None, Type.bool_)
+        | Ast.Minus => unify(e, t, None, Type.float_)
+        }->addError
+
         t
       }
 
     | Binary(left, op, right) => {
         // Convert the binary AST to function calls
         let fnCall = {
-          ...x,
+          ...ast,
           value: Ast.Expression.FnCall(
             {
               value: Ast.Expression.FnCall(
                 {...op, value: Ast.Expression.Identifier(op.value.fn)},
                 left,
               ),
+              line: left.line,
+              column: left.column,
               start: left.start,
               end: op.end,
             },
@@ -238,25 +358,32 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
          */
 
         let t = inferRec(env, condition)
-        unify(t, Type.bool_)
+        unify(condition, t, None, Type.bool_)->addError
 
         let t1 = inferRec(env, then)
         let t2 = inferRec(env, else_)
-        unify(t1, t2)
+        unify(then, t1, Some(else_), t2)->addError
 
         t2
       }
 
-    | Identifier(x) => {
-        /* Var
-         *   x : s ∊ env
-         *   t = inst s
-         *   -----------
-         *   infer env x = t
-         */
-        let s = TypeEnv.getExn(env, x)
-        let t = inst(s, state)
-        t
+    | Identifier(x) =>
+      /*
+       * Var
+       *   x : s ∊ env
+       *   t = inst s
+       *   -----------
+       *   infer env x = t
+       */
+      switch TypeEnv.get(env, x) {
+      | Some(s) => {
+          let t = inst(s, state)
+          t
+        }
+      | None => {
+          addError(Error(InferError.UndefinedIdentifier(ast)))
+          State.newTypeVar(state)
+        }
       }
 
     | FnCall(f, x) => {
@@ -271,7 +398,9 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
         let t0 = inferRec(env, f)
         let t1 = inferRec(env, x)
         let t' = State.newTypeVar(state)
-        unify(t0, Fn(t1, t'))
+
+        unify(f, Fn(t1, t'), None, t0)->addError
+
         t'
       }
 
@@ -290,7 +419,9 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
           | {value: Ast.Pattern.Identifier(x)} => TypeEnv.set(env, x, paramType)
           }
         )
+
         let returnType = inferRec(env, e)
+
         paramsWithType->Array.reduceReverse(returnType, (returnType, (_, paramType)) => Fn(
           paramType,
           returnType,
@@ -323,5 +454,10 @@ let infer = (x: Node.t<Ast.Expression.t>): typ => {
     }
   }
 
-  inferRec(env, x)
+  let t = inferRec(env, ast)
+
+  switch errors->Array.length {
+  | 0 => Ok(t)
+  | _ => Error(errors)
+  }
 }
