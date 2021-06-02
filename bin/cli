@@ -1,0 +1,3 @@
+#!/bin/bash
+
+deno run -A lib/es6_global/src/Cli.js $@
