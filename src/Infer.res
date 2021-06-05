@@ -43,23 +43,26 @@ module InferError = {
     | InfiniteType({line, column}, _) => j`$line:$column`
     }
 
-    let (position, lineNumber, columnNumber) = switch e {
-    | UndefinedIdentifier({line, column, start}) => (start, line, column)
-    | TypeMismatch({line, column, start}, _, _, _) => (start, line, column)
-    | InfiniteType({line, column, start}, _) => (start, line, column)
+    let (position, lineNumber, end) = switch e {
+    | UndefinedIdentifier({line, end, start}) => (start, line, end)
+    | TypeMismatch({line, end, start}, _, _, _) => (start, line, end)
+    | InfiniteType({line, end, start}, _) => (start, line, end)
     }
 
     let code =
       Input.linesReportAtPositionWithPointer(
         input,
         ~position,
+        ~end,
         ~lineNumber,
-        ~columnNumber,
       )->Option.getWithDefault("")
 
     j`$prefix: ` ++
     switch e {
-    | UndefinedIdentifier(expr) => `Undefined identifier ${Ast.Expression.toString(expr.value)}`
+    | UndefinedIdentifier(expr) =>
+      `Undefined identifier ${Ast.Expression.toString(expr.value)}
+
+${code}`
     | TypeMismatch(_expr, typ, None, typ2) => {
         let t1 = Type.toString(typ)
         let t2 = Type.toString(typ2)
@@ -83,8 +86,8 @@ ${t1}`
           Input.linesReportAtPositionWithPointer(
             input,
             ~position=expr2.start,
+            ~end=expr2.end,
             ~lineNumber=expr2.line,
-            ~columnNumber=expr2.column,
           )->Option.getWithDefault("")
         let t1 = Type.toString(typ)
         let t2 = Type.toString(typ2)
@@ -329,17 +332,8 @@ let infer = (ast: Node.t<Ast.Expression.t>): result<Type.typ, array<InferError.t
         let fnCall = {
           ...ast,
           value: Ast.Expression.FnCall(
-            {
-              value: Ast.Expression.FnCall(
-                {...op, value: Ast.Expression.Identifier(op.value.fn)},
-                left,
-              ),
-              line: left.line,
-              column: left.column,
-              start: left.start,
-              end: op.end,
-            },
-            right,
+            {...op, value: Ast.Expression.Identifier(op.value.fn)},
+            [left, right],
           ),
         }
 
@@ -386,7 +380,7 @@ let infer = (ast: Node.t<Ast.Expression.t>): result<Type.typ, array<InferError.t
         }
       }
 
-    | FnCall(f, x) => {
+    | FnCall(f, args) => {
         /* App
          *   infer env f = t0
          *   infer env x = t1
@@ -395,13 +389,19 @@ let infer = (ast: Node.t<Ast.Expression.t>): result<Type.typ, array<InferError.t
          *   ---------------
          *   infer env (f x) = t'
          */
-        let t0 = inferRec(env, f)
-        let t1 = inferRec(env, x)
-        let t' = State.newTypeVar(state)
+        let fnType = inferRec(env, f)
+        let argsTypes = args->Array.map(arg => inferRec(env, arg))
+        let returnType = State.newTypeVar(state)
 
-        unify(f, Fn(t1, t'), None, t0)->addError
+        let callType =
+          argsTypes->Array.reduceReverse(returnType, (returnType, argType) => Fn(
+            argType,
+            returnType,
+          ))
 
-        t'
+        unify(ast, callType, None, fnType)->addError
+
+        returnType
       }
 
     | Lambda(params, e) => {

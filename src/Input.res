@@ -90,55 +90,102 @@ let rec linesAfterPosition = (
   }
 }
 
-let linesAroundPosition = (input: t, position: int, numberOfLines: int): option<(
-  array<string>,
-  string,
-  array<string>,
-)> => {
-  input
-  ->lineAt(position)
-  ->Option.flatMap(((lineStart, lineEnd)) => {
-    let line = input->lineSubstring(~from=lineStart, ~to_=lineEnd)
+let linesAroundPosition = (
+  input: t,
+  position: int,
+  ~end: option<int>=?,
+  numberOfLines: int,
+): option<(array<string>, (int, int, array<string>), array<string>)> => {
+  let maybeStartLine = input->lineAt(position)
+  // end is exclusive, so substract 1 to get the line at the actual last
+  // character
+  let maybeEndLine = end->Option.flatMap(end => input->lineAt(end - 1))
 
-    let linesBefore =
-      input->linesBeforePosition([], ~position=lineStart - 1, ~howManyLines=numberOfLines)
+  switch (maybeStartLine, end, maybeEndLine) {
+  | (Some((lineStart, lineEnd)), None, _) => {
+      let line = input->lineSubstring(~from=lineStart, ~to_=lineEnd)
 
-    let linesAfter =
-      input->linesAfterPosition([], ~position=lineEnd + 1, ~howManyLines=numberOfLines)
+      let linesBefore =
+        input->linesBeforePosition([], ~position=lineStart - 1, ~howManyLines=numberOfLines)
 
-    Some(linesBefore, line, linesAfter)
-  })
+      let linesAfter =
+        input->linesAfterPosition([], ~position=lineEnd + 1, ~howManyLines=numberOfLines)
+
+      Some(linesBefore, (lineStart, lineEnd, [line]), linesAfter)
+    }
+  | (Some((lineStart, _)), Some(_), Some((_, endLineEnd))) => {
+      let lines = input->lineSubstring(~from=lineStart, ~to_=endLineEnd)->String.split("\n")
+
+      let linesBefore =
+        input->linesBeforePosition([], ~position=lineStart - 1, ~howManyLines=numberOfLines)
+
+      let linesAfter =
+        input->linesAfterPosition([], ~position=endLineEnd + 1, ~howManyLines=numberOfLines)
+
+      Some(linesBefore, (lineStart, endLineEnd, lines), linesAfter)
+    }
+  | _ => None
+  }
 }
 
 let linesReportAtPositionWithPointer = (
-  input: string,
   ~position: int,
   ~lineNumber: int,
-  ~columnNumber: int,
-): option<string> =>
+  ~end: option<int>=?,
+  input: string,
+): option<string> => {
+  let pointToEndOfInput = position == String.length(input)
+  let position = pointToEndOfInput ? position - 1 : position
+  let end = pointToEndOfInput ? None : end
+
   input
-  ->linesAroundPosition(position, 2)
-  ->Option.flatMap(((linesBefore, line, linesAfter)) => {
+  ->linesAroundPosition(position, ~end?, 2)
+  ->Option.map(((linesBefore, (linesStart, _linesEnd, lines), linesAfter)) => {
     let out = []
 
-    let lineNumberWidth = (lineNumber + linesAfter->Array.length)->Int.toString->String.length
+    let lineNumberWidth =
+      (lineNumber + (lines->Array.length - 1) + linesAfter->Array.length)
+      ->Int.toString
+      ->String.length
+
+    let columnNumber = position - linesStart
 
     linesBefore->Array.forEachWithIndex((i, l) => {
       let ln =
         (lineNumber - linesBefore->Array.length + i)->Int.toString->padStart(lineNumberWidth, " ")
-      out->JsArray.push(`  ${ln}│ ${l}`)->ignore
+      out->JsArray.push(`  ${ln}│  ${l}`)->ignore
     })
 
-    let ln = lineNumber->Int.toString->padStart(lineNumberWidth, " ")
-    out->JsArray.push(`  ${ln}│ ${line}`)->ignore
+    switch lines {
+    | [] => Js.Exn.raiseError(j`Couldn't locate code:\n\n$input\n\n$position, $lineNumber, $end`)
+    | [line] => {
+        let ln = lineNumber->Int.toString->padStart(lineNumberWidth, " ")
+        out->JsArray.push(`  ${ln}│  ${line}`)->ignore
 
-    let lineNumberAsSpaces = " "->padStart(lineNumberWidth, " ")
-    out->JsArray.push(`  ${lineNumberAsSpaces}│ ${String.repeat(" ", columnNumber)}↑`)->ignore
+        let lineNumberAsSpaces = " "->padStart(lineNumberWidth, " ")
+
+        let numPointers = pointToEndOfInput
+          ? 1
+          : max(1, end->Option.getWithDefault(position) - position)
+        let pointers = String.repeat(`↑`, numPointers)
+
+        let numSpaces = pointToEndOfInput ? columnNumber + 1 : columnNumber
+        let spaces = String.repeat(" ", numSpaces)
+
+        out->JsArray.push(`  ${lineNumberAsSpaces}│  ${spaces}${pointers}`)->ignore
+      }
+    | lines =>
+      lines->Array.forEachWithIndex((index, line) => {
+        let ln = (lineNumber + index)->Int.toString->padStart(lineNumberWidth, " ")
+        out->JsArray.push(`  ${ln}│→ ${line}`)->ignore
+      })
+    }
 
     linesAfter->Array.forEachWithIndex((i, l) => {
-      let ln = (lineNumber + 1 + i)->Int.toString->padStart(lineNumberWidth, " ")
-      out->JsArray.push(`  ${ln}│ ${l}`)->ignore
+      let ln = (lineNumber + lines->Array.length + i)->Int.toString->padStart(lineNumberWidth, " ")
+      out->JsArray.push(`  ${ln}│  ${l}`)->ignore
     })
 
-    Some(out->JsArray.joinWith("\n"))
+    out->JsArray.joinWith("\n")
   })
+}

@@ -33,16 +33,16 @@ module ParseError = {
   ): t => {
     let pointAtToken = pointAtToken->Option.getWithDefault(token)
     let position = pointAtToken.position
+    let end = pointAtToken.position + pointAtToken.lexeme->String.length
     let lineNumber = pointAtToken.line
-    let columnNumber = pointAtToken.column
 
     let message =
       `${token.line->Int.toString}:${token.column->Int.toString}: ${message}\n\n` ++
       Input.linesReportAtPositionWithPointer(
         input,
         ~position,
+        ~end,
         ~lineNumber,
-        ~columnNumber,
       )->Option.getWithDefault("")
 
     {message: message, token: token}
@@ -168,17 +168,13 @@ and let_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
             if parser->isNextLineSameIndent(token) {
               parser
               ->expression
-              ->Result.flatMap(body => {
-                Ok(
-                  Some({
-                    Node.value: Ast.Expression.Let(pattern, value, body),
-                    line: token.line,
-                    column: token.column,
-                    start: token.position,
-                    end: body.end,
-                  }),
-                )
-              })
+              ->Result.map(body => Some({
+                Node.value: Ast.Expression.Let(pattern, value, body),
+                line: token.line,
+                column: token.column,
+                start: token.position,
+                end: body.end,
+              }))
             } else {
               Error(
                 ParseError.expectedButFound(
@@ -233,17 +229,13 @@ and if_ = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
             parser
             ->advance
             ->expression
-            ->Result.flatMap(else_ => {
-              Ok(
-                Some({
-                  Node.value: Ast.Expression.If(condition, then, else_),
-                  line: token.line,
-                  column: token.column,
-                  start: token.position,
-                  end: else_.end,
-                }),
-              )
-            })
+            ->Result.map(else_ => Some({
+              Node.value: Ast.Expression.If(condition, then, else_),
+              line: token.line,
+              column: token.column,
+              start: token.position,
+              end: else_.end,
+            }))
 
           | _ =>
             Error(
@@ -284,17 +276,13 @@ and lambda = (parser: state): parseResult<option<Node.t<Ast.Expression.t>>> => {
         parser
         ->advance
         ->expression
-        ->Result.flatMap(expr => {
-          Ok(
-            Some({
-              Node.value: Ast.Expression.Lambda(params, expr),
-              line: token.line,
-              column: token.column,
-              start: token.position,
-              end: expr.end,
-            }),
-          )
-        })
+        ->Result.map(expr => Some({
+          Node.value: Ast.Expression.Lambda(params, expr),
+          line: token.line,
+          column: token.column,
+          start: token.position,
+          end: expr.end,
+        }))
 
       | _ =>
         Error(
@@ -426,19 +414,19 @@ and unary = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
 
   parser
   ->call
-  ->Result.flatMap(expr =>
+  ->Result.map(expr =>
     switch u {
     | Some(u) => {
         let op = Node.make(u, token, token)
-        Ok({
+        {
           Node.value: Ast.Expression.Unary(op, expr),
           line: op.line,
           column: op.column,
           start: op.start,
           end: expr.end,
-        })
+        }
       }
-    | None => Ok(expr)
+    | None => expr
     }
   )
 }
@@ -450,7 +438,23 @@ and call = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   ->primary
   ->Result.flatMap(expr =>
     switch expr {
-    | Some(expr) => parser->callStep(token, expr)
+    | Some(expr) =>
+      parser
+      ->arguments(token, [])
+      ->Result.map(args => {
+        if args->Array.length == 0 {
+          expr
+        } else {
+          let lastArg = args->Array.getExn(Array.length(args) - 1)
+          {
+            Node.value: Ast.Expression.FnCall(expr, args),
+            line: expr.line,
+            column: expr.column,
+            start: expr.start,
+            end: lastArg.end,
+          }
+        }
+      })
     | None =>
       Error(
         ParseError.expectedButFound(
@@ -463,32 +467,25 @@ and call = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   )
 }
 
-and callStep = (
+and arguments = (
   parser: state,
   firstToken: Token.t,
-  returnExpr: Node.t<Ast.Expression.t>,
-): parseResult<Node.t<Ast.Expression.t>> => {
+  args: array<Node.t<Ast.Expression.t>>,
+): parseResult<array<Node.t<Ast.Expression.t>>> => {
   if !(parser->isNestedIndent(firstToken)) {
-    Ok(returnExpr)
+    Ok(args)
   } else {
     parser
     ->primary
     ->Result.flatMap(arg =>
       switch arg {
       // We tried to get an argument, but there was no match, or it was not well indented
-      | None => Ok(returnExpr)
+      | None => Ok(args)
 
-      | Some(arg) =>
-        parser->callStep(
-          firstToken,
-          {
-            Node.value: Ast.Expression.FnCall(returnExpr, arg),
-            line: returnExpr.line,
-            column: returnExpr.column,
-            start: returnExpr.start,
-            end: arg.end,
-          },
-        )
+      | Some(arg) => {
+          args->JsArray.push(arg)->ignore
+          parser->arguments(firstToken, args)
+        }
       }
     )
   }

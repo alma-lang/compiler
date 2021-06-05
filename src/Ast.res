@@ -63,7 +63,7 @@ module Expression = {
     | Unary(Node.t<unary>, Node.t<t>)
     | Binary(Node.t<t>, Node.t<Binop.t>, Node.t<t>)
     | Lambda(array<Node.t<Pattern.t>>, Node.t<t>)
-    | FnCall(Node.t<t>, Node.t<t>)
+    | FnCall(Node.t<t>, array<Node.t<t>>)
     | Let(Node.t<Pattern.t>, Node.t<t>, Node.t<t>)
     | If(Node.t<t>, Node.t<t>, Node.t<t>)
 
@@ -102,7 +102,10 @@ module Expression = {
         let paramsStr = params->Array.map(p => Pattern.toString(p.value))->JsArray.joinWith(", ")
         `(${paramsStr}) => ${toString(expr.value)}`
       }
-    | FnCall(callee, arg) => `${toString(callee.value)}(${toString(arg.value)})`
+    | FnCall(callee, args) => {
+        let argsStr = args->Array.map(a => toString(a.value))->JsArray.joinWith(", ")
+        `${toString(callee.value)}(${argsStr})`
+      }
     | Let(pattern, value, body) =>
       `let ${Pattern.toString(pattern.value)} = (${toString(value.value)}); ${toString(body.value)}`
     | If(condition, then, else_) =>

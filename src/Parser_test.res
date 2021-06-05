@@ -35,15 +35,15 @@ Test.suite("Parser", ({test}) => {
         {
           message: `1:6: Expected ')' after parenthesized expression, but instead found: '[End of file]'
 
-  1│ (((1))
-   │ ↑`,
+  1│  (((1))
+   │  ↑`,
           token: {
             kind: Token.Eof,
             lexeme: "[End of file]",
             line: 1,
             indent: 0,
             column: 6,
-            position: 5,
+            position: 6,
           },
         },
       ]),
@@ -54,8 +54,8 @@ Test.suite("Parser", ({test}) => {
         {
           message: `1:7: Expected the end of input, but instead found: ')'
 
-  1│ (((1))))
-   │        ↑`,
+  1│  (((1))))
+   │         ↑`,
           token: {
             kind: Token.RightParen,
             lexeme: ")",
@@ -78,7 +78,7 @@ Test.suite("Parser", ({test}) => {
       Ok({
         value: Ast.Expression.FnCall(
           {value: Ast.Expression.Identifier("fun"), line: 1, column: 0, start: 0, end: 3},
-          {value: Ast.Expression.Identifier("arg"), line: 1, column: 4, start: 4, end: 7},
+          [{value: Ast.Expression.Identifier("arg"), line: 1, column: 4, start: 4, end: 7}],
         ),
         line: 1,
         column: 0,
@@ -92,7 +92,7 @@ Test.suite("Parser", ({test}) => {
       Ok({
         value: Ast.Expression.FnCall(
           {value: Ast.Expression.Identifier("fun"), line: 1, column: 0, start: 0, end: 3},
-          {value: Ast.Expression.Identifier("arg"), line: 2, column: 1, start: 5, end: 8},
+          [{value: Ast.Expression.Identifier("arg"), line: 2, column: 1, start: 5, end: 8}],
         ),
         line: 1,
         column: 0,
@@ -106,7 +106,7 @@ Test.suite("Parser", ({test}) => {
       Ok({
         value: Ast.Expression.FnCall(
           {value: Ast.Expression.Identifier("fun"), line: 1, column: 2, start: 2, end: 5},
-          {value: Ast.Expression.Identifier("arg"), line: 2, column: 4, start: 10, end: 13},
+          [{value: Ast.Expression.Identifier("arg"), line: 2, column: 4, start: 10, end: 13}],
         ),
         line: 1,
         column: 2,
@@ -118,7 +118,11 @@ Test.suite("Parser", ({test}) => {
       `fun\narg`,
       Error([
         {
-          message: `2:0: Expected the end of input, but instead found: 'arg'\n\n  1│ fun\n  2│ arg\n   │ ↑`,
+          message: `2:0: Expected the end of input, but instead found: 'arg'
+
+  1│  fun
+  2│  arg
+   │  ↑↑↑`,
           token: {
             kind: Token.Identifier,
             lexeme: "arg",
@@ -138,64 +142,42 @@ fun arg1
       Ok({
         value: Ast.Expression.FnCall(
           {
-            value: Ast.Expression.FnCall(
-              {
-                value: Ast.Expression.FnCall(
-                  {
-                    value: Ast.Expression.FnCall(
-                      {
-                        value: Ast.Expression.Identifier("fun"),
-                        line: 2,
-                        column: 0,
-                        start: 1,
-                        end: 4,
-                      },
-                      {
-                        value: Ast.Expression.Identifier("arg1"),
-                        line: 2,
-                        column: 4,
-                        start: 5,
-                        end: 9,
-                      },
-                    ),
-                    line: 2,
-                    column: 0,
-                    start: 1,
-                    end: 9,
-                  },
-                  {
-                    value: Ast.Expression.Identifier("arg2"),
-                    line: 3,
-                    column: 2,
-                    start: 12,
-                    end: 16,
-                  },
-                ),
-                line: 2,
-                column: 0,
-                start: 1,
-                end: 16,
-              },
-              {
-                value: Ast.Expression.Identifier("arg3"),
-                line: 3,
-                column: 7,
-                start: 17,
-                end: 21,
-              },
-            ),
+            value: Ast.Expression.Identifier("fun"),
             line: 2,
             column: 0,
             start: 1,
-            end: 21,
+            end: 4,
           },
-          {
-            value: Ast.Expression.Identifier("arg4"),
-            line: 4,
-            column: 2,
-            start: 24,
-            end: 28,
-          },
+          [
+            {
+              value: Ast.Expression.Identifier("arg1"),
+              line: 2,
+              column: 4,
+              start: 5,
+              end: 9,
+            },
+            {
+              value: Ast.Expression.Identifier("arg2"),
+              line: 3,
+              column: 2,
+              start: 12,
+              end: 16,
+            },
+            {
+              value: Ast.Expression.Identifier("arg3"),
+              line: 3,
+              column: 7,
+              start: 17,
+              end: 21,
+            },
+            {
+              value: Ast.Expression.Identifier("arg4"),
+              line: 4,
+              column: 2,
+              start: 24,
+              end: 28,
+            },
+          ],
         ),
         line: 2,
         column: 0,
@@ -264,28 +246,30 @@ fun arg1
             start: 0,
             end: 4,
           },
-          {
-            value: Ast.Expression.Unary(
-              {
-                value: Ast.Minus,
-                line: 1,
-                column: 6,
-                start: 6,
-                end: 7,
-              },
-              {
-                value: Ast.Expression.Float(5.),
-                line: 1,
-                column: 7,
-                start: 7,
-                end: 8,
-              },
-            ),
-            line: 1,
-            column: 6,
-            start: 6,
-            end: 8,
-          },
+          [
+            {
+              value: Ast.Expression.Unary(
+                {
+                  value: Ast.Minus,
+                  line: 1,
+                  column: 6,
+                  start: 6,
+                  end: 7,
+                },
+                {
+                  value: Ast.Expression.Float(5.),
+                  line: 1,
+                  column: 7,
+                  start: 7,
+                  end: 8,
+                },
+              ),
+              line: 1,
+              column: 6,
+              start: 6,
+              end: 8,
+            },
+          ],
         ),
         line: 1,
         column: 0,
@@ -694,13 +678,15 @@ else
                 start: 13,
                 end: 17,
               },
-              {
-                value: Ast.Expression.Float(1.),
-                line: 1,
-                column: 18,
-                start: 18,
-                end: 19,
-              },
+              [
+                {
+                  value: Ast.Expression.Float(1.),
+                  line: 1,
+                  column: 18,
+                  start: 18,
+                  end: 19,
+                },
+              ],
             ),
             line: 1,
             column: 13,
@@ -780,8 +766,8 @@ else
       Error([
         {
           message: `1:8: Expected the keyword \`then\` and an expression to parse the if expression, but instead found: '{'\n
-  1│ if true { 1 } else 2
-   │         ↑`,
+  1│  if true { 1 } else 2
+   │          ↑`,
           token: {
             kind: Token.LeftBrace,
             lexeme: "{",
@@ -799,12 +785,12 @@ else
         {
           message: `1:14: Expected the \`else\` branch of the if expression, but instead found: '[End of file]'
 
-  1│ if true then 1
-   │               ↑`,
+  1│  if true then 1
+   │                ↑`,
           token: {
             kind: Token.Eof,
             lexeme: "[End of file]",
-            position: 13,
+            position: 14,
             line: 1,
             column: 14,
             indent: 0,
@@ -850,13 +836,13 @@ else
         {
           message: `2:3: Expected the let definition to be followed by another let or expression in the next line and same indentation, but instead found: '[End of file]'
 
-  1│ let x = a
-  2│   x
-   │    ↑`,
+  1│  let x = a
+  2│    x
+   │     ↑`,
           token: {
             kind: Token.Eof,
             lexeme: "[End of file]",
-            position: 12,
+            position: 13,
             line: 2,
             column: 3,
             indent: 2,
@@ -878,7 +864,7 @@ else
           {
             value: Ast.Expression.FnCall(
               {value: Ast.Expression.Identifier("a"), line: 1, column: 8, start: 8, end: 9},
-              {value: Ast.Expression.Identifier("x"), line: 2, column: 2, start: 12, end: 13},
+              [{value: Ast.Expression.Identifier("x"), line: 2, column: 2, start: 12, end: 13}],
             ),
             line: 1,
             column: 8,
@@ -904,7 +890,7 @@ else
       Ok({
         value: Ast.Expression.FnCall(
           {value: Ast.Expression.Identifier("hello"), start: 0, end: 5, line: 1, column: 0},
-          {value: Ast.Expression.Unit, start: 6, end: 8, line: 1, column: 6},
+          [{value: Ast.Expression.Unit, start: 6, end: 8, line: 1, column: 6}],
         ),
         start: 0,
         end: 8,

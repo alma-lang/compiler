@@ -13,27 +13,6 @@ Test.suite("Infer", ({test}) => {
       "\\n -> \\f -> \\x -> n (\\g -> \\h -> h (g f)) (\\u -> x) (\\u -> u)",
       "(((a -> b) -> (b -> c) -> c) -> (d -> e) -> (f -> f) -> g) -> a -> e -> g",
     ),
-    // if:
-    ("if 1 == 1 then true else false", "Bool"),
-    ("if 1 == 1 then 1 else 2", "Float"),
-    ("if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2", "Float"),
-    (
-      "if 1 then 5 else 1",
-      `1:3: Type mismatch:  Float  ≠  Bool
-
-Expected
-
-  1│ if 1 then 5 else 1
-   │    ↑
-
-to be
-
-Bool
-
-but seems to be
-
-Float`,
-    ),
     // let generalization tests
     (
       "
@@ -51,6 +30,28 @@ Float`,
       ",
       "a -> b -> a",
     ),
+    // if:
+    ("if 1 == 1 then true else false", "Bool"),
+    ("if 1 == 1 then 1 else 2", "Float"),
+    // errors:
+    ("if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2", "Float"),
+    (
+      "if 1 then 5 else 1",
+      `1:3: Type mismatch:  Float  ≠  Bool
+
+Expected
+
+  1│  if 1 then 5 else 1
+   │     ↑
+
+to be
+
+Bool
+
+but seems to be
+
+Float`,
+    ),
     (
       "let incr = \\n -> n + 1
 
@@ -59,10 +60,10 @@ incr true",
 
 Expected
 
-  1│ let incr = \\\n -> n + 1
-  2│ 
-  3│ incr true
-   │ ↑
+  1│  let incr = \\\n -> n + 1
+  2│  
+  3│  incr true
+   │  ↑↑↑↑↑↑↑↑↑
 
 to be
 
@@ -72,10 +73,51 @@ but seems to be
 
 Bool -> a`,
     ),
+    (
+      "\\x ->
+    let a = x + 1
+    let b = not x
+    x",
+      `3:16: Type mismatch:  Float  ≠  Bool
+
+Expected
+
+  1│  \\\x ->
+  2│      let a = x + 1
+  3│      let b = not x
+   │                  ↑
+  4│      x
+
+to be
+
+Bool
+
+but seems to be
+
+Float`,
+    ),
+    (
+      "let a = bar\nbar",
+      `1:8: Undefined identifier bar
+
+  1│  let a = bar
+   │          ↑↑↑
+  2│  bar
+
+----------------------------------------
+
+2:0: Undefined identifier bar
+
+  1│  let a = bar
+  2│  bar
+   │  ↑↑↑`,
+    ),
   ]
 
-  testCases->Array.forEachWithIndex((i, (input, expected)) =>
-    test(j`$i`, () => {
+  testCases->Array.forEachWithIndex((i, (input, expected)) => {
+    let subject =
+      input->Js.String2.split("\n")->Array.keep(s => String.length(s) > 0)->Array.getExn(0)
+    test(j`$i. "$subject"`, () => {
       switch input->Tokenizer.parse {
       | Ok(tokens) =>
         switch Parser.parse(input, tokens) {
@@ -117,5 +159,5 @@ Bool -> a`,
         }
       }
     })
-  )
+  })
 })

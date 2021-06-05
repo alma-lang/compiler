@@ -114,7 +114,6 @@ let addError = (state, ~useStart=false, message) => {
       state.input,
       ~position,
       ~lineNumber=state.line,
-      ~columnNumber=column,
     )->Option.getWithDefault("")
 
   state.errors
@@ -347,7 +346,7 @@ let parse = (input): result<array<Token.t>, array<error>> => {
     // Set the position of the token in the string to the last character in the
     // string so that somewhere in the string can be pointed at. The column will
     // be offset one+ from this one.
-    position: input->String.length - 1,
+    position: input->String.length,
     indent: state.indent,
   })
 
