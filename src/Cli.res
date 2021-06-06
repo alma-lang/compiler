@@ -2,8 +2,8 @@ let args: list<string> = %raw(`Deno.args`)->List.fromArray
 
 let help = () =>
   Js.log("
-  repl            Start the REPL
-  run [file.mal]      Run [file.mal]
+  repl                 Start the REPL
+  run [file.alma]      Run [file.alma]
 ")
 
 switch args {

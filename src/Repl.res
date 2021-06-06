@@ -1,5 +1,5 @@
 let run = () => {
-  Js.log(`mal repl.
+  Js.log(`alma repl.
   .exit      Exit the repl session
 `)
 
