@@ -1,3 +1,5 @@
+module JsArray = Js.Array2
+
 type typeVarId = int
 type level = int
 
@@ -55,6 +57,18 @@ let nextLetter = (s: ref<string>) => {
   open Js.String2
   let c = charCodeAt(s.contents, 0)
   s := fromCharCode(Float.toInt(c) + 1)
+}
+
+let parameters = (t: typ): array<typ> => {
+  let rec parametersR = (params, t) =>
+    switch t {
+    | Fn(arg, body) => {
+        params->JsArray.push(arg)->ignore
+        parametersR(params, body)
+      }
+    | _ => params
+    }
+  parametersR([], t)
 }
 
 /* pretty printing types */

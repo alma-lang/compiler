@@ -133,12 +133,15 @@ let isNextLineSameIndent = (parser: state, parentToken: Token.t): bool => {
 let rec expression = (parser: state): parseResult<Node.t<Ast.Expression.t>> => {
   switch parser->lambda {
   | Ok(Some(lambda)) => Ok(lambda)
+
   | Ok(None) =>
     switch parser->if_ {
     | Ok(Some(if_)) => Ok(if_)
+
     | Ok(None) =>
       switch parser->let_ {
       | Ok(Some(let_)) => Ok(let_)
+
       | Ok(None) => parser->binary
       | Error(e) => Error(e)
       }

@@ -56,22 +56,22 @@ Float`,
       "let incr = \\n -> n + 1
 
 incr true",
-      `3:0: Type mismatch:  Bool -> a  ≠  Float -> Float
+      `3:5: Type mismatch:  Bool  ≠  Float
 
 Expected
 
   1│  let incr = \\\n -> n + 1
   2│  
   3│  incr true
-   │  ↑↑↑↑↑↑↑↑↑
+   │       ↑↑↑↑
 
 to be
 
-Float -> Float
+Float
 
 but seems to be
 
-Bool -> a`,
+Bool`,
     ),
     (
       "\\x ->

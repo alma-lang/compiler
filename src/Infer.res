@@ -390,16 +390,24 @@ let infer = (ast: Node.t<Ast.Expression.t>): result<Type.typ, array<InferError.t
          *   infer env (f x) = t'
          */
         let fnType = inferRec(env, f)
-        let argsTypes = args->Array.map(arg => inferRec(env, arg))
-        let returnType = State.newTypeVar(state)
+        let paramTypes = Type.parameters(fnType)
 
+        let argsWithTypes = args->Array.map(arg => (arg, inferRec(env, arg)))
+        let returnType = State.newTypeVar(state)
         let callType =
-          argsTypes->Array.reduceReverse(returnType, (returnType, argType) => Fn(
+          argsWithTypes->Array.reduceReverse(returnType, (returnType, (_, argType)) => Fn(
             argType,
             returnType,
           ))
 
-        unify(ast, callType, None, fnType)->addError
+        // Unify the arguments separately for nicer error messages
+        Array.zip(argsWithTypes, paramTypes)
+        ->Array.reduce(Ok(), (result, ((arg, argType), paramType)) => {
+          result->Result.flatMap(() => unify(arg, argType, None, paramType))
+        })
+        // If there weren't any failures, unify the Fn and return types
+        ->Result.flatMap(() => unify(ast, callType, None, fnType))
+        ->addError
 
         returnType
       }
