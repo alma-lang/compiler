@@ -25,3 +25,8 @@ lib/bs
 .merlin
 .bsb.lock
 /node_modules/
+
+
+# Added by cargo
+
+/target

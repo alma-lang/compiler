@@ -64,19 +64,6 @@ let peek = state => {
   }
 }
 
-let peekSecond = state => {
-  switch state->peek {
-  | Some(c) =>
-    let secondCharStart = state.current + state.currentChar->String.length + c->String.length
-    if secondCharStart >= state.input->String.length {
-      None
-    } else {
-      state.input->String.codePointAt(secondCharStart)->Option.map(String.fromCodePoint)
-    }
-  | None => None
-  }
-}
-
 let pushToken = (state, token) => state.tokens->JsArray.push(token)->ignore
 
 let nextTokenStart = state => state.current + state.currentChar->String.length
