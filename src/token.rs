@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Token {
     pub kind: Type,
     pub lexeme: String,
@@ -38,7 +38,7 @@ pub enum Type {
 
     // Literals.
     Identifier,
-    String,
+    String_,
     Float,
 
     // Keywords.

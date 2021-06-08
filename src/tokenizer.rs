@@ -11,6 +11,22 @@ pub struct Error {
     pub message: String,
 }
 
+impl Error {
+    pub fn to_string(&self, source: &Source) -> String {
+        let mut msg = String::new();
+
+        msg.push_str(&format!(
+            "{}:{}:{}\n\n{}",
+            source.name(),
+            self.line,
+            self.column,
+            self.message
+        ));
+
+        msg
+    }
+}
+
 enum Status {
     Reset,
     SingleToken,
@@ -224,7 +240,7 @@ impl<'a> State<'a> {
 
             Status::StringToken(prev_was_backslash) => match ch {
                 Some('\\') => self.status = Status::StringToken(true),
-                Some('"') if !prev_was_backslash => self.add_token(String),
+                Some('"') if !prev_was_backslash => self.add_token(String_),
                 None => self.add_error("Unclosed string.", true),
                 _ => {
                     if prev_was_backslash {
@@ -260,12 +276,12 @@ impl<'a> State<'a> {
             },
 
             Status::IdentifierToken(is_start) => match ch {
-                Some(c) if (is_start && c.is_alphabetic()) || c.is_alphanumeric() => {
+                Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => {
                     let is_start = false;
                     self.status = Status::IdentifierToken(is_start);
 
                     match self.peek() {
-                        Some(c) if (is_start && c.is_alphabetic()) || c.is_alphanumeric() => (),
+                        Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => (),
 
                         // Anything else we find ends the identifier token
                         _ => self.add_token(match self.lexeme().as_str() {
@@ -275,8 +291,8 @@ impl<'a> State<'a> {
                             "if" => If,
                             "then" => Then,
                             "else" => Else,
-                            "true" => True,
-                            "false" => False,
+                            "True" => True,
+                            "False" => False,
                             "let" => Let,
                             "import" => Import,
                             "as" => As,
@@ -327,7 +343,7 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn parse<'a>(source: Source<'a>) -> Result<Vec<Token>, Vec<Error>> {
+pub fn parse<'a>(source: &Source<'a>) -> Result<Vec<Token>, Vec<Error>> {
     let mut tokenizer = State::new(&source);
 
     tokenizer.parse();
@@ -339,6 +355,11 @@ pub fn parse<'a>(source: Source<'a>) -> Result<Vec<Token>, Vec<Error>> {
     }
 }
 
+fn is_identifier_rest(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::source::Source;
@@ -433,7 +454,7 @@ mod tests {
                         column: 1,
                     },
                     Token {
-                        kind: String,
+                        kind: String_,
                         lexeme: "\"abc\"".to_owned(),
                         position: 8,
                         line: 2,
@@ -468,7 +489,7 @@ mod tests {
                 "\"asdf\\\"asdf\"".to_owned(),
                 Ok(vec![
                     Token {
-                        kind: String,
+                        kind: String_,
                         lexeme: "\"asdf\\\"asdf\"".to_owned(),
                         position: 0,
                         line: 1,
@@ -488,81 +509,8 @@ mod tests {
         ];
 
         for (code, expected) in tests {
-            let result = parse(Source::new_orphan(&code));
+            let result = parse(&Source::new_orphan(&code));
             assert_eq!(result, expected, "\nCode:\n{:?}", &code);
         }
     }
 }
-/*
-Test.suite("Tokenizer", ({test}) => {
-  open Token
-
-  let testCases: array<(string, result<array<Token.t>, array<Tokenizer.error>>)> = [
-    ("", Ok([{kind: Eof, lexeme: "[End of file]", position: 0, line: 1, indent: 0, column: 0}])),
-    (
-      "123",
-      Ok([
-        {kind: Float, lexeme: "123", position: 0, line: 1, indent: 0, column: 0},
-        {kind: Eof, lexeme: "[End of file]", position: 3, line: 1, indent: 0, column: 3},
-      ]),
-    ),
-    (
-      "123.345",
-      Ok([
-        {kind: Float, lexeme: "123.345", position: 0, line: 1, indent: 0, column: 0},
-        {kind: Eof, lexeme: "[End of file]", position: 7, line: 1, indent: 0, column: 7},
-      ]),
-    ),
-    (
-      "123.sd",
-      Error([
-        {
-          line: 1,
-          column: 3,
-          message: `1:3
-Expected more digits after a dot in a number.
-  1│  123.sd
-   │     ↑`,
-        },
-      ]),
-    ),
-    (
-      "123\n or \"abc\"",
-      Ok([
-        {kind: Float, lexeme: "123", position: 0, line: 1, indent: 0, column: 0},
-        {kind: Or, lexeme: "or", position: 5, line: 2, indent: 1, column: 1},
-        {kind: String, lexeme: "\"abc\"", position: 8, line: 2, indent: 1, column: 4},
-        {kind: Eof, lexeme: "[End of file]", position: 13, line: 2, indent: 1, column: 9},
-      ]),
-    ),
-    (
-      "123\n or &\"abc\"",
-      Error([
-        {
-          line: 2,
-          column: 4,
-          message: `2:4
-Unexpected character '&'.
-  1│  123
-  2│   or &"abc"
-   │      ↑`,
-        },
-      ]),
-    ),
-    (
-      `"asdf\\\"asdf"`,
-      Ok([
-        {kind: String, lexeme: `"asdf\\\"asdf"`, position: 0, line: 1, indent: 0, column: 0},
-        {kind: Eof, lexeme: "[End of file]", position: 12, line: 1, indent: 0, column: 12},
-      ]),
-    ),
-  ]
-
-  testCases->Array.forEachWithIndex((i, (input, expected)) => {
-    let subject = input->Js.String2.split("\n")->Array.getExn(0)
-    test(j`$i. "$subject"`, () => {
-      Test.assertEquals(Tokenizer.parse(input), expected, ``)
-    })
-  })
-})
-*/

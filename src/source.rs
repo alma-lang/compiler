@@ -3,6 +3,9 @@ use std::ops::Range;
 use std::slice::SliceIndex;
 use std::str::CharIndices;
 
+#[cfg(test)]
+use pretty_assertions::{assert_eq, assert_ne};
+
 #[derive(Debug)]
 enum SourceOrigin {
     File(String),
@@ -75,6 +78,10 @@ impl<'a> Source<'a> {
         end_position: Option<usize>,
         line_number: u32,
     ) -> Option<String> {
+        if self.len() == 0 {
+            return None;
+        }
+
         let mut message = String::new();
 
         let point_to_end_of_input = position == self.len();
