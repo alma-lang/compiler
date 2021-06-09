@@ -118,11 +118,17 @@ impl<'a> Source<'a> {
                 ));
 
                 let num_pointers = max(1, end_position.unwrap_or(position) - position);
+                let num_spaces = if point_to_end_of_input {
+                    column_number + 1
+                } else {
+                    column_number
+                };
+
                 message.push_str(&format!(
                     "  {0:1$}│  {2}{3}\n",
                     " ",
                     line_number_width,
-                    str::repeat(" ", column_number as usize),
+                    str::repeat(" ", num_spaces as usize),
                     str::repeat("↑", num_pointers as usize)
                 ));
             }

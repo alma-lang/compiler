@@ -1,6 +1,6 @@
 use crate::token::Token;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Node<V> {
     pub start: usize,
     pub end: usize,
@@ -23,18 +23,18 @@ impl<V> Node<V> {
 
 type Unary = Node<Unary_>;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Unary_ {
     Not,
     Minus,
 }
 
-mod binop {
+pub mod binop {
     use super::Node;
     use lazy_static::lazy_static;
 
-    #[derive(PartialEq, Debug)]
-    enum Type {
+    #[derive(PartialEq, Debug, Clone)]
+    pub enum Type {
         Or,
         And,
         Equal,
@@ -49,20 +49,20 @@ mod binop {
         Division,
     }
 
-    #[derive(PartialEq, Debug)]
-    enum Associativity {
+    #[derive(PartialEq, Debug, Clone)]
+    pub enum Associativity {
         LTR,
         RTL,
     }
 
     pub type Binop = Node<Binop_>;
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone)]
     pub struct Binop_ {
         typ: Type,
-        precedence: u32,
-        associativity: Associativity,
-        fn_: String,
+        pub precedence: u32,
+        pub associativity: Associativity,
+        pub fn_: String,
     }
 
     use Associativity::*;
@@ -145,16 +145,16 @@ mod binop {
 }
 use binop::Binop;
 
-type Pattern = Node<Pattern_>;
+pub type Pattern = Node<Pattern_>;
 
-#[derive(PartialEq, Debug)]
-enum Pattern_ {
+#[derive(PartialEq, Debug, Clone)]
+pub enum Pattern_ {
     Identifier(String),
 }
 
 pub type Expression = Node<Expression_>;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Expression_ {
     Unit,
     Bool(bool),

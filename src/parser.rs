@@ -17,9 +17,10 @@
 */
 
 use crate::ast::{
+    binop::*,
     Expression,
-    Expression_::{Float, Identifier, String_, *},
-    Node,
+    Expression_::{Float, Identifier, If, Let, String_, *},
+    Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
 };
 use crate::source::Source;
@@ -117,6 +118,13 @@ impl<'a> State<'a> {
         };
     }
 
+    fn is_next_line_same_indent(&self, parent_token: &Token) -> bool {
+        let token = self.get_token();
+        parent_token.line < token.line && token.indent == parent_token.indent
+    }
+
+    // ---
+
     pub fn file(&mut self) -> ParseResults<Expression> {
         match self.expression() {
             Err(e) => Err(vec![e]),
@@ -136,7 +144,288 @@ impl<'a> State<'a> {
     }
 
     fn expression(&mut self) -> ParseResult<Expression> {
-        self.unary()
+        match self.let_()? {
+            Some(let_) => Ok(let_),
+            None => match self.if_()? {
+                Some(if_) => Ok(if_),
+                None => match self.lambda()? {
+                    Some(lambda) => Ok(lambda),
+                    None => self.binary(),
+                },
+            },
+        }
+    }
+
+    fn let_(&mut self) -> ParseResult<Option<Expression>> {
+        let token = self.get_token().clone();
+
+        match token.kind {
+            TT::Let => {
+                self.advance();
+
+                let pattern = self.pattern()?;
+
+                match pattern {
+                    Some(pattern) => {
+                        let equal_token = self.get_token();
+                        match equal_token.kind {
+                            Equal => {
+                                self.advance();
+
+                                let value = self.expression()?;
+
+                                if self.is_next_line_same_indent(&token) {
+                                    let body = self.expression()?;
+
+                                    let line = token.line;
+                                    let column = token.column;
+                                    let start = token.position;
+                                    let end = body.end;
+                                    Ok(Some(Node {
+                                        value: Let(pattern, Box::new(value), Box::new(body)),
+                                        line,
+                                        column,
+                                        start,
+                                        end,
+                                    }))
+                                } else {
+                                    Err(Error::expected_but_found(
+                                        self.input,
+                                        &self.get_token(),
+                                        None,
+                                        "Expected the let definition \
+                                        to be followed by another let \
+                                        or expression in the next line \
+                                        and same indentation"
+                                            .to_owned(),
+                                    ))
+                                }
+                            }
+
+                            _ => Err(Error::expected_but_found(
+                                self.input,
+                                &equal_token,
+                                None,
+                                "Expected an = and an expression \
+                                for the right side of let expression"
+                                    .to_owned(),
+                            )),
+                        }
+                    }
+                    None => Err(Error::expected_but_found(
+                        self.input,
+                        &token,
+                        None,
+                        "Expected a pattern for the left side of the let expression".to_owned(),
+                    )),
+                }
+            }
+
+            _ => Ok(None),
+        }
+    }
+
+    fn if_(&mut self) -> ParseResult<Option<Expression>> {
+        let token = self.get_token().clone();
+
+        match token.kind {
+            TT::If => {
+                self.advance();
+
+                let condition = self.binary()?;
+
+                let then_token = self.get_token();
+                match then_token.kind {
+                    Then => {
+                        self.advance();
+                        let then = self.expression()?;
+
+                        let else_token = self.get_token();
+                        match else_token.kind {
+                            Else => {
+                                self.advance();
+
+                                let else_ = self.expression()?;
+
+                                let line = token.line;
+                                let column = token.column;
+                                let start = token.position;
+                                let end = else_.end;
+
+                                Ok(Some(Node {
+                                    value: If(Box::new(condition), Box::new(then), Box::new(else_)),
+                                    line,
+                                    column,
+                                    start,
+                                    end,
+                                }))
+                            }
+
+                            _ => Err(Error::expected_but_found(
+                                self.input,
+                                &else_token,
+                                None,
+                                "Expected the `else` branch of the if expression".to_owned(),
+                            )),
+                        }
+                    }
+
+                    _ => Err(Error::expected_but_found(
+                        self.input,
+                        &then_token,
+                        None,
+                        "Expected the keyword `then` and an expression to parse the if expression"
+                            .to_owned(),
+                    )),
+                }
+            }
+
+            _ => Ok(None),
+        }
+    }
+
+    fn lambda(&mut self) -> ParseResult<Option<Expression>> {
+        let token = self.get_token().clone();
+
+        match token.kind {
+            Backslash => {
+                self.advance();
+
+                let params = self.params()?;
+
+                let arrow = self.get_token();
+                match arrow.kind {
+                    Arrow => {
+                        self.advance();
+
+                        let body = self.expression()?;
+                        let line = token.line;
+                        let column = token.column;
+                        let start = token.position;
+                        let end = body.end;
+
+                        Ok(Some(Node {
+                            value: Lambda(params, Box::new(body)),
+                            line,
+                            column,
+                            start,
+                            end,
+                        }))
+                    }
+
+                    _ => Err(Error::expected_but_found(
+                        self.input,
+                        &token,
+                        Some(arrow),
+                        "Expected a -> after the list of parameters for the function".to_owned(),
+                    )),
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn params(&mut self) -> ParseResult<Vec<Pattern>> {
+        let pattern = self.pattern()?;
+
+        match pattern {
+            Some(pattern) => {
+                let mut params = vec![pattern];
+
+                loop {
+                    let pattern = self.pattern()?;
+
+                    match pattern {
+                        Some(pattern) => {
+                            params.push(pattern);
+                        }
+                        None => break,
+                    }
+                }
+
+                Ok(params)
+            }
+
+            None => Err(Error::expected_but_found(
+                &self.input,
+                &self.get_token(),
+                None,
+                "Expected a list of parameters".to_owned(),
+            )),
+        }
+    }
+
+    fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
+        let token = self.get_token().clone();
+
+        match token.kind {
+            TT::Identifier => {
+                self.advance();
+                Ok(Some(Node::new(
+                    Pattern_::Identifier(token.lexeme.clone()),
+                    &token,
+                    &token,
+                )))
+            }
+            _ => Ok(None),
+        }
+        /* For when we need to error out for more complex patterns:
+        Err(
+          Error::expected_but_found(
+            self.input,
+            token,
+            "Expected a pattern (an identifier, destructuring a data structure, etc)",
+          ),
+        ) */
+    }
+
+    fn binary(&mut self) -> ParseResult<Expression> {
+        let expr = self.unary()?;
+
+        self.binary_step().map(|mut binops| {
+            // Make the binops options to be able to take them later
+            let mut binops: Vec<Option<(Binop, Expression)>> =
+                binops.drain(..).map(|b| Some(b)).collect();
+
+            organize_binops(expr, &mut binops, &mut (0), 0)
+        })
+    }
+    fn binary_step(&mut self) -> ParseResult<Vec<(Binop, Expression)>> {
+        let mut binops = vec![];
+
+        loop {
+            let token = self.get_token().clone();
+
+            let op = match token.kind {
+                Slash => Some(DIVISION.clone()),
+                Star => Some(MULTIPLICATION.clone()),
+                Plus => Some(ADDITION.clone()),
+                TT::Minus => Some(SUBSTRACTION.clone()),
+                BangEqual => Some(NOT_EQUAL.clone()),
+                EqualEqual => Some(EQUAL.clone()),
+                Greater => Some(GREATER_THAN.clone()),
+                GreaterEqual => Some(GREATER_EQUAL_THAN.clone()),
+                Less => Some(LESS_THAN.clone()),
+                LessEqual => Some(LESS_EQUAL_THAN.clone()),
+                And => Some(AND.clone()),
+                Or => Some(OR.clone()),
+                _ => None,
+            };
+
+            match op {
+                Some(op) => {
+                    self.advance();
+
+                    let op_node = Node::new(op, &token, &token);
+                    let right = self.unary()?;
+                    binops.push((op_node, right));
+                }
+
+                None => break,
+            };
+        }
+
+        Ok(binops)
     }
 
     fn unary(&mut self) -> ParseResult<Expression> {
@@ -301,6 +590,60 @@ impl<'a> State<'a> {
         parent_token.line == token.line
             || (parent_token.line < token.line && token.indent > parent_token.indent)
     }
+}
+
+fn organize_binops(
+    left: Expression,
+    binops: &mut Vec<Option<(Binop, Expression)>>,
+    current: &mut usize,
+    min_precedence: u32,
+) -> Expression {
+    // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+    // better than the wikipedia article for precedence climibing
+
+    let mut left = left;
+
+    loop {
+        let next = binops.get_mut(*current);
+
+        match next {
+            Some(op_and_expr) => {
+                // Take ownership of the op and rhs
+                let (op, rhs) = op_and_expr.take().unwrap();
+
+                if op.value.precedence >= min_precedence {
+                    *current += 1;
+
+                    let next_min_precedence = op.value.precedence
+                        + if op.value.associativity == Associativity::LTR {
+                            1
+                        } else {
+                            0
+                        };
+
+                    let right = organize_binops(rhs, binops, current, next_min_precedence);
+
+                    let line = left.line;
+                    let column = left.column;
+                    let start = left.start;
+                    let end = right.end;
+
+                    left = Node {
+                        value: Binary(Box::new(left), op, Box::new(right)),
+                        line,
+                        column,
+                        start,
+                        end,
+                    }
+                } else {
+                    break;
+                }
+            }
+            None => break,
+        }
+    }
+
+    left
 }
 
 pub fn parse(input: &Source, tokens: Vec<Token>) -> ParseResults<Expression> {
@@ -651,6 +994,31 @@ fun arg1
                 }),
             ),
             (
+                "hello ()",
+                Ok(Node {
+                    value: FnCall(
+                        Box::new(Node {
+                            value: Identifier("hello".to_owned()),
+                            start: 0,
+                            end: 5,
+                            line: 1,
+                            column: 0,
+                        }),
+                        vec![Node {
+                            value: Unit,
+                            start: 6,
+                            end: 8,
+                            line: 1,
+                            column: 6,
+                        }],
+                    ),
+                    start: 0,
+                    end: 8,
+                    line: 1,
+                    column: 0,
+                }),
+            ),
+            (
                 "not False",
                 Ok(Node {
                     value: Unary(
@@ -740,6 +1108,601 @@ fun arg1
                     end: 8,
                 }),
             ),
+            (
+                "1 - 5",
+                Ok(Node {
+                    value: Binary(
+                        Box::new(Node {
+                            value: Float(1.),
+                            line: 1,
+                            column: 0,
+                            start: 0,
+                            end: 1,
+                        }),
+                        Node {
+                            value: SUBSTRACTION.clone(),
+                            line: 1,
+                            column: 2,
+                            start: 2,
+                            end: 3,
+                        },
+                        Box::new(Node {
+                            value: Float(5.),
+                            line: 1,
+                            column: 4,
+                            start: 4,
+                            end: 5,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 5,
+                }),
+            ),
+            (
+                "1 - -5",
+                Ok(Node {
+                    value: Binary(
+                        Box::new(Node {
+                            value: Float(1.),
+                            line: 1,
+                            column: 0,
+                            start: 0,
+                            end: 1,
+                        }),
+                        Node {
+                            value: SUBSTRACTION.clone(),
+                            line: 1,
+                            column: 2,
+                            start: 2,
+                            end: 3,
+                        },
+                        Box::new(Node {
+                            value: Unary(
+                                Node {
+                                    value: Minus,
+                                    line: 1,
+                                    column: 4,
+                                    start: 4,
+                                    end: 5,
+                                },
+                                Box::new(Node {
+                                    value: Float(5.),
+                                    line: 1,
+                                    column: 5,
+                                    start: 5,
+                                    end: 6,
+                                }),
+                            ),
+                            line: 1,
+                            column: 4,
+                            start: 4,
+                            end: 6,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 6,
+                }),
+            ),
+            (
+                "1 + 2 / 3",
+                Ok(Node {
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 9,
+                    value: Binary(
+                        Box::new(Node {
+                            line: 1,
+                            column: 0,
+                            start: 0,
+                            end: 1,
+                            value: Float(1.),
+                        }),
+                        Node {
+                            line: 1,
+                            column: 2,
+                            start: 2,
+                            end: 3,
+                            value: ADDITION.clone(),
+                        },
+                        Box::new(Node {
+                            line: 1,
+                            column: 4,
+                            start: 4,
+                            end: 9,
+                            value: Binary(
+                                Box::new(Node {
+                                    line: 1,
+                                    column: 4,
+                                    start: 4,
+                                    end: 5,
+                                    value: Float(2.),
+                                }),
+                                Node {
+                                    line: 1,
+                                    column: 6,
+                                    start: 6,
+                                    end: 7,
+                                    value: DIVISION.clone(),
+                                },
+                                Box::new(Node {
+                                    line: 1,
+                                    column: 8,
+                                    start: 8,
+                                    end: 9,
+                                    value: Float(3.),
+                                }),
+                            ),
+                        }),
+                    ),
+                }),
+            ),
+            (
+                "1 == 2 / 3",
+                Ok(Node {
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 10,
+                    value: Binary(
+                        Box::new(Node {
+                            line: 1,
+                            column: 0,
+                            start: 0,
+                            end: 1,
+                            value: Float(1.),
+                        }),
+                        Node {
+                            line: 1,
+                            column: 2,
+                            start: 2,
+                            end: 4,
+                            value: EQUAL.clone(),
+                        },
+                        Box::new(Node {
+                            line: 1,
+                            column: 5,
+                            start: 5,
+                            end: 10,
+                            value: Binary(
+                                Box::new(Node {
+                                    line: 1,
+                                    column: 5,
+                                    start: 5,
+                                    end: 6,
+                                    value: Float(2.),
+                                }),
+                                Node {
+                                    line: 1,
+                                    column: 7,
+                                    start: 7,
+                                    end: 8,
+                                    value: DIVISION.clone(),
+                                },
+                                Box::new(Node {
+                                    line: 1,
+                                    column: 9,
+                                    start: 9,
+                                    end: 10,
+                                    value: Float(3.),
+                                }),
+                            ),
+                        }),
+                    ),
+                }),
+            ),
+            (
+                "\\a -> a",
+                Ok(Node {
+                    value: Lambda(
+                        vec![Node {
+                            value: Pattern_::Identifier("a".to_owned()),
+                            line: 1,
+                            column: 1,
+                            start: 1,
+                            end: 2,
+                        }],
+                        Box::new(Node {
+                            value: Identifier("a".to_owned()),
+                            line: 1,
+                            column: 6,
+                            start: 6,
+                            end: 7,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 7,
+                }),
+            ),
+            (
+                "\\a -> \\b -> a",
+                Ok(Node {
+                    value: Lambda(
+                        vec![Node {
+                            value: Pattern_::Identifier("a".to_owned()),
+                            line: 1,
+                            column: 1,
+                            start: 1,
+                            end: 2,
+                        }],
+                        Box::new(Node {
+                            value: Lambda(
+                                vec![Node {
+                                    value: Pattern_::Identifier("b".to_owned()),
+                                    line: 1,
+                                    column: 7,
+                                    start: 7,
+                                    end: 8,
+                                }],
+                                Box::new(Node {
+                                    value: Identifier("a".to_owned()),
+                                    line: 1,
+                                    column: 12,
+                                    start: 12,
+                                    end: 13,
+                                }),
+                            ),
+                            line: 1,
+                            column: 6,
+                            start: 6,
+                            end: 13,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 13,
+                }),
+            ),
+            (
+                "\\a b -> a",
+                Ok(Node {
+                    value: Lambda(
+                        vec![
+                            Node {
+                                value: Pattern_::Identifier("a".to_owned()),
+                                line: 1,
+                                column: 1,
+                                start: 1,
+                                end: 2,
+                            },
+                            Node {
+                                value: Pattern_::Identifier("b".to_owned()),
+                                line: 1,
+                                column: 3,
+                                start: 3,
+                                end: 4,
+                            },
+                        ],
+                        Box::new(Node {
+                            value: Identifier("a".to_owned()),
+                            line: 1,
+                            column: 8,
+                            start: 8,
+                            end: 9,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 9,
+                }),
+            ),
+            (
+                "if True then 1 else 2",
+                Ok(Node {
+                    value: If(
+                        Box::new(Node {
+                            value: Bool(true),
+                            line: 1,
+                            column: 3,
+                            start: 3,
+                            end: 7,
+                        }),
+                        Box::new(Node {
+                            value: Float(1.),
+                            line: 1,
+                            column: 13,
+                            start: 13,
+                            end: 14,
+                        }),
+                        Box::new(Node {
+                            value: Float(2.),
+                            line: 1,
+                            column: 20,
+                            start: 20,
+                            end: 21,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 21,
+                }),
+            ),
+            (
+                "
+if True then
+  1
+
+else
+  2",
+                Ok(Node {
+                    value: If(
+                        Box::new(Node {
+                            value: Bool(true),
+                            line: 2,
+                            column: 3,
+                            start: 4,
+                            end: 8,
+                        }),
+                        Box::new(Node {
+                            value: Float(1.),
+                            line: 3,
+                            column: 2,
+                            start: 16,
+                            end: 17,
+                        }),
+                        Box::new(Node {
+                            value: Float(2.),
+                            line: 6,
+                            column: 2,
+                            start: 26,
+                            end: 27,
+                        }),
+                    ),
+                    line: 2,
+                    column: 0,
+                    start: 1,
+                    end: 27,
+                }),
+            ),
+            (
+                "if True then incr 1 else 2",
+                Ok(Node {
+                    value: If(
+                        Box::new(Node {
+                            value: Bool(true),
+                            line: 1,
+                            column: 3,
+                            start: 3,
+                            end: 7,
+                        }),
+                        Box::new(Node {
+                            value: FnCall(
+                                Box::new(Node {
+                                    value: Identifier("incr".to_owned()),
+                                    line: 1,
+                                    column: 13,
+                                    start: 13,
+                                    end: 17,
+                                }),
+                                vec![Node {
+                                    value: Float(1.),
+                                    line: 1,
+                                    column: 18,
+                                    start: 18,
+                                    end: 19,
+                                }],
+                            ),
+                            line: 1,
+                            column: 13,
+                            start: 13,
+                            end: 19,
+                        }),
+                        Box::new(Node {
+                            value: Float(2.),
+                            line: 1,
+                            column: 25,
+                            start: 25,
+                            end: 26,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 26,
+                }),
+            ),
+            (
+                "if True then if False then 1 else 3 else 2",
+                Ok(Node {
+                    value: If(
+                        Box::new(Node {
+                            value: Bool(true),
+                            line: 1,
+                            column: 3,
+                            start: 3,
+                            end: 7,
+                        }),
+                        Box::new(Node {
+                            value: If(
+                                Box::new(Node {
+                                    value: Bool(false),
+                                    line: 1,
+                                    column: 16,
+                                    start: 16,
+                                    end: 21,
+                                }),
+                                Box::new(Node {
+                                    value: Float(1.),
+                                    line: 1,
+                                    column: 27,
+                                    start: 27,
+                                    end: 28,
+                                }),
+                                Box::new(Node {
+                                    value: Float(3.),
+                                    line: 1,
+                                    column: 34,
+                                    start: 34,
+                                    end: 35,
+                                }),
+                            ),
+                            line: 1,
+                            column: 13,
+                            start: 13,
+                            end: 35,
+                        }),
+                        Box::new(Node {
+                            value: Float(2.),
+                            line: 1,
+                            column: 41,
+                            start: 41,
+                            end: 42,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 42,
+                }),
+            ),
+            (
+                "if True { 1 } else 2",
+                Err(vec![Error {
+                    message: {
+                        "1:8: Expected the keyword `then` and an expression to parse the if expression, but instead found: '{'\n
+  1│  if True { 1 } else 2
+   │          ↑
+".to_owned()
+                    },
+                    token: Token {
+                        kind: LeftBrace,
+                        lexeme: "{".to_owned(),
+                        position: 8,
+                        line: 1,
+                        column: 8,
+                        indent: 0,
+                    },
+                }]),
+            ),
+            (
+                "if True then 1",
+                Err(vec![Error {
+                    message: {
+                        "1:14: Expected the `else` branch of the if expression, but instead found: '[End of file]'
+
+  1│  if True then 1
+   │                ↑
+".to_owned()
+                    },
+                    token: Token {
+                        kind: Eof,
+                        lexeme: "[End of file]".to_owned(),
+                        position: 14,
+                        line: 1,
+                        column: 14,
+                        indent: 0,
+                    },
+                }]),
+            ),
+            (
+                "let x = 1\nx",
+                Ok(Node {
+                    value: Let(
+                        Node {
+                            value: Pattern_::Identifier("x".to_owned()),
+                            line: 1,
+                            column: 4,
+                            start: 4,
+                            end: 5,
+                        },
+                        Box::new(Node {
+                            value: Float(1.),
+                            line: 1,
+                            column: 8,
+                            start: 8,
+                            end: 9,
+                        }),
+                        Box::new(Node {
+                            value: Identifier("x".to_owned()),
+                            line: 2,
+                            column: 0,
+                            start: 10,
+                            end: 11,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 11,
+                }),
+            ),
+            (
+                "let x = a\n  x",
+                Err(vec![Error {
+                    message: {
+                        "2:3: Expected the let definition to be followed by another let or expression in the next line and same indentation, but instead found: '[End of file]'
+
+  1│  let x = a
+  2│    x
+   │     ↑
+".to_owned()
+                    },
+                    token: Token {
+                        kind: Eof,
+                        lexeme: "[End of file]".to_owned(),
+                        position: 13,
+                        line: 2,
+                        column: 3,
+                        indent: 2,
+                    },
+                }]),
+            ),
+            (
+                "let x = a\n  x\nx",
+                Ok(Node {
+                    value: Let(
+                        Node {
+                            value: Pattern_::Identifier("x".to_owned()),
+                            line: 1,
+                            column: 4,
+                            start: 4,
+                            end: 5,
+                        },
+                        Box::new(Node {
+                            value: FnCall(
+                                Box::new(Node {
+                                    value: Identifier("a".to_owned()),
+                                    line: 1,
+                                    column: 8,
+                                    start: 8,
+                                    end: 9,
+                                }),
+                                vec![Node {
+                                    value: Identifier("x".to_owned()),
+                                    line: 2,
+                                    column: 2,
+                                    start: 12,
+                                    end: 13,
+                                }],
+                            ),
+                            line: 1,
+                            column: 8,
+                            start: 8,
+                            end: 13,
+                        }),
+                        Box::new(Node {
+                            value: Identifier("x".to_owned()),
+                            line: 3,
+                            column: 0,
+                            start: 14,
+                            end: 15,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 15,
+                }),
+            ),
         ];
 
         for (code, expected) in tests {
@@ -749,10 +1712,10 @@ fun arg1
             assert_eq!(
                 result,
                 expected,
-                "\n\nInput:\n\n{:?}\n\nExpected:\n\n{}",
+                "\n\nInput:\n\n{:#?}\n\nExpected:\n\n{}",
                 &code,
                 match &result {
-                    Ok(ast) => format!("{:?}", ast),
+                    Ok(ast) => format!("{:#?}", ast),
                     Err(e) => e
                         .iter()
                         .map(|e| e.message.clone())
