@@ -24,7 +24,7 @@ impl<V> Node<V> {
 type Unary = Node<Unary_>;
 
 #[derive(PartialEq, Debug)]
-enum Unary_ {
+pub enum Unary_ {
     Not,
     Minus,
 }
