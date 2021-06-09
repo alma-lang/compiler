@@ -19,5 +19,5 @@ pub fn compile(input: &Source) -> Result<String, String> {
             .join("\n\n")
     })?;
 
-    Ok(format!("{:?}", ast))
+    Ok(format!("{:#?}", ast))
 }

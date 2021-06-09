@@ -1,17 +1,29 @@
 mod ast;
+mod cli;
 mod compiler;
 mod parser;
 mod source;
 mod token;
 mod tokenizer;
 
-use crate::compiler::compile;
+use std::env;
+use std::process;
 
 fn main() {
-    use crate::source::Source;
+    let argv = env::args().skip(1).collect::<Vec<String>>();
+    let args: Vec<_> = argv.iter().map(|x| x.as_str()).collect();
 
-    match compile(&Source::new_orphan("Hello, world!")) {
-        Ok(out) => println!("OK\n\n{}", out),
-        Err(errs) => println!("ERROR\n\n{}", errs),
-    }
+    match args.as_slice() {
+        ["repl"] => cli::prompt(),
+        ["run", path] => cli::file(path.to_string()),
+        _ => {
+            println!(
+                "
+  repl                 Start the REPL
+  run [file.alma]      Run [file.alma]
+"
+            );
+            process::exit(0);
+        }
+    };
 }
