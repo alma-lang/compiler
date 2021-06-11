@@ -8,7 +8,7 @@ let compile = (input: string): result<string, string> =>
 
     | Ok(ast) =>
       switch ast->Infer.infer {
-      | Ok(typ) => Ok(Type.toString(typ) ++ "\n" ++ Ast.Expression.toString(ast.value))
+      | Ok(typ) => Ok(Type.toString(typ))
       | Error(errors) => Error(Infer.InferError.toStringMany(errors, input))
       }
     }

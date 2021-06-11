@@ -69,7 +69,7 @@ impl Error {
             message,
             input
                 .lines_report_at_position_with_pointer(position, Some(end), line_number,)
-                .unwrap_or("".to_owned())
+                .unwrap()
         );
 
         Self {
@@ -608,10 +608,15 @@ fn organize_binops(
 
         match next {
             Some(op_and_expr) => {
-                // Take ownership of the op and rhs
-                let (op, rhs) = op_and_expr.take().unwrap();
+                let keep_parsing = match &op_and_expr {
+                    Some((op, _rhs)) if op.value.precedence >= min_precedence => true,
+                    _ => false,
+                };
 
-                if op.value.precedence >= min_precedence {
+                if keep_parsing {
+                    // Take ownership of the op and rhs
+                    let (op, rhs) = op_and_expr.take().unwrap();
+
                     *current += 1;
 
                     let next_min_precedence = op.value.precedence
@@ -803,8 +808,7 @@ mod tests {
                         "1:6: Expected ')' after parenthesized expression, but instead found: '[End of file]'
 
   1│  (((1))
-   │  ↑
-".to_owned()
+   │  ↑".to_owned()
                     },
                     token: Token {
                         kind: TT::Eof,
@@ -822,9 +826,8 @@ mod tests {
                     message: "1:7: Expected the end of input, but instead found: ')'
 
   1│  (((1))))
-   │         ↑
-"
-                    .to_owned(),
+   │         ↑"
+                        .to_owned(),
                     token: Token {
                         kind: TT::RightParen,
                         lexeme: ")".to_owned(),
@@ -929,9 +932,8 @@ mod tests {
 
   1│  fun
   2│  arg
-   │  ↑↑↑
-"
-                    .to_owned(),
+   │  ↑↑↑"
+                        .to_owned(),
                     token: Token {
                         kind: TT::Identifier,
                         lexeme: "arg".to_owned(),
@@ -1570,8 +1572,7 @@ else
                     message: {
                         "1:8: Expected the keyword `then` and an expression to parse the if expression, but instead found: '{'\n
   1│  if True { 1 } else 2
-   │          ↑
-".to_owned()
+   │          ↑".to_owned()
                     },
                     token: Token {
                         kind: LeftBrace,
@@ -1590,8 +1591,7 @@ else
                         "1:14: Expected the `else` branch of the if expression, but instead found: '[End of file]'
 
   1│  if True then 1
-   │                ↑
-".to_owned()
+   │                ↑".to_owned()
                     },
                     token: Token {
                         kind: Eof,
@@ -1643,8 +1643,7 @@ else
 
   1│  let x = a
   2│    x
-   │     ↑
-".to_owned()
+   │     ↑".to_owned()
                     },
                     token: Token {
                         kind: Eof,

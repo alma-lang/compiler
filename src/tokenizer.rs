@@ -364,6 +364,7 @@ mod tests {
     use super::*;
     use crate::source::Source;
     use crate::token::{Token, Type::*};
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_scan_tokens() {
@@ -429,9 +430,8 @@ mod tests {
                     message: "Expected more digits after a dot in a number.
 
   1│  123.sd
-   │     ↑
-"
-                    .to_owned(),
+   │     ↑"
+                        .to_owned(),
                 }]),
             ),
             (
@@ -480,9 +480,8 @@ mod tests {
 
   1│  123
   2│   or &\"abc\"
-   │      ↑
-"
-                    .to_owned(),
+   │      ↑"
+                        .to_owned(),
                 }]),
             ),
             (

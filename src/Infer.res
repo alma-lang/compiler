@@ -185,7 +185,9 @@ let rec occurs = (aId: typeVarId, aLevel: level, x: Type.typ) =>
   switch x {
   | Unit => false
   | Named(_) => false
+
   | Var({contents: Bound(t)}) => occurs(aId, aLevel, t)
+
   | Var({contents: Unbound(bId, bLevel)} as bTypevar) =>
     let minLevel = min(aLevel, bLevel)
     bTypevar := Unbound(bId, minLevel)

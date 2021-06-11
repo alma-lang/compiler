@@ -4,7 +4,7 @@ use std::slice::SliceIndex;
 use std::str::CharIndices;
 
 #[cfg(test)]
-use pretty_assertions::{assert_eq, assert_ne};
+use pretty_assertions::assert_eq;
 
 #[derive(Debug)]
 enum SourceOrigin {
@@ -101,8 +101,11 @@ impl<'a> Source<'a> {
         let column_number = position - lines_start_position;
 
         for (i, l) in lines_before.iter().enumerate() {
+            if !message.is_empty() {
+                message.push_str("\n");
+            }
             message.push_str(&format!(
-                "  {0:1$}│  {2}\n",
+                "  {0:1$}│  {2}",
                 line_number - lines_before.len() as u32 + i as u32,
                 line_number_width,
                 l
@@ -112,6 +115,9 @@ impl<'a> Source<'a> {
         match lines.as_slice() {
             [] => panic!("Empty code for report, should've bailed earlier at line_at"),
             [line] => {
+                if !message.is_empty() {
+                    message.push_str("\n");
+                }
                 message.push_str(&format!(
                     "  {0:1$}│  {2}\n",
                     line_number, line_number_width, line
@@ -125,7 +131,7 @@ impl<'a> Source<'a> {
                 };
 
                 message.push_str(&format!(
-                    "  {0:1$}│  {2}{3}\n",
+                    "  {0:1$}│  {2}{3}",
                     " ",
                     line_number_width,
                     str::repeat(" ", num_spaces as usize),
@@ -134,8 +140,11 @@ impl<'a> Source<'a> {
             }
             lines => {
                 for (i, l) in lines.iter().enumerate() {
+                    if !message.is_empty() {
+                        message.push_str("\n");
+                    }
                     message.push_str(&format!(
-                        "  {0:1$}│→ {2}\n",
+                        "  {0:1$}│→ {2}",
                         line_number + i as u32,
                         line_number_width,
                         l
@@ -145,8 +154,9 @@ impl<'a> Source<'a> {
         }
 
         for (i, l) in lines_after.iter().enumerate() {
+            message.push_str("\n");
             message.push_str(&format!(
-                "  {0:1$}│ {2}\n",
+                "  {0:1$}│  {2}",
                 line_number + 1 + i as u32,
                 line_number_width,
                 l
@@ -155,19 +165,13 @@ impl<'a> Source<'a> {
         Some(message)
     }
 
-    pub fn to_string_with_line_and_col(&self, line: usize, column: usize) -> String {
+    pub fn to_string_with_line_and_col(&self, line: u32, column: u32) -> String {
         let s = match &self.source {
-            SourceOrigin::File(path) => Some(path.to_string()),
-            SourceOrigin::NotAFile => None,
+            SourceOrigin::File(path) => path.to_string(),
+            SourceOrigin::NotAFile => "".to_string(),
         };
-        let space = if s.is_some() { " " } else { "" }.to_string();
-        format!(
-            "{}{}[{}:{}]",
-            s.unwrap_or("".to_string()),
-            space,
-            line,
-            column
-        )
+        let space = if s.is_empty() { "" } else { " " }.to_string();
+        format!("{}{}[{}:{}]", s, space, line, column)
     }
 }
 

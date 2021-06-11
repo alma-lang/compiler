@@ -1,10 +1,13 @@
 mod ast;
 mod cli;
 mod compiler;
+mod infer;
 mod parser;
 mod source;
 mod token;
 mod tokenizer;
+mod typ;
+mod type_env;
 
 use std::env;
 use std::process;

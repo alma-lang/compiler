@@ -1,3 +1,4 @@
+use crate::infer;
 use crate::parser;
 use crate::source::Source;
 use crate::tokenizer;
@@ -19,5 +20,13 @@ pub fn compile(input: &Source) -> Result<String, String> {
             .join("\n\n")
     })?;
 
-    Ok(format!("{:#?}", ast))
+    let typ = infer::infer(&ast).map_err(|errors| {
+        errors
+            .iter()
+            .map(|e| e.to_string(&input))
+            .collect::<Vec<String>>()
+            .join("\n\n")
+    })?;
+
+    Ok(format!("{}", typ))
 }
