@@ -1,4 +1,5 @@
 use crate::token::Token;
+use std::rc::Rc;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Node<V> {
@@ -161,10 +162,10 @@ pub enum Expression_ {
     Float(f64),
     String_(String),
     Identifier(String),
-    Unary(Unary, Box<Expression>),
-    Binary(Box<Expression>, Binop, Box<Expression>),
-    Lambda(Vec<Pattern>, Box<Expression>),
-    FnCall(Box<Expression>, Vec<Expression>),
-    Let(Pattern, Box<Expression>, Box<Expression>),
-    If(Box<Expression>, Box<Expression>, Box<Expression>),
+    Unary(Unary, Rc<Expression>),
+    Binary(Rc<Expression>, Binop, Rc<Expression>),
+    Lambda(Vec<Rc<Pattern>>, Rc<Expression>),
+    FnCall(Rc<Expression>, Vec<Rc<Expression>>),
+    Let(Pattern, Rc<Expression>, Rc<Expression>),
+    If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
 }

@@ -16,6 +16,8 @@
                      | "(" expression ")"
 */
 
+use std::rc::Rc;
+
 use crate::ast::{
     binop::*,
     Expression,
@@ -182,7 +184,7 @@ impl<'a> State<'a> {
                                     let start = token.position;
                                     let end = body.end;
                                     Ok(Some(Node {
-                                        value: Let(pattern, Box::new(value), Box::new(body)),
+                                        value: Let(pattern, Rc::new(value), Rc::new(body)),
                                         line,
                                         column,
                                         start,
@@ -253,7 +255,7 @@ impl<'a> State<'a> {
                                 let end = else_.end;
 
                                 Ok(Some(Node {
-                                    value: If(Box::new(condition), Box::new(then), Box::new(else_)),
+                                    value: If(Rc::new(condition), Rc::new(then), Rc::new(else_)),
                                     line,
                                     column,
                                     start,
@@ -305,7 +307,7 @@ impl<'a> State<'a> {
                         let end = body.end;
 
                         Ok(Some(Node {
-                            value: Lambda(params, Box::new(body)),
+                            value: Lambda(params, Rc::new(body)),
                             line,
                             column,
                             start,
@@ -325,19 +327,19 @@ impl<'a> State<'a> {
         }
     }
 
-    fn params(&mut self) -> ParseResult<Vec<Pattern>> {
+    fn params(&mut self) -> ParseResult<Vec<Rc<Pattern>>> {
         let pattern = self.pattern()?;
 
         match pattern {
             Some(pattern) => {
-                let mut params = vec![pattern];
+                let mut params = vec![Rc::new(pattern)];
 
                 loop {
                     let pattern = self.pattern()?;
 
                     match pattern {
                         Some(pattern) => {
-                            params.push(pattern);
+                            params.push(Rc::new(pattern));
                         }
                         None => break,
                     }
@@ -451,7 +453,7 @@ impl<'a> State<'a> {
                 let start = op.start;
                 let end = expr.end;
                 Node {
-                    value: Unary(op, Box::new(expr)),
+                    value: Unary(op, Rc::new(expr)),
                     line,
                     column,
                     start,
@@ -477,7 +479,7 @@ impl<'a> State<'a> {
                     let start = expr.start;
                     let end = last_arg.end;
                     Node {
-                        value: FnCall(Box::new(expr), args),
+                        value: FnCall(Rc::new(expr), args),
                         line,
                         column,
                         start,
@@ -497,8 +499,8 @@ impl<'a> State<'a> {
     fn arguments(
         &mut self,
         first_token: &Token,
-        mut args: Vec<Expression>,
-    ) -> ParseResult<Vec<Expression>> {
+        mut args: Vec<Rc<Expression>>,
+    ) -> ParseResult<Vec<Rc<Expression>>> {
         if !self.is_nested_indent(first_token) {
             Ok(args)
         } else {
@@ -508,7 +510,7 @@ impl<'a> State<'a> {
                     None => Ok(args),
 
                     Some(arg) => {
-                        args.push(arg);
+                        args.push(Rc::new(arg));
                         self.arguments(first_token, args)
                     }
                 }
@@ -634,7 +636,7 @@ fn organize_binops(
                     let end = right.end;
 
                     left = Node {
-                        value: Binary(Box::new(left), op, Box::new(right)),
+                        value: Binary(Rc::new(left), op, Rc::new(right)),
                         line,
                         column,
                         start,
@@ -854,20 +856,20 @@ mod tests {
                 "fun arg",
                 Ok(Node {
                     value: FnCall(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("fun".to_owned()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 3,
                         }),
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Identifier("arg".to_owned()),
                             line: 1,
                             column: 4,
                             start: 4,
                             end: 7,
-                        }],
+                        })],
                     ),
                     line: 1,
                     column: 0,
@@ -879,20 +881,20 @@ mod tests {
                 "fun\n arg",
                 Ok(Node {
                     value: FnCall(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("fun".to_owned()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 3,
                         }),
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Identifier("arg".to_owned()),
                             line: 2,
                             column: 1,
                             start: 5,
                             end: 8,
-                        }],
+                        })],
                     ),
                     line: 1,
                     column: 0,
@@ -904,20 +906,20 @@ mod tests {
                 "  fun\n    arg",
                 Ok(Node {
                     value: FnCall(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("fun".to_owned()),
                             line: 1,
                             column: 2,
                             start: 2,
                             end: 5,
                         }),
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Identifier("arg".to_owned()),
                             line: 2,
                             column: 4,
                             start: 10,
                             end: 13,
-                        }],
+                        })],
                     ),
                     line: 1,
                     column: 2,
@@ -951,7 +953,7 @@ fun arg1
   arg4",
                 Ok(Node {
                     value: FnCall(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("fun".to_owned()),
                             line: 2,
                             column: 0,
@@ -959,34 +961,34 @@ fun arg1
                             end: 4,
                         }),
                         vec![
-                            Node {
+                            Rc::new(Node {
                                 value: Identifier("arg1".to_owned()),
                                 line: 2,
                                 column: 4,
                                 start: 5,
                                 end: 9,
-                            },
-                            Node {
+                            }),
+                            Rc::new(Node {
                                 value: Identifier("arg2".to_owned()),
                                 line: 3,
                                 column: 2,
                                 start: 12,
                                 end: 16,
-                            },
-                            Node {
+                            }),
+                            Rc::new(Node {
                                 value: Identifier("arg3".to_owned()),
                                 line: 3,
                                 column: 7,
                                 start: 17,
                                 end: 21,
-                            },
-                            Node {
+                            }),
+                            Rc::new(Node {
                                 value: Identifier("arg4".to_owned()),
                                 line: 4,
                                 column: 2,
                                 start: 24,
                                 end: 28,
-                            },
+                            }),
                         ],
                     ),
                     line: 2,
@@ -999,20 +1001,20 @@ fun arg1
                 "hello ()",
                 Ok(Node {
                     value: FnCall(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("hello".to_owned()),
                             start: 0,
                             end: 5,
                             line: 1,
                             column: 0,
                         }),
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Unit,
                             start: 6,
                             end: 8,
                             line: 1,
                             column: 6,
-                        }],
+                        })],
                     ),
                     start: 0,
                     end: 8,
@@ -1031,7 +1033,7 @@ fun arg1
                             start: 0,
                             end: 3,
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Bool(false),
                             line: 1,
                             column: 4,
@@ -1056,7 +1058,7 @@ fun arg1
                             start: 0,
                             end: 1,
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(5.),
                             line: 1,
                             column: 2,
@@ -1074,14 +1076,14 @@ fun arg1
                 "incr (-5)",
                 Ok(Node {
                     value: FnCall(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("incr".to_owned()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 4,
                         }),
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Unary(
                                 Node {
                                     value: Minus,
@@ -1090,7 +1092,7 @@ fun arg1
                                     start: 6,
                                     end: 7,
                                 },
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Float(5.),
                                     line: 1,
                                     column: 7,
@@ -1102,7 +1104,7 @@ fun arg1
                             column: 6,
                             start: 6,
                             end: 8,
-                        }],
+                        })],
                     ),
                     line: 1,
                     column: 0,
@@ -1114,7 +1116,7 @@ fun arg1
                 "1 - 5",
                 Ok(Node {
                     value: Binary(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(1.),
                             line: 1,
                             column: 0,
@@ -1128,7 +1130,7 @@ fun arg1
                             start: 2,
                             end: 3,
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(5.),
                             line: 1,
                             column: 4,
@@ -1146,7 +1148,7 @@ fun arg1
                 "1 - -5",
                 Ok(Node {
                     value: Binary(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(1.),
                             line: 1,
                             column: 0,
@@ -1160,7 +1162,7 @@ fun arg1
                             start: 2,
                             end: 3,
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Unary(
                                 Node {
                                     value: Minus,
@@ -1169,7 +1171,7 @@ fun arg1
                                     start: 4,
                                     end: 5,
                                 },
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Float(5.),
                                     line: 1,
                                     column: 5,
@@ -1197,7 +1199,7 @@ fun arg1
                     start: 0,
                     end: 9,
                     value: Binary(
-                        Box::new(Node {
+                        Rc::new(Node {
                             line: 1,
                             column: 0,
                             start: 0,
@@ -1211,13 +1213,13 @@ fun arg1
                             end: 3,
                             value: ADDITION.clone(),
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             line: 1,
                             column: 4,
                             start: 4,
                             end: 9,
                             value: Binary(
-                                Box::new(Node {
+                                Rc::new(Node {
                                     line: 1,
                                     column: 4,
                                     start: 4,
@@ -1231,7 +1233,7 @@ fun arg1
                                     end: 7,
                                     value: DIVISION.clone(),
                                 },
-                                Box::new(Node {
+                                Rc::new(Node {
                                     line: 1,
                                     column: 8,
                                     start: 8,
@@ -1251,7 +1253,7 @@ fun arg1
                     start: 0,
                     end: 10,
                     value: Binary(
-                        Box::new(Node {
+                        Rc::new(Node {
                             line: 1,
                             column: 0,
                             start: 0,
@@ -1265,13 +1267,13 @@ fun arg1
                             end: 4,
                             value: EQUAL.clone(),
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             line: 1,
                             column: 5,
                             start: 5,
                             end: 10,
                             value: Binary(
-                                Box::new(Node {
+                                Rc::new(Node {
                                     line: 1,
                                     column: 5,
                                     start: 5,
@@ -1285,7 +1287,7 @@ fun arg1
                                     end: 8,
                                     value: DIVISION.clone(),
                                 },
-                                Box::new(Node {
+                                Rc::new(Node {
                                     line: 1,
                                     column: 9,
                                     start: 9,
@@ -1301,14 +1303,14 @@ fun arg1
                 "\\a -> a",
                 Ok(Node {
                     value: Lambda(
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Pattern_::Identifier("a".to_owned()),
                             line: 1,
                             column: 1,
                             start: 1,
                             end: 2,
-                        }],
-                        Box::new(Node {
+                        })],
+                        Rc::new(Node {
                             value: Identifier("a".to_owned()),
                             line: 1,
                             column: 6,
@@ -1326,23 +1328,23 @@ fun arg1
                 "\\a -> \\b -> a",
                 Ok(Node {
                     value: Lambda(
-                        vec![Node {
+                        vec![Rc::new(Node {
                             value: Pattern_::Identifier("a".to_owned()),
                             line: 1,
                             column: 1,
                             start: 1,
                             end: 2,
-                        }],
-                        Box::new(Node {
+                        })],
+                        Rc::new(Node {
                             value: Lambda(
-                                vec![Node {
+                                vec![Rc::new(Node {
                                     value: Pattern_::Identifier("b".to_owned()),
                                     line: 1,
                                     column: 7,
                                     start: 7,
                                     end: 8,
-                                }],
-                                Box::new(Node {
+                                })],
+                                Rc::new(Node {
                                     value: Identifier("a".to_owned()),
                                     line: 1,
                                     column: 12,
@@ -1367,22 +1369,22 @@ fun arg1
                 Ok(Node {
                     value: Lambda(
                         vec![
-                            Node {
+                            Rc::new(Node {
                                 value: Pattern_::Identifier("a".to_owned()),
                                 line: 1,
                                 column: 1,
                                 start: 1,
                                 end: 2,
-                            },
-                            Node {
+                            }),
+                            Rc::new(Node {
                                 value: Pattern_::Identifier("b".to_owned()),
                                 line: 1,
                                 column: 3,
                                 start: 3,
                                 end: 4,
-                            },
+                            }),
                         ],
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("a".to_owned()),
                             line: 1,
                             column: 8,
@@ -1400,21 +1402,21 @@ fun arg1
                 "if True then 1 else 2",
                 Ok(Node {
                     value: If(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Bool(true),
                             line: 1,
                             column: 3,
                             start: 3,
                             end: 7,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(1.),
                             line: 1,
                             column: 13,
                             start: 13,
                             end: 14,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(2.),
                             line: 1,
                             column: 20,
@@ -1437,21 +1439,21 @@ else
   2",
                 Ok(Node {
                     value: If(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Bool(true),
                             line: 2,
                             column: 3,
                             start: 4,
                             end: 8,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(1.),
                             line: 3,
                             column: 2,
                             start: 16,
                             end: 17,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(2.),
                             line: 6,
                             column: 2,
@@ -1469,36 +1471,36 @@ else
                 "if True then incr 1 else 2",
                 Ok(Node {
                     value: If(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Bool(true),
                             line: 1,
                             column: 3,
                             start: 3,
                             end: 7,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: FnCall(
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Identifier("incr".to_owned()),
                                     line: 1,
                                     column: 13,
                                     start: 13,
                                     end: 17,
                                 }),
-                                vec![Node {
+                                vec![Rc::new(Node {
                                     value: Float(1.),
                                     line: 1,
                                     column: 18,
                                     start: 18,
                                     end: 19,
-                                }],
+                                })],
                             ),
                             line: 1,
                             column: 13,
                             start: 13,
                             end: 19,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(2.),
                             line: 1,
                             column: 25,
@@ -1516,30 +1518,30 @@ else
                 "if True then if False then 1 else 3 else 2",
                 Ok(Node {
                     value: If(
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Bool(true),
                             line: 1,
                             column: 3,
                             start: 3,
                             end: 7,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: If(
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Bool(false),
                                     line: 1,
                                     column: 16,
                                     start: 16,
                                     end: 21,
                                 }),
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Float(1.),
                                     line: 1,
                                     column: 27,
                                     start: 27,
                                     end: 28,
                                 }),
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Float(3.),
                                     line: 1,
                                     column: 34,
@@ -1552,7 +1554,7 @@ else
                             start: 13,
                             end: 35,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(2.),
                             line: 1,
                             column: 41,
@@ -1614,14 +1616,14 @@ else
                             start: 4,
                             end: 5,
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Float(1.),
                             line: 1,
                             column: 8,
                             start: 8,
                             end: 9,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("x".to_owned()),
                             line: 2,
                             column: 0,
@@ -1666,29 +1668,29 @@ else
                             start: 4,
                             end: 5,
                         },
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: FnCall(
-                                Box::new(Node {
+                                Rc::new(Node {
                                     value: Identifier("a".to_owned()),
                                     line: 1,
                                     column: 8,
                                     start: 8,
                                     end: 9,
                                 }),
-                                vec![Node {
+                                vec![Rc::new(Node {
                                     value: Identifier("x".to_owned()),
                                     line: 2,
                                     column: 2,
                                     start: 12,
                                     end: 13,
-                                }],
+                                })],
                             ),
                             line: 1,
                             column: 8,
                             start: 8,
                             end: 13,
                         }),
-                        Box::new(Node {
+                        Rc::new(Node {
                             value: Identifier("x".to_owned()),
                             line: 3,
                             column: 0,

@@ -583,16 +583,14 @@ fn infer_rec(
             // Convert the binary AST to function calls
             let fn_call = Expression {
                 value: E::FnCall(
-                    Box::new(Expression {
+                    Rc::new(Expression {
                         value: E::Identifier(op.value.fn_.clone()),
                         start: op.start,
                         end: op.end,
                         line: op.line,
                         column: op.column,
                     }),
-                    // TODO: I'm copying two possibly big chunks of Ast here just for fun...
-                    // Should the Ast also be Rc?
-                    vec![(**left).clone(), (**right).clone()],
+                    vec![Rc::clone(left), Rc::clone(right)],
                 ),
                 ..*ast
             };
@@ -689,14 +687,14 @@ fn infer_rec(
          *   infer env (fun x -> e) = t -> t'
          */
         E::Lambda(params, e) => {
-            let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> =
+            let params_with_type: Vec<(&Rc<ast::Pattern>, Rc<Type>)> =
                 params.iter().map(|p| (p, state.new_type_var())).collect();
 
             let mut env =
                 params_with_type
                     .iter()
                     .fold(env.clone(), |mut env, (param, param_type)| {
-                        match param {
+                        match &***param {
                             Node {
                                 value: P::Identifier(x),
                                 ..
