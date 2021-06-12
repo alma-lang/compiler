@@ -6,8 +6,8 @@ use std::rc::Rc;
 pub struct TypeEnv(HashMap<String, Rc<Type>>);
 
 impl TypeEnv {
-    pub fn get(&self, key: &str) -> Option<Rc<Type>> {
-        self.0.get(key).map(|t| Rc::clone(t))
+    pub fn get(&self, key: &str) -> Option<&Rc<Type>> {
+        self.0.get(key)
     }
 
     pub fn insert(&mut self, key: String, value: Rc<Type>) {

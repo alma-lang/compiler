@@ -47,6 +47,7 @@ struct State<'a> {
     start: usize,
     start_line: u32,
     current: usize,
+    current_char: char,
     line: u32,
     line_start_position: usize,
     indent: u32,
@@ -60,7 +61,9 @@ impl<'a> State<'a> {
             errors: vec![],
             start: 0,
             start_line: 1,
+            // current and current_char will be properly initialized on self.parse
             current: 0,
+            current_char: 'a',
             line: 1,
             line_start_position: 0,
             indent: 0,
@@ -76,10 +79,10 @@ impl<'a> State<'a> {
     fn add_token(&mut self, kind: token::Type) {
         self.push_token(Token {
             kind,
-            lexeme: self.lexeme(),
             line: self.line,
             column: self.start as u32 - self.line_start_position as u32,
             position: self.start,
+            end_position: self.current + self.current_char.len_utf8(),
             indent: self.indent,
         });
 
@@ -119,13 +122,6 @@ impl<'a> State<'a> {
         });
 
         self.status = Status::Reset;
-    }
-
-    fn lexeme(&self) -> String {
-        self.source
-            .text_at(self.start..=self.current)
-            .unwrap()
-            .to_owned()
     }
 
     fn push_token(&mut self, token: Token) {
@@ -284,22 +280,24 @@ impl<'a> State<'a> {
                         Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => (),
 
                         // Anything else we find ends the identifier token
-                        _ => self.add_token(match self.lexeme().as_str() {
-                            "and" => And,
-                            "or" => Or,
-                            "not" => Not,
-                            "if" => If,
-                            "then" => Then,
-                            "else" => Else,
-                            "True" => True,
-                            "False" => False,
-                            "let" => Let,
-                            "import" => Import,
-                            "as" => As,
-                            "exports" => Exports,
-                            "module" => Module,
-                            _ => Identifier,
-                        }),
+                        _ => self.add_token(
+                            match self.source.text_at(self.start..=self.current).unwrap() {
+                                "and" => And,
+                                "or" => Or,
+                                "not" => Not,
+                                "if" => If,
+                                "then" => Then,
+                                "else" => Else,
+                                "True" => True,
+                                "False" => False,
+                                "let" => Let,
+                                "import" => Import,
+                                "as" => As,
+                                "exports" => Exports,
+                                "module" => Module,
+                                _ => Identifier,
+                            },
+                        ),
                     }
                 }
 
@@ -320,6 +318,7 @@ impl<'a> State<'a> {
             if let Status::Reset = &self.status {}
 
             self.current = i;
+            self.current_char = c;
 
             self.parse_token(Some(c));
         }
@@ -328,7 +327,6 @@ impl<'a> State<'a> {
 
         self.tokens.push(Token {
             kind: token::Type::Eof,
-            lexeme: "[End of file]".to_owned(),
             line: self.line,
             // If the last char is a \n, then line_start_position may be bigger than the last \n
             // position. Default to column 0 then.
@@ -338,6 +336,7 @@ impl<'a> State<'a> {
                 .checked_sub(self.line_start_position)
                 .unwrap_or(0) as u32,
             position: self.source.len(),
+            end_position: self.source.len(),
             indent: self.indent,
         });
     }
@@ -373,8 +372,8 @@ mod tests {
                 "".to_owned(),
                 Ok(vec![Token {
                     kind: Eof,
-                    lexeme: "[End of file]".to_owned(),
                     position: 0,
+                    end_position: 0,
                     line: 1,
                     indent: 0,
                     column: 0,
@@ -385,16 +384,16 @@ mod tests {
                 Ok(vec![
                     Token {
                         kind: Float,
-                        lexeme: "123".to_owned(),
                         position: 0,
+                        end_position: 3,
                         line: 1,
                         indent: 0,
                         column: 0,
                     },
                     Token {
                         kind: Eof,
-                        lexeme: "[End of file]".to_owned(),
                         position: 3,
+                        end_position: 3,
                         line: 1,
                         indent: 0,
                         column: 3,
@@ -406,16 +405,16 @@ mod tests {
                 Ok(vec![
                     Token {
                         kind: Float,
-                        lexeme: "123.345".to_owned(),
                         position: 0,
+                        end_position: 7,
                         line: 1,
                         indent: 0,
                         column: 0,
                     },
                     Token {
                         kind: Eof,
-                        lexeme: "[End of file]".to_owned(),
                         position: 7,
+                        end_position: 7,
                         line: 1,
                         indent: 0,
                         column: 7,
@@ -439,32 +438,32 @@ mod tests {
                 Ok(vec![
                     Token {
                         kind: Float,
-                        lexeme: "123".to_owned(),
                         position: 0,
+                        end_position: 3,
                         line: 1,
                         indent: 0,
                         column: 0,
                     },
                     Token {
                         kind: Or,
-                        lexeme: "or".to_owned(),
                         position: 5,
+                        end_position: 7,
                         line: 2,
                         indent: 1,
                         column: 1,
                     },
                     Token {
                         kind: String_,
-                        lexeme: "\"abc\"".to_owned(),
                         position: 8,
+                        end_position: 13,
                         line: 2,
                         indent: 1,
                         column: 4,
                     },
                     Token {
                         kind: Eof,
-                        lexeme: "[End of file]".to_owned(),
                         position: 13,
+                        end_position: 13,
                         line: 2,
                         indent: 1,
                         column: 9,
@@ -489,16 +488,16 @@ mod tests {
                 Ok(vec![
                     Token {
                         kind: String_,
-                        lexeme: "\"asdf\\\"asdf\"".to_owned(),
                         position: 0,
+                        end_position: 12,
                         line: 1,
                         indent: 0,
                         column: 0,
                     },
                     Token {
                         kind: Eof,
-                        lexeme: "[End of file]".to_owned(),
                         position: 12,
+                        end_position: 12,
                         line: 1,
                         indent: 0,
                         column: 12,

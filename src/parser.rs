@@ -54,14 +54,15 @@ impl Error {
 }
 
 impl Error {
-    fn new(input: &Source, token: &Token, point_at_token: Option<&Token>, message: String) -> Self {
+    fn new(
+        source: &Source,
+        token: &Token,
+        point_at_token: Option<&Token>,
+        message: String,
+    ) -> Self {
         let (position, end, line_number) = match point_at_token {
-            Some(t) => (t.position, t.position + t.lexeme.len(), t.line),
-            None => (
-                token.position,
-                token.position + token.lexeme.len(),
-                token.line,
-            ),
+            Some(t) => (t.position, t.end_position, t.line),
+            None => (token.position, token.end_position, token.line),
         };
 
         let message = format!(
@@ -69,7 +70,7 @@ impl Error {
             token.line,
             token.column,
             message,
-            input
+            source
                 .lines_report_at_position_with_pointer(position, Some(end), line_number,)
                 .unwrap()
         );
@@ -81,16 +82,16 @@ impl Error {
     }
 
     fn expected_but_found(
-        input: &Source,
+        source: &Source,
         token: &Token,
         point_at_token: Option<&Token>,
         message: String,
     ) -> Self {
         Self::new(
-            input,
+            source,
             token,
             point_at_token,
-            format!("{}, but instead found: '{}'", message, token.lexeme),
+            format!("{}, but instead found: '{}'", message, token.lexeme(source)),
         )
     }
 }
@@ -100,7 +101,7 @@ type ParseResult<A> = Result<A, Error>;
 
 #[derive(Debug)]
 struct State<'a> {
-    input: &'a Source<'a>,
+    source: &'a Source<'a>,
     tokens: Vec<Token>,
     current: usize,
 }
@@ -136,7 +137,7 @@ impl<'a> State<'a> {
                     ..
                 } => Ok(a),
                 token => Err(vec![Error::expected_but_found(
-                    self.input,
+                    self.source,
                     token,
                     None,
                     "Expected the end of input".to_owned(),
@@ -192,7 +193,7 @@ impl<'a> State<'a> {
                                     }))
                                 } else {
                                     Err(Error::expected_but_found(
-                                        self.input,
+                                        self.source,
                                         &self.get_token(),
                                         None,
                                         "Expected the let definition \
@@ -205,7 +206,7 @@ impl<'a> State<'a> {
                             }
 
                             _ => Err(Error::expected_but_found(
-                                self.input,
+                                self.source,
                                 &equal_token,
                                 None,
                                 "Expected an = and an expression \
@@ -215,7 +216,7 @@ impl<'a> State<'a> {
                         }
                     }
                     None => Err(Error::expected_but_found(
-                        self.input,
+                        self.source,
                         &token,
                         None,
                         "Expected a pattern for the left side of the let expression".to_owned(),
@@ -264,7 +265,7 @@ impl<'a> State<'a> {
                             }
 
                             _ => Err(Error::expected_but_found(
-                                self.input,
+                                self.source,
                                 &else_token,
                                 None,
                                 "Expected the `else` branch of the if expression".to_owned(),
@@ -273,7 +274,7 @@ impl<'a> State<'a> {
                     }
 
                     _ => Err(Error::expected_but_found(
-                        self.input,
+                        self.source,
                         &then_token,
                         None,
                         "Expected the keyword `then` and an expression to parse the if expression"
@@ -316,7 +317,7 @@ impl<'a> State<'a> {
                     }
 
                     _ => Err(Error::expected_but_found(
-                        self.input,
+                        self.source,
                         &token,
                         Some(arrow),
                         "Expected a -> after the list of parameters for the function".to_owned(),
@@ -349,7 +350,7 @@ impl<'a> State<'a> {
             }
 
             None => Err(Error::expected_but_found(
-                &self.input,
+                &self.source,
                 &self.get_token(),
                 None,
                 "Expected a list of parameters".to_owned(),
@@ -364,7 +365,7 @@ impl<'a> State<'a> {
             TT::Identifier => {
                 self.advance();
                 Ok(Some(Node::new(
-                    Pattern_::Identifier(token.lexeme.clone()),
+                    Pattern_::Identifier(token.lexeme(&self.source).to_string()),
                     &token,
                     &token,
                 )))
@@ -491,7 +492,7 @@ impl<'a> State<'a> {
                 let msg = "Expected an expression (a number, string, a let binding, \
                            function call, an identifier, etc.)"
                     .to_owned();
-                Err(Error::expected_but_found(self.input, &token, None, msg))
+                Err(Error::expected_but_found(self.source, &token, None, msg))
             }
         })
     }
@@ -526,12 +527,13 @@ impl<'a> State<'a> {
             True => Ok(Some(Node::new(Bool(true), &token, &token))),
 
             TT::Float => {
-                let n = token.lexeme.parse::<f64>().map_err(|_| {
+                let lexeme = token.lexeme(&self.source);
+                let n = lexeme.parse::<f64>().map_err(|_| {
                     Error::new(
-                        &self.input,
+                        &self.source,
                         &token,
                         None,
-                        format!("Failed to parse number token '{}'", token.lexeme),
+                        format!("Failed to parse number token '{}'", lexeme),
                     )
                 })?;
 
@@ -539,13 +541,14 @@ impl<'a> State<'a> {
             }
 
             TT::Identifier => Ok(Some(Node::new(
-                Identifier(token.lexeme.clone()),
+                Identifier(token.lexeme(&self.source).to_string()),
                 &token,
                 &token,
             ))),
 
             TT::String_ => {
-                let value = token.lexeme[1..(token.lexeme.len() - 1)].to_string();
+                let lexeme = token.lexeme(&self.source);
+                let value = lexeme[1..(lexeme.len() - 1)].to_string();
                 Ok(Some(Node::new(String_(value), &token, &token)))
             }
 
@@ -563,7 +566,7 @@ impl<'a> State<'a> {
                         match last_token.kind {
                             RightParen => Ok(expr),
                             _ => Err(Error::expected_but_found(
-                                self.input,
+                                self.source,
                                 &last_token,
                                 Some(&token),
                                 "Expected ')' after parenthesized expression".to_owned(),
@@ -653,14 +656,14 @@ fn organize_binops(
     left
 }
 
-pub fn parse(input: &Source, tokens: Vec<Token>) -> ParseResults<Expression> {
+pub fn parse(source: &Source, tokens: Vec<Token>) -> ParseResults<Rc<Expression>> {
     let mut parser = State {
-        input,
+        source,
         tokens,
         current: 0,
     };
 
-    parser.file()
+    parser.file().map(|e| Rc::new(e))
 }
 
 #[cfg(test)]
@@ -675,133 +678,133 @@ mod tests {
         let tests = vec![
             (
                 "True",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Bool(true),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 4,
-                }),
+                })),
             ),
             (
                 "False",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Bool(false),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 5,
-                }),
+                })),
             ),
             (
                 "()",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Unit,
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 2,
-                }),
+                })),
             ),
             (
                 "123",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Float(123.0),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 3,
-                }),
+                })),
             ),
             (
                 "123.2",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Float(123.2),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 5,
-                }),
+                })),
             ),
             (
                 "variableOne",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Identifier("variableOne".to_owned()),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 11,
-                }),
+                })),
             ),
             (
                 "variable_one",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Identifier("variable_one".to_owned()),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 12,
-                }),
+                })),
             ),
             (
                 "espaÆàʥñÑol",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Identifier("espaÆàʥñÑol".to_owned()),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 16,
-                }),
+                })),
             ),
             (
                 "\"😄\"",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: String_("😄".to_owned()),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 6,
-                }),
+                })),
             ),
             (
                 "\"\n\"",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: String_("\n".to_owned()),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 3,
-                }),
+                })),
             ),
             (
                 "\"\"",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: String_("".to_owned()),
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 2,
-                }),
+                })),
             ),
             (
                 "(\"\")",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: String_("".to_owned()),
                     line: 1,
                     column: 1,
                     start: 1,
                     end: 3,
-                }),
+                })),
             ),
             (
                 "(((1)))",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Float(1.0),
                     line: 1,
                     column: 3,
                     start: 3,
                     end: 4,
-                }),
+                })),
             ),
             (
                 "(((1))",
@@ -814,11 +817,11 @@ mod tests {
                     },
                     token: Token {
                         kind: TT::Eof,
-                        lexeme: "[End of file]".to_owned(),
                         line: 1,
                         indent: 0,
                         column: 6,
                         position: 6,
+                        end_position: 6,
                     },
                 }]),
             ),
@@ -832,11 +835,11 @@ mod tests {
                         .to_owned(),
                     token: Token {
                         kind: TT::RightParen,
-                        lexeme: ")".to_owned(),
                         line: 1,
                         indent: 0,
                         column: 7,
                         position: 7,
+                        end_position: 8,
                     },
                 }]),
             ),
@@ -844,17 +847,17 @@ mod tests {
                 "(
   ((1))
 )",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Float(1.0),
                     line: 2,
                     column: 4,
                     start: 6,
                     end: 7,
-                }),
+                })),
             ),
             (
                 "fun arg",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
                             value: Identifier("fun".to_owned()),
@@ -875,11 +878,11 @@ mod tests {
                     column: 0,
                     start: 0,
                     end: 7,
-                }),
+                })),
             ),
             (
                 "fun\n arg",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
                             value: Identifier("fun".to_owned()),
@@ -900,11 +903,11 @@ mod tests {
                     column: 0,
                     start: 0,
                     end: 8,
-                }),
+                })),
             ),
             (
                 "  fun\n    arg",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
                             value: Identifier("fun".to_owned()),
@@ -925,7 +928,7 @@ mod tests {
                     column: 2,
                     start: 2,
                     end: 13,
-                }),
+                })),
             ),
             (
                 "fun\narg",
@@ -938,8 +941,8 @@ mod tests {
                         .to_owned(),
                     token: Token {
                         kind: TT::Identifier,
-                        lexeme: "arg".to_owned(),
                         position: 4,
+                        end_position: 7,
                         line: 2,
                         indent: 0,
                         column: 0,
@@ -951,7 +954,7 @@ mod tests {
 fun arg1
   arg2 arg3
   arg4",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
                             value: Identifier("fun".to_owned()),
@@ -995,11 +998,11 @@ fun arg1
                     column: 0,
                     start: 1,
                     end: 28,
-                }),
+                })),
             ),
             (
                 "hello ()",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
                             value: Identifier("hello".to_owned()),
@@ -1020,11 +1023,11 @@ fun arg1
                     end: 8,
                     line: 1,
                     column: 0,
-                }),
+                })),
             ),
             (
                 "not False",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Unary(
                         Node {
                             value: Not,
@@ -1045,11 +1048,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 9,
-                }),
+                })),
             ),
             (
                 "- 5",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Unary(
                         Node {
                             value: Minus,
@@ -1070,11 +1073,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 3,
-                }),
+                })),
             ),
             (
                 "incr (-5)",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
                             value: Identifier("incr".to_owned()),
@@ -1110,11 +1113,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 8,
-                }),
+                })),
             ),
             (
                 "1 - 5",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Binary(
                         Rc::new(Node {
                             value: Float(1.),
@@ -1142,11 +1145,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 5,
-                }),
+                })),
             ),
             (
                 "1 - -5",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Binary(
                         Rc::new(Node {
                             value: Float(1.),
@@ -1189,11 +1192,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 6,
-                }),
+                })),
             ),
             (
                 "1 + 2 / 3",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     line: 1,
                     column: 0,
                     start: 0,
@@ -1243,11 +1246,11 @@ fun arg1
                             ),
                         }),
                     ),
-                }),
+                })),
             ),
             (
                 "1 == 2 / 3",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     line: 1,
                     column: 0,
                     start: 0,
@@ -1297,11 +1300,11 @@ fun arg1
                             ),
                         }),
                     ),
-                }),
+                })),
             ),
             (
                 "\\a -> a",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Lambda(
                         vec![Rc::new(Node {
                             value: Pattern_::Identifier("a".to_owned()),
@@ -1322,11 +1325,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 7,
-                }),
+                })),
             ),
             (
                 "\\a -> \\b -> a",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Lambda(
                         vec![Rc::new(Node {
                             value: Pattern_::Identifier("a".to_owned()),
@@ -1362,11 +1365,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 13,
-                }),
+                })),
             ),
             (
                 "\\a b -> a",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Lambda(
                         vec![
                             Rc::new(Node {
@@ -1396,11 +1399,11 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 9,
-                }),
+                })),
             ),
             (
                 "if True then 1 else 2",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: If(
                         Rc::new(Node {
                             value: Bool(true),
@@ -1428,7 +1431,7 @@ fun arg1
                     column: 0,
                     start: 0,
                     end: 21,
-                }),
+                })),
             ),
             (
                 "
@@ -1437,7 +1440,7 @@ if True then
 
 else
   2",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: If(
                         Rc::new(Node {
                             value: Bool(true),
@@ -1465,11 +1468,11 @@ else
                     column: 0,
                     start: 1,
                     end: 27,
-                }),
+                })),
             ),
             (
                 "if True then incr 1 else 2",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: If(
                         Rc::new(Node {
                             value: Bool(true),
@@ -1512,11 +1515,11 @@ else
                     column: 0,
                     start: 0,
                     end: 26,
-                }),
+                })),
             ),
             (
                 "if True then if False then 1 else 3 else 2",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: If(
                         Rc::new(Node {
                             value: Bool(true),
@@ -1566,7 +1569,7 @@ else
                     column: 0,
                     start: 0,
                     end: 42,
-                }),
+                })),
             ),
             (
                 "if True { 1 } else 2",
@@ -1578,8 +1581,8 @@ else
                     },
                     token: Token {
                         kind: LeftBrace,
-                        lexeme: "{".to_owned(),
                         position: 8,
+                        end_position: 9,
                         line: 1,
                         column: 8,
                         indent: 0,
@@ -1597,8 +1600,8 @@ else
                     },
                     token: Token {
                         kind: Eof,
-                        lexeme: "[End of file]".to_owned(),
                         position: 14,
+                        end_position: 14,
                         line: 1,
                         column: 14,
                         indent: 0,
@@ -1607,7 +1610,7 @@ else
             ),
             (
                 "let x = 1\nx",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Let(
                         Node {
                             value: Pattern_::Identifier("x".to_owned()),
@@ -1635,7 +1638,7 @@ else
                     column: 0,
                     start: 0,
                     end: 11,
-                }),
+                })),
             ),
             (
                 "let x = a\n  x",
@@ -1649,8 +1652,8 @@ else
                     },
                     token: Token {
                         kind: Eof,
-                        lexeme: "[End of file]".to_owned(),
                         position: 13,
+                        end_position: 13,
                         line: 2,
                         column: 3,
                         indent: 2,
@@ -1659,7 +1662,7 @@ else
             ),
             (
                 "let x = a\n  x\nx",
-                Ok(Node {
+                Ok(Rc::new(Node {
                     value: Let(
                         Node {
                             value: Pattern_::Identifier("x".to_owned()),
@@ -1702,7 +1705,7 @@ else
                     column: 0,
                     start: 0,
                     end: 15,
-                }),
+                })),
             ),
         ];
 

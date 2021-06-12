@@ -36,9 +36,9 @@ enum UnificationError {
 }
 
 pub enum Error {
-    UndefinedIdentifier(String, Expression),
-    TypeMismatch(Expression, Rc<Type>, Option<Expression>, Rc<Type>),
-    InfiniteType(Expression, Rc<Type>),
+    UndefinedIdentifier(String, Rc<Expression>),
+    TypeMismatch(Rc<Expression>, Rc<Type>, Option<Rc<Expression>>, Rc<Type>),
+    InfiniteType(Rc<Expression>, Rc<Type>),
 }
 
 impl Error {
@@ -47,44 +47,18 @@ impl Error {
 
         let mut s = String::new();
 
-        let (position, line_number, column, end) = match self {
-            UndefinedIdentifier(
-                _,
-                Node {
-                    line,
-                    column,
-                    end,
-                    start,
-                    ..
-                },
-            ) => (start, line, column, end),
-            TypeMismatch(
-                Node {
-                    line,
-                    column,
-                    end,
-                    start,
-                    ..
-                },
-                ..,
-            ) => (start, line, column, end),
-            InfiniteType(
-                Node {
-                    line,
-                    column,
-                    end,
-                    start,
-                    ..
-                },
-                _,
-            ) => (start, line, column, end),
+        let node = match self {
+            UndefinedIdentifier(_, node) => node,
+            TypeMismatch(node, ..) => node,
+            InfiniteType(node, _) => node,
         };
+        let (position, line_number, column, end) = (node.start, node.line, node.column, node.end);
 
-        s.push_str(&source.to_string_with_line_and_col(*line_number, *column));
+        s.push_str(&source.to_string_with_line_and_col(line_number, column));
         s.push_str("\n\n");
 
         let code = source
-            .lines_report_at_position_with_pointer(*position, Some(*end), *line_number)
+            .lines_report_at_position_with_pointer(position, Some(end), line_number)
             .unwrap();
 
         match self {
@@ -319,9 +293,9 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
 }
 
 fn unify(
-    ast: &Expression,
+    ast: &Rc<Expression>,
     t1: &Rc<Type>,
-    ast2: Option<&Expression>,
+    ast2: Option<&Rc<Expression>>,
     t2: &Rc<Type>,
 ) -> Result<(), Error> {
     fn unify_rec(t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), UnificationError> {
@@ -413,12 +387,12 @@ fn unify(
 
     unify_rec(t1, t2).map_err(|e| match e {
         UnificationError::TypeMismatch => Error::TypeMismatch(
-            ast.clone(),
+            Rc::clone(ast),
             Rc::clone(&t1),
-            ast2.map(|a| a.clone()),
+            ast2.map(|a| Rc::clone(a)),
             Rc::clone(&t2),
         ),
-        UnificationError::InfiniteType => Error::InfiniteType(ast.clone(), Rc::clone(&t1)),
+        UnificationError::InfiniteType => Error::InfiniteType(Rc::clone(ast), Rc::clone(&t1)),
     })
 }
 
@@ -525,7 +499,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
 /* The main entry point to type inference */
 /* All branches (except for the trivial Unit) of the first match in this function
 are translated directly from the rules for algorithm J, given in comments */
-pub fn infer(ast: &Expression) -> Result<Rc<Type>, Vec<Error>> {
+pub fn infer(ast: &Rc<Expression>) -> Result<Rc<Type>, Vec<Error>> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
 
@@ -543,7 +517,7 @@ pub fn infer(ast: &Expression) -> Result<Rc<Type>, Vec<Error>> {
 }
 
 fn infer_rec(
-    ast: &Expression,
+    ast: &Rc<Expression>,
     state: &mut State,
     env: &mut TypeEnv,
     errors: &mut Vec<Error>,
@@ -581,7 +555,7 @@ fn infer_rec(
 
         E::Binary(left, op, right) => {
             // Convert the binary AST to function calls
-            let fn_call = Expression {
+            let fn_call = Rc::new(Expression {
                 value: E::FnCall(
                     Rc::new(Expression {
                         value: E::Identifier(op.value.fn_.clone()),
@@ -592,8 +566,8 @@ fn infer_rec(
                     }),
                     vec![Rc::clone(left), Rc::clone(right)],
                 ),
-                ..*ast
-            };
+                ..**ast
+            });
 
             // Infer the binary op as a function call
             infer_rec(&fn_call, state, env, errors)
@@ -627,12 +601,12 @@ fn infer_rec(
          */
         E::Identifier(x) => match env.get(x) {
             Some(s) => {
-                let t = state.instantiate(&s);
+                let t = state.instantiate(s);
                 t
             }
             None => {
                 add_error(
-                    Err(Error::UndefinedIdentifier(x.clone(), ast.clone())),
+                    Err(Error::UndefinedIdentifier(x.clone(), Rc::clone(ast))),
                     errors,
                 );
                 state.new_type_var()

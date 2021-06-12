@@ -15,7 +15,7 @@ impl<V> Node<V> {
         Node {
             value,
             start: first_token.position,
-            end: last_token.position + last_token.lexeme.len(),
+            end: last_token.end_position,
             line: first_token.line,
             column: first_token.column,
         }
