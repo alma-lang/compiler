@@ -33,10 +33,10 @@ impl<'a> Source<'a> {
         }
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         match &self.source {
-            SourceOrigin::File(path) => path.clone(),
-            SourceOrigin::NotAFile => "Main".to_owned(),
+            SourceOrigin::File(path) => path,
+            SourceOrigin::NotAFile => "Main",
         }
     }
 

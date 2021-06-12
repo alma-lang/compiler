@@ -7,7 +7,7 @@ pub struct TypeEnv(HashMap<String, Rc<Type>>);
 
 impl TypeEnv {
     pub fn get(&self, key: &str) -> Option<Rc<Type>> {
-        self.0.get(key).map(|t| t.clone())
+        self.0.get(key).map(|t| Rc::clone(t))
     }
 
     pub fn insert(&mut self, key: String, value: Rc<Type>) {
