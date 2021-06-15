@@ -64,6 +64,7 @@ pub enum Type {
     True,
     False,
     Let,
+    In,
     Import,
     As,
     Exports,

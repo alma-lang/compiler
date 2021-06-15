@@ -1,7 +1,7 @@
 /* Grammar draft (●○):
     ● file           → expression EOF
     ● expression     → let | lambda | if | binary
-    ● let            → "let" binding "=" expression expression
+    ● let            → "let" MAYBE_INDENT (binding "=" expression)+ MAYBE_INDENT "in"? expression
     ● lambda         → "\" params? "->" expression
     ● params         → "()" | pattern ( pattern )*
     ● pattern        → parsed from Ast.Pattern
@@ -126,6 +126,12 @@ impl<'a> State<'a> {
         parent_token.line < token.line && token.indent == parent_token.indent
     }
 
+    fn is_nested_indent(&self, parent_token: &Token) -> bool {
+        let token = self.get_token();
+        parent_token.line == token.line
+            || (parent_token.line < token.line && token.indent > parent_token.indent)
+    }
+
     // ---
 
     pub fn file(&mut self) -> ParseResults<Expression> {
@@ -160,71 +166,95 @@ impl<'a> State<'a> {
     }
 
     fn let_(&mut self) -> ParseResult<Option<Expression>> {
-        let token = self.get_token().clone();
+        let let_token = self.get_token().clone();
 
-        match token.kind {
+        match let_token.kind {
             TT::Let => {
                 self.advance();
 
-                let pattern = self.pattern()?;
+                let bindings = self.let_bindings(&let_token, vec![])?;
 
-                match pattern {
-                    Some(pattern) => {
-                        let equal_token = self.get_token();
-                        match equal_token.kind {
-                            Equal => {
-                                self.advance();
+                if bindings.len() > 0 {
+                    let is_in_keyword = if let TT::In = self.get_token().kind {
+                        self.advance();
+                        true
+                    } else {
+                        false
+                    };
+                    if is_in_keyword || self.is_next_line_same_indent(&let_token) {
+                        let body = self.expression()?;
 
-                                let value = self.expression()?;
-
-                                if self.is_next_line_same_indent(&token) {
-                                    let body = self.expression()?;
-
-                                    let line = token.line;
-                                    let column = token.column;
-                                    let start = token.position;
-                                    let end = body.end;
-                                    Ok(Some(Node {
-                                        value: Let(pattern, Rc::new(value), Rc::new(body)),
-                                        line,
-                                        column,
-                                        start,
-                                        end,
-                                    }))
-                                } else {
-                                    Err(Error::expected_but_found(
-                                        self.source,
-                                        &self.get_token(),
-                                        None,
-                                        "Expected the let definition \
-                                        to be followed by another let \
-                                        or expression in the next line \
-                                        and same indentation"
-                                            .to_owned(),
-                                    ))
-                                }
-                            }
-
-                            _ => Err(Error::expected_but_found(
-                                self.source,
-                                &equal_token,
-                                None,
-                                "Expected an = and an expression \
-                                for the right side of let expression"
-                                    .to_owned(),
-                            )),
-                        }
+                        let line = let_token.line;
+                        let column = let_token.column;
+                        let start = let_token.position;
+                        let end = body.end;
+                        Ok(Some(Node {
+                            value: Let(bindings, Rc::new(body)),
+                            line,
+                            column,
+                            start,
+                            end,
+                        }))
+                    } else {
+                        Err(Error::expected_but_found(
+                            self.source,
+                            &self.get_token(),
+                            None,
+                            "Expected the let definition \
+                                to be followed by another \
+                                expression in the next line \
+                                and same indentation"
+                                .to_owned(),
+                        ))
                     }
-                    None => Err(Error::expected_but_found(
+                } else {
+                    Err(Error::expected_but_found(
                         self.source,
-                        &token,
+                        &let_token,
                         None,
                         "Expected a pattern for the left side of the let expression".to_owned(),
-                    )),
+                    ))
                 }
             }
 
             _ => Ok(None),
+        }
+    }
+    fn let_bindings(
+        &mut self,
+        let_token: &Token,
+        mut bindings: Vec<(Rc<Pattern>, Rc<Expression>)>,
+    ) -> ParseResult<Vec<(Rc<Pattern>, Rc<Expression>)>> {
+        if self.is_nested_indent(let_token) {
+            let pattern = self.pattern()?;
+
+            match pattern {
+                Some(pattern) => {
+                    let equal_token = self.get_token();
+                    match equal_token.kind {
+                        Equal => {
+                            self.advance();
+
+                            let value = self.expression()?;
+                            bindings.push((Rc::new(pattern), Rc::new(value)));
+
+                            self.let_bindings(let_token, bindings)
+                        }
+
+                        _ => Err(Error::expected_but_found(
+                            self.source,
+                            &equal_token,
+                            None,
+                            "Expected an = and an expression \
+                                for the right side of let expression"
+                                .to_owned(),
+                        )),
+                    }
+                }
+                None => Ok(bindings),
+            }
+        } else {
+            Ok(bindings)
         }
     }
 
@@ -588,12 +618,6 @@ impl<'a> State<'a> {
         };
 
         result
-    }
-
-    fn is_nested_indent(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
-        parent_token.line == token.line
-            || (parent_token.line < token.line && token.indent > parent_token.indent)
     }
 }
 
@@ -1612,20 +1636,22 @@ else
                 "let x = 1\nx",
                 Ok(Rc::new(Node {
                     value: Let(
-                        Node {
-                            value: Pattern_::Identifier("x".to_owned()),
-                            line: 1,
-                            column: 4,
-                            start: 4,
-                            end: 5,
-                        },
-                        Rc::new(Node {
-                            value: Float(1.),
-                            line: 1,
-                            column: 8,
-                            start: 8,
-                            end: 9,
-                        }),
+                        vec![(
+                            Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_owned()),
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 5,
+                            }),
+                            Rc::new(Node {
+                                value: Float(1.),
+                                line: 1,
+                                column: 8,
+                                start: 8,
+                                end: 9,
+                            }),
+                        )],
                         Rc::new(Node {
                             value: Identifier("x".to_owned()),
                             line: 2,
@@ -1644,7 +1670,7 @@ else
                 "let x = a\n  x",
                 Err(vec![Error {
                     message: {
-                        "2:3: Expected the let definition to be followed by another let or expression in the next line and same indentation, but instead found: '[End of file]'
+                        "2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: '[End of file]'
 
   1│  let x = a
   2│    x
@@ -1664,35 +1690,37 @@ else
                 "let x = a\n  x\nx",
                 Ok(Rc::new(Node {
                     value: Let(
-                        Node {
-                            value: Pattern_::Identifier("x".to_owned()),
-                            line: 1,
-                            column: 4,
-                            start: 4,
-                            end: 5,
-                        },
-                        Rc::new(Node {
-                            value: FnCall(
-                                Rc::new(Node {
-                                    value: Identifier("a".to_owned()),
-                                    line: 1,
-                                    column: 8,
-                                    start: 8,
-                                    end: 9,
-                                }),
-                                vec![Rc::new(Node {
-                                    value: Identifier("x".to_owned()),
-                                    line: 2,
-                                    column: 2,
-                                    start: 12,
-                                    end: 13,
-                                })],
-                            ),
-                            line: 1,
-                            column: 8,
-                            start: 8,
-                            end: 13,
-                        }),
+                        vec![(
+                            Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_owned()),
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 5,
+                            }),
+                            Rc::new(Node {
+                                value: FnCall(
+                                    Rc::new(Node {
+                                        value: Identifier("a".to_owned()),
+                                        line: 1,
+                                        column: 8,
+                                        start: 8,
+                                        end: 9,
+                                    }),
+                                    vec![Rc::new(Node {
+                                        value: Identifier("x".to_owned()),
+                                        line: 2,
+                                        column: 2,
+                                        start: 12,
+                                        end: 13,
+                                    })],
+                                ),
+                                line: 1,
+                                column: 8,
+                                start: 8,
+                                end: 13,
+                            }),
+                        )],
                         Rc::new(Node {
                             value: Identifier("x".to_owned()),
                             line: 3,
@@ -1705,6 +1733,236 @@ else
                     column: 0,
                     start: 0,
                     end: 15,
+                })),
+            ),
+            (
+                "let x = a x in x",
+                Ok(Rc::new(Node {
+                    value: Let(
+                        vec![(
+                            Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_owned()),
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 5,
+                            }),
+                            Rc::new(Node {
+                                value: FnCall(
+                                    Rc::new(Node {
+                                        value: Identifier("a".to_owned()),
+                                        line: 1,
+                                        column: 8,
+                                        start: 8,
+                                        end: 9,
+                                    }),
+                                    vec![Rc::new(Node {
+                                        value: Identifier("x".to_owned()),
+                                        line: 1,
+                                        column: 10,
+                                        start: 10,
+                                        end: 11,
+                                    })],
+                                ),
+                                line: 1,
+                                column: 8,
+                                start: 8,
+                                end: 11,
+                            }),
+                        )],
+                        Rc::new(Node {
+                            value: Identifier("x".to_owned()),
+                            line: 1,
+                            column: 15,
+                            start: 15,
+                            end: 16,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 16,
+                })),
+            ),
+            (
+                "let x = a\n  x\nin\nx",
+                Ok(Rc::new(Node {
+                    value: Let(
+                        vec![(
+                            Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_owned()),
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 5,
+                            }),
+                            Rc::new(Node {
+                                value: FnCall(
+                                    Rc::new(Node {
+                                        value: Identifier("a".to_owned()),
+                                        line: 1,
+                                        column: 8,
+                                        start: 8,
+                                        end: 9,
+                                    }),
+                                    vec![Rc::new(Node {
+                                        value: Identifier("x".to_owned()),
+                                        line: 2,
+                                        column: 2,
+                                        start: 12,
+                                        end: 13,
+                                    })],
+                                ),
+                                line: 1,
+                                column: 8,
+                                start: 8,
+                                end: 13,
+                            }),
+                        )],
+                        Rc::new(Node {
+                            value: Identifier("x".to_owned()),
+                            line: 4,
+                            column: 0,
+                            start: 17,
+                            end: 18,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 18,
+                })),
+            ),
+            (
+                "let\n  x = a\n  x\nin\nx",
+                Err(vec![Error {
+                    message: {
+                        "4:0: Expected an = and an expression for the right side of let expression, but instead found: \'in\'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x".to_owned()
+                    },
+                    token: Token {
+                        kind: TT::In,
+                        position: 16,
+                        end_position: 18,
+                        line: 4,
+                        column: 0,
+                        indent: 0,
+                    },
+                }]),
+            ),
+            (
+                "let\n  x = a\n    x\nin\nx",
+                Ok(Rc::new(Node {
+                    value: Let(
+                        vec![(
+                            Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_owned()),
+                                line: 2,
+                                column: 2,
+                                start: 6,
+                                end: 7,
+                            }),
+                            Rc::new(Node {
+                                value: FnCall(
+                                    Rc::new(Node {
+                                        value: Identifier("a".to_owned()),
+                                        line: 2,
+                                        column: 6,
+                                        start: 10,
+                                        end: 11,
+                                    }),
+                                    vec![Rc::new(Node {
+                                        value: Identifier("x".to_owned()),
+                                        line: 3,
+                                        column: 4,
+                                        start: 16,
+                                        end: 17,
+                                    })],
+                                ),
+                                line: 2,
+                                column: 6,
+                                start: 10,
+                                end: 17,
+                            }),
+                        )],
+                        Rc::new(Node {
+                            value: Identifier("x".to_owned()),
+                            line: 5,
+                            column: 0,
+                            start: 21,
+                            end: 22,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 22,
+                })),
+            ),
+            (
+                "let\n  x = a\n    x\n b = 5\nin\nx",
+                Ok(Rc::new(Node {
+                    value: Let(
+                        vec![
+                            (
+                                Rc::new(Node {
+                                    value: Pattern_::Identifier("x".to_owned()),
+                                    line: 2,
+                                    column: 2,
+                                    start: 6,
+                                    end: 7,
+                                }),
+                                Rc::new(Node {
+                                    value: FnCall(
+                                        Rc::new(Node {
+                                            value: Identifier("a".to_owned()),
+                                            line: 2,
+                                            column: 6,
+                                            start: 10,
+                                            end: 11,
+                                        }),
+                                        vec![Rc::new(Node {
+                                            value: Identifier("x".to_owned()),
+                                            line: 3,
+                                            column: 4,
+                                            start: 16,
+                                            end: 17,
+                                        })],
+                                    ),
+                                    line: 2,
+                                    column: 6,
+                                    start: 10,
+                                    end: 17,
+                                }),
+                            ),
+                            (
+                                Rc::new(Node {
+                                    start: 19,
+                                    end: 20,
+                                    line: 4,
+                                    column: 1,
+                                    value: Pattern_::Identifier("b".to_owned()),
+                                }),
+                                Rc::new(Node {
+                                    start: 23,
+                                    end: 24,
+                                    line: 4,
+                                    column: 5,
+                                    value: Float(5.0),
+                                }),
+                            ),
+                        ],
+                        Rc::new(Node {
+                            value: Identifier("x".to_owned()),
+                            line: 6,
+                            column: 0,
+                            start: 28,
+                            end: 29,
+                        }),
+                    ),
+                    line: 1,
+                    column: 0,
+                    start: 0,
+                    end: 29,
                 })),
             ),
         ];

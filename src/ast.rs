@@ -166,6 +166,6 @@ pub enum Expression_ {
     Binary(Rc<Expression>, Binop, Rc<Expression>),
     Lambda(Vec<Rc<Pattern>>, Rc<Expression>),
     FnCall(Rc<Expression>, Vec<Rc<Expression>>),
-    Let(Pattern, Rc<Expression>, Rc<Expression>),
+    Let(Vec<(Rc<Pattern>, Rc<Expression>)>, Rc<Expression>),
     If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
 }

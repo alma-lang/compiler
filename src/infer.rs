@@ -698,17 +698,20 @@ fn infer_rec(
          * In this implementation, they're required so we don't generalize types
          * that escape into the environment.
          */
-        E::Let(p, e0, e1) => {
-            state.enter_level();
-            let t = infer_rec(e0, state, env, errors);
-            state.exit_level();
-
+        E::Let(bindings, e) => {
             let mut new_env = env.clone();
-            match &p.value {
-                P::Identifier(x) => new_env.insert(x.clone(), state.generalize(&t)),
-            };
 
-            infer_rec(e1, state, &mut new_env, errors)
+            for (p, e0) in bindings {
+                state.enter_level();
+                let t = infer_rec(e0, state, env, errors);
+                state.exit_level();
+
+                match &p.value {
+                    P::Identifier(x) => new_env.insert(x.clone(), state.generalize(&t)),
+                };
+            }
+
+            infer_rec(e, state, &mut new_env, errors)
         }
     }
 }

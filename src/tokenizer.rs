@@ -291,6 +291,7 @@ impl<'a> State<'a> {
                                 "True" => True,
                                 "False" => False,
                                 "let" => Let,
+                                "in" => In,
                                 "import" => Import,
                                 "as" => As,
                                 "exports" => Exports,
