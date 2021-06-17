@@ -139,22 +139,24 @@ impl fmt::Display for Type {
                 }
 
                 PolyType(type_vars, t) => {
-                    s.push_str("∀");
+                    if !type_vars.is_empty() {
+                        s.push_str("∀");
 
-                    for var in type_vars.iter() {
-                        s.push_str(" ");
-                        to_string_rec(
-                            &Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                                *var,
-                                Level(0), /* This level doesn't matter for printing */
-                            )))),
-                            cur_type_var_name,
-                            type_var_names,
-                            s,
-                        );
+                        for var in type_vars.iter() {
+                            s.push_str(" ");
+                            to_string_rec(
+                                &Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                                    *var,
+                                    Level(0), /* This level doesn't matter for printing */
+                                )))),
+                                cur_type_var_name,
+                                type_var_names,
+                                s,
+                            );
+                        }
+
+                        s.push_str(" . ");
                     }
-
-                    s.push_str(" . ");
 
                     to_string_rec(t, cur_type_var_name, type_var_names, s);
                 }

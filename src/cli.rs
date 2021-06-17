@@ -34,6 +34,7 @@ pub fn file(file_path: String) {
     });
 
     let file = Source::new_file(file_path, &contents);
+
     match compile(&file) {
         Ok(out) => println!("{}", out),
         Err(errs) => println!("{}", errs),

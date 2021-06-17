@@ -1,7 +1,13 @@
 /* Grammar draft (●○):
-    ● file           → expression EOF
+    ● file           → module EOF
+    ● module         → "module" IDENTIFIER exposing? imports? definitions?
+    ● exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
+    ○ imports        → import ( import )*
+    ○ import         → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
+    ● definitions    → ( module | binding )+
     ● expression     → let | lambda | if | binary
-    ● let            → "let" MAYBE_INDENT (binding "=" expression)+ MAYBE_INDENT "in"? expression
+    ● let            → "let" MAYBE_INDENT binding+ MAYBE_INDENT "in"? expression
+    ● binding        → binding "=" expression
     ● lambda         → "\" params? "->" expression
     ● params         → "()" | pattern ( pattern )*
     ● pattern        → parsed from Ast.Pattern
@@ -22,12 +28,13 @@ use crate::ast::{
     binop::*,
     Expression,
     Expression_::{Float, Identifier, If, Let, String_, *},
-    Node, Pattern, Pattern_,
+    Module, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
+    *,
 };
 use crate::source::Source;
 use crate::token::{
-    self, Token,
+    Token,
     Type::{self as TT, *},
 };
 
@@ -96,7 +103,6 @@ impl Error {
     }
 }
 
-type ParseResults<A> = Result<A, Vec<Error>>;
 type ParseResult<A> = Result<A, Error>;
 
 #[derive(Debug)]
@@ -107,48 +113,246 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    fn get_token(&self) -> &Token {
-        self.tokens
-            .get(self.current)
-            .expect("Out of bounds access to tokens array")
+    fn file(&mut self) -> ParseResult<Vec<Rc<Module>>> {
+        let module = self.module(true)?;
+        match module {
+            Some(modules) => self.eof(modules),
+            None => Err(Error::expected_but_found(
+                self.source,
+                self.get_token(),
+                None,
+                "Expected `module FileName` at the start of the file".to_string(),
+            )),
+        }
     }
 
-    fn advance(&mut self) {
-        let token = self.get_token();
-        match token.kind {
-            Eof => (),
-            _ => self.current += 1,
-        };
+    fn repl_entry(&mut self) -> ParseResult<Expression> {
+        let expression = self.expression()?;
+        self.eof(expression)
     }
 
-    fn is_next_line_same_indent(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
-        parent_token.line < token.line && token.indent == parent_token.indent
+    fn eof<T>(&mut self, result: T) -> ParseResult<T> {
+        let eof_token = self.get_token();
+        match eof_token.kind {
+            TT::Eof => Ok(result),
+            _ => Err(Error::expected_but_found(
+                self.source,
+                eof_token,
+                None,
+                "Expected the end of input".to_string(),
+            )),
+        }
     }
 
-    fn is_nested_indent(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
-        parent_token.line == token.line
-            || (parent_token.line < token.line && token.indent > parent_token.indent)
+    fn module(&mut self, top_level: bool) -> ParseResult<Option<Vec<Rc<Module>>>> {
+        let module_token = self.get_token().clone();
+        match module_token.kind {
+            TT::Module => {
+                self.advance();
+
+                let identifier_token = self.get_token().clone();
+                match identifier_token.kind {
+                    TT::Identifier => {
+                        self.advance();
+                        let name = identifier_token.lexeme(&self.source).to_string();
+
+                        let exports = self.exposing()?;
+
+                        let (mut modules, definitions) =
+                            self.module_definitions(top_level, &module_token, vec![], vec![])?;
+
+                        let name = Node {
+                            value: name,
+                            start: identifier_token.position,
+                            end: identifier_token.end_position,
+                            line: identifier_token.line,
+                            column: identifier_token.column,
+                        };
+
+                        modules.push(Rc::new(Module {
+                            name,
+                            exports,
+                            imports: vec![],
+                            definitions,
+                        }));
+
+                        Ok(Some(modules))
+                    }
+
+                    _ => Err(Error::expected_but_found(
+                        self.source,
+                        &identifier_token,
+                        None,
+                        "Expected the module name".to_string(),
+                    )),
+                }
+            }
+
+            _ => Ok(None),
+        }
     }
 
-    // ---
+    fn exposing(&mut self) -> ParseResult<Vec<Export>> {
+        // ○ exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
+        match self.get_token().kind {
+            TT::Exposing => {
+                self.advance();
 
-    pub fn file(&mut self) -> ParseResults<Expression> {
-        match self.expression() {
-            Err(e) => Err(vec![e]),
-            Ok(a) => match self.get_token() {
-                Token {
-                    kind: token::Type::Eof,
-                    ..
-                } => Ok(a),
-                token => Err(vec![Error::expected_but_found(
-                    self.source,
-                    token,
-                    None,
-                    "Expected the end of input".to_owned(),
-                )]),
-            },
+                match self.get_token().kind {
+                    TT::LeftParen => {
+                        self.advance();
+
+                        let export = self.export()?;
+
+                        let exports = self.exposing_rest(vec![export])?;
+
+                        match self.get_token().kind {
+                            TT::RightParen => {
+                                self.advance();
+
+                                Ok(exports)
+                            }
+                            _ => Err(Error::expected_but_found(
+                                self.source,
+                                &self.get_token(),
+                                None,
+                                "Parsing the module exports expected a comma \
+                                separated list of exports inside parenthesis"
+                                    .to_string(),
+                            )),
+                        }
+                    }
+                    _ => Err(Error::expected_but_found(
+                        self.source,
+                        &self.get_token(),
+                        None,
+                        "Parsing the module exports expected a comma \
+                        separated list of exports inside parenthesis"
+                            .to_string(),
+                    )),
+                }
+            }
+            _ => Ok(vec![]),
+        }
+    }
+    fn exposing_rest(&mut self, mut exports: Vec<Export>) -> ParseResult<Vec<Export>> {
+        match self.get_token().kind {
+            TT::Comma => {
+                self.advance();
+
+                let export = self.export()?;
+                exports.push(export);
+
+                self.exposing_rest(exports)
+            }
+            _ => Ok(exports),
+        }
+    }
+
+    fn export(&mut self) -> ParseResult<Export> {
+        let identifier_token = self.get_token().clone();
+        match identifier_token.kind {
+            TT::Identifier => {
+                self.advance();
+
+                Ok(Node::new(
+                    Export_(identifier_token.lexeme(&self.source).to_string()),
+                    &identifier_token,
+                    &identifier_token,
+                ))
+            }
+            _ => Err(Error::expected_but_found(
+                self.source,
+                &identifier_token,
+                None,
+                "Expected an identifier from the module to expose".to_string(),
+            )),
+        }
+    }
+
+    fn module_definitions(
+        &mut self,
+        top_level: bool,
+        module_token: &Token,
+        mut modules: Vec<Rc<Module>>,
+        mut definitions: Vec<Rc<Definition>>,
+    ) -> ParseResult<(Vec<Rc<Module>>, Vec<Rc<Definition>>)> {
+        match self.module(false)? {
+            Some(mut nested_modules) => {
+                modules.append(&mut nested_modules);
+                self.module_definitions(top_level, &module_token, modules, definitions)
+            }
+
+            None => {
+                let current_token_has_valid_indent = self
+                    .current_token_has_valid_indent_for_module_definitions(top_level, module_token);
+
+                if current_token_has_valid_indent {
+                    match self.binding()? {
+                        Some(definition) => {
+                            definitions.push(definition);
+                            self.module_definitions(top_level, &module_token, modules, definitions)
+                        }
+
+                        None => match self.get_token().kind {
+                            TT::Eof => Ok((modules, definitions)),
+                            _ => Err(Error::expected_but_found(
+                                self.source,
+                                &self.get_token(),
+                                None,
+                                "Expected the left side of a definition like `n = 5` \
+                             or `add x y = x + y`"
+                                    .to_string(),
+                            )),
+                        },
+                    }
+                } else {
+                    match self.get_token().kind {
+                        TT::Eof => Ok((modules, definitions)),
+                        _ => {
+                            if self.current_token_outside_indent_for_module_definitions(
+                                top_level,
+                                module_token,
+                            ) {
+                                Ok((modules, definitions))
+                            } else {
+                                Err(Error::expected_but_found(
+                                    self.source,
+                                    &self.get_token(),
+                                    None,
+                                    "Expected a definition like `n = 5` \
+                                        or `add x y = x + y`"
+                                        .to_string(),
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn current_token_has_valid_indent_for_module_definitions(
+        &self,
+        top_level: bool,
+        module_token: &Token,
+    ) -> bool {
+        if top_level {
+            self.is_token_in_same_indent_and_column_as(module_token)
+        } else {
+            self.is_token_start_of_line_and_after_line_and_nested_indent_from(module_token)
+        }
+    }
+
+    fn current_token_outside_indent_for_module_definitions(
+        &self,
+        top_level: bool,
+        module_token: &Token,
+    ) -> bool {
+        if top_level {
+            false
+        } else {
+            self.is_token_equal_or_less_indented_than(module_token)
         }
     }
 
@@ -181,7 +385,7 @@ impl<'a> State<'a> {
                     } else {
                         false
                     };
-                    if is_in_keyword || self.is_next_line_same_indent(&let_token) {
+                    if is_in_keyword || self.is_token_after_line_and_same_indent_as(&let_token) {
                         let body = self.expression()?;
 
                         let line = let_token.line;
@@ -204,7 +408,7 @@ impl<'a> State<'a> {
                                 to be followed by another \
                                 expression in the next line \
                                 and same indentation"
-                                .to_owned(),
+                                .to_string(),
                         ))
                     }
                 } else {
@@ -212,7 +416,7 @@ impl<'a> State<'a> {
                         self.source,
                         &let_token,
                         None,
-                        "Expected a pattern for the left side of the let expression".to_owned(),
+                        "Expected a pattern for the left side of the let expression".to_string(),
                     ))
                 }
             }
@@ -223,38 +427,49 @@ impl<'a> State<'a> {
     fn let_bindings(
         &mut self,
         let_token: &Token,
-        mut bindings: Vec<(Rc<Pattern>, Rc<Expression>)>,
-    ) -> ParseResult<Vec<(Rc<Pattern>, Rc<Expression>)>> {
-        if self.is_nested_indent(let_token) {
-            let pattern = self.pattern()?;
-
-            match pattern {
-                Some(pattern) => {
-                    let equal_token = self.get_token();
-                    match equal_token.kind {
-                        Equal => {
-                            self.advance();
-
-                            let value = self.expression()?;
-                            bindings.push((Rc::new(pattern), Rc::new(value)));
-
-                            self.let_bindings(let_token, bindings)
-                        }
-
-                        _ => Err(Error::expected_but_found(
-                            self.source,
-                            &equal_token,
-                            None,
-                            "Expected an = and an expression \
-                                for the right side of let expression"
-                                .to_owned(),
-                        )),
-                    }
+        mut bindings: Vec<Rc<Definition>>,
+    ) -> ParseResult<Vec<Rc<Definition>>> {
+        if self.is_token_in_same_line_or_nested_indent_from(let_token) {
+            match self.binding()? {
+                Some(binding) => {
+                    bindings.push(binding);
+                    self.let_bindings(let_token, bindings)
                 }
                 None => Ok(bindings),
             }
         } else {
             Ok(bindings)
+        }
+    }
+
+    fn binding(&mut self) -> ParseResult<Option<Rc<Definition>>> {
+        let pattern = self.pattern()?;
+
+        match pattern {
+            Some(pattern) => {
+                let equal_token = self.get_token();
+                match equal_token.kind {
+                    Equal => {
+                        self.advance();
+
+                        let value = self.expression()?;
+                        Ok(Some(Rc::new(Definition {
+                            pattern: Rc::new(pattern),
+                            value: Rc::new(value),
+                        })))
+                    }
+
+                    _ => Err(Error::expected_but_found(
+                        self.source,
+                        &equal_token,
+                        None,
+                        "Expected an = and an expression \
+                                for the right side of let expression"
+                            .to_string(),
+                    )),
+                }
+            }
+            None => Ok(None),
         }
     }
 
@@ -298,7 +513,7 @@ impl<'a> State<'a> {
                                 self.source,
                                 &else_token,
                                 None,
-                                "Expected the `else` branch of the if expression".to_owned(),
+                                "Expected the `else` branch of the if expression".to_string(),
                             )),
                         }
                     }
@@ -308,7 +523,7 @@ impl<'a> State<'a> {
                         &then_token,
                         None,
                         "Expected the keyword `then` and an expression to parse the if expression"
-                            .to_owned(),
+                            .to_string(),
                     )),
                 }
             }
@@ -350,7 +565,7 @@ impl<'a> State<'a> {
                         self.source,
                         &token,
                         Some(arrow),
-                        "Expected a -> after the list of parameters for the function".to_owned(),
+                        "Expected a -> after the list of parameters for the function".to_string(),
                     )),
                 }
             }
@@ -383,7 +598,7 @@ impl<'a> State<'a> {
                 &self.source,
                 &self.get_token(),
                 None,
-                "Expected a list of parameters".to_owned(),
+                "Expected a list of parameters".to_string(),
             )),
         }
     }
@@ -521,7 +736,7 @@ impl<'a> State<'a> {
             None => {
                 let msg = "Expected an expression (a number, string, a let binding, \
                            function call, an identifier, etc.)"
-                    .to_owned();
+                    .to_string();
                 Err(Error::expected_but_found(self.source, &token, None, msg))
             }
         })
@@ -532,9 +747,7 @@ impl<'a> State<'a> {
         first_token: &Token,
         mut args: Vec<Rc<Expression>>,
     ) -> ParseResult<Vec<Rc<Expression>>> {
-        if !self.is_nested_indent(first_token) {
-            Ok(args)
-        } else {
+        if self.is_token_in_same_line_or_nested_indent_from(first_token) {
             self.primary().and_then(|arg| {
                 match arg {
                     // We tried to get an argument, but there was no match, or it was not well indented
@@ -546,6 +759,8 @@ impl<'a> State<'a> {
                     }
                 }
             })
+        } else {
+            Ok(args)
         }
     }
 
@@ -599,7 +814,7 @@ impl<'a> State<'a> {
                                 self.source,
                                 &last_token,
                                 Some(&token),
-                                "Expected ')' after parenthesized expression".to_owned(),
+                                "Expected ')' after parenthesized expression".to_string(),
                             )),
                         }
                     }),
@@ -618,6 +833,55 @@ impl<'a> State<'a> {
         };
 
         result
+    }
+
+    // Utilities
+
+    fn get_token(&self) -> &Token {
+        self.tokens
+            .get(self.current)
+            .expect("Out of bounds access to tokens array")
+    }
+
+    fn advance(&mut self) {
+        let token = self.get_token();
+        match token.kind {
+            Eof => (),
+            _ => self.current += 1,
+        };
+    }
+
+    fn is_token_in_same_indent_and_column_as(&self, parent_token: &Token) -> bool {
+        let token = self.get_token();
+        parent_token.line < token.line
+            && token.indent == parent_token.indent
+            && token.column == parent_token.column
+    }
+
+    fn is_token_after_line_and_same_indent_as(&self, parent_token: &Token) -> bool {
+        let token = self.get_token();
+        parent_token.line < token.line && token.indent == parent_token.indent
+    }
+
+    fn is_token_in_same_line_or_nested_indent_from(&self, parent_token: &Token) -> bool {
+        let token = self.get_token();
+        parent_token.line == token.line
+            || (parent_token.line < token.line && token.indent > parent_token.indent)
+    }
+
+    fn is_token_start_of_line_and_after_line_and_nested_indent_from(
+        &self,
+        parent_token: &Token,
+    ) -> bool {
+        let token = self.get_token();
+        parent_token.line < token.line
+            && token.indent > parent_token.indent
+            && token.column == token.indent
+    }
+
+    fn is_token_equal_or_less_indented_than(&self, parent_token: &Token) -> bool {
+        let token = self.get_token();
+        parent_token.line < token.line && token.indent <= parent_token.indent
     }
 }
 
@@ -680,14 +944,24 @@ fn organize_binops(
     left
 }
 
-pub fn parse(source: &Source, tokens: Vec<Token>) -> ParseResults<Rc<Expression>> {
+pub fn parse(source: &Source, tokens: Vec<Token>) -> ParseResult<Vec<Rc<Module>>> {
     let mut parser = State {
         source,
         tokens,
         current: 0,
     };
 
-    parser.file().map(|e| Rc::new(e))
+    parser.file()
+}
+
+pub fn parse_repl(source: &Source, tokens: Vec<Token>) -> ParseResult<Rc<Expression>> {
+    let mut parser = State {
+        source,
+        tokens,
+        current: 0,
+    };
+
+    parser.repl_entry().map(|e| Rc::new(e))
 }
 
 #[cfg(test)]
@@ -698,7 +972,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_parser() {
+    fn test_expression_parser() {
         let tests = vec![
             (
                 "True",
@@ -753,7 +1027,7 @@ mod tests {
             (
                 "variableOne",
                 Ok(Rc::new(Node {
-                    value: Identifier("variableOne".to_owned()),
+                    value: Identifier("variableOne".to_string()),
                     line: 1,
                     column: 0,
                     start: 0,
@@ -763,7 +1037,7 @@ mod tests {
             (
                 "variable_one",
                 Ok(Rc::new(Node {
-                    value: Identifier("variable_one".to_owned()),
+                    value: Identifier("variable_one".to_string()),
                     line: 1,
                     column: 0,
                     start: 0,
@@ -773,7 +1047,7 @@ mod tests {
             (
                 "espaÆàʥñÑol",
                 Ok(Rc::new(Node {
-                    value: Identifier("espaÆàʥñÑol".to_owned()),
+                    value: Identifier("espaÆàʥñÑol".to_string()),
                     line: 1,
                     column: 0,
                     start: 0,
@@ -783,7 +1057,7 @@ mod tests {
             (
                 "\"😄\"",
                 Ok(Rc::new(Node {
-                    value: String_("😄".to_owned()),
+                    value: String_("😄".to_string()),
                     line: 1,
                     column: 0,
                     start: 0,
@@ -793,7 +1067,7 @@ mod tests {
             (
                 "\"\n\"",
                 Ok(Rc::new(Node {
-                    value: String_("\n".to_owned()),
+                    value: String_("\n".to_string()),
                     line: 1,
                     column: 0,
                     start: 0,
@@ -803,7 +1077,7 @@ mod tests {
             (
                 "\"\"",
                 Ok(Rc::new(Node {
-                    value: String_("".to_owned()),
+                    value: String_("".to_string()),
                     line: 1,
                     column: 0,
                     start: 0,
@@ -813,7 +1087,7 @@ mod tests {
             (
                 "(\"\")",
                 Ok(Rc::new(Node {
-                    value: String_("".to_owned()),
+                    value: String_("".to_string()),
                     line: 1,
                     column: 1,
                     start: 1,
@@ -832,12 +1106,12 @@ mod tests {
             ),
             (
                 "(((1))",
-                Err(vec![Error {
+                Err(Error {
                     message: {
                         "1:6: Expected ')' after parenthesized expression, but instead found: '[End of file]'
 
   1│  (((1))
-   │  ↑".to_owned()
+   │  ↑".to_string()
                     },
                     token: Token {
                         kind: TT::Eof,
@@ -847,16 +1121,16 @@ mod tests {
                         position: 6,
                         end_position: 6,
                     },
-                }]),
+                }),
             ),
             (
                 "(((1))))",
-                Err(vec![Error {
+                Err(Error {
                     message: "1:7: Expected the end of input, but instead found: ')'
 
   1│  (((1))))
    │         ↑"
-                        .to_owned(),
+                        .to_string(),
                     token: Token {
                         kind: TT::RightParen,
                         line: 1,
@@ -865,7 +1139,7 @@ mod tests {
                         position: 7,
                         end_position: 8,
                     },
-                }]),
+                }),
             ),
             (
                 "(
@@ -884,14 +1158,14 @@ mod tests {
                 Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
-                            value: Identifier("fun".to_owned()),
+                            value: Identifier("fun".to_string()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 3,
                         }),
                         vec![Rc::new(Node {
-                            value: Identifier("arg".to_owned()),
+                            value: Identifier("arg".to_string()),
                             line: 1,
                             column: 4,
                             start: 4,
@@ -909,14 +1183,14 @@ mod tests {
                 Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
-                            value: Identifier("fun".to_owned()),
+                            value: Identifier("fun".to_string()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 3,
                         }),
                         vec![Rc::new(Node {
-                            value: Identifier("arg".to_owned()),
+                            value: Identifier("arg".to_string()),
                             line: 2,
                             column: 1,
                             start: 5,
@@ -934,14 +1208,14 @@ mod tests {
                 Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
-                            value: Identifier("fun".to_owned()),
+                            value: Identifier("fun".to_string()),
                             line: 1,
                             column: 2,
                             start: 2,
                             end: 5,
                         }),
                         vec![Rc::new(Node {
-                            value: Identifier("arg".to_owned()),
+                            value: Identifier("arg".to_string()),
                             line: 2,
                             column: 4,
                             start: 10,
@@ -956,13 +1230,13 @@ mod tests {
             ),
             (
                 "fun\narg",
-                Err(vec![Error {
+                Err(Error {
                     message: "2:0: Expected the end of input, but instead found: 'arg'
 
   1│  fun
   2│  arg
    │  ↑↑↑"
-                        .to_owned(),
+                        .to_string(),
                     token: Token {
                         kind: TT::Identifier,
                         position: 4,
@@ -971,7 +1245,7 @@ mod tests {
                         indent: 0,
                         column: 0,
                     },
-                }]),
+                }),
             ),
             (
                 "
@@ -981,7 +1255,7 @@ fun arg1
                 Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
-                            value: Identifier("fun".to_owned()),
+                            value: Identifier("fun".to_string()),
                             line: 2,
                             column: 0,
                             start: 1,
@@ -989,28 +1263,28 @@ fun arg1
                         }),
                         vec![
                             Rc::new(Node {
-                                value: Identifier("arg1".to_owned()),
+                                value: Identifier("arg1".to_string()),
                                 line: 2,
                                 column: 4,
                                 start: 5,
                                 end: 9,
                             }),
                             Rc::new(Node {
-                                value: Identifier("arg2".to_owned()),
+                                value: Identifier("arg2".to_string()),
                                 line: 3,
                                 column: 2,
                                 start: 12,
                                 end: 16,
                             }),
                             Rc::new(Node {
-                                value: Identifier("arg3".to_owned()),
+                                value: Identifier("arg3".to_string()),
                                 line: 3,
                                 column: 7,
                                 start: 17,
                                 end: 21,
                             }),
                             Rc::new(Node {
-                                value: Identifier("arg4".to_owned()),
+                                value: Identifier("arg4".to_string()),
                                 line: 4,
                                 column: 2,
                                 start: 24,
@@ -1029,7 +1303,7 @@ fun arg1
                 Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
-                            value: Identifier("hello".to_owned()),
+                            value: Identifier("hello".to_string()),
                             start: 0,
                             end: 5,
                             line: 1,
@@ -1104,7 +1378,7 @@ fun arg1
                 Ok(Rc::new(Node {
                     value: FnCall(
                         Rc::new(Node {
-                            value: Identifier("incr".to_owned()),
+                            value: Identifier("incr".to_string()),
                             line: 1,
                             column: 0,
                             start: 0,
@@ -1331,14 +1605,14 @@ fun arg1
                 Ok(Rc::new(Node {
                     value: Lambda(
                         vec![Rc::new(Node {
-                            value: Pattern_::Identifier("a".to_owned()),
+                            value: Pattern_::Identifier("a".to_string()),
                             line: 1,
                             column: 1,
                             start: 1,
                             end: 2,
                         })],
                         Rc::new(Node {
-                            value: Identifier("a".to_owned()),
+                            value: Identifier("a".to_string()),
                             line: 1,
                             column: 6,
                             start: 6,
@@ -1356,7 +1630,7 @@ fun arg1
                 Ok(Rc::new(Node {
                     value: Lambda(
                         vec![Rc::new(Node {
-                            value: Pattern_::Identifier("a".to_owned()),
+                            value: Pattern_::Identifier("a".to_string()),
                             line: 1,
                             column: 1,
                             start: 1,
@@ -1365,14 +1639,14 @@ fun arg1
                         Rc::new(Node {
                             value: Lambda(
                                 vec![Rc::new(Node {
-                                    value: Pattern_::Identifier("b".to_owned()),
+                                    value: Pattern_::Identifier("b".to_string()),
                                     line: 1,
                                     column: 7,
                                     start: 7,
                                     end: 8,
                                 })],
                                 Rc::new(Node {
-                                    value: Identifier("a".to_owned()),
+                                    value: Identifier("a".to_string()),
                                     line: 1,
                                     column: 12,
                                     start: 12,
@@ -1397,14 +1671,14 @@ fun arg1
                     value: Lambda(
                         vec![
                             Rc::new(Node {
-                                value: Pattern_::Identifier("a".to_owned()),
+                                value: Pattern_::Identifier("a".to_string()),
                                 line: 1,
                                 column: 1,
                                 start: 1,
                                 end: 2,
                             }),
                             Rc::new(Node {
-                                value: Pattern_::Identifier("b".to_owned()),
+                                value: Pattern_::Identifier("b".to_string()),
                                 line: 1,
                                 column: 3,
                                 start: 3,
@@ -1412,7 +1686,7 @@ fun arg1
                             }),
                         ],
                         Rc::new(Node {
-                            value: Identifier("a".to_owned()),
+                            value: Identifier("a".to_string()),
                             line: 1,
                             column: 8,
                             start: 8,
@@ -1508,7 +1782,7 @@ else
                         Rc::new(Node {
                             value: FnCall(
                                 Rc::new(Node {
-                                    value: Identifier("incr".to_owned()),
+                                    value: Identifier("incr".to_string()),
                                     line: 1,
                                     column: 13,
                                     start: 13,
@@ -1597,11 +1871,11 @@ else
             ),
             (
                 "if True { 1 } else 2",
-                Err(vec![Error {
+                Err(Error {
                     message: {
                         "1:8: Expected the keyword `then` and an expression to parse the if expression, but instead found: '{'\n
   1│  if True { 1 } else 2
-   │          ↑".to_owned()
+   │          ↑".to_string()
                     },
                     token: Token {
                         kind: LeftBrace,
@@ -1611,16 +1885,16 @@ else
                         column: 8,
                         indent: 0,
                     },
-                }]),
+                }),
             ),
             (
                 "if True then 1",
-                Err(vec![Error {
+                Err(Error {
                     message: {
                         "1:14: Expected the `else` branch of the if expression, but instead found: '[End of file]'
 
   1│  if True then 1
-   │                ↑".to_owned()
+   │                ↑".to_string()
                     },
                     token: Token {
                         kind: Eof,
@@ -1630,30 +1904,30 @@ else
                         column: 14,
                         indent: 0,
                     },
-                }]),
+                }),
             ),
             (
                 "let x = 1\nx",
                 Ok(Rc::new(Node {
                     value: Let(
-                        vec![(
-                            Rc::new(Node {
-                                value: Pattern_::Identifier("x".to_owned()),
+                        vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
                             }),
-                            Rc::new(Node {
+                            value: Rc::new(Node {
                                 value: Float(1.),
                                 line: 1,
                                 column: 8,
                                 start: 8,
                                 end: 9,
                             }),
-                        )],
+                        })],
                         Rc::new(Node {
-                            value: Identifier("x".to_owned()),
+                            value: Identifier("x".to_string()),
                             line: 2,
                             column: 0,
                             start: 10,
@@ -1668,13 +1942,13 @@ else
             ),
             (
                 "let x = a\n  x",
-                Err(vec![Error {
+                Err(Error {
                     message: {
                         "2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: '[End of file]'
 
   1│  let x = a
   2│    x
-   │     ↑".to_owned()
+   │     ↑".to_string()
                     },
                     token: Token {
                         kind: Eof,
@@ -1684,31 +1958,31 @@ else
                         column: 3,
                         indent: 2,
                     },
-                }]),
+                }),
             ),
             (
                 "let x = a\n  x\nx",
                 Ok(Rc::new(Node {
                     value: Let(
-                        vec![(
-                            Rc::new(Node {
-                                value: Pattern_::Identifier("x".to_owned()),
+                        vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
                             }),
-                            Rc::new(Node {
+                            value: Rc::new(Node {
                                 value: FnCall(
                                     Rc::new(Node {
-                                        value: Identifier("a".to_owned()),
+                                        value: Identifier("a".to_string()),
                                         line: 1,
                                         column: 8,
                                         start: 8,
                                         end: 9,
                                     }),
                                     vec![Rc::new(Node {
-                                        value: Identifier("x".to_owned()),
+                                        value: Identifier("x".to_string()),
                                         line: 2,
                                         column: 2,
                                         start: 12,
@@ -1720,9 +1994,9 @@ else
                                 start: 8,
                                 end: 13,
                             }),
-                        )],
+                        })],
                         Rc::new(Node {
-                            value: Identifier("x".to_owned()),
+                            value: Identifier("x".to_string()),
                             line: 3,
                             column: 0,
                             start: 14,
@@ -1739,25 +2013,25 @@ else
                 "let x = a x in x",
                 Ok(Rc::new(Node {
                     value: Let(
-                        vec![(
-                            Rc::new(Node {
-                                value: Pattern_::Identifier("x".to_owned()),
+                        vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
                             }),
-                            Rc::new(Node {
+                            value: Rc::new(Node {
                                 value: FnCall(
                                     Rc::new(Node {
-                                        value: Identifier("a".to_owned()),
+                                        value: Identifier("a".to_string()),
                                         line: 1,
                                         column: 8,
                                         start: 8,
                                         end: 9,
                                     }),
                                     vec![Rc::new(Node {
-                                        value: Identifier("x".to_owned()),
+                                        value: Identifier("x".to_string()),
                                         line: 1,
                                         column: 10,
                                         start: 10,
@@ -1769,9 +2043,9 @@ else
                                 start: 8,
                                 end: 11,
                             }),
-                        )],
+                        })],
                         Rc::new(Node {
-                            value: Identifier("x".to_owned()),
+                            value: Identifier("x".to_string()),
                             line: 1,
                             column: 15,
                             start: 15,
@@ -1788,25 +2062,25 @@ else
                 "let x = a\n  x\nin\nx",
                 Ok(Rc::new(Node {
                     value: Let(
-                        vec![(
-                            Rc::new(Node {
-                                value: Pattern_::Identifier("x".to_owned()),
+                        vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
                             }),
-                            Rc::new(Node {
+                            value: Rc::new(Node {
                                 value: FnCall(
                                     Rc::new(Node {
-                                        value: Identifier("a".to_owned()),
+                                        value: Identifier("a".to_string()),
                                         line: 1,
                                         column: 8,
                                         start: 8,
                                         end: 9,
                                     }),
                                     vec![Rc::new(Node {
-                                        value: Identifier("x".to_owned()),
+                                        value: Identifier("x".to_string()),
                                         line: 2,
                                         column: 2,
                                         start: 12,
@@ -1818,9 +2092,9 @@ else
                                 start: 8,
                                 end: 13,
                             }),
-                        )],
+                        })],
                         Rc::new(Node {
-                            value: Identifier("x".to_owned()),
+                            value: Identifier("x".to_string()),
                             line: 4,
                             column: 0,
                             start: 17,
@@ -1835,9 +2109,9 @@ else
             ),
             (
                 "let\n  x = a\n  x\nin\nx",
-                Err(vec![Error {
+                Err(Error {
                     message: {
-                        "4:0: Expected an = and an expression for the right side of let expression, but instead found: \'in\'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x".to_owned()
+                        "4:0: Expected an = and an expression for the right side of let expression, but instead found: \'in\'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x".to_string()
                     },
                     token: Token {
                         kind: TT::In,
@@ -1847,31 +2121,31 @@ else
                         column: 0,
                         indent: 0,
                     },
-                }]),
+                }),
             ),
             (
                 "let\n  x = a\n    x\nin\nx",
                 Ok(Rc::new(Node {
                     value: Let(
-                        vec![(
-                            Rc::new(Node {
-                                value: Pattern_::Identifier("x".to_owned()),
+                        vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                value: Pattern_::Identifier("x".to_string()),
                                 line: 2,
                                 column: 2,
                                 start: 6,
                                 end: 7,
                             }),
-                            Rc::new(Node {
+                            value: Rc::new(Node {
                                 value: FnCall(
                                     Rc::new(Node {
-                                        value: Identifier("a".to_owned()),
+                                        value: Identifier("a".to_string()),
                                         line: 2,
                                         column: 6,
                                         start: 10,
                                         end: 11,
                                     }),
                                     vec![Rc::new(Node {
-                                        value: Identifier("x".to_owned()),
+                                        value: Identifier("x".to_string()),
                                         line: 3,
                                         column: 4,
                                         start: 16,
@@ -1883,9 +2157,9 @@ else
                                 start: 10,
                                 end: 17,
                             }),
-                        )],
+                        })],
                         Rc::new(Node {
-                            value: Identifier("x".to_owned()),
+                            value: Identifier("x".to_string()),
                             line: 5,
                             column: 0,
                             start: 21,
@@ -1903,25 +2177,25 @@ else
                 Ok(Rc::new(Node {
                     value: Let(
                         vec![
-                            (
-                                Rc::new(Node {
-                                    value: Pattern_::Identifier("x".to_owned()),
+                            Rc::new(Definition {
+                                pattern: Rc::new(Node {
+                                    value: Pattern_::Identifier("x".to_string()),
                                     line: 2,
                                     column: 2,
                                     start: 6,
                                     end: 7,
                                 }),
-                                Rc::new(Node {
+                                value: Rc::new(Node {
                                     value: FnCall(
                                         Rc::new(Node {
-                                            value: Identifier("a".to_owned()),
+                                            value: Identifier("a".to_string()),
                                             line: 2,
                                             column: 6,
                                             start: 10,
                                             end: 11,
                                         }),
                                         vec![Rc::new(Node {
-                                            value: Identifier("x".to_owned()),
+                                            value: Identifier("x".to_string()),
                                             line: 3,
                                             column: 4,
                                             start: 16,
@@ -1933,26 +2207,26 @@ else
                                     start: 10,
                                     end: 17,
                                 }),
-                            ),
-                            (
-                                Rc::new(Node {
+                            }),
+                            Rc::new(Definition {
+                                pattern: Rc::new(Node {
                                     start: 19,
                                     end: 20,
                                     line: 4,
                                     column: 1,
-                                    value: Pattern_::Identifier("b".to_owned()),
+                                    value: Pattern_::Identifier("b".to_string()),
                                 }),
-                                Rc::new(Node {
+                                value: Rc::new(Node {
                                     start: 23,
                                     end: 24,
                                     line: 4,
                                     column: 5,
                                     value: Float(5.0),
                                 }),
-                            ),
+                            }),
                         ],
                         Rc::new(Node {
-                            value: Identifier("x".to_owned()),
+                            value: Identifier("x".to_string()),
                             line: 6,
                             column: 0,
                             start: 28,
@@ -1970,19 +2244,493 @@ else
         for (code, expected) in tests {
             let source = Source::new_orphan(&code);
             let tokens = tokenizer::parse(&source).unwrap();
+            let result = parse_repl(&source, tokens);
+            assert_eq!(
+                result,
+                expected,
+                "\n\nInput:\n\n{}\n\nExpected:\n\n{}",
+                &code,
+                match &result {
+                    Ok(ast) => format!("{:#?}", ast),
+                    Err(e) => e.message.clone(),
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn test_module_parser() {
+        let tests = vec![
+            (
+                "True",
+                Err(Error {
+                    message: {
+                        "1:0: Expected `module FileName` at the start of the file, but instead found: \'True\'\n\n  1│  True\n   │  ↑↑↑↑".to_string()
+                    },
+                    token: Token {
+                        kind: True,
+                        position: 0,
+                        end_position: 4,
+                        line: 1,
+                        column: 0,
+                        indent: 0,
+                    },
+                }),
+            ),
+            (
+                "module Test",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![],
+                    definitions: vec![],
+                })]),
+            ),
+            (
+                "module Test\n\na = 1",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![],
+                    definitions: vec![Rc::new(Definition {
+                        pattern: Rc::new(Node {
+                            start: 13,
+                            end: 14,
+                            line: 3,
+                            column: 0,
+                            value: Pattern_::Identifier("a".to_string()),
+                        }),
+                        value: Rc::new(Node {
+                            start: 17,
+                            end: 18,
+                            line: 3,
+                            column: 4,
+                            value: Float(1.0),
+                        }),
+                    })],
+                })]),
+            ),
+            (
+                "module Test\n\na = 1\n\nb = True",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![],
+                    definitions: vec![
+                        Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 13,
+                                end: 14,
+                                line: 3,
+                                column: 0,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 17,
+                                end: 18,
+                                line: 3,
+                                column: 4,
+                                value: Float(1.0),
+                            }),
+                        }),
+                        Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 20,
+                                end: 21,
+                                line: 5,
+                                column: 0,
+                                value: Pattern_::Identifier("b".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 24,
+                                end: 28,
+                                line: 5,
+                                column: 4,
+                                value: Bool(true),
+                            }),
+                        }),
+                    ],
+                })]),
+            ),
+            (
+                "module Test\n\na = 1 + 2) + 3\n\nb = * add\n  5",
+                Err(Error {
+                    message: {
+                        "3:9: Expected a definition like `n = 5` or `add x y = x + y`, but instead found: \')\'\n\n  1│  module Test\n  2│  \n  3│  a = 1 + 2) + 3\n   │           ↑\n  4│  \n  5│  b = * add".to_string()
+                    },
+                    token: Token {
+                        kind: RightParen,
+                        position: 22,
+                        end_position: 23,
+                        line: 3,
+                        column: 9,
+                        indent: 0,
+                    },
+                }),
+            ),
+            (
+                "module Test\n\na = 1 + 2 + 3\n\nb = * add\n  5",
+                Err(Error {
+                    message: {
+                        "5:4: Expected an expression (a number, string, a let binding, function call, an identifier, etc.), but instead found: \'*\'\n\n  3│  a = 1 + 2 + 3\n  4│  \n  5│  b = * add\n   │      ↑\n  6│    5".to_string()
+                    },
+                    token: Token {
+                        kind: Star,
+                        position: 32,
+                        end_position: 33,
+                        line: 5,
+                        column: 4,
+                        indent: 0,
+                    },
+                }),
+            ),
+            (
+                "module Parent\n\nmodule Test",
+                Ok(vec![
+                    Rc::new(Module {
+                        name: Node {
+                            start: 22,
+                            end: 26,
+                            line: 3,
+                            column: 7,
+                            value: "Test".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![],
+                    }),
+                    Rc::new(Module {
+                        name: Node {
+                            start: 7,
+                            end: 13,
+                            line: 1,
+                            column: 7,
+                            value: "Parent".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![],
+                    }),
+                ]),
+            ),
+            (
+                "module Parent\n\nmodule Test\n\n  a = 1",
+                Ok(vec![
+                    Rc::new(Module {
+                        name: Node {
+                            start: 22,
+                            end: 26,
+                            line: 3,
+                            column: 7,
+                            value: "Test".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 30,
+                                end: 31,
+                                line: 5,
+                                column: 2,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 34,
+                                end: 35,
+                                line: 5,
+                                column: 6,
+                                value: Float(1.0),
+                            }),
+                        })],
+                    }),
+                    Rc::new(Module {
+                        name: Node {
+                            start: 7,
+                            end: 13,
+                            line: 1,
+                            column: 7,
+                            value: "Parent".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![],
+                    }),
+                ]),
+            ),
+            (
+                "module Parent\n\nmodule Test\n\n  a = 1\n\na = 1\n",
+                Ok(vec![
+                    Rc::new(Module {
+                        name: Node {
+                            start: 22,
+                            end: 26,
+                            line: 3,
+                            column: 7,
+                            value: "Test".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 30,
+                                end: 31,
+                                line: 5,
+                                column: 2,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 34,
+                                end: 35,
+                                line: 5,
+                                column: 6,
+                                value: Float(1.0),
+                            }),
+                        })],
+                    }),
+                    Rc::new(Module {
+                        name: Node {
+                            start: 7,
+                            end: 13,
+                            line: 1,
+                            column: 7,
+                            value: "Parent".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 37,
+                                end: 38,
+                                line: 7,
+                                column: 0,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 41,
+                                end: 42,
+                                line: 7,
+                                column: 4,
+                                value: Float(1.0),
+                            }),
+                        })],
+                    }),
+                ]),
+            ),
+            (
+                {
+                    "module Parent\n\nmodule Test\n\n  a = 1 + 2) + 3\n\n  b = * add\n    5\n\na = 1 + 2) + 3\n\nb = * add\n  5"
+                },
+                Err(Error {
+                    message: {
+                        "5:11: Expected a definition like `n = 5` or `add x y = x + y`, but instead found: \')\'\n\n  3│  module Test\n  4│  \n  5│    a = 1 + 2) + 3\n   │             ↑\n  6│  \n  7│    b = * add".to_string()
+                    },
+                    token: Token {
+                        kind: RightParen,
+                        position: 39,
+                        end_position: 40,
+                        line: 5,
+                        column: 11,
+                        indent: 2,
+                    },
+                }),
+            ),
+            (
+                "module Test exposing (a)\n\na = 1\n\nb = True",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![Node {
+                        start: 22,
+                        end: 23,
+                        line: 1,
+                        column: 22,
+                        value: Export_("a".to_string()),
+                    }],
+                    imports: vec![],
+                    definitions: vec![
+                        Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 26,
+                                end: 27,
+                                line: 3,
+                                column: 0,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 30,
+                                end: 31,
+                                line: 3,
+                                column: 4,
+                                value: Float(1.0),
+                            }),
+                        }),
+                        Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 33,
+                                end: 34,
+                                line: 5,
+                                column: 0,
+                                value: Pattern_::Identifier("b".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 37,
+                                end: 41,
+                                line: 5,
+                                column: 4,
+                                value: Bool(true),
+                            }),
+                        }),
+                    ],
+                })]),
+            ),
+            (
+                "module Test exposing (a, b)\n\na = 1\n\nb = True",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![
+                        Node {
+                            start: 22,
+                            end: 23,
+                            line: 1,
+                            column: 22,
+                            value: Export_("a".to_string()),
+                        },
+                        Node {
+                            start: 25,
+                            end: 26,
+                            line: 1,
+                            column: 25,
+                            value: Export_("b".to_string()),
+                        },
+                    ],
+                    imports: vec![],
+                    definitions: vec![
+                        Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 29,
+                                end: 30,
+                                line: 3,
+                                column: 0,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 33,
+                                end: 34,
+                                line: 3,
+                                column: 4,
+                                value: Float(1.0),
+                            }),
+                        }),
+                        Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 36,
+                                end: 37,
+                                line: 5,
+                                column: 0,
+                                value: Pattern_::Identifier("b".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 40,
+                                end: 44,
+                                line: 5,
+                                column: 4,
+                                value: Bool(true),
+                            }),
+                        }),
+                    ],
+                })]),
+            ),
+            (
+                "module Test exposing a, b\n\na = 1\n\nb = True",
+                Err(Error {
+                    message: {
+                        "1:21: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: \'a\'\n\n  1│  module Test exposing a, b\n   │                       ↑\n  2│  \n  3│  a = 1".to_string()
+                    },
+                    token: Token {
+                        kind: TT::Identifier,
+                        position: 21,
+                        end_position: 22,
+                        line: 1,
+                        column: 21,
+                        indent: 0,
+                    },
+                }),
+            ),
+            (
+                "module Test exposing (a b)\n\na = 1\n\nb = True",
+                Err(Error {
+                    message: {
+                        "1:24: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: \'b\'\n\n  1│  module Test exposing (a b)\n   │                          ↑\n  2│  \n  3│  a = 1".to_string()
+                    },
+                    token: Token {
+                        kind: TT::Identifier,
+                        position: 24,
+                        end_position: 25,
+                        line: 1,
+                        column: 24,
+                        indent: 0,
+                    },
+                }),
+            ),
+            (
+                "module Test exposing (a, b\n\na = 1\n\nb = True",
+                Err(Error {
+                    message: {
+                        "3:0: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: \'a\'\n\n  1│  module Test exposing (a, b\n  2│  \n  3│  a = 1\n   │  ↑\n  4│  \n  5│  b = True".to_string()
+                    },
+                    token: Token {
+                        kind: TT::Identifier,
+                        position: 28,
+                        end_position: 29,
+                        line: 3,
+                        column: 0,
+                        indent: 0,
+                    },
+                }),
+            ),
+        ];
+
+        for (code, expected) in tests {
+            let source = Source::new_orphan(&code);
+            let tokens = tokenizer::parse(&source).unwrap();
             let result = parse(&source, tokens);
             assert_eq!(
                 result,
                 expected,
-                "\n\nInput:\n\n{:#?}\n\nExpected:\n\n{}",
+                "\n\nInput:\n\n{}\n\nExpected:\n\n{}",
                 &code,
                 match &result {
                     Ok(ast) => format!("{:#?}", ast),
-                    Err(e) => e
-                        .iter()
-                        .map(|e| e.message.clone())
-                        .collect::<Vec<String>>()
-                        .join("\n\n"),
+                    Err(e) => e.message.clone(),
                 }
             );
         }

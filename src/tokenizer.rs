@@ -90,7 +90,7 @@ impl<'a> State<'a> {
     }
 
     fn add_error(&mut self, message: &str, use_start: bool) {
-        let mut message = message.to_owned();
+        let mut message = message.to_string();
 
         let (position, line, column) = if use_start {
             (
@@ -145,9 +145,11 @@ impl<'a> State<'a> {
                     ';' => self.add_token(Semicolon),
                     ':' => self.add_token(Colon),
                     '*' => self.add_token(Star),
+                    '/' => self.add_token(Slash),
                     '\\' => self.add_token(Backslash),
 
                     '-' => match self.peek() {
+                        Some('-') => self.status = Status::LineCommentToken,
                         Some('>') => self.status = Status::DoubleToken(Arrow),
                         _ => self.add_token(Minus),
                     },
@@ -170,11 +172,6 @@ impl<'a> State<'a> {
                     '>' => match self.peek() {
                         Some('=') => self.status = Status::DoubleToken(GreaterEqual),
                         _ => self.add_token(Greater),
-                    },
-
-                    '/' => match self.peek() {
-                        Some('/') => self.status = Status::LineCommentToken,
-                        _ => self.add_token(Slash),
                     },
 
                     '"' => self.status = Status::StringToken(false),
@@ -294,7 +291,7 @@ impl<'a> State<'a> {
                                 "in" => In,
                                 "import" => Import,
                                 "as" => As,
-                                "exports" => Exports,
+                                "exposing" => Exposing,
                                 "module" => Module,
                                 _ => Identifier,
                             },
@@ -370,7 +367,7 @@ mod tests {
     fn test_scan_tokens() {
         let tests = vec![
             (
-                "".to_owned(),
+                "".to_string(),
                 Ok(vec![Token {
                     kind: Eof,
                     position: 0,
@@ -381,7 +378,7 @@ mod tests {
                 }]),
             ),
             (
-                "123".to_owned(),
+                "123".to_string(),
                 Ok(vec![
                     Token {
                         kind: Float,
@@ -402,7 +399,7 @@ mod tests {
                 ]),
             ),
             (
-                "123.345".to_owned(),
+                "123.345".to_string(),
                 Ok(vec![
                     Token {
                         kind: Float,
@@ -423,7 +420,7 @@ mod tests {
                 ]),
             ),
             (
-                "123.sd".to_owned(),
+                "123.sd".to_string(),
                 Err(vec![Error {
                     line: 1,
                     column: 3,
@@ -431,11 +428,11 @@ mod tests {
 
   1│  123.sd
    │     ↑"
-                        .to_owned(),
+                        .to_string(),
                 }]),
             ),
             (
-                "123\n or \"abc\"".to_owned(),
+                "123\n or \"abc\"".to_string(),
                 Ok(vec![
                     Token {
                         kind: Float,
@@ -472,7 +469,7 @@ mod tests {
                 ]),
             ),
             (
-                "123\n or &\"abc\"".to_owned(),
+                "123\n or &\"abc\"".to_string(),
                 Err(vec![Error {
                     line: 2,
                     column: 4,
@@ -481,11 +478,11 @@ mod tests {
   1│  123
   2│   or &\"abc\"
    │      ↑"
-                        .to_owned(),
+                        .to_string(),
                 }]),
             ),
             (
-                "\"asdf\\\"asdf\"".to_owned(),
+                "\"asdf\\\"asdf\"".to_string(),
                 Ok(vec![
                     Token {
                         kind: String_,

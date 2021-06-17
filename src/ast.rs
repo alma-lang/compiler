@@ -20,6 +20,59 @@ impl<V> Node<V> {
             column: first_token.column,
         }
     }
+
+    pub fn with_value_from_node<T>(value: V, node: &Node<T>) -> Self {
+        Node {
+            value,
+            start: node.start,
+            end: node.end,
+            line: node.line,
+            column: node.column,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Module {
+    pub name: Node<String>,
+    pub exports: Vec<Export>,
+    pub imports: Vec<Import>,
+    pub definitions: Vec<Rc<Definition>>,
+}
+
+pub type Import = Node<Import_>;
+#[derive(Debug, PartialEq)]
+pub struct Import_ {
+    pub module_name: Node<String>,
+    pub alias: Option<Node<String>>,
+    pub exports: Vec<Export>,
+}
+
+pub type Export = Node<Export_>;
+#[derive(Debug, PartialEq)]
+pub struct Export_(pub String);
+
+#[derive(PartialEq, Debug)]
+pub struct Definition {
+    pub pattern: Rc<Pattern>,
+    pub value: Rc<Expression>,
+}
+
+pub type Expression = Node<Expression_>;
+
+#[derive(PartialEq, Debug)]
+pub enum Expression_ {
+    Unit,
+    Bool(bool),
+    Float(f64),
+    String_(String),
+    Identifier(String),
+    Unary(Unary, Rc<Expression>),
+    Binary(Rc<Expression>, Binop, Rc<Expression>),
+    Lambda(Vec<Rc<Pattern>>, Rc<Expression>),
+    FnCall(Rc<Expression>, Vec<Rc<Expression>>),
+    Let(Vec<Rc<Definition>>, Rc<Expression>),
+    If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
 }
 
 type Unary = Node<Unary_>;
@@ -151,21 +204,4 @@ pub type Pattern = Node<Pattern_>;
 #[derive(PartialEq, Debug, Clone)]
 pub enum Pattern_ {
     Identifier(String),
-}
-
-pub type Expression = Node<Expression_>;
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum Expression_ {
-    Unit,
-    Bool(bool),
-    Float(f64),
-    String_(String),
-    Identifier(String),
-    Unary(Unary, Rc<Expression>),
-    Binary(Rc<Expression>, Binop, Rc<Expression>),
-    Lambda(Vec<Rc<Pattern>>, Rc<Expression>),
-    FnCall(Rc<Expression>, Vec<Rc<Expression>>),
-    Let(Vec<(Rc<Pattern>, Rc<Expression>)>, Rc<Expression>),
-    If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
 }

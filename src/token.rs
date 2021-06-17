@@ -65,10 +65,10 @@ pub enum Type {
     False,
     Let,
     In,
-    Import,
     As,
-    Exports,
+    Exposing,
     Module,
+    Import,
 
     Comment,
     Eof,

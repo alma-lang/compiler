@@ -1,4 +1,4 @@
-use crate::ast::{self, Expression, Node};
+use crate::ast::{self, Expression, Expression_ as E, Module, Node, Pattern_ as P, Unary_ as U};
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
@@ -35,6 +35,7 @@ enum UnificationError {
     InfiniteType,
 }
 
+#[derive(Debug)]
 pub enum Error {
     UndefinedIdentifier(String, Rc<Expression>),
     TypeMismatch(Rc<Expression>, Rc<Type>, Option<Rc<Expression>>, Rc<Type>),
@@ -120,7 +121,7 @@ with type
     }
 }
 
-struct State {
+pub struct State {
     current_level: Level,
     current_type_var: TypeVarId,
 }
@@ -318,26 +319,33 @@ fn unify(
             }
 
             (Var(var1), b) => {
-                let mut var1 = var1.borrow_mut();
-                match &*var1 {
+                let var1_read = var1.borrow();
+                match &*var1_read {
                     /* the 'find' in the union-find algorithm */
                     Bound(a1) => unify_rec(a1, t2),
 
                     /* create binding for boundTy that is currently empty */
                     Unbound(a_id, a_level) => {
+                        let (a_id, a_level) = (*a_id, *a_level);
                         let equal = match b {
                             Var(var2) => match &*var2.borrow() {
-                                Unbound(b_id, b_level) => a_id == b_id && a_level == b_level,
+                                Unbound(b_id, b_level) => a_id == *b_id && a_level == *b_level,
                                 _ => false,
                             },
                             _ => false,
                         };
+
+                        // Drop the read borrow before the occurs check since it is not used and
+                        // can panic the occurs check if t1 and t2 point to the same thing
+                        drop(var1_read);
+
                         if equal {
                             Ok(())
-                        } else if occurs(*a_id, *a_level, t2) {
+                        } else if occurs(a_id, a_level, t2) {
                             /* a = a, but dont create a recursive binding to itself */
                             Err(InfiniteType)
                         } else {
+                            let mut var1 = var1.borrow_mut();
                             *var1 = Bound(Rc::clone(&t2));
                             Ok(())
                         }
@@ -346,26 +354,34 @@ fn unify(
             }
 
             (a, Var(var2)) => {
-                let mut var2 = var2.borrow_mut();
-                match &*var2 {
+                let var2_read = var2.borrow();
+                match &*var2_read {
                     /* the 'find' in the union-find algorithm */
                     Bound(b) => unify_rec(t1, b),
 
                     /* create binding for boundTy that is currently empty */
                     Unbound(b_id, b_level) => {
+                        let (b_id, b_level) = (*b_id, *b_level);
+
                         let equal = match a {
                             Var(var1) => match &*var1.borrow() {
-                                Unbound(a_id, a_level) => a_id == b_id && a_level == b_level,
+                                Unbound(a_id, a_level) => *a_id == b_id && *a_level == b_level,
                                 _ => false,
                             },
                             _ => false,
                         };
+
+                        // Drop the read borrow before the occurs check since it is not used and
+                        // can panic the occurs check if t1 and t2 point to the same thing
+                        drop(var2_read);
+
                         if equal {
                             Ok(())
-                        } else if occurs(*b_id, *b_level, t1) {
+                        } else if occurs(b_id, b_level, t1) {
                             /* a = a, but dont create a recursive binding to itself */
                             Err(InfiniteType)
                         } else {
+                            let mut var2 = var2.borrow_mut();
                             *var2 = Bound(Rc::clone(&t1));
                             Ok(())
                         }
@@ -497,17 +513,66 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
 }
 
 /* The main entry point to type inference */
-/* All branches (except for the trivial Unit) of the first match in this function
-are translated directly from the rules for algorithm J, given in comments */
-pub fn infer(ast: &Rc<Expression>) -> Result<Rc<Type>, Vec<Error>> {
+pub fn infer(module: &Rc<Module>) -> Result<Rc<TypeEnv>, Vec<Error>> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
-
     base_env(&mut state, &mut env);
-
     let mut errors: Vec<Error> = vec![];
 
-    let t = infer_rec(ast, &mut state, &mut env, &mut errors);
+    let mut module_type = TypeEnv::new();
+
+    // Check imports and add them to the env to type check this module
+
+    for definition in &module.definitions {
+        state.enter_level();
+        let definition_result = infer_expression(&definition.value, &mut state, &mut env);
+        state.exit_level();
+
+        match definition_result {
+            Ok(t) => {
+                match &definition.pattern.value {
+                    P::Identifier(x) => env.insert(x.clone(), state.generalize(&t)),
+                };
+            }
+            Err(mut definition_errors) => errors.append(&mut definition_errors),
+        };
+    }
+
+    // Check exports against this module type to see everything exists and is valid
+    for export in &module.exports {
+        let name = &export.value.0;
+        match env.get(name) {
+            Some(typ) => module_type.insert(name.to_string(), Rc::clone(typ)),
+            None => errors.push(Error::UndefinedIdentifier(
+                name.clone(),
+                // TODO: Nasty hack to get the error that needs an expression to show. Needs fixing
+                // either by making the error not give a shit about the inner part of the Node, or
+                // by restructuring the Error type. I'm not sure if others won't work with the
+                // module type checking.
+                Rc::new(Node::with_value_from_node(
+                    E::Identifier(name.to_string()),
+                    export,
+                )),
+            )),
+        }
+    }
+
+    if errors.len() == 0 {
+        Ok(Rc::new(module_type))
+    } else {
+        Err(errors)
+    }
+}
+
+/* All branches (except for the trivial Unit) of the first match in this function
+are translated directly from the rules for algorithm J, given in comments */
+pub fn infer_expression(
+    ast: &Rc<Expression>,
+    state: &mut State,
+    env: &mut TypeEnv,
+) -> Result<Rc<Type>, Vec<Error>> {
+    let mut errors: Vec<Error> = vec![];
+    let t = infer_rec(ast, state, env, &mut errors);
 
     if errors.len() == 0 {
         Ok(t)
@@ -522,8 +587,6 @@ fn infer_rec(
     env: &mut TypeEnv,
     errors: &mut Vec<Error>,
 ) -> Rc<Type> {
-    use ast::{Expression_ as E, Pattern_ as P, Unary_ as U};
-
     // Primitive types
     // TODO: This is horrible, copypastad because globals with Rc in Rust are ASLDKFJNQASLKJDFG
     let float = &Rc::new(Type::Named("Float".to_owned(), vec![]));
@@ -701,12 +764,12 @@ fn infer_rec(
         E::Let(bindings, e) => {
             let mut new_env = env.clone();
 
-            for (p, e0) in bindings {
+            for binding in bindings {
                 state.enter_level();
-                let t = infer_rec(e0, state, env, errors);
+                let t = infer_rec(&binding.value, state, env, errors);
                 state.exit_level();
 
-                match &p.value {
+                match &binding.pattern.value {
                     P::Identifier(x) => new_env.insert(x.clone(), state.generalize(&t)),
                 };
             }
@@ -731,7 +794,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_infer() {
+    fn test_infer_expr() {
         let tests = vec![
             ("\\f -> \\x -> f x", "(a -> b) -> a -> b"),
             ("\\f -> \\x -> f (f x)", "(a -> a) -> a -> a"),
@@ -880,7 +943,125 @@ Undefined identifier `bar`
                 })
                 .unwrap();
 
-            let ast = parser::parse(&source, tokens)
+            let ast = parser::parse_repl(&source, tokens)
+                .map_err(|error| error.to_string(&source))
+                .unwrap();
+
+            let mut state = State::new();
+            let mut env = TypeEnv::new();
+            base_env(&mut state, &mut env);
+            let s = match infer_expression(&ast, &mut state, &mut env) {
+                Ok(typ) => format!("{}", typ),
+                Err(errs) => errs
+                    .iter()
+                    .map(|e| e.to_string(&source))
+                    .collect::<Vec<String>>()
+                    .join("\n\n"),
+            };
+
+            assert_eq!(s, expected, "\n\n{}\n\n{}", &input, s);
+        }
+    }
+
+    #[test]
+    fn test_infer() {
+        let tests = vec![
+            (
+                "
+module Test
+
+a = 1
+
+b = 2
+           ",
+                "Test\n\n\n",
+            ),
+            (
+                "
+module Test exposing (a)
+
+a = 1
+
+b = 2
+           ",
+                "Test\n\na : Float\n\n\n",
+            ),
+            (
+                "
+module Test exposing (a, b)
+
+a = 1
+
+b = 2
+           ",
+                "\
+Test
+
+a : Float
+
+b : Float
+
+
+",
+            ),
+            (
+                "
+module Test exposing (c)
+
+a = 1
+
+b = 2
+           ",
+                "\
+[2:22]
+
+Undefined identifier `c`
+
+  1│  
+  2│  module Test exposing (c)
+   │                        ↑
+  3│  
+  4│  a = 1",
+            ),
+            (
+                "
+module Test exposing (a, b)
+
+a = 1
+
+b = 2
+
+module TestInner exposing (a, b)
+  a = \\x y -> x + y
+  b = \\c -> c
+
+c = \"hi\"
+           ",
+                "\
+TestInner
+
+a : Float -> Float -> Float
+
+b : ∀ a . a -> a
+
+
+
+
+Test
+
+a : Float
+
+b : Float
+
+
+",
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let source = Source::new_orphan(&input);
+
+            let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {
                     errors
                         .iter()
@@ -890,14 +1071,22 @@ Undefined identifier `bar`
                 })
                 .unwrap();
 
-            let s = match infer(&ast) {
-                Ok(typ) => format!("{}", typ),
-                Err(errs) => errs
-                    .iter()
-                    .map(|e| e.to_string(&source))
-                    .collect::<Vec<String>>()
-                    .join("\n\n"),
-            };
+            let modules = parser::parse(&source, tokens)
+                .map_err(|error| error.to_string(&source))
+                .unwrap();
+
+            let s = modules
+                .iter()
+                .map(|module| match infer(module) {
+                    Ok(typ) => format!("{}\n\n{}\n", module.name.value, typ),
+                    Err(errs) => errs
+                        .iter()
+                        .map(|e| e.to_string(&source))
+                        .collect::<Vec<String>>()
+                        .join("\n\n"),
+                })
+                .collect::<Vec<_>>()
+                .join("\n\n");
 
             assert_eq!(s, expected, "\n\n{}\n\n{}", &input, s);
         }
