@@ -4,7 +4,7 @@ use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
 use std::cell::RefCell;
 use std::cmp::min;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /*
@@ -209,7 +209,7 @@ impl State {
         let current_level = self.current_level;
 
         /* collect all the monomorphic typevars */
-        fn find_all_tvs(current_level: &Level, vars: &mut Vec<TypeVarId>, t: &Rc<Type>) {
+        fn find_all_tvs(current_level: &Level, vars: &mut HashSet<TypeVarId>, t: &Rc<Type>) {
             match &**t {
                 Unit => (),
 
@@ -223,7 +223,7 @@ impl State {
                     Bound(t) => find_all_tvs(current_level, vars, t),
                     Unbound(n, level) => {
                         if level > current_level {
-                            vars.push(*n);
+                            vars.insert(*n);
                         }
                     }
                 },
@@ -235,21 +235,19 @@ impl State {
 
                 /* Remove all of tvs from findAllTvs typ */
                 PolyType(free_tvs, typ) => {
-                    let mut typ_tvs = vec![];
+                    let mut typ_tvs = HashSet::new();
                     find_all_tvs(current_level, &mut typ_tvs, typ);
 
-                    vars.append(
-                        &mut typ_tvs
-                            .iter()
-                            .filter(|var| !free_tvs.iter().any(|fvar| &fvar == var))
-                            .map(|var| *var)
-                            .collect::<Vec<TypeVarId>>(),
-                    );
+                    for tv in typ_tvs {
+                        if !free_tvs.contains(&tv) {
+                            vars.insert(tv);
+                        }
+                    }
                 }
             }
         }
 
-        let mut tvs = vec![];
+        let mut tvs = HashSet::new();
         find_all_tvs(&current_level, &mut tvs, t);
         Rc::new(PolyType(tvs, Rc::clone(&t)))
     }

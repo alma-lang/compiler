@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use std::cell::RefCell;
 use std::char;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::rc::Rc;
 
@@ -46,7 +46,7 @@ pub enum Type {
      * The TypeVar list will be a list of all monomorphic TypeVars in 'z
      * Used only in let-bindings to make the declaration polymorphic
      */
-    PolyType(Vec<TypeVarId>, Rc<Type>),
+    PolyType(HashSet<TypeVarId>, Rc<Type>),
 }
 
 impl Type {
@@ -191,6 +191,7 @@ fn next_letter(s: &mut Vec<char>) {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+    use std::iter::FromIterator;
 
     #[test]
     fn test_printing() {
@@ -273,7 +274,7 @@ mod test {
             ),
             (
                 Type::PolyType(
-                    vec![TypeVarId(0)],
+                    HashSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(0),
                         Level(0),
@@ -283,7 +284,7 @@ mod test {
             ),
             (
                 Type::PolyType(
-                    vec![TypeVarId(0)],
+                    HashSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(1),
                         Level(0),
@@ -293,7 +294,7 @@ mod test {
             ),
             (
                 Type::PolyType(
-                    vec![TypeVarId(0)],
+                    HashSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Fn(
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
