@@ -794,41 +794,41 @@ mod tests {
     #[test]
     fn test_infer_expr() {
         let tests = vec![
-            ("\\f -> \\x -> f x", "(a -> b) -> a -> b"),
-            ("\\f -> \\x -> f (f x)", "(a -> a) -> a -> a"),
+            (r"\f -> \x -> f x", "(a -> b) -> a -> b"),
+            (r"\f -> \x -> f (f x)", "(a -> a) -> a -> a"),
             // (+):
             (
-                "\\m -> \\n -> \\f -> \\x -> m f (n f x)",
+                r"\m -> \n -> \f -> \x -> m f (n f x)",
                 "(a -> b -> c) -> (a -> d -> b) -> a -> d -> c",
             ),
             // succ:
             (
-                "\\n -> \\f -> \\x -> f (n f x)",
+                r"\n -> \f -> \x -> f (n f x)",
                 "((a -> b) -> c -> a) -> (a -> b) -> c -> b",
             ),
             // mult:
             (
-                "\\m -> \\n -> \\f -> \\x -> m (n f) x",
+                r"\m -> \n -> \f -> \x -> m (n f) x",
                 "(a -> b -> c) -> (d -> a) -> d -> b -> c",
             ),
             // pred:
             (
-                "\\n -> \\f -> \\x -> n (\\g -> \\h -> h (g f)) (\\u -> x) (\\u -> u)",
+                r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)",
                 "(((a -> b) -> (b -> c) -> c) -> (d -> e) -> (f -> f) -> g) -> a -> e -> g",
             ),
             // let generalization tests
             (
-                "
-      \\x ->
+                r"
+      \x ->
         let y = x
         y
     ",
                 "a -> a",
             ),
             (
-                "
-      \\x ->
-        let y = \\z -> x
+                r"
+      \x ->
+        let y = \z -> x
         y
       ",
                 "a -> b -> a",
@@ -861,16 +861,16 @@ but seems to be
 Float",
             ),
             (
-                "let incr = \\n -> n + 1
+                r"let incr = \n -> n + 1
 
 incr True",
-                "[3:5]
+                r"[3:5]
 
 Type mismatch:  Bool  ≠  Float
 
 Expected
 
-  1│  let incr = \\n -> n + 1
+  1│  let incr = \n -> n + 1
   2│  
   3│  incr True
    │       ↑↑↑↑
@@ -884,17 +884,17 @@ but seems to be
 Bool",
             ),
             (
-                "\\x ->
+                r"\x ->
     let a = x + 1
     let b = not x
     x",
-                "[3:16]
+                r"[3:16]
 
 Type mismatch:  Float  ≠  Bool
 
 Expected
 
-  1│  \\x ->
+  1│  \x ->
   2│      let a = x + 1
   3│      let b = not x
    │                  ↑
@@ -925,6 +925,15 @@ Undefined identifier `bar`
   1│  let a = bar
   2│  bar
    │  ↑↑↑",
+            ),
+            (
+                r"\a -> a 1 a",
+                r"[1:6]
+
+Infinite type
+
+  1│  \a -> a 1 a
+   │        ↑↑↑↑↑",
             ),
         ];
 
@@ -1022,7 +1031,7 @@ Undefined identifier `c`
   4│  a = 1",
             ),
             (
-                "
+                r#"
 module Test exposing (a, b)
 
 a = 1
@@ -1030,11 +1039,11 @@ a = 1
 b = 2
 
 module TestInner exposing (a, b)
-  a = \\x y -> x + y
-  b = \\c -> c
+  a = \x y -> x + y
+  b = \c -> c
 
-c = \"hi\"
-           ",
+c = "hi"
+"#,
                 "\
 TestInner
 
