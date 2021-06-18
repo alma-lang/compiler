@@ -327,19 +327,11 @@ fn unify(
                     /* create binding for boundTy that is currently empty */
                     Unbound(a_id, a_level) => {
                         let (a_id, a_level) = (*a_id, *a_level);
-                        let equal = match b {
-                            Var(var2) => match &*var2.borrow() {
-                                Unbound(b_id, b_level) => a_id == *b_id && a_level == *b_level,
-                                _ => false,
-                            },
-                            _ => false,
-                        };
-
                         // Drop the read borrow before the occurs check since it is not used and
                         // can panic the occurs check if t1 and t2 point to the same thing
                         drop(var1_read);
 
-                        if equal {
+                        if t1 == t2 {
                             Ok(())
                         } else if occurs(a_id, a_level, t2) {
                             /* a = a, but dont create a recursive binding to itself */
@@ -362,20 +354,11 @@ fn unify(
                     /* create binding for boundTy that is currently empty */
                     Unbound(b_id, b_level) => {
                         let (b_id, b_level) = (*b_id, *b_level);
-
-                        let equal = match a {
-                            Var(var1) => match &*var1.borrow() {
-                                Unbound(a_id, a_level) => *a_id == b_id && *a_level == b_level,
-                                _ => false,
-                            },
-                            _ => false,
-                        };
-
                         // Drop the read borrow before the occurs check since it is not used and
                         // can panic the occurs check if t1 and t2 point to the same thing
                         drop(var2_read);
 
-                        if equal {
+                        if t1 == t2 {
                             Ok(())
                         } else if occurs(b_id, b_level, t1) {
                             /* a = a, but dont create a recursive binding to itself */
