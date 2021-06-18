@@ -263,15 +263,17 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
         Named(..) => false,
 
         Var(var) => {
-            let mut var = var.borrow_mut();
-            match &*var {
+            let var_read = var.borrow();
+            match &*var_read {
                 Bound(t) => occurs(a_id, a_level, t),
 
-                Unbound(ref b_id, ref b_level) => {
-                    let b_id = *b_id;
-                    let b_level = *b_level;
+                Unbound(b_id, b_level) => {
+                    let (b_id, b_level) = (*b_id, *b_level);
+                    drop(var_read);
+
                     let min_level = min(a_level, b_level);
 
+                    let mut var = var.borrow_mut();
                     *var = Unbound(b_id, min_level);
 
                     a_id == b_id
