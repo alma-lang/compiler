@@ -28,7 +28,7 @@ use crate::ast::{
     binop::*,
     Expression,
     Expression_::{Float, Identifier, If, Let, String_, *},
-    Module, Node, Pattern, Pattern_,
+    Import, Module, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
     *,
 };
@@ -158,6 +158,8 @@ impl<'a> State<'a> {
 
                         let exports = self.exposing()?;
 
+                        let imports = self.imports()?;
+
                         let (mut modules, definitions) =
                             self.module_definitions(top_level, &module_token, vec![], vec![])?;
 
@@ -172,7 +174,7 @@ impl<'a> State<'a> {
                         modules.push(Rc::new(Module {
                             name,
                             exports,
-                            imports: vec![],
+                            imports,
                             definitions,
                         }));
 
@@ -267,6 +269,86 @@ impl<'a> State<'a> {
                 None,
                 "Expected an identifier from the module to expose".to_string(),
             )),
+        }
+    }
+
+    // ○ imports        → import ( import )*
+    fn imports(&mut self) -> ParseResult<Vec<Import>> {
+        let mut imports = vec![];
+
+        while let Some(import) = self.import()? {
+            imports.push(import);
+        }
+
+        Ok(imports)
+    }
+
+    fn import(&mut self) -> ParseResult<Option<Import>> {
+        match self.get_token().kind {
+            TT::Import => {
+                self.advance();
+
+                let identifier_token = self.get_token().clone();
+                match identifier_token.kind {
+                    TT::Identifier => {
+                        self.advance();
+
+                        let alias = match self.get_token().kind {
+                            TT::As => {
+                                self.advance();
+
+                                let alias_token = self.get_token().clone();
+                                match alias_token.kind {
+                                    TT::Identifier => {
+                                        self.advance();
+
+                                        Ok(Some(Node::new(
+                                            alias_token.lexeme(&self.source).to_string(),
+                                            &alias_token,
+                                            &alias_token,
+                                        )))
+                                    }
+                                    _ => Err(Error::expected_but_found(
+                                        self.source,
+                                        &identifier_token,
+                                        None,
+                                        "Expected an identifier for the alias of the module"
+                                            .to_string(),
+                                    )),
+                                }
+                            }
+
+                            _ => Ok(None),
+                        }?;
+
+                        let exposing = self.exposing()?;
+
+                        Ok(Some(Node {
+                            value: Import_ {
+                                module_name: Node::new(
+                                    identifier_token.lexeme(&self.source).to_string(),
+                                    &identifier_token,
+                                    &identifier_token,
+                                ),
+                                alias,
+                                exposing,
+                            },
+                            start: identifier_token.position,
+                            end: self.get_token().position,
+                            line: identifier_token.line,
+                            column: identifier_token.column,
+                        }))
+                    }
+                    _ => Err(Error::expected_but_found(
+                        self.source,
+                        &identifier_token,
+                        None,
+                        "Expected an identifier of the module to import".to_string(),
+                    )),
+                }
+            }
+
+            _ => Ok(None),
         }
     }
 
@@ -2716,6 +2798,208 @@ else
                         indent: 0,
                     },
                 }),
+            ),
+            (
+                "module Test\n\nimport Banana",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![Node {
+                        start: 20,
+                        end: 26,
+                        line: 3,
+                        column: 7,
+                        value: Import_ {
+                            module_name: Node {
+                                start: 20,
+                                end: 26,
+                                line: 3,
+                                column: 7,
+                                value: "Banana".to_string(),
+                            },
+                            alias: None,
+                            exposing: vec![],
+                        },
+                    }],
+                    definitions: vec![],
+                })]),
+            ),
+            (
+                "module Test\n\nimport Banana as B",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![Node {
+                        start: 20,
+                        end: 31,
+                        line: 3,
+                        column: 7,
+                        value: Import_ {
+                            module_name: Node {
+                                start: 20,
+                                end: 26,
+                                line: 3,
+                                column: 7,
+                                value: "Banana".to_string(),
+                            },
+                            alias: Some(Node {
+                                start: 30,
+                                end: 31,
+                                line: 3,
+                                column: 17,
+                                value: "B".to_string(),
+                            }),
+                            exposing: vec![],
+                        },
+                    }],
+                    definitions: vec![],
+                })]),
+            ),
+            (
+                "module Test\n\nimport Banana exposing (phone)",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![Node {
+                        start: 20,
+                        end: 43,
+                        line: 3,
+                        column: 7,
+                        value: Import_ {
+                            module_name: Node {
+                                start: 20,
+                                end: 26,
+                                line: 3,
+                                column: 7,
+                                value: "Banana".to_string(),
+                            },
+                            alias: None,
+                            exposing: vec![Node {
+                                start: 37,
+                                end: 42,
+                                line: 3,
+                                column: 24,
+                                value: Export_("phone".to_string()),
+                            }],
+                        },
+                    }],
+                    definitions: vec![],
+                })]),
+            ),
+            (
+                "module Test
+
+import Banana as B
+
+import Phone exposing (raffi)
+
+import Apple as A exposing (orange)",
+                Ok(vec![Rc::new(Module {
+                    name: Node {
+                        start: 7,
+                        end: 11,
+                        line: 1,
+                        column: 7,
+                        value: "Test".to_string(),
+                    },
+                    exports: vec![],
+                    imports: vec![
+                        Node {
+                            start: 20,
+                            end: 33,
+                            line: 3,
+                            column: 7,
+                            value: Import_ {
+                                module_name: Node {
+                                    start: 20,
+                                    end: 26,
+                                    line: 3,
+                                    column: 7,
+                                    value: "Banana".to_string(),
+                                },
+                                alias: Some(Node {
+                                    start: 30,
+                                    end: 31,
+                                    line: 3,
+                                    column: 17,
+                                    value: "B".to_string(),
+                                }),
+                                exposing: vec![],
+                            },
+                        },
+                        Node {
+                            start: 40,
+                            end: 64,
+                            line: 5,
+                            column: 7,
+                            value: Import_ {
+                                module_name: Node {
+                                    start: 40,
+                                    end: 45,
+                                    line: 5,
+                                    column: 7,
+                                    value: "Phone".to_string(),
+                                },
+                                alias: None,
+                                exposing: vec![Node {
+                                    start: 56,
+                                    end: 61,
+                                    line: 5,
+                                    column: 23,
+                                    value: Export_("raffi".to_string()),
+                                }],
+                            },
+                        },
+                        Node {
+                            start: 71,
+                            end: 99,
+                            line: 7,
+                            column: 7,
+                            value: Import_ {
+                                module_name: Node {
+                                    start: 71,
+                                    end: 76,
+                                    line: 7,
+                                    column: 7,
+                                    value: "Apple".to_string(),
+                                },
+                                alias: Some(Node {
+                                    start: 80,
+                                    end: 81,
+                                    line: 7,
+                                    column: 16,
+                                    value: "A".to_string(),
+                                }),
+                                exposing: vec![Node {
+                                    start: 92,
+                                    end: 98,
+                                    line: 7,
+                                    column: 28,
+                                    value: Export_("orange".to_string()),
+                                }],
+                            },
+                        },
+                    ],
+                    definitions: vec![],
+                })]),
             ),
         ];
 

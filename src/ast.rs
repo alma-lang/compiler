@@ -45,7 +45,7 @@ pub type Import = Node<Import_>;
 pub struct Import_ {
     pub module_name: Node<String>,
     pub alias: Option<Node<String>>,
-    pub exports: Vec<Export>,
+    pub exposing: Vec<Export>,
 }
 
 pub type Export = Node<Export_>;
