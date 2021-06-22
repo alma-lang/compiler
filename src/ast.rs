@@ -35,8 +35,8 @@ impl<V> Node<V> {
 #[derive(Debug, PartialEq)]
 pub struct Module {
     pub name: Node<String>,
-    pub exports: Vec<Export>,
-    pub imports: Vec<Import>,
+    pub exports: Vec<Rc<Export>>,
+    pub imports: Vec<Rc<Import>>,
     pub definitions: Vec<Rc<Definition>>,
 }
 
@@ -45,7 +45,7 @@ pub type Import = Node<Import_>;
 pub struct Import_ {
     pub module_name: Node<String>,
     pub alias: Option<Node<String>>,
-    pub exposing: Vec<Export>,
+    pub exposing: Vec<Rc<Export>>,
 }
 
 pub type Export = Node<Export_>;

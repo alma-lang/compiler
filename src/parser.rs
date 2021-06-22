@@ -2,8 +2,8 @@
     ● file           → module EOF
     ● module         → "module" IDENTIFIER exposing? imports? definitions?
     ● exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
-    ○ imports        → import ( import )*
-    ○ import         → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
+    ● imports        → import ( import )*
+    ● import         → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
     ● definitions    → ( module | binding )+
     ● expression     → let | lambda | if | binary
     ● let            → "let" MAYBE_INDENT binding+ MAYBE_INDENT "in"? expression
@@ -194,7 +194,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn exposing(&mut self) -> ParseResult<Vec<Export>> {
+    fn exposing(&mut self) -> ParseResult<Vec<Rc<Export>>> {
         // ○ exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
         match self.get_token().kind {
             TT::Exposing => {
@@ -206,7 +206,7 @@ impl<'a> State<'a> {
 
                         let export = self.export()?;
 
-                        let exports = self.exposing_rest(vec![export])?;
+                        let exports = self.exposing_rest(vec![Rc::new(export)])?;
 
                         match self.get_token().kind {
                             TT::RightParen => {
@@ -237,13 +237,13 @@ impl<'a> State<'a> {
             _ => Ok(vec![]),
         }
     }
-    fn exposing_rest(&mut self, mut exports: Vec<Export>) -> ParseResult<Vec<Export>> {
+    fn exposing_rest(&mut self, mut exports: Vec<Rc<Export>>) -> ParseResult<Vec<Rc<Export>>> {
         match self.get_token().kind {
             TT::Comma => {
                 self.advance();
 
                 let export = self.export()?;
-                exports.push(export);
+                exports.push(Rc::new(export));
 
                 self.exposing_rest(exports)
             }
@@ -273,11 +273,11 @@ impl<'a> State<'a> {
     }
 
     // ○ imports        → import ( import )*
-    fn imports(&mut self) -> ParseResult<Vec<Import>> {
+    fn imports(&mut self) -> ParseResult<Vec<Rc<Import>>> {
         let mut imports = vec![];
 
         while let Some(import) = self.import()? {
-            imports.push(import);
+            imports.push(Rc::new(import));
         }
 
         Ok(imports)
@@ -359,55 +359,53 @@ impl<'a> State<'a> {
         mut modules: Vec<Rc<Module>>,
         mut definitions: Vec<Rc<Definition>>,
     ) -> ParseResult<(Vec<Rc<Module>>, Vec<Rc<Definition>>)> {
-        match self.module(false)? {
-            Some(mut nested_modules) => {
-                modules.append(&mut nested_modules);
-                self.module_definitions(top_level, &module_token, modules, definitions)
-            }
+        let current_token_has_valid_indent =
+            self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
-            None => {
-                let current_token_has_valid_indent = self
-                    .current_token_has_valid_indent_for_module_definitions(top_level, module_token);
+        if current_token_has_valid_indent {
+            match self.module(false)? {
+                Some(mut nested_modules) => {
+                    modules.append(&mut nested_modules);
+                    self.module_definitions(top_level, &module_token, modules, definitions)
+                }
 
-                if current_token_has_valid_indent {
-                    match self.binding()? {
-                        Some(definition) => {
-                            definitions.push(definition);
-                            self.module_definitions(top_level, &module_token, modules, definitions)
-                        }
-
-                        None => match self.get_token().kind {
-                            TT::Eof => Ok((modules, definitions)),
-                            _ => Err(Error::expected_but_found(
-                                self.source,
-                                &self.get_token(),
-                                None,
-                                "Expected the left side of a definition like `n = 5` \
-                             or `add x y = x + y`"
-                                    .to_string(),
-                            )),
-                        },
+                None => match self.binding()? {
+                    Some(definition) => {
+                        definitions.push(definition);
+                        self.module_definitions(top_level, &module_token, modules, definitions)
                     }
-                } else {
-                    match self.get_token().kind {
+
+                    None => match self.get_token().kind {
                         TT::Eof => Ok((modules, definitions)),
-                        _ => {
-                            if self.current_token_outside_indent_for_module_definitions(
-                                top_level,
-                                module_token,
-                            ) {
-                                Ok((modules, definitions))
-                            } else {
-                                Err(Error::expected_but_found(
-                                    self.source,
-                                    &self.get_token(),
-                                    None,
-                                    "Expected a definition like `n = 5` \
+                        _ => Err(Error::expected_but_found(
+                            self.source,
+                            &self.get_token(),
+                            None,
+                            "Expected the left side of a definition like `n = 5` \
+                             or `add x y = x + y`"
+                                .to_string(),
+                        )),
+                    },
+                },
+            }
+        } else {
+            match self.get_token().kind {
+                TT::Eof => Ok((modules, definitions)),
+                _ => {
+                    if self.current_token_outside_indent_for_module_definitions(
+                        top_level,
+                        module_token,
+                    ) {
+                        Ok((modules, definitions))
+                    } else {
+                        Err(Error::expected_but_found(
+                            self.source,
+                            &self.get_token(),
+                            None,
+                            "Expected a definition like `n = 5` \
                                         or `add x y = x + y`"
-                                        .to_string(),
-                                ))
-                            }
-                        }
+                                .to_string(),
+                        ))
                     }
                 }
             }
@@ -2635,6 +2633,114 @@ else
                 }),
             ),
             (
+                "module Parent
+
+module Test1
+  a = 1
+
+  module Test1Test
+    b = 1
+
+module Test2
+    c = 5
+",
+                Ok(vec![
+                    Rc::new(Module {
+                        name: Node {
+                            start: 46,
+                            end: 55,
+                            line: 6,
+                            column: 9,
+                            value: "Test1Test".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 60,
+                                end: 61,
+                                line: 7,
+                                column: 4,
+                                value: Pattern_::Identifier("b".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 64,
+                                end: 65,
+                                line: 7,
+                                column: 8,
+                                value: Float(1.0),
+                            }),
+                        })],
+                    }),
+                    Rc::new(Module {
+                        name: Node {
+                            start: 22,
+                            end: 27,
+                            line: 3,
+                            column: 7,
+                            value: "Test1".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 30,
+                                end: 31,
+                                line: 4,
+                                column: 2,
+                                value: Pattern_::Identifier("a".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 34,
+                                end: 35,
+                                line: 4,
+                                column: 6,
+                                value: Float(1.0),
+                            }),
+                        })],
+                    }),
+                    Rc::new(Module {
+                        name: Node {
+                            start: 74,
+                            end: 79,
+                            line: 9,
+                            column: 7,
+                            value: "Test2".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![Rc::new(Definition {
+                            pattern: Rc::new(Node {
+                                start: 84,
+                                end: 85,
+                                line: 10,
+                                column: 4,
+                                value: Pattern_::Identifier("c".to_string()),
+                            }),
+                            value: Rc::new(Node {
+                                start: 88,
+                                end: 89,
+                                line: 10,
+                                column: 8,
+                                value: Float(5.0),
+                            }),
+                        })],
+                    }),
+                    Rc::new(Module {
+                        name: Node {
+                            start: 7,
+                            end: 13,
+                            line: 1,
+                            column: 7,
+                            value: "Parent".to_string(),
+                        },
+                        exports: vec![],
+                        imports: vec![],
+                        definitions: vec![],
+                    }),
+                ]),
+            ),
+            (
                 "module Test exposing (a)\n\na = 1\n\nb = True",
                 Ok(vec![Rc::new(Module {
                     name: Node {
@@ -2644,13 +2750,13 @@ else
                         column: 7,
                         value: "Test".to_string(),
                     },
-                    exports: vec![Node {
+                    exports: vec![Rc::new(Node {
                         start: 22,
                         end: 23,
                         line: 1,
                         column: 22,
                         value: Export_("a".to_string()),
-                    }],
+                    })],
                     imports: vec![],
                     definitions: vec![
                         Rc::new(Definition {
@@ -2699,20 +2805,20 @@ else
                         value: "Test".to_string(),
                     },
                     exports: vec![
-                        Node {
+                        Rc::new(Node {
                             start: 22,
                             end: 23,
                             line: 1,
                             column: 22,
                             value: Export_("a".to_string()),
-                        },
-                        Node {
+                        }),
+                        Rc::new(Node {
                             start: 25,
                             end: 26,
                             line: 1,
                             column: 25,
                             value: Export_("b".to_string()),
-                        },
+                        }),
                     ],
                     imports: vec![],
                     definitions: vec![
@@ -2810,7 +2916,7 @@ else
                         value: "Test".to_string(),
                     },
                     exports: vec![],
-                    imports: vec![Node {
+                    imports: vec![Rc::new(Node {
                         start: 20,
                         end: 26,
                         line: 3,
@@ -2826,7 +2932,7 @@ else
                             alias: None,
                             exposing: vec![],
                         },
-                    }],
+                    })],
                     definitions: vec![],
                 })]),
             ),
@@ -2841,7 +2947,7 @@ else
                         value: "Test".to_string(),
                     },
                     exports: vec![],
-                    imports: vec![Node {
+                    imports: vec![Rc::new(Node {
                         start: 20,
                         end: 31,
                         line: 3,
@@ -2863,7 +2969,7 @@ else
                             }),
                             exposing: vec![],
                         },
-                    }],
+                    })],
                     definitions: vec![],
                 })]),
             ),
@@ -2878,7 +2984,7 @@ else
                         value: "Test".to_string(),
                     },
                     exports: vec![],
-                    imports: vec![Node {
+                    imports: vec![Rc::new(Node {
                         start: 20,
                         end: 43,
                         line: 3,
@@ -2892,15 +2998,15 @@ else
                                 value: "Banana".to_string(),
                             },
                             alias: None,
-                            exposing: vec![Node {
+                            exposing: vec![Rc::new(Node {
                                 start: 37,
                                 end: 42,
                                 line: 3,
                                 column: 24,
                                 value: Export_("phone".to_string()),
-                            }],
+                            })],
                         },
-                    }],
+                    })],
                     definitions: vec![],
                 })]),
             ),
@@ -2922,7 +3028,7 @@ import Apple as A exposing (orange)",
                     },
                     exports: vec![],
                     imports: vec![
-                        Node {
+                        Rc::new(Node {
                             start: 20,
                             end: 33,
                             line: 3,
@@ -2944,8 +3050,8 @@ import Apple as A exposing (orange)",
                                 }),
                                 exposing: vec![],
                             },
-                        },
-                        Node {
+                        }),
+                        Rc::new(Node {
                             start: 40,
                             end: 64,
                             line: 5,
@@ -2959,16 +3065,16 @@ import Apple as A exposing (orange)",
                                     value: "Phone".to_string(),
                                 },
                                 alias: None,
-                                exposing: vec![Node {
+                                exposing: vec![Rc::new(Node {
                                     start: 56,
                                     end: 61,
                                     line: 5,
                                     column: 23,
                                     value: Export_("raffi".to_string()),
-                                }],
+                                })],
                             },
-                        },
-                        Node {
+                        }),
+                        Rc::new(Node {
                             start: 71,
                             end: 99,
                             line: 7,
@@ -2988,15 +3094,15 @@ import Apple as A exposing (orange)",
                                     column: 16,
                                     value: "A".to_string(),
                                 }),
-                                exposing: vec![Node {
+                                exposing: vec![Rc::new(Node {
                                     start: 92,
                                     end: 98,
                                     line: 7,
                                     column: 28,
                                     value: Export_("orange".to_string()),
-                                }],
+                                })],
                             },
-                        },
+                        }),
                     ],
                     definitions: vec![],
                 })]),

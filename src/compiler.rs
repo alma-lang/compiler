@@ -3,6 +3,7 @@ use crate::parser;
 use crate::source::Source;
 use crate::tokenizer;
 use crate::type_env::TypeEnv;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub fn compile(input: &Source) -> Result<String, String> {
@@ -16,36 +17,39 @@ pub fn compile(input: &Source) -> Result<String, String> {
 
     let modules = parser::parse(input, tokens).map_err(|error| error.to_string(&input))?;
 
-    let types = modules.iter().fold(
-        Ok(vec![]),
-        |result: Result<Vec<Rc<TypeEnv>>, Vec<infer::Error>>, module| match (
-            result,
-            infer::infer(&module),
-        ) {
-            (Ok(mut types), Ok(typ)) => {
-                types.push(typ);
-                Ok(types)
-            }
-            (Err(mut errors), Err(mut module_errors)) => {
-                errors.append(&mut module_errors);
-                Err(errors)
-            }
-            (Err(errors), Ok(_)) => Err(errors),
-            (Ok(_), Err(errors)) => Err(errors),
-        },
-    );
+    let mut module_interfaces: HashMap<String, Rc<TypeEnv>> = HashMap::new();
+    let mut errors = vec![];
 
-    Ok(match types {
-        Ok(types) => types
+    for module in &modules {
+        match infer::infer(&module_interfaces, &module) {
+            Ok(typ) => {
+                module_interfaces.insert(module.name.value.clone(), typ);
+            }
+            Err(mut module_errors) => {
+                errors.append(&mut module_errors);
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(modules
             .iter()
-            .zip(modules.iter())
-            .map(|(t, m)| format!("{}\n\n{}\n", m.name.value, t))
+            .map(|m| {
+                format!(
+                    "{}\n\n{}\n",
+                    m.name.value,
+                    module_interfaces
+                        .get(&m.name.value)
+                        .unwrap_or(&Rc::new(TypeEnv::new()))
+                )
+            })
             .collect::<Vec<String>>()
-            .join("\n\n"),
-        Err(errors) => errors
+            .join("\n\n"))
+    } else {
+        Err(errors
             .iter()
             .map(|e| e.to_string(&input))
             .collect::<Vec<String>>()
-            .join("\n\n"),
-    })
+            .join("\n\n"))
+    }
 }

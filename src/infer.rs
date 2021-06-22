@@ -1,4 +1,6 @@
-use crate::ast::{self, Expression, Expression_ as E, Module, Node, Pattern_ as P, Unary_ as U};
+use crate::ast::{
+    self, Export, Expression, Expression_ as E, Import, Module, Node, Pattern_ as P, Unary_ as U,
+};
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
@@ -40,6 +42,8 @@ pub enum Error {
     UndefinedIdentifier(String, Rc<Expression>),
     TypeMismatch(Rc<Expression>, Rc<Type>, Option<Rc<Expression>>, Rc<Type>),
     InfiniteType(Rc<Expression>, Rc<Type>),
+    UnknownImport(Rc<Import>),
+    UnknownImportDefinition(Rc<Export>, Rc<Import>),
 }
 
 impl Error {
@@ -48,12 +52,13 @@ impl Error {
 
         let mut s = String::new();
 
-        let node = match self {
-            UndefinedIdentifier(_, node) => node,
-            TypeMismatch(node, ..) => node,
-            InfiniteType(node, _) => node,
+        let (position, line_number, column, end) = match self {
+            UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
+            TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
+            InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
+            UnknownImport(node) => (node.start, node.line, node.column, node.end),
+            UnknownImportDefinition(node, _) => (node.start, node.line, node.column, node.end),
         };
-        let (position, line_number, column, end) = (node.start, node.line, node.column, node.end);
 
         s.push_str(&source.to_string_with_line_and_col(line_number, column));
         s.push_str("\n\n");
@@ -66,6 +71,7 @@ impl Error {
             UndefinedIdentifier(name, _expr) => {
                 s.push_str(&format!("Undefined identifier `{}`\n\n{}", name, code));
             }
+
             InfiniteType(_, _) => {
                 s.push_str(&format!("Infinite type\n\n{}", code));
             }
@@ -115,7 +121,21 @@ with type
                     typ, typ2, code, code2
                 ));
             }
-        }
+
+            UnknownImport(import) => {
+                s.push_str(&format!(
+                    "Couldn't find module `{}`\n\n{}",
+                    import.value.module_name.value, code
+                ));
+            }
+
+            UnknownImportDefinition(export, import) => {
+                s.push_str(&format!(
+                    "Module `{}` doesn't appear to expose `{}`\n\n{}",
+                    import.value.module_name.value, export.value.0, code
+                ));
+            }
+        };
 
         s
     }
@@ -496,7 +516,10 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
 }
 
 /* The main entry point to type inference */
-pub fn infer(module: &Rc<Module>) -> Result<Rc<TypeEnv>, Vec<Error>> {
+pub fn infer(
+    module_interfaces: &HashMap<String, Rc<TypeEnv>>,
+    module: &Rc<Module>,
+) -> Result<Rc<TypeEnv>, Vec<Error>> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
     base_env(&mut state, &mut env);
@@ -505,7 +528,33 @@ pub fn infer(module: &Rc<Module>) -> Result<Rc<TypeEnv>, Vec<Error>> {
     let mut module_type = TypeEnv::new();
 
     // Check imports and add them to the env to type check this module
+    for import in &module.imports {
+        let module_name = &import.value.module_name;
+        let mut names = vec![module_name];
+        if let Some(alias) = &import.value.alias {
+            names.push(alias);
+        }
+        // TODO: Insert or reference these in the type env to be able to access the module
+        // functions. Pending the . syntax
 
+        match module_interfaces.get(&module_name.value) {
+            Some(imported) => {
+                for exposed in &import.value.exposing {
+                    let name = &exposed.value.0;
+                    match imported.get(name) {
+                        Some(definition) => env.insert(name.clone(), Rc::clone(definition)),
+                        None => errors.push(Error::UnknownImportDefinition(
+                            Rc::clone(exposed),
+                            Rc::clone(import),
+                        )),
+                    };
+                }
+            }
+            None => errors.push(Error::UnknownImport(Rc::clone(import))),
+        }
+    }
+
+    // Type check the definitions in the module
     for definition in &module.definitions {
         state.enter_level();
         let definition_result = infer_expression(&definition.value, &mut state, &mut env);
@@ -1048,6 +1097,101 @@ b : Float
 
 ",
             ),
+            (
+                r#"
+module Parent
+
+import Test exposing (test)
+
+add = \x -> x + test
+
+module Test exposing (test)
+
+    test = 5
+"#,
+                "Test\n\ntest : Float\n\n\n\n\nParent\n\n\n",
+            ),
+            (
+                r#"
+module Parent
+
+import Test exposing (test)
+
+add = \x -> x + test
+
+module Test exposing (test)
+
+    test = "hi"
+"#,
+                r#"Test
+
+test : String
+
+
+
+
+[6:16]
+
+Type mismatch:  String  ≠  Float
+
+Expected
+
+  4│  import Test exposing (test)
+  5│  
+  6│  add = \x -> x + test
+   │                  ↑↑↑↑
+  7│  
+  8│  module Test exposing (test)
+
+to be
+
+Float
+
+but seems to be
+
+String"#,
+            ),
+            (
+                r#"
+module Parent
+
+import Test exposing (nope)
+
+add = \x -> x + test
+
+module Test exposing (test)
+
+    test = "hi"
+"#,
+                r#"Test
+
+test : String
+
+
+
+
+[4:22]
+
+Module `Test` doesn't appear to expose `nope`
+
+  2│  module Parent
+  3│  
+  4│  import Test exposing (nope)
+   │                        ↑↑↑↑
+  5│  
+  6│  add = \x -> x + test
+
+[6:16]
+
+Undefined identifier `test`
+
+  4│  import Test exposing (nope)
+  5│  
+  6│  add = \x -> x + test
+   │                  ↑↑↑↑
+  7│  
+  8│  module Test exposing (test)"#,
+            ),
         ];
 
         for (input, expected) in tests {
@@ -1067,20 +1211,29 @@ b : Float
                 .map_err(|error| error.to_string(&source))
                 .unwrap();
 
-            let s = modules
-                .iter()
-                .map(|module| match infer(module) {
-                    Ok(typ) => format!("{}\n\n{}\n", module.name.value, typ),
+            let mut module_interfaces: HashMap<String, Rc<TypeEnv>> = HashMap::new();
+            let mut results = vec![];
+
+            for module in modules {
+                let result = match infer(&module_interfaces, &module) {
+                    Ok(typ) => {
+                        let s = format!("{}\n\n{}\n", module.name.value, &typ);
+                        module_interfaces.insert(module.name.value.clone(), typ);
+                        s
+                    }
                     Err(errs) => errs
                         .iter()
                         .map(|e| e.to_string(&source))
                         .collect::<Vec<String>>()
                         .join("\n\n"),
-                })
-                .collect::<Vec<_>>()
-                .join("\n\n");
+                };
 
-            assert_eq!(s, expected, "\n\n{}\n\n{}", &input, s);
+                results.push(result);
+            }
+
+            let actual = results.join("\n\n");
+
+            assert_eq!(actual, expected, "\n\n{}\n\n{}", &input, actual);
         }
     }
 }
