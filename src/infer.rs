@@ -1,5 +1,6 @@
 use crate::ast::{
-    self, Export, Expression, Expression_ as E, Import, Module, Node, Pattern_ as P, Unary_ as U,
+    self, Definition, Export, Expression, Expression_ as E, Import, Module, Node, Pattern_ as P,
+    Unary_ as U,
 };
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -555,20 +556,7 @@ pub fn infer(
     }
 
     // Type check the definitions in the module
-    for definition in &module.definitions {
-        state.enter_level();
-        let definition_result = infer_expression(&definition.value, &mut state, &mut env);
-        state.exit_level();
-
-        match definition_result {
-            Ok(t) => {
-                match &definition.pattern.value {
-                    P::Identifier(x) => env.insert(x.clone(), state.generalize(&t)),
-                };
-            }
-            Err(mut definition_errors) => errors.append(&mut definition_errors),
-        };
-    }
+    infer_definitions(&module.definitions, &mut state, &mut env, &mut errors);
 
     // Check exports against this module type to see everything exists and is valid
     for export in &module.exports {
@@ -796,18 +784,27 @@ fn infer_rec(
         E::Let(bindings, e) => {
             let mut new_env = env.clone();
 
-            for binding in bindings {
-                state.enter_level();
-                let t = infer_rec(&binding.value, state, env, errors);
-                state.exit_level();
-
-                match &binding.pattern.value {
-                    P::Identifier(x) => new_env.insert(x.clone(), state.generalize(&t)),
-                };
-            }
+            infer_definitions(bindings, state, &mut new_env, errors);
 
             infer_rec(e, state, &mut new_env, errors)
         }
+    }
+}
+
+fn infer_definitions(
+    definitions: &Vec<Rc<Definition>>,
+    state: &mut State,
+    env: &mut TypeEnv,
+    errors: &mut Vec<Error>,
+) {
+    for definition in definitions {
+        state.enter_level();
+        let t = infer_rec(&definition.value, state, env, errors);
+        state.exit_level();
+
+        match &definition.pattern.value {
+            P::Identifier(x) => env.insert(x.clone(), state.generalize(&t)),
+        };
     }
 }
 
