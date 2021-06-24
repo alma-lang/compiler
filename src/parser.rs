@@ -39,33 +39,17 @@ use crate::token::{
 };
 
 #[derive(PartialEq, Debug)]
-pub struct Error {
+pub struct Error<'source, 'tokens> {
     message: String,
-    token: Token,
+    token: &'tokens Token<'source>,
 }
 
-impl Error {
-    pub fn to_string(&self, source: &Source) -> String {
-        let mut msg = String::new();
-
-        msg.push_str(&format!(
-            "{}:{}:{}\n\n{}",
-            source.name(),
-            self.token.line,
-            self.token.column,
-            self.message
-        ));
-
-        msg
-    }
-}
-
-impl Error {
+impl<'source, 'tokens> Error<'source, 'tokens> {
     fn new(
-        source: &Source,
-        token: &Token,
-        point_at_token: Option<&Token>,
-        message: String,
+        source: &'source Source,
+        token: &'tokens Token<'source>,
+        point_at_token: Option<&'tokens Token>,
+        message: &str,
     ) -> Self {
         let (position, end, line_number) = match point_at_token {
             Some(t) => (t.position, t.end_position, t.line),
@@ -82,38 +66,45 @@ impl Error {
                 .unwrap()
         );
 
-        Self {
-            message,
-            token: (*token).clone(),
-        }
+        Self { message, token }
     }
 
     fn expected_but_found(
-        source: &Source,
-        token: &Token,
-        point_at_token: Option<&Token>,
-        message: String,
+        source: &'source Source,
+        token: &'tokens Token<'source>,
+        point_at_token: Option<&'tokens Token>,
+        message: &str,
     ) -> Self {
         Self::new(
             source,
             token,
             point_at_token,
-            format!("{}, but instead found: '{}'", message, token.lexeme(source)),
+            &format!("{}, but instead found: '{}'", message, token.lexeme),
+        )
+    }
+
+    pub fn to_string(&self, source: &'source Source) -> String {
+        format!(
+            "{}:{}:{}\n\n{}",
+            source.name(),
+            self.token.line,
+            self.token.column,
+            self.message
         )
     }
 }
 
-type ParseResult<A> = Result<A, Error>;
+type ParseResult<'source, 'tokens, A> = Result<A, Error<'source, 'tokens>>;
 
 #[derive(Debug)]
-struct State<'a> {
-    source: &'a Source<'a>,
-    tokens: Vec<Token>,
+struct State<'source, 'tokens> {
+    source: &'source Source<'source>,
+    tokens: &'tokens Vec<Token<'source>>,
     current: usize,
 }
 
-impl<'a> State<'a> {
-    fn file(&mut self) -> ParseResult<Vec<Rc<Module>>> {
+impl<'source, 'tokens> State<'source, 'tokens> {
+    fn file(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Module>>> {
         let module = self.module(true)?;
         match module {
             Some(modules) => self.eof(modules),
@@ -121,17 +112,17 @@ impl<'a> State<'a> {
                 self.source,
                 self.get_token(),
                 None,
-                "Expected `module FileName` at the start of the file".to_string(),
+                "Expected `module FileName` at the start of the file",
             )),
         }
     }
 
-    fn repl_entry(&mut self) -> ParseResult<Expression> {
+    fn repl_entry(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         let expression = self.expression()?;
         self.eof(expression)
     }
 
-    fn eof<T>(&mut self, result: T) -> ParseResult<T> {
+    fn eof<T>(&mut self, result: T) -> ParseResult<'source, 'tokens, T> {
         let eof_token = self.get_token();
         match eof_token.kind {
             TT::Eof => Ok(result),
@@ -139,22 +130,25 @@ impl<'a> State<'a> {
                 self.source,
                 eof_token,
                 None,
-                "Expected the end of input".to_string(),
+                "Expected the end of input",
             )),
         }
     }
 
-    fn module(&mut self, top_level: bool) -> ParseResult<Option<Vec<Rc<Module>>>> {
-        let module_token = self.get_token().clone();
+    fn module(
+        &mut self,
+        top_level: bool,
+    ) -> ParseResult<'source, 'tokens, Option<Vec<Rc<Module>>>> {
+        let module_token = self.get_token();
         match module_token.kind {
             TT::Module => {
                 self.advance();
 
-                let identifier_token = self.get_token().clone();
+                let identifier_token = self.get_token();
                 match identifier_token.kind {
                     TT::Identifier => {
                         self.advance();
-                        let name = identifier_token.lexeme(&self.source).to_string();
+                        let name = identifier_token.lexeme;
 
                         let exports = self.exposing()?;
 
@@ -164,7 +158,7 @@ impl<'a> State<'a> {
                             self.module_definitions(top_level, &module_token, vec![], vec![])?;
 
                         let name = Node {
-                            value: name,
+                            value: name.to_string(),
                             start: identifier_token.position,
                             end: identifier_token.end_position,
                             line: identifier_token.line,
@@ -183,9 +177,9 @@ impl<'a> State<'a> {
 
                     _ => Err(Error::expected_but_found(
                         self.source,
-                        &identifier_token,
+                        identifier_token,
                         None,
-                        "Expected the module name".to_string(),
+                        "Expected the module name",
                     )),
                 }
             }
@@ -194,7 +188,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn exposing(&mut self) -> ParseResult<Vec<Rc<Export>>> {
+    fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Export>>> {
         // ○ exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
         match self.get_token().kind {
             TT::Exposing => {
@@ -219,8 +213,7 @@ impl<'a> State<'a> {
                                 &self.get_token(),
                                 None,
                                 "Parsing the module exports expected a comma \
-                                separated list of exports inside parenthesis"
-                                    .to_string(),
+                                separated list of exports inside parenthesis",
                             )),
                         }
                     }
@@ -229,15 +222,17 @@ impl<'a> State<'a> {
                         &self.get_token(),
                         None,
                         "Parsing the module exports expected a comma \
-                        separated list of exports inside parenthesis"
-                            .to_string(),
+                        separated list of exports inside parenthesis",
                     )),
                 }
             }
             _ => Ok(vec![]),
         }
     }
-    fn exposing_rest(&mut self, mut exports: Vec<Rc<Export>>) -> ParseResult<Vec<Rc<Export>>> {
+    fn exposing_rest(
+        &mut self,
+        mut exports: Vec<Rc<Export>>,
+    ) -> ParseResult<'source, 'tokens, Vec<Rc<Export>>> {
         match self.get_token().kind {
             TT::Comma => {
                 self.advance();
@@ -251,14 +246,14 @@ impl<'a> State<'a> {
         }
     }
 
-    fn export(&mut self) -> ParseResult<Export> {
-        let identifier_token = self.get_token().clone();
+    fn export(&mut self) -> ParseResult<'source, 'tokens, Export> {
+        let identifier_token = self.get_token();
         match identifier_token.kind {
             TT::Identifier => {
                 self.advance();
 
                 Ok(Node::new(
-                    Export_(identifier_token.lexeme(&self.source).to_string()),
+                    Export_(identifier_token.lexeme.to_string()),
                     &identifier_token,
                     &identifier_token,
                 ))
@@ -267,13 +262,13 @@ impl<'a> State<'a> {
                 self.source,
                 &identifier_token,
                 None,
-                "Expected an identifier from the module to expose".to_string(),
+                "Expected an identifier from the module to expose",
             )),
         }
     }
 
     // ○ imports        → import ( import )*
-    fn imports(&mut self) -> ParseResult<Vec<Rc<Import>>> {
+    fn imports(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Import>>> {
         let mut imports = vec![];
 
         while let Some(import) = self.import()? {
@@ -283,12 +278,12 @@ impl<'a> State<'a> {
         Ok(imports)
     }
 
-    fn import(&mut self) -> ParseResult<Option<Import>> {
+    fn import(&mut self) -> ParseResult<'source, 'tokens, Option<Import>> {
         match self.get_token().kind {
             TT::Import => {
                 self.advance();
 
-                let identifier_token = self.get_token().clone();
+                let identifier_token = self.get_token();
                 match identifier_token.kind {
                     TT::Identifier => {
                         self.advance();
@@ -297,13 +292,13 @@ impl<'a> State<'a> {
                             TT::As => {
                                 self.advance();
 
-                                let alias_token = self.get_token().clone();
+                                let alias_token = self.get_token();
                                 match alias_token.kind {
                                     TT::Identifier => {
                                         self.advance();
 
                                         Ok(Some(Node::new(
-                                            alias_token.lexeme(&self.source).to_string(),
+                                            alias_token.lexeme.to_string(),
                                             &alias_token,
                                             &alias_token,
                                         )))
@@ -312,8 +307,7 @@ impl<'a> State<'a> {
                                         self.source,
                                         &identifier_token,
                                         None,
-                                        "Expected an identifier for the alias of the module"
-                                            .to_string(),
+                                        "Expected an identifier for the alias of the module",
                                     )),
                                 }
                             }
@@ -326,7 +320,7 @@ impl<'a> State<'a> {
                         Ok(Some(Node {
                             value: Import_ {
                                 module_name: Node::new(
-                                    identifier_token.lexeme(&self.source).to_string(),
+                                    identifier_token.lexeme.to_string(),
                                     &identifier_token,
                                     &identifier_token,
                                 ),
@@ -343,7 +337,7 @@ impl<'a> State<'a> {
                         self.source,
                         &identifier_token,
                         None,
-                        "Expected an identifier of the module to import".to_string(),
+                        "Expected an identifier of the module to import",
                     )),
                 }
             }
@@ -358,7 +352,7 @@ impl<'a> State<'a> {
         module_token: &Token,
         mut modules: Vec<Rc<Module>>,
         mut definitions: Vec<Rc<Definition>>,
-    ) -> ParseResult<(Vec<Rc<Module>>, Vec<Rc<Definition>>)> {
+    ) -> ParseResult<'source, 'tokens, (Vec<Rc<Module>>, Vec<Rc<Definition>>)> {
         let current_token_has_valid_indent =
             self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
@@ -382,8 +376,7 @@ impl<'a> State<'a> {
                             &self.get_token(),
                             None,
                             "Expected the left side of a definition like `n = 5` \
-                             or `add x y = x + y`"
-                                .to_string(),
+                             or `add x y = x + y`",
                         )),
                     },
                 },
@@ -403,8 +396,7 @@ impl<'a> State<'a> {
                             &self.get_token(),
                             None,
                             "Expected a definition like `n = 5` \
-                                        or `add x y = x + y`"
-                                .to_string(),
+                                        or `add x y = x + y`",
                         ))
                     }
                 }
@@ -436,7 +428,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn expression(&mut self) -> ParseResult<Expression> {
+    fn expression(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         match self.let_()? {
             Some(let_) => Ok(let_),
             None => match self.if_()? {
@@ -449,8 +441,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn let_(&mut self) -> ParseResult<Option<Expression>> {
-        let let_token = self.get_token().clone();
+    fn let_(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+        let let_token = self.get_token();
 
         match let_token.kind {
             TT::Let => {
@@ -487,8 +479,7 @@ impl<'a> State<'a> {
                             "Expected the let definition \
                                 to be followed by another \
                                 expression in the next line \
-                                and same indentation"
-                                .to_string(),
+                                and same indentation",
                         ))
                     }
                 } else {
@@ -496,7 +487,7 @@ impl<'a> State<'a> {
                         self.source,
                         &let_token,
                         None,
-                        "Expected a pattern for the left side of the let expression".to_string(),
+                        "Expected a pattern for the left side of the let expression",
                     ))
                 }
             }
@@ -508,7 +499,7 @@ impl<'a> State<'a> {
         &mut self,
         let_token: &Token,
         mut bindings: Vec<Rc<Definition>>,
-    ) -> ParseResult<Vec<Rc<Definition>>> {
+    ) -> ParseResult<'source, 'tokens, Vec<Rc<Definition>>> {
         if self.is_token_in_same_line_or_nested_indent_from(let_token) {
             match self.binding()? {
                 Some(binding) => {
@@ -522,7 +513,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn binding(&mut self) -> ParseResult<Option<Rc<Definition>>> {
+    fn binding(&mut self) -> ParseResult<'source, 'tokens, Option<Rc<Definition>>> {
         let pattern = self.pattern()?;
 
         match pattern {
@@ -544,8 +535,7 @@ impl<'a> State<'a> {
                         &equal_token,
                         None,
                         "Expected an = and an expression \
-                                for the right side of let expression"
-                            .to_string(),
+                                for the right side of let expression",
                     )),
                 }
             }
@@ -553,8 +543,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn if_(&mut self) -> ParseResult<Option<Expression>> {
-        let token = self.get_token().clone();
+    fn if_(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+        let token = self.get_token();
 
         match token.kind {
             TT::If => {
@@ -593,7 +583,7 @@ impl<'a> State<'a> {
                                 self.source,
                                 &else_token,
                                 None,
-                                "Expected the `else` branch of the if expression".to_string(),
+                                "Expected the `else` branch of the if expression",
                             )),
                         }
                     }
@@ -602,8 +592,7 @@ impl<'a> State<'a> {
                         self.source,
                         &then_token,
                         None,
-                        "Expected the keyword `then` and an expression to parse the if expression"
-                            .to_string(),
+                        "Expected the keyword `then` and an expression to parse the if expression",
                     )),
                 }
             }
@@ -612,8 +601,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn lambda(&mut self) -> ParseResult<Option<Expression>> {
-        let token = self.get_token().clone();
+    fn lambda(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+        let token = self.get_token();
 
         match token.kind {
             Backslash => {
@@ -645,7 +634,7 @@ impl<'a> State<'a> {
                         self.source,
                         &token,
                         Some(arrow),
-                        "Expected a -> after the list of parameters for the function".to_string(),
+                        "Expected a -> after the list of parameters for the function",
                     )),
                 }
             }
@@ -653,7 +642,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn params(&mut self) -> ParseResult<Vec<Rc<Pattern>>> {
+    fn params(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Pattern>>> {
         let pattern = self.pattern()?;
 
         match pattern {
@@ -678,19 +667,19 @@ impl<'a> State<'a> {
                 &self.source,
                 &self.get_token(),
                 None,
-                "Expected a list of parameters".to_string(),
+                "Expected a list of parameters",
             )),
         }
     }
 
-    fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
-        let token = self.get_token().clone();
+    fn pattern(&mut self) -> ParseResult<'source, 'tokens, Option<Pattern>> {
+        let token = self.get_token();
 
         match token.kind {
             TT::Identifier => {
                 self.advance();
                 Ok(Some(Node::new(
-                    Pattern_::Identifier(token.lexeme(&self.source).to_string()),
+                    Pattern_::Identifier(token.lexeme.to_string()),
                     &token,
                     &token,
                 )))
@@ -707,7 +696,7 @@ impl<'a> State<'a> {
         ) */
     }
 
-    fn binary(&mut self) -> ParseResult<Expression> {
+    fn binary(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         let expr = self.unary()?;
 
         self.binary_step().map(|mut binops| {
@@ -718,11 +707,11 @@ impl<'a> State<'a> {
             organize_binops(expr, &mut binops, &mut (0), 0)
         })
     }
-    fn binary_step(&mut self) -> ParseResult<Vec<(Binop, Expression)>> {
+    fn binary_step(&mut self) -> ParseResult<'source, 'tokens, Vec<(Binop, Expression)>> {
         let mut binops = vec![];
 
         loop {
-            let token = self.get_token().clone();
+            let token = self.get_token();
 
             let op = match token.kind {
                 Slash => Some(DIVISION.clone()),
@@ -756,8 +745,8 @@ impl<'a> State<'a> {
         Ok(binops)
     }
 
-    fn unary(&mut self) -> ParseResult<Expression> {
-        let token = self.get_token().clone();
+    fn unary(&mut self) -> ParseResult<'source, 'tokens, Expression> {
+        let token = self.get_token();
 
         let u = match token.kind {
             TT::Not => {
@@ -790,8 +779,8 @@ impl<'a> State<'a> {
         })
     }
 
-    fn call(&mut self) -> ParseResult<Expression> {
-        let token = self.get_token().clone();
+    fn call(&mut self) -> ParseResult<'source, 'tokens, Expression> {
+        let token = self.get_token();
 
         self.primary().and_then(|expr| match expr {
             Some(expr) => self.arguments(&token, vec![]).map(|args| {
@@ -815,8 +804,7 @@ impl<'a> State<'a> {
             }),
             None => {
                 let msg = "Expected an expression (a number, string, a let binding, \
-                           function call, an identifier, etc.)"
-                    .to_string();
+                           function call, an identifier, etc.)";
                 Err(Error::expected_but_found(self.source, &token, None, msg))
             }
         })
@@ -826,7 +814,7 @@ impl<'a> State<'a> {
         &mut self,
         first_token: &Token,
         mut args: Vec<Rc<Expression>>,
-    ) -> ParseResult<Vec<Rc<Expression>>> {
+    ) -> ParseResult<'source, 'tokens, Vec<Rc<Expression>>> {
         if self.is_token_in_same_line_or_nested_indent_from(first_token) {
             self.primary().and_then(|arg| {
                 match arg {
@@ -844,21 +832,21 @@ impl<'a> State<'a> {
         }
     }
 
-    fn primary(&mut self) -> ParseResult<Option<Expression>> {
-        let token = self.get_token().clone();
+    fn primary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+        let token = self.get_token();
 
         let result = match token.kind {
             False => Ok(Some(Node::new(Bool(false), &token, &token))),
             True => Ok(Some(Node::new(Bool(true), &token, &token))),
 
             TT::Float => {
-                let lexeme = token.lexeme(&self.source);
+                let lexeme = token.lexeme;
                 let n = lexeme.parse::<f64>().map_err(|_| {
                     Error::new(
                         &self.source,
                         &token,
                         None,
-                        format!("Failed to parse number token '{}'", lexeme),
+                        &format!("Failed to parse number token '{}'", lexeme),
                     )
                 })?;
 
@@ -866,13 +854,13 @@ impl<'a> State<'a> {
             }
 
             TT::Identifier => Ok(Some(Node::new(
-                Identifier(token.lexeme(&self.source).to_string()),
+                Identifier(token.lexeme.to_string()),
                 &token,
                 &token,
             ))),
 
             TT::String_ => {
-                let lexeme = token.lexeme(&self.source);
+                let lexeme = token.lexeme;
                 let value = lexeme[1..(lexeme.len() - 1)].to_string();
                 Ok(Some(Node::new(String_(value), &token, &token)))
             }
@@ -894,7 +882,7 @@ impl<'a> State<'a> {
                                 self.source,
                                 &last_token,
                                 Some(&token),
-                                "Expected ')' after parenthesized expression".to_string(),
+                                "Expected ')' after parenthesized expression",
                             )),
                         }
                     }),
@@ -917,7 +905,7 @@ impl<'a> State<'a> {
 
     // Utilities
 
-    fn get_token(&self) -> &Token {
+    fn get_token(&self) -> &'tokens Token<'source> {
         self.tokens
             .get(self.current)
             .expect("Out of bounds access to tokens array")
@@ -1024,7 +1012,10 @@ fn organize_binops(
     left
 }
 
-pub fn parse(source: &Source, tokens: Vec<Token>) -> ParseResult<Vec<Rc<Module>>> {
+pub fn parse<'source, 'tokens>(
+    source: &'source Source,
+    tokens: &'tokens Vec<Token<'source>>,
+) -> ParseResult<'source, 'tokens, Vec<Rc<Module>>> {
     let mut parser = State {
         source,
         tokens,
@@ -1034,7 +1025,10 @@ pub fn parse(source: &Source, tokens: Vec<Token>) -> ParseResult<Vec<Rc<Module>>
     parser.file()
 }
 
-pub fn parse_repl(source: &Source, tokens: Vec<Token>) -> ParseResult<Rc<Expression>> {
+pub fn parse_repl<'source, 'tokens>(
+    source: &'source Source,
+    tokens: &'tokens Vec<Token<'source>>,
+) -> ParseResult<'source, 'tokens, Rc<Expression>> {
     let mut parser = State {
         source,
         tokens,
@@ -1193,13 +1187,14 @@ mod tests {
   1│  (((1))
    │  ↑".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: TT::Eof,
                         line: 1,
                         indent: 0,
                         column: 6,
                         position: 6,
                         end_position: 6,
+                        lexeme: "[End of file]",
                     },
                 }),
             ),
@@ -1211,13 +1206,14 @@ mod tests {
   1│  (((1))))
    │         ↑"
                         .to_string(),
-                    token: Token {
+                    token: &Token {
                         kind: TT::RightParen,
                         line: 1,
                         indent: 0,
                         column: 7,
                         position: 7,
                         end_position: 8,
+                        lexeme: ")",
                     },
                 }),
             ),
@@ -1317,10 +1313,11 @@ mod tests {
   2│  arg
    │  ↑↑↑"
                         .to_string(),
-                    token: Token {
+                    token: &Token {
                         kind: TT::Identifier,
                         position: 4,
                         end_position: 7,
+                        lexeme: "arg",
                         line: 2,
                         indent: 0,
                         column: 0,
@@ -1957,10 +1954,11 @@ else
   1│  if True { 1 } else 2
    │          ↑".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: LeftBrace,
                         position: 8,
                         end_position: 9,
+                        lexeme: "{",
                         line: 1,
                         column: 8,
                         indent: 0,
@@ -1976,10 +1974,11 @@ else
   1│  if True then 1
    │                ↑".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: Eof,
                         position: 14,
                         end_position: 14,
+                        lexeme: "[End of file]",
                         line: 1,
                         column: 14,
                         indent: 0,
@@ -2030,10 +2029,11 @@ else
   2│    x
    │     ↑".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: Eof,
                         position: 13,
                         end_position: 13,
+                        lexeme: "[End of file]",
                         line: 2,
                         column: 3,
                         indent: 2,
@@ -2193,10 +2193,11 @@ else
                     message: {
                         "4:0: Expected an = and an expression for the right side of let expression, but instead found: \'in\'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: TT::In,
                         position: 16,
                         end_position: 18,
+                        lexeme: "in",
                         line: 4,
                         column: 0,
                         indent: 0,
@@ -2324,7 +2325,7 @@ else
         for (code, expected) in tests {
             let source = Source::new_orphan(&code);
             let tokens = tokenizer::parse(&source).unwrap();
-            let result = parse_repl(&source, tokens);
+            let result = parse_repl(&source, &tokens);
             assert_eq!(
                 result,
                 expected,
@@ -2347,10 +2348,11 @@ else
                     message: {
                         "1:0: Expected `module FileName` at the start of the file, but instead found: \'True\'\n\n  1│  True\n   │  ↑↑↑↑".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: True,
                         position: 0,
                         end_position: 4,
+                        lexeme: "True",
                         line: 1,
                         column: 0,
                         indent: 0,
@@ -2456,10 +2458,11 @@ else
                     message: {
                         "3:9: Expected a definition like `n = 5` or `add x y = x + y`, but instead found: \')\'\n\n  1│  module Test\n  2│  \n  3│  a = 1 + 2) + 3\n   │           ↑\n  4│  \n  5│  b = * add".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: RightParen,
                         position: 22,
                         end_position: 23,
+                        lexeme: ")",
                         line: 3,
                         column: 9,
                         indent: 0,
@@ -2472,10 +2475,11 @@ else
                     message: {
                         "5:4: Expected an expression (a number, string, a let binding, function call, an identifier, etc.), but instead found: \'*\'\n\n  3│  a = 1 + 2 + 3\n  4│  \n  5│  b = * add\n   │      ↑\n  6│    5".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: Star,
                         position: 32,
                         end_position: 33,
+                        lexeme: "*",
                         line: 5,
                         column: 4,
                         indent: 0,
@@ -2622,10 +2626,11 @@ else
                     message: {
                         "5:11: Expected a definition like `n = 5` or `add x y = x + y`, but instead found: \')\'\n\n  3│  module Test\n  4│  \n  5│    a = 1 + 2) + 3\n   │             ↑\n  6│  \n  7│    b = * add".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: RightParen,
                         position: 39,
                         end_position: 40,
+                        lexeme: ")",
                         line: 5,
                         column: 11,
                         indent: 2,
@@ -2863,10 +2868,11 @@ module Test2
                     message: {
                         "1:21: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: \'a\'\n\n  1│  module Test exposing a, b\n   │                       ↑\n  2│  \n  3│  a = 1".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: TT::Identifier,
                         position: 21,
                         end_position: 22,
+                        lexeme: "a",
                         line: 1,
                         column: 21,
                         indent: 0,
@@ -2879,10 +2885,11 @@ module Test2
                     message: {
                         "1:24: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: \'b\'\n\n  1│  module Test exposing (a b)\n   │                          ↑\n  2│  \n  3│  a = 1".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: TT::Identifier,
                         position: 24,
                         end_position: 25,
+                        lexeme: "b",
                         line: 1,
                         column: 24,
                         indent: 0,
@@ -2895,10 +2902,11 @@ module Test2
                     message: {
                         "3:0: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: \'a\'\n\n  1│  module Test exposing (a, b\n  2│  \n  3│  a = 1\n   │  ↑\n  4│  \n  5│  b = True".to_string()
                     },
-                    token: Token {
+                    token: &Token {
                         kind: TT::Identifier,
                         position: 28,
                         end_position: 29,
+                        lexeme: "a",
                         line: 3,
                         column: 0,
                         indent: 0,
@@ -3112,7 +3120,7 @@ import Apple as A exposing (orange)",
         for (code, expected) in tests {
             let source = Source::new_orphan(&code);
             let tokens = tokenizer::parse(&source).unwrap();
-            let result = parse(&source, tokens);
+            let result = parse(&source, &tokens);
             assert_eq!(
                 result,
                 expected,

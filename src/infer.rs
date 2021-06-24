@@ -981,7 +981,7 @@ Infinite type
                 })
                 .unwrap();
 
-            let ast = parser::parse_repl(&source, tokens)
+            let ast = parser::parse_repl(&source, &tokens)
                 .map_err(|error| error.to_string(&source))
                 .unwrap();
 
@@ -1204,7 +1204,7 @@ Undefined identifier `test`
                 })
                 .unwrap();
 
-            let modules = parser::parse(&source, tokens)
+            let modules = parser::parse(&source, &tokens)
                 .map_err(|error| error.to_string(&source))
                 .unwrap();
 

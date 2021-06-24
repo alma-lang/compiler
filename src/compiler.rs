@@ -6,16 +6,16 @@ use crate::type_env::TypeEnv;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub fn compile(input: &Source) -> Result<String, String> {
-    let tokens = tokenizer::parse(&input).map_err(|errors| {
+pub fn compile(source: &Source) -> Result<String, String> {
+    let tokens = tokenizer::parse(&source).map_err(|errors| {
         errors
             .iter()
-            .map(|e| e.to_string(&input))
+            .map(|e| e.to_string(&source))
             .collect::<Vec<String>>()
             .join("\n\n")
     })?;
 
-    let modules = parser::parse(input, tokens).map_err(|error| error.to_string(&input))?;
+    let modules = parser::parse(source, &tokens).map_err(|error| error.to_string(&source))?;
 
     let mut module_interfaces: HashMap<String, Rc<TypeEnv>> = HashMap::new();
     let mut errors = vec![];
@@ -48,7 +48,7 @@ pub fn compile(input: &Source) -> Result<String, String> {
     } else {
         Err(errors
             .iter()
-            .map(|e| e.to_string(&input))
+            .map(|e| e.to_string(&source))
             .collect::<Vec<String>>()
             .join("\n\n"))
     }

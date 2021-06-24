@@ -38,11 +38,11 @@ enum Status {
     IdentifierToken(bool),
 }
 
-struct State<'a> {
+struct State<'source> {
     status: Status,
-    source: &'a Source<'a>,
-    chars: Peekable<CharIndices<'a>>,
-    tokens: Vec<Token>,
+    source: &'source Source<'source>,
+    chars: Peekable<CharIndices<'source>>,
+    tokens: Vec<Token<'source>>,
     errors: Vec<Error>,
     start: usize,
     start_line: u32,
@@ -53,8 +53,8 @@ struct State<'a> {
     indent: u32,
 }
 
-impl<'a> State<'a> {
-    fn new(source: &'a Source) -> State<'a> {
+impl<'source> State<'source> {
+    fn new(source: &'source Source) -> State<'source> {
         State {
             status: Status::SingleToken,
             tokens: vec![],
@@ -77,12 +77,26 @@ impl<'a> State<'a> {
     }
 
     fn add_token(&mut self, kind: token::Type) {
+        let position = self.start;
+        let end_position = self.current + self.current_char.len_utf8();
+
+        let lexeme = match kind {
+            token::Type::Eof => "[End of file]",
+            _ => self
+                .source
+                .text_at(position..end_position)
+                .expect("Couldn't extract lexeme from token"),
+        };
+
         self.push_token(Token {
             kind,
+
+            position,
+            end_position,
+            lexeme,
+
             line: self.line,
             column: self.start as u32 - self.line_start_position as u32,
-            position: self.start,
-            end_position: self.current + self.current_char.len_utf8(),
             indent: self.indent,
         });
 
@@ -124,7 +138,7 @@ impl<'a> State<'a> {
         self.status = Status::Reset;
     }
 
-    fn push_token(&mut self, token: Token) {
+    fn push_token(&mut self, token: Token<'source>) {
         self.tokens.push(token);
     }
 
@@ -333,14 +347,16 @@ impl<'a> State<'a> {
                 .len()
                 .checked_sub(self.line_start_position)
                 .unwrap_or(0) as u32,
+            indent: self.indent,
+
             position: self.source.len(),
             end_position: self.source.len(),
-            indent: self.indent,
+            lexeme: "[End of file]",
         });
     }
 }
 
-pub fn parse<'a>(source: &Source<'a>) -> Result<Vec<Token>, Vec<Error>> {
+pub fn parse<'source>(source: &'source Source) -> Result<Vec<Token<'source>>, Vec<Error>> {
     let mut tokenizer = State::new(&source);
 
     tokenizer.parse();
@@ -372,6 +388,7 @@ mod tests {
                     kind: Eof,
                     position: 0,
                     end_position: 0,
+                    lexeme: "[End of file]",
                     line: 1,
                     indent: 0,
                     column: 0,
@@ -384,6 +401,7 @@ mod tests {
                         kind: Float,
                         position: 0,
                         end_position: 3,
+                        lexeme: "123",
                         line: 1,
                         indent: 0,
                         column: 0,
@@ -392,6 +410,7 @@ mod tests {
                         kind: Eof,
                         position: 3,
                         end_position: 3,
+                        lexeme: "[End of file]",
                         line: 1,
                         indent: 0,
                         column: 3,
@@ -405,6 +424,7 @@ mod tests {
                         kind: Float,
                         position: 0,
                         end_position: 7,
+                        lexeme: "123.345",
                         line: 1,
                         indent: 0,
                         column: 0,
@@ -413,6 +433,7 @@ mod tests {
                         kind: Eof,
                         position: 7,
                         end_position: 7,
+                        lexeme: "[End of file]",
                         line: 1,
                         indent: 0,
                         column: 7,
@@ -438,6 +459,7 @@ mod tests {
                         kind: Float,
                         position: 0,
                         end_position: 3,
+                        lexeme: "123",
                         line: 1,
                         indent: 0,
                         column: 0,
@@ -446,6 +468,7 @@ mod tests {
                         kind: Or,
                         position: 5,
                         end_position: 7,
+                        lexeme: "or",
                         line: 2,
                         indent: 1,
                         column: 1,
@@ -454,6 +477,7 @@ mod tests {
                         kind: String_,
                         position: 8,
                         end_position: 13,
+                        lexeme: "\"abc\"",
                         line: 2,
                         indent: 1,
                         column: 4,
@@ -462,6 +486,7 @@ mod tests {
                         kind: Eof,
                         position: 13,
                         end_position: 13,
+                        lexeme: "[End of file]",
                         line: 2,
                         indent: 1,
                         column: 9,
@@ -482,12 +507,13 @@ mod tests {
                 }]),
             ),
             (
-                "\"asdf\\\"asdf\"".to_string(),
+                r#""asdf\"asdf""#.to_string(),
                 Ok(vec![
                     Token {
                         kind: String_,
                         position: 0,
                         end_position: 12,
+                        lexeme: r#""asdf\"asdf""#,
                         line: 1,
                         indent: 0,
                         column: 0,
@@ -496,6 +522,7 @@ mod tests {
                         kind: Eof,
                         position: 12,
                         end_position: 12,
+                        lexeme: "[End of file]",
                         line: 1,
                         indent: 0,
                         column: 12,
@@ -505,7 +532,8 @@ mod tests {
         ];
 
         for (code, expected) in tests {
-            let result = parse(&Source::new_orphan(&code));
+            let code = &Source::new_orphan(&code);
+            let result = parse(code);
             assert_eq!(result, expected, "\nCode:\n{:?}", &code);
         }
     }
