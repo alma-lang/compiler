@@ -1,7 +1,6 @@
 use crate::token::Token;
-use std::rc::Rc;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub struct Node<V> {
     pub start: usize,
     pub end: usize,
@@ -35,9 +34,9 @@ impl<V> Node<V> {
 #[derive(Debug, PartialEq)]
 pub struct Module {
     pub name: Node<String>,
-    pub exports: Vec<Rc<Export>>,
-    pub imports: Vec<Rc<Import>>,
-    pub definitions: Vec<Rc<Definition>>,
+    pub exports: Vec<Export>,
+    pub imports: Vec<Import>,
+    pub definitions: Vec<Definition>,
 }
 
 pub type Import = Node<Import_>;
@@ -45,7 +44,7 @@ pub type Import = Node<Import_>;
 pub struct Import_ {
     pub module_name: Node<String>,
     pub alias: Option<Node<String>>,
-    pub exposing: Vec<Rc<Export>>,
+    pub exposing: Vec<Export>,
 }
 
 pub type Export = Node<Export_>;
@@ -54,8 +53,8 @@ pub struct Export_(pub String);
 
 #[derive(PartialEq, Debug)]
 pub struct Definition {
-    pub pattern: Rc<Pattern>,
-    pub value: Rc<Expression>,
+    pub pattern: Pattern,
+    pub value: Expression,
 }
 
 pub type Expression = Node<Expression_>;
@@ -67,12 +66,12 @@ pub enum Expression_ {
     Float(f64),
     String_(String),
     Identifier(String),
-    Unary(Unary, Rc<Expression>),
-    Binary(Rc<Expression>, Binop, Rc<Expression>),
-    Lambda(Vec<Rc<Pattern>>, Rc<Expression>),
-    FnCall(Rc<Expression>, Vec<Rc<Expression>>),
-    Let(Vec<Rc<Definition>>, Rc<Expression>),
-    If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
+    Unary(Unary, Box<Expression>),
+    Binary(Box<Expression>, Binop, (Box<Expression>, Box<Expression>)),
+    Lambda(Vec<Pattern>, Box<Expression>),
+    FnCall(Box<Expression>, Vec<Expression>),
+    Let(Vec<Definition>, Box<Expression>),
+    If(Box<Expression>, Box<Expression>, Box<Expression>),
 }
 
 type Unary = Node<Unary_>;

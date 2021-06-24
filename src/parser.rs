@@ -22,8 +22,6 @@
                      | "(" expression ")"
 */
 
-use std::rc::Rc;
-
 use crate::ast::{
     binop::*,
     Expression,
@@ -104,7 +102,7 @@ struct State<'source, 'tokens> {
 }
 
 impl<'source, 'tokens> State<'source, 'tokens> {
-    fn file(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Module>>> {
+    fn file(&mut self) -> ParseResult<'source, 'tokens, Vec<Module>> {
         let module = self.module(true)?;
         match module {
             Some(modules) => self.eof(modules),
@@ -135,10 +133,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn module(
-        &mut self,
-        top_level: bool,
-    ) -> ParseResult<'source, 'tokens, Option<Vec<Rc<Module>>>> {
+    fn module(&mut self, top_level: bool) -> ParseResult<'source, 'tokens, Option<Vec<Module>>> {
         let module_token = self.get_token();
         match module_token.kind {
             TT::Module => {
@@ -165,12 +160,12 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             column: identifier_token.column,
                         };
 
-                        modules.push(Rc::new(Module {
+                        modules.push(Module {
                             name,
                             exports,
                             imports,
                             definitions,
-                        }));
+                        });
 
                         Ok(Some(modules))
                     }
@@ -188,7 +183,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Export>>> {
+    fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Export>> {
         // ○ exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
         match self.get_token().kind {
             TT::Exposing => {
@@ -200,7 +195,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                         let export = self.export()?;
 
-                        let exports = self.exposing_rest(vec![Rc::new(export)])?;
+                        let exports = self.exposing_rest(vec![export])?;
 
                         match self.get_token().kind {
                             TT::RightParen => {
@@ -231,14 +226,14 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     }
     fn exposing_rest(
         &mut self,
-        mut exports: Vec<Rc<Export>>,
-    ) -> ParseResult<'source, 'tokens, Vec<Rc<Export>>> {
+        mut exports: Vec<Export>,
+    ) -> ParseResult<'source, 'tokens, Vec<Export>> {
         match self.get_token().kind {
             TT::Comma => {
                 self.advance();
 
                 let export = self.export()?;
-                exports.push(Rc::new(export));
+                exports.push(export);
 
                 self.exposing_rest(exports)
             }
@@ -268,11 +263,11 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     }
 
     // ○ imports        → import ( import )*
-    fn imports(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Import>>> {
+    fn imports(&mut self) -> ParseResult<'source, 'tokens, Vec<Import>> {
         let mut imports = vec![];
 
         while let Some(import) = self.import()? {
-            imports.push(Rc::new(import));
+            imports.push(import);
         }
 
         Ok(imports)
@@ -350,9 +345,9 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         &mut self,
         top_level: bool,
         module_token: &Token,
-        mut modules: Vec<Rc<Module>>,
-        mut definitions: Vec<Rc<Definition>>,
-    ) -> ParseResult<'source, 'tokens, (Vec<Rc<Module>>, Vec<Rc<Definition>>)> {
+        mut modules: Vec<Module>,
+        mut definitions: Vec<Definition>,
+    ) -> ParseResult<'source, 'tokens, (Vec<Module>, Vec<Definition>)> {
         let current_token_has_valid_indent =
             self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
@@ -465,7 +460,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         let start = let_token.position;
                         let end = body.end;
                         Ok(Some(Node {
-                            value: Let(bindings, Rc::new(body)),
+                            value: Let(bindings, Box::new(body)),
                             line,
                             column,
                             start,
@@ -498,8 +493,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     fn let_bindings(
         &mut self,
         let_token: &Token,
-        mut bindings: Vec<Rc<Definition>>,
-    ) -> ParseResult<'source, 'tokens, Vec<Rc<Definition>>> {
+        mut bindings: Vec<Definition>,
+    ) -> ParseResult<'source, 'tokens, Vec<Definition>> {
         if self.is_token_in_same_line_or_nested_indent_from(let_token) {
             match self.binding()? {
                 Some(binding) => {
@@ -513,7 +508,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn binding(&mut self) -> ParseResult<'source, 'tokens, Option<Rc<Definition>>> {
+    fn binding(&mut self) -> ParseResult<'source, 'tokens, Option<Definition>> {
         let pattern = self.pattern()?;
 
         match pattern {
@@ -524,10 +519,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         self.advance();
 
                         let value = self.expression()?;
-                        Ok(Some(Rc::new(Definition {
-                            pattern: Rc::new(pattern),
-                            value: Rc::new(value),
-                        })))
+                        Ok(Some(Definition { pattern, value }))
                     }
 
                     _ => Err(Error::expected_but_found(
@@ -571,7 +563,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                 let end = else_.end;
 
                                 Ok(Some(Node {
-                                    value: If(Rc::new(condition), Rc::new(then), Rc::new(else_)),
+                                    value: If(Box::new(condition), Box::new(then), Box::new(else_)),
                                     line,
                                     column,
                                     start,
@@ -622,7 +614,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         let end = body.end;
 
                         Ok(Some(Node {
-                            value: Lambda(params, Rc::new(body)),
+                            value: Lambda(params, Box::new(body)),
                             line,
                             column,
                             start,
@@ -642,19 +634,19 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn params(&mut self) -> ParseResult<'source, 'tokens, Vec<Rc<Pattern>>> {
+    fn params(&mut self) -> ParseResult<'source, 'tokens, Vec<Pattern>> {
         let pattern = self.pattern()?;
 
         match pattern {
             Some(pattern) => {
-                let mut params = vec![Rc::new(pattern)];
+                let mut params = vec![pattern];
 
                 loop {
                     let pattern = self.pattern()?;
 
                     match pattern {
                         Some(pattern) => {
-                            params.push(Rc::new(pattern));
+                            params.push(pattern);
                         }
                         None => break,
                     }
@@ -768,7 +760,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 let start = op.start;
                 let end = expr.end;
                 Node {
-                    value: Unary(op, Rc::new(expr)),
+                    value: Unary(op, Box::new(expr)),
                     line,
                     column,
                     start,
@@ -794,7 +786,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     let start = expr.start;
                     let end = last_arg.end;
                     Node {
-                        value: FnCall(Rc::new(expr), args),
+                        value: FnCall(Box::new(expr), args),
                         line,
                         column,
                         start,
@@ -813,8 +805,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     fn arguments(
         &mut self,
         first_token: &Token,
-        mut args: Vec<Rc<Expression>>,
-    ) -> ParseResult<'source, 'tokens, Vec<Rc<Expression>>> {
+        mut args: Vec<Expression>,
+    ) -> ParseResult<'source, 'tokens, Vec<Expression>> {
         if self.is_token_in_same_line_or_nested_indent_from(first_token) {
             self.primary().and_then(|arg| {
                 match arg {
@@ -822,7 +814,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     None => Ok(args),
 
                     Some(arg) => {
-                        args.push(Rc::new(arg));
+                        args.push(arg);
                         self.arguments(first_token, args)
                     }
                 }
@@ -995,7 +987,14 @@ fn organize_binops(
                     let end = right.end;
 
                     left = Node {
-                        value: Binary(Rc::new(left), op, Rc::new(right)),
+                        value: Binary(
+                            Box::new(Node::with_value_from_node(
+                                Identifier(op.value.fn_.clone()),
+                                &op,
+                            )),
+                            op,
+                            (Box::new(left), Box::new(right)),
+                        ),
                         line,
                         column,
                         start,
@@ -1015,7 +1014,7 @@ fn organize_binops(
 pub fn parse<'source, 'tokens>(
     source: &'source Source,
     tokens: &'tokens Vec<Token<'source>>,
-) -> ParseResult<'source, 'tokens, Vec<Rc<Module>>> {
+) -> ParseResult<'source, 'tokens, Vec<Module>> {
     let mut parser = State {
         source,
         tokens,
@@ -1028,14 +1027,14 @@ pub fn parse<'source, 'tokens>(
 pub fn parse_repl<'source, 'tokens>(
     source: &'source Source,
     tokens: &'tokens Vec<Token<'source>>,
-) -> ParseResult<'source, 'tokens, Rc<Expression>> {
+) -> ParseResult<'source, 'tokens, Box<Expression>> {
     let mut parser = State {
         source,
         tokens,
         current: 0,
     };
 
-    parser.repl_entry().map(|e| Rc::new(e))
+    parser.repl_entry().map(|e| Box::new(e))
 }
 
 #[cfg(test)]
@@ -1050,7 +1049,7 @@ mod tests {
         let tests = vec![
             (
                 "True",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Bool(true),
                     line: 1,
                     column: 0,
@@ -1060,7 +1059,7 @@ mod tests {
             ),
             (
                 "False",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Bool(false),
                     line: 1,
                     column: 0,
@@ -1070,7 +1069,7 @@ mod tests {
             ),
             (
                 "()",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Unit,
                     line: 1,
                     column: 0,
@@ -1080,7 +1079,7 @@ mod tests {
             ),
             (
                 "123",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Float(123.0),
                     line: 1,
                     column: 0,
@@ -1090,7 +1089,7 @@ mod tests {
             ),
             (
                 "123.2",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Float(123.2),
                     line: 1,
                     column: 0,
@@ -1100,7 +1099,7 @@ mod tests {
             ),
             (
                 "variableOne",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Identifier("variableOne".to_string()),
                     line: 1,
                     column: 0,
@@ -1110,7 +1109,7 @@ mod tests {
             ),
             (
                 "variable_one",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Identifier("variable_one".to_string()),
                     line: 1,
                     column: 0,
@@ -1120,7 +1119,7 @@ mod tests {
             ),
             (
                 "espaÆàʥñÑol",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Identifier("espaÆàʥñÑol".to_string()),
                     line: 1,
                     column: 0,
@@ -1130,7 +1129,7 @@ mod tests {
             ),
             (
                 "\"😄\"",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: String_("😄".to_string()),
                     line: 1,
                     column: 0,
@@ -1140,7 +1139,7 @@ mod tests {
             ),
             (
                 "\"\n\"",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: String_("\n".to_string()),
                     line: 1,
                     column: 0,
@@ -1150,7 +1149,7 @@ mod tests {
             ),
             (
                 "\"\"",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: String_("".to_string()),
                     line: 1,
                     column: 0,
@@ -1160,7 +1159,7 @@ mod tests {
             ),
             (
                 "(\"\")",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: String_("".to_string()),
                     line: 1,
                     column: 1,
@@ -1170,7 +1169,7 @@ mod tests {
             ),
             (
                 "(((1)))",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Float(1.0),
                     line: 1,
                     column: 3,
@@ -1221,7 +1220,7 @@ mod tests {
                 "(
   ((1))
 )",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Float(1.0),
                     line: 2,
                     column: 4,
@@ -1231,22 +1230,22 @@ mod tests {
             ),
             (
                 "fun arg",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: FnCall(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("fun".to_string()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 3,
                         }),
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Identifier("arg".to_string()),
                             line: 1,
                             column: 4,
                             start: 4,
                             end: 7,
-                        })],
+                        }],
                     ),
                     line: 1,
                     column: 0,
@@ -1256,22 +1255,22 @@ mod tests {
             ),
             (
                 "fun\n arg",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: FnCall(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("fun".to_string()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 3,
                         }),
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Identifier("arg".to_string()),
                             line: 2,
                             column: 1,
                             start: 5,
                             end: 8,
-                        })],
+                        }],
                     ),
                     line: 1,
                     column: 0,
@@ -1281,22 +1280,22 @@ mod tests {
             ),
             (
                 "  fun\n    arg",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: FnCall(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("fun".to_string()),
                             line: 1,
                             column: 2,
                             start: 2,
                             end: 5,
                         }),
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Identifier("arg".to_string()),
                             line: 2,
                             column: 4,
                             start: 10,
                             end: 13,
-                        })],
+                        }],
                     ),
                     line: 1,
                     column: 2,
@@ -1329,9 +1328,9 @@ mod tests {
 fun arg1
   arg2 arg3
   arg4",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: FnCall(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("fun".to_string()),
                             line: 2,
                             column: 0,
@@ -1339,34 +1338,34 @@ fun arg1
                             end: 4,
                         }),
                         vec![
-                            Rc::new(Node {
+                            Node {
                                 value: Identifier("arg1".to_string()),
                                 line: 2,
                                 column: 4,
                                 start: 5,
                                 end: 9,
-                            }),
-                            Rc::new(Node {
+                            },
+                            Node {
                                 value: Identifier("arg2".to_string()),
                                 line: 3,
                                 column: 2,
                                 start: 12,
                                 end: 16,
-                            }),
-                            Rc::new(Node {
+                            },
+                            Node {
                                 value: Identifier("arg3".to_string()),
                                 line: 3,
                                 column: 7,
                                 start: 17,
                                 end: 21,
-                            }),
-                            Rc::new(Node {
+                            },
+                            Node {
                                 value: Identifier("arg4".to_string()),
                                 line: 4,
                                 column: 2,
                                 start: 24,
                                 end: 28,
-                            }),
+                            },
                         ],
                     ),
                     line: 2,
@@ -1377,22 +1376,22 @@ fun arg1
             ),
             (
                 "hello ()",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: FnCall(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("hello".to_string()),
                             start: 0,
                             end: 5,
                             line: 1,
                             column: 0,
                         }),
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Unit,
                             start: 6,
                             end: 8,
                             line: 1,
                             column: 6,
-                        })],
+                        }],
                     ),
                     start: 0,
                     end: 8,
@@ -1402,7 +1401,7 @@ fun arg1
             ),
             (
                 "not False",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Unary(
                         Node {
                             value: Not,
@@ -1411,7 +1410,7 @@ fun arg1
                             start: 0,
                             end: 3,
                         },
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Bool(false),
                             line: 1,
                             column: 4,
@@ -1427,7 +1426,7 @@ fun arg1
             ),
             (
                 "- 5",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Unary(
                         Node {
                             value: Minus,
@@ -1436,7 +1435,7 @@ fun arg1
                             start: 0,
                             end: 1,
                         },
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(5.),
                             line: 1,
                             column: 2,
@@ -1452,16 +1451,16 @@ fun arg1
             ),
             (
                 "incr (-5)",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: FnCall(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("incr".to_string()),
                             line: 1,
                             column: 0,
                             start: 0,
                             end: 4,
                         }),
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Unary(
                                 Node {
                                     value: Minus,
@@ -1470,7 +1469,7 @@ fun arg1
                                     start: 6,
                                     end: 7,
                                 },
-                                Rc::new(Node {
+                                Box::new(Node {
                                     value: Float(5.),
                                     line: 1,
                                     column: 7,
@@ -1482,7 +1481,7 @@ fun arg1
                             column: 6,
                             start: 6,
                             end: 8,
-                        })],
+                        }],
                     ),
                     line: 1,
                     column: 0,
@@ -1492,14 +1491,14 @@ fun arg1
             ),
             (
                 "1 - 5",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Binary(
-                        Rc::new(Node {
-                            value: Float(1.),
+                        Box::new(Node {
+                            value: Identifier(SUBSTRACTION.fn_.clone()),
                             line: 1,
-                            column: 0,
-                            start: 0,
-                            end: 1,
+                            column: 2,
+                            start: 2,
+                            end: 3,
                         }),
                         Node {
                             value: SUBSTRACTION.clone(),
@@ -1508,13 +1507,22 @@ fun arg1
                             start: 2,
                             end: 3,
                         },
-                        Rc::new(Node {
-                            value: Float(5.),
-                            line: 1,
-                            column: 4,
-                            start: 4,
-                            end: 5,
-                        }),
+                        (
+                            Box::new(Node {
+                                value: Float(1.),
+                                line: 1,
+                                column: 0,
+                                start: 0,
+                                end: 1,
+                            }),
+                            Box::new(Node {
+                                value: Float(5.),
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 5,
+                            }),
+                        ),
                     ),
                     line: 1,
                     column: 0,
@@ -1524,14 +1532,14 @@ fun arg1
             ),
             (
                 "1 - -5",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Binary(
-                        Rc::new(Node {
-                            value: Float(1.),
+                        Box::new(Node {
+                            value: Identifier(SUBSTRACTION.fn_.clone()),
                             line: 1,
-                            column: 0,
-                            start: 0,
-                            end: 1,
+                            column: 2,
+                            start: 2,
+                            end: 3,
                         }),
                         Node {
                             value: SUBSTRACTION.clone(),
@@ -1540,28 +1548,37 @@ fun arg1
                             start: 2,
                             end: 3,
                         },
-                        Rc::new(Node {
-                            value: Unary(
-                                Node {
-                                    value: Minus,
-                                    line: 1,
-                                    column: 4,
-                                    start: 4,
-                                    end: 5,
-                                },
-                                Rc::new(Node {
-                                    value: Float(5.),
-                                    line: 1,
-                                    column: 5,
-                                    start: 5,
-                                    end: 6,
-                                }),
-                            ),
-                            line: 1,
-                            column: 4,
-                            start: 4,
-                            end: 6,
-                        }),
+                        (
+                            Box::new(Node {
+                                value: Float(1.),
+                                line: 1,
+                                column: 0,
+                                start: 0,
+                                end: 1,
+                            }),
+                            Box::new(Node {
+                                value: Unary(
+                                    Node {
+                                        value: Minus,
+                                        line: 1,
+                                        column: 4,
+                                        start: 4,
+                                        end: 5,
+                                    },
+                                    Box::new(Node {
+                                        value: Float(5.),
+                                        line: 1,
+                                        column: 5,
+                                        start: 5,
+                                        end: 6,
+                                    }),
+                                ),
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 6,
+                            }),
+                        ),
                     ),
                     line: 1,
                     column: 0,
@@ -1571,18 +1588,18 @@ fun arg1
             ),
             (
                 "1 + 2 / 3",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 9,
                     value: Binary(
-                        Rc::new(Node {
+                        Box::new(Node {
                             line: 1,
-                            column: 0,
-                            start: 0,
-                            end: 1,
-                            value: Float(1.),
+                            column: 2,
+                            start: 2,
+                            end: 3,
+                            value: Identifier(ADDITION.fn_.clone()),
                         }),
                         Node {
                             line: 1,
@@ -1591,52 +1608,70 @@ fun arg1
                             end: 3,
                             value: ADDITION.clone(),
                         },
-                        Rc::new(Node {
-                            line: 1,
-                            column: 4,
-                            start: 4,
-                            end: 9,
-                            value: Binary(
-                                Rc::new(Node {
-                                    line: 1,
-                                    column: 4,
-                                    start: 4,
-                                    end: 5,
-                                    value: Float(2.),
-                                }),
-                                Node {
-                                    line: 1,
-                                    column: 6,
-                                    start: 6,
-                                    end: 7,
-                                    value: DIVISION.clone(),
-                                },
-                                Rc::new(Node {
-                                    line: 1,
-                                    column: 8,
-                                    start: 8,
-                                    end: 9,
-                                    value: Float(3.),
-                                }),
-                            ),
-                        }),
+                        (
+                            Box::new(Node {
+                                line: 1,
+                                column: 0,
+                                start: 0,
+                                end: 1,
+                                value: Float(1.),
+                            }),
+                            Box::new(Node {
+                                line: 1,
+                                column: 4,
+                                start: 4,
+                                end: 9,
+                                value: Binary(
+                                    Box::new(Node {
+                                        line: 1,
+                                        column: 6,
+                                        start: 6,
+                                        end: 7,
+                                        value: Identifier(DIVISION.fn_.clone()),
+                                    }),
+                                    Node {
+                                        line: 1,
+                                        column: 6,
+                                        start: 6,
+                                        end: 7,
+                                        value: DIVISION.clone(),
+                                    },
+                                    (
+                                        Box::new(Node {
+                                            line: 1,
+                                            column: 4,
+                                            start: 4,
+                                            end: 5,
+                                            value: Float(2.),
+                                        }),
+                                        Box::new(Node {
+                                            line: 1,
+                                            column: 8,
+                                            start: 8,
+                                            end: 9,
+                                            value: Float(3.),
+                                        }),
+                                    ),
+                                ),
+                            }),
+                        ),
                     ),
                 })),
             ),
             (
                 "1 == 2 / 3",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     line: 1,
                     column: 0,
                     start: 0,
                     end: 10,
                     value: Binary(
-                        Rc::new(Node {
+                        Box::new(Node {
                             line: 1,
-                            column: 0,
-                            start: 0,
-                            end: 1,
-                            value: Float(1.),
+                            column: 2,
+                            start: 2,
+                            end: 4,
+                            value: Identifier(EQUAL.fn_.clone()),
                         }),
                         Node {
                             line: 1,
@@ -1645,50 +1680,68 @@ fun arg1
                             end: 4,
                             value: EQUAL.clone(),
                         },
-                        Rc::new(Node {
-                            line: 1,
-                            column: 5,
-                            start: 5,
-                            end: 10,
-                            value: Binary(
-                                Rc::new(Node {
-                                    line: 1,
-                                    column: 5,
-                                    start: 5,
-                                    end: 6,
-                                    value: Float(2.),
-                                }),
-                                Node {
-                                    line: 1,
-                                    column: 7,
-                                    start: 7,
-                                    end: 8,
-                                    value: DIVISION.clone(),
-                                },
-                                Rc::new(Node {
-                                    line: 1,
-                                    column: 9,
-                                    start: 9,
-                                    end: 10,
-                                    value: Float(3.),
-                                }),
-                            ),
-                        }),
+                        (
+                            Box::new(Node {
+                                line: 1,
+                                column: 0,
+                                start: 0,
+                                end: 1,
+                                value: Float(1.),
+                            }),
+                            Box::new(Node {
+                                line: 1,
+                                column: 5,
+                                start: 5,
+                                end: 10,
+                                value: Binary(
+                                    Box::new(Node {
+                                        line: 1,
+                                        column: 7,
+                                        start: 7,
+                                        end: 8,
+                                        value: Identifier(DIVISION.fn_.clone()),
+                                    }),
+                                    Node {
+                                        line: 1,
+                                        column: 7,
+                                        start: 7,
+                                        end: 8,
+                                        value: DIVISION.clone(),
+                                    },
+                                    (
+                                        Box::new(Node {
+                                            line: 1,
+                                            column: 5,
+                                            start: 5,
+                                            end: 6,
+                                            value: Float(2.),
+                                        }),
+                                        Box::new(Node {
+                                            line: 1,
+                                            column: 9,
+                                            start: 9,
+                                            end: 10,
+                                            value: Float(3.),
+                                        }),
+                                    ),
+                                ),
+                            }),
+                        ),
                     ),
                 })),
             ),
             (
                 "\\a -> a",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Lambda(
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Pattern_::Identifier("a".to_string()),
                             line: 1,
                             column: 1,
                             start: 1,
                             end: 2,
-                        })],
-                        Rc::new(Node {
+                        }],
+                        Box::new(Node {
                             value: Identifier("a".to_string()),
                             line: 1,
                             column: 6,
@@ -1704,25 +1757,25 @@ fun arg1
             ),
             (
                 "\\a -> \\b -> a",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Lambda(
-                        vec![Rc::new(Node {
+                        vec![Node {
                             value: Pattern_::Identifier("a".to_string()),
                             line: 1,
                             column: 1,
                             start: 1,
                             end: 2,
-                        })],
-                        Rc::new(Node {
+                        }],
+                        Box::new(Node {
                             value: Lambda(
-                                vec![Rc::new(Node {
+                                vec![Node {
                                     value: Pattern_::Identifier("b".to_string()),
                                     line: 1,
                                     column: 7,
                                     start: 7,
                                     end: 8,
-                                })],
-                                Rc::new(Node {
+                                }],
+                                Box::new(Node {
                                     value: Identifier("a".to_string()),
                                     line: 1,
                                     column: 12,
@@ -1744,25 +1797,25 @@ fun arg1
             ),
             (
                 "\\a b -> a",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Lambda(
                         vec![
-                            Rc::new(Node {
+                            Node {
                                 value: Pattern_::Identifier("a".to_string()),
                                 line: 1,
                                 column: 1,
                                 start: 1,
                                 end: 2,
-                            }),
-                            Rc::new(Node {
+                            },
+                            Node {
                                 value: Pattern_::Identifier("b".to_string()),
                                 line: 1,
                                 column: 3,
                                 start: 3,
                                 end: 4,
-                            }),
+                            },
                         ],
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("a".to_string()),
                             line: 1,
                             column: 8,
@@ -1778,23 +1831,23 @@ fun arg1
             ),
             (
                 "if True then 1 else 2",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: If(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Bool(true),
                             line: 1,
                             column: 3,
                             start: 3,
                             end: 7,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(1.),
                             line: 1,
                             column: 13,
                             start: 13,
                             end: 14,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(2.),
                             line: 1,
                             column: 20,
@@ -1815,23 +1868,23 @@ if True then
 
 else
   2",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: If(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Bool(true),
                             line: 2,
                             column: 3,
                             start: 4,
                             end: 8,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(1.),
                             line: 3,
                             column: 2,
                             start: 16,
                             end: 17,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(2.),
                             line: 6,
                             column: 2,
@@ -1847,38 +1900,38 @@ else
             ),
             (
                 "if True then incr 1 else 2",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: If(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Bool(true),
                             line: 1,
                             column: 3,
                             start: 3,
                             end: 7,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: FnCall(
-                                Rc::new(Node {
+                                Box::new(Node {
                                     value: Identifier("incr".to_string()),
                                     line: 1,
                                     column: 13,
                                     start: 13,
                                     end: 17,
                                 }),
-                                vec![Rc::new(Node {
+                                vec![Node {
                                     value: Float(1.),
                                     line: 1,
                                     column: 18,
                                     start: 18,
                                     end: 19,
-                                })],
+                                }],
                             ),
                             line: 1,
                             column: 13,
                             start: 13,
                             end: 19,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(2.),
                             line: 1,
                             column: 25,
@@ -1894,32 +1947,32 @@ else
             ),
             (
                 "if True then if False then 1 else 3 else 2",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: If(
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Bool(true),
                             line: 1,
                             column: 3,
                             start: 3,
                             end: 7,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: If(
-                                Rc::new(Node {
+                                Box::new(Node {
                                     value: Bool(false),
                                     line: 1,
                                     column: 16,
                                     start: 16,
                                     end: 21,
                                 }),
-                                Rc::new(Node {
+                                Box::new(Node {
                                     value: Float(1.),
                                     line: 1,
                                     column: 27,
                                     start: 27,
                                     end: 28,
                                 }),
-                                Rc::new(Node {
+                                Box::new(Node {
                                     value: Float(3.),
                                     line: 1,
                                     column: 34,
@@ -1932,7 +1985,7 @@ else
                             start: 13,
                             end: 35,
                         }),
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Float(2.),
                             line: 1,
                             column: 41,
@@ -1987,25 +2040,25 @@ else
             ),
             (
                 "let x = 1\nx",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Let(
-                        vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        vec![Definition {
+                            pattern: Node {
                                 value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 value: Float(1.),
                                 line: 1,
                                 column: 8,
                                 start: 8,
                                 end: 9,
-                            }),
-                        })],
-                        Rc::new(Node {
+                            },
+                        }],
+                        Box::new(Node {
                             value: Identifier("x".to_string()),
                             line: 2,
                             column: 0,
@@ -2042,40 +2095,40 @@ else
             ),
             (
                 "let x = a\n  x\nx",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Let(
-                        vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        vec![Definition {
+                            pattern: Node {
                                 value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 value: FnCall(
-                                    Rc::new(Node {
+                                    Box::new(Node {
                                         value: Identifier("a".to_string()),
                                         line: 1,
                                         column: 8,
                                         start: 8,
                                         end: 9,
                                     }),
-                                    vec![Rc::new(Node {
+                                    vec![Node {
                                         value: Identifier("x".to_string()),
                                         line: 2,
                                         column: 2,
                                         start: 12,
                                         end: 13,
-                                    })],
+                                    }],
                                 ),
                                 line: 1,
                                 column: 8,
                                 start: 8,
                                 end: 13,
-                            }),
-                        })],
-                        Rc::new(Node {
+                            },
+                        }],
+                        Box::new(Node {
                             value: Identifier("x".to_string()),
                             line: 3,
                             column: 0,
@@ -2091,40 +2144,40 @@ else
             ),
             (
                 "let x = a x in x",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Let(
-                        vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        vec![Definition {
+                            pattern: Node {
                                 value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 value: FnCall(
-                                    Rc::new(Node {
+                                    Box::new(Node {
                                         value: Identifier("a".to_string()),
                                         line: 1,
                                         column: 8,
                                         start: 8,
                                         end: 9,
                                     }),
-                                    vec![Rc::new(Node {
+                                    vec![Node {
                                         value: Identifier("x".to_string()),
                                         line: 1,
                                         column: 10,
                                         start: 10,
                                         end: 11,
-                                    })],
+                                    }],
                                 ),
                                 line: 1,
                                 column: 8,
                                 start: 8,
                                 end: 11,
-                            }),
-                        })],
-                        Rc::new(Node {
+                            },
+                        }],
+                        Box::new(Node {
                             value: Identifier("x".to_string()),
                             line: 1,
                             column: 15,
@@ -2140,40 +2193,40 @@ else
             ),
             (
                 "let x = a\n  x\nin\nx",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Let(
-                        vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        vec![Definition {
+                            pattern: Node {
                                 value: Pattern_::Identifier("x".to_string()),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 value: FnCall(
-                                    Rc::new(Node {
+                                    Box::new(Node {
                                         value: Identifier("a".to_string()),
                                         line: 1,
                                         column: 8,
                                         start: 8,
                                         end: 9,
                                     }),
-                                    vec![Rc::new(Node {
+                                    vec![Node {
                                         value: Identifier("x".to_string()),
                                         line: 2,
                                         column: 2,
                                         start: 12,
                                         end: 13,
-                                    })],
+                                    }],
                                 ),
                                 line: 1,
                                 column: 8,
                                 start: 8,
                                 end: 13,
-                            }),
-                        })],
-                        Rc::new(Node {
+                            },
+                        }],
+                        Box::new(Node {
                             value: Identifier("x".to_string()),
                             line: 4,
                             column: 0,
@@ -2206,40 +2259,40 @@ else
             ),
             (
                 "let\n  x = a\n    x\nin\nx",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Let(
-                        vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        vec![Definition {
+                            pattern: Node {
                                 value: Pattern_::Identifier("x".to_string()),
                                 line: 2,
                                 column: 2,
                                 start: 6,
                                 end: 7,
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 value: FnCall(
-                                    Rc::new(Node {
+                                    Box::new(Node {
                                         value: Identifier("a".to_string()),
                                         line: 2,
                                         column: 6,
                                         start: 10,
                                         end: 11,
                                     }),
-                                    vec![Rc::new(Node {
+                                    vec![Node {
                                         value: Identifier("x".to_string()),
                                         line: 3,
                                         column: 4,
                                         start: 16,
                                         end: 17,
-                                    })],
+                                    }],
                                 ),
                                 line: 2,
                                 column: 6,
                                 start: 10,
                                 end: 17,
-                            }),
-                        })],
-                        Rc::new(Node {
+                            },
+                        }],
+                        Box::new(Node {
                             value: Identifier("x".to_string()),
                             line: 5,
                             column: 0,
@@ -2255,58 +2308,58 @@ else
             ),
             (
                 "let\n  x = a\n    x\n b = 5\nin\nx",
-                Ok(Rc::new(Node {
+                Ok(Box::new(Node {
                     value: Let(
                         vec![
-                            Rc::new(Definition {
-                                pattern: Rc::new(Node {
+                            Definition {
+                                pattern: Node {
                                     value: Pattern_::Identifier("x".to_string()),
                                     line: 2,
                                     column: 2,
                                     start: 6,
                                     end: 7,
-                                }),
-                                value: Rc::new(Node {
+                                },
+                                value: Node {
                                     value: FnCall(
-                                        Rc::new(Node {
+                                        Box::new(Node {
                                             value: Identifier("a".to_string()),
                                             line: 2,
                                             column: 6,
                                             start: 10,
                                             end: 11,
                                         }),
-                                        vec![Rc::new(Node {
+                                        vec![Node {
                                             value: Identifier("x".to_string()),
                                             line: 3,
                                             column: 4,
                                             start: 16,
                                             end: 17,
-                                        })],
+                                        }],
                                     ),
                                     line: 2,
                                     column: 6,
                                     start: 10,
                                     end: 17,
-                                }),
-                            }),
-                            Rc::new(Definition {
-                                pattern: Rc::new(Node {
+                                },
+                            },
+                            Definition {
+                                pattern: Node {
                                     start: 19,
                                     end: 20,
                                     line: 4,
                                     column: 1,
                                     value: Pattern_::Identifier("b".to_string()),
-                                }),
-                                value: Rc::new(Node {
+                                },
+                                value: Node {
                                     start: 23,
                                     end: 24,
                                     line: 4,
                                     column: 5,
                                     value: Float(5.0),
-                                }),
-                            }),
+                                },
+                            },
                         ],
-                        Rc::new(Node {
+                        Box::new(Node {
                             value: Identifier("x".to_string()),
                             line: 6,
                             column: 0,
@@ -2361,7 +2414,7 @@ else
             ),
             (
                 "module Test",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2372,11 +2425,11 @@ else
                     exports: vec![],
                     imports: vec![],
                     definitions: vec![],
-                })]),
+                }]),
             ),
             (
                 "module Test\n\na = 1",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2386,27 +2439,27 @@ else
                     },
                     exports: vec![],
                     imports: vec![],
-                    definitions: vec![Rc::new(Definition {
-                        pattern: Rc::new(Node {
+                    definitions: vec![Definition {
+                        pattern: Node {
                             start: 13,
                             end: 14,
                             line: 3,
                             column: 0,
                             value: Pattern_::Identifier("a".to_string()),
-                        }),
-                        value: Rc::new(Node {
+                        },
+                        value: Node {
                             start: 17,
                             end: 18,
                             line: 3,
                             column: 4,
                             value: Float(1.0),
-                        }),
-                    })],
-                })]),
+                        },
+                    }],
+                }]),
             ),
             (
                 "module Test\n\na = 1\n\nb = True",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2417,40 +2470,40 @@ else
                     exports: vec![],
                     imports: vec![],
                     definitions: vec![
-                        Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        Definition {
+                            pattern: Node {
                                 start: 13,
                                 end: 14,
                                 line: 3,
                                 column: 0,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 17,
                                 end: 18,
                                 line: 3,
                                 column: 4,
                                 value: Float(1.0),
-                            }),
-                        }),
-                        Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                            },
+                        },
+                        Definition {
+                            pattern: Node {
                                 start: 20,
                                 end: 21,
                                 line: 5,
                                 column: 0,
                                 value: Pattern_::Identifier("b".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 24,
                                 end: 28,
                                 line: 5,
                                 column: 4,
                                 value: Bool(true),
-                            }),
-                        }),
+                            },
+                        },
                     ],
-                })]),
+                }]),
             ),
             (
                 "module Test\n\na = 1 + 2) + 3\n\nb = * add\n  5",
@@ -2489,7 +2542,7 @@ else
             (
                 "module Parent\n\nmodule Test",
                 Ok(vec![
-                    Rc::new(Module {
+                    Module {
                         name: Node {
                             start: 22,
                             end: 26,
@@ -2500,8 +2553,8 @@ else
                         exports: vec![],
                         imports: vec![],
                         definitions: vec![],
-                    }),
-                    Rc::new(Module {
+                    },
+                    Module {
                         name: Node {
                             start: 7,
                             end: 13,
@@ -2512,13 +2565,13 @@ else
                         exports: vec![],
                         imports: vec![],
                         definitions: vec![],
-                    }),
+                    },
                 ]),
             ),
             (
                 "module Parent\n\nmodule Test\n\n  a = 1",
                 Ok(vec![
-                    Rc::new(Module {
+                    Module {
                         name: Node {
                             start: 22,
                             end: 26,
@@ -2528,24 +2581,24 @@ else
                         },
                         exports: vec![],
                         imports: vec![],
-                        definitions: vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        definitions: vec![Definition {
+                            pattern: Node {
                                 start: 30,
                                 end: 31,
                                 line: 5,
                                 column: 2,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 34,
                                 end: 35,
                                 line: 5,
                                 column: 6,
                                 value: Float(1.0),
-                            }),
-                        })],
-                    }),
-                    Rc::new(Module {
+                            },
+                        }],
+                    },
+                    Module {
                         name: Node {
                             start: 7,
                             end: 13,
@@ -2556,13 +2609,13 @@ else
                         exports: vec![],
                         imports: vec![],
                         definitions: vec![],
-                    }),
+                    },
                 ]),
             ),
             (
                 "module Parent\n\nmodule Test\n\n  a = 1\n\na = 1\n",
                 Ok(vec![
-                    Rc::new(Module {
+                    Module {
                         name: Node {
                             start: 22,
                             end: 26,
@@ -2572,24 +2625,24 @@ else
                         },
                         exports: vec![],
                         imports: vec![],
-                        definitions: vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        definitions: vec![Definition {
+                            pattern: Node {
                                 start: 30,
                                 end: 31,
                                 line: 5,
                                 column: 2,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 34,
                                 end: 35,
                                 line: 5,
                                 column: 6,
                                 value: Float(1.0),
-                            }),
-                        })],
-                    }),
-                    Rc::new(Module {
+                            },
+                        }],
+                    },
+                    Module {
                         name: Node {
                             start: 7,
                             end: 13,
@@ -2599,23 +2652,23 @@ else
                         },
                         exports: vec![],
                         imports: vec![],
-                        definitions: vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        definitions: vec![Definition {
+                            pattern: Node {
                                 start: 37,
                                 end: 38,
                                 line: 7,
                                 column: 0,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 41,
                                 end: 42,
                                 line: 7,
                                 column: 4,
                                 value: Float(1.0),
-                            }),
-                        })],
-                    }),
+                            },
+                        }],
+                    },
                 ]),
             ),
             (
@@ -2650,7 +2703,7 @@ module Test2
     c = 5
 ",
                 Ok(vec![
-                    Rc::new(Module {
+                    Module {
                         name: Node {
                             start: 46,
                             end: 55,
@@ -2660,24 +2713,24 @@ module Test2
                         },
                         exports: vec![],
                         imports: vec![],
-                        definitions: vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        definitions: vec![Definition {
+                            pattern: Node {
                                 start: 60,
                                 end: 61,
                                 line: 7,
                                 column: 4,
                                 value: Pattern_::Identifier("b".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 64,
                                 end: 65,
                                 line: 7,
                                 column: 8,
                                 value: Float(1.0),
-                            }),
-                        })],
-                    }),
-                    Rc::new(Module {
+                            },
+                        }],
+                    },
+                    Module {
                         name: Node {
                             start: 22,
                             end: 27,
@@ -2687,24 +2740,24 @@ module Test2
                         },
                         exports: vec![],
                         imports: vec![],
-                        definitions: vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        definitions: vec![Definition {
+                            pattern: Node {
                                 start: 30,
                                 end: 31,
                                 line: 4,
                                 column: 2,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 34,
                                 end: 35,
                                 line: 4,
                                 column: 6,
                                 value: Float(1.0),
-                            }),
-                        })],
-                    }),
-                    Rc::new(Module {
+                            },
+                        }],
+                    },
+                    Module {
                         name: Node {
                             start: 74,
                             end: 79,
@@ -2714,24 +2767,24 @@ module Test2
                         },
                         exports: vec![],
                         imports: vec![],
-                        definitions: vec![Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        definitions: vec![Definition {
+                            pattern: Node {
                                 start: 84,
                                 end: 85,
                                 line: 10,
                                 column: 4,
                                 value: Pattern_::Identifier("c".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 88,
                                 end: 89,
                                 line: 10,
                                 column: 8,
                                 value: Float(5.0),
-                            }),
-                        })],
-                    }),
-                    Rc::new(Module {
+                            },
+                        }],
+                    },
+                    Module {
                         name: Node {
                             start: 7,
                             end: 13,
@@ -2742,12 +2795,12 @@ module Test2
                         exports: vec![],
                         imports: vec![],
                         definitions: vec![],
-                    }),
+                    },
                 ]),
             ),
             (
                 "module Test exposing (a)\n\na = 1\n\nb = True",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2755,53 +2808,53 @@ module Test2
                         column: 7,
                         value: "Test".to_string(),
                     },
-                    exports: vec![Rc::new(Node {
+                    exports: vec![Node {
                         start: 22,
                         end: 23,
                         line: 1,
                         column: 22,
                         value: Export_("a".to_string()),
-                    })],
+                    }],
                     imports: vec![],
                     definitions: vec![
-                        Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        Definition {
+                            pattern: Node {
                                 start: 26,
                                 end: 27,
                                 line: 3,
                                 column: 0,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 30,
                                 end: 31,
                                 line: 3,
                                 column: 4,
                                 value: Float(1.0),
-                            }),
-                        }),
-                        Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                            },
+                        },
+                        Definition {
+                            pattern: Node {
                                 start: 33,
                                 end: 34,
                                 line: 5,
                                 column: 0,
                                 value: Pattern_::Identifier("b".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 37,
                                 end: 41,
                                 line: 5,
                                 column: 4,
                                 value: Bool(true),
-                            }),
-                        }),
+                            },
+                        },
                     ],
-                })]),
+                }]),
             ),
             (
                 "module Test exposing (a, b)\n\na = 1\n\nb = True",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2810,57 +2863,57 @@ module Test2
                         value: "Test".to_string(),
                     },
                     exports: vec![
-                        Rc::new(Node {
+                        Node {
                             start: 22,
                             end: 23,
                             line: 1,
                             column: 22,
                             value: Export_("a".to_string()),
-                        }),
-                        Rc::new(Node {
+                        },
+                        Node {
                             start: 25,
                             end: 26,
                             line: 1,
                             column: 25,
                             value: Export_("b".to_string()),
-                        }),
+                        },
                     ],
                     imports: vec![],
                     definitions: vec![
-                        Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                        Definition {
+                            pattern: Node {
                                 start: 29,
                                 end: 30,
                                 line: 3,
                                 column: 0,
                                 value: Pattern_::Identifier("a".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 33,
                                 end: 34,
                                 line: 3,
                                 column: 4,
                                 value: Float(1.0),
-                            }),
-                        }),
-                        Rc::new(Definition {
-                            pattern: Rc::new(Node {
+                            },
+                        },
+                        Definition {
+                            pattern: Node {
                                 start: 36,
                                 end: 37,
                                 line: 5,
                                 column: 0,
                                 value: Pattern_::Identifier("b".to_string()),
-                            }),
-                            value: Rc::new(Node {
+                            },
+                            value: Node {
                                 start: 40,
                                 end: 44,
                                 line: 5,
                                 column: 4,
                                 value: Bool(true),
-                            }),
-                        }),
+                            },
+                        },
                     ],
-                })]),
+                }]),
             ),
             (
                 "module Test exposing a, b\n\na = 1\n\nb = True",
@@ -2915,7 +2968,7 @@ module Test2
             ),
             (
                 "module Test\n\nimport Banana",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2924,7 +2977,7 @@ module Test2
                         value: "Test".to_string(),
                     },
                     exports: vec![],
-                    imports: vec![Rc::new(Node {
+                    imports: vec![Node {
                         start: 20,
                         end: 26,
                         line: 3,
@@ -2940,13 +2993,13 @@ module Test2
                             alias: None,
                             exposing: vec![],
                         },
-                    })],
+                    }],
                     definitions: vec![],
-                })]),
+                }]),
             ),
             (
                 "module Test\n\nimport Banana as B",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2955,7 +3008,7 @@ module Test2
                         value: "Test".to_string(),
                     },
                     exports: vec![],
-                    imports: vec![Rc::new(Node {
+                    imports: vec![Node {
                         start: 20,
                         end: 31,
                         line: 3,
@@ -2977,13 +3030,13 @@ module Test2
                             }),
                             exposing: vec![],
                         },
-                    })],
+                    }],
                     definitions: vec![],
-                })]),
+                }]),
             ),
             (
                 "module Test\n\nimport Banana exposing (phone)",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -2992,7 +3045,7 @@ module Test2
                         value: "Test".to_string(),
                     },
                     exports: vec![],
-                    imports: vec![Rc::new(Node {
+                    imports: vec![Node {
                         start: 20,
                         end: 43,
                         line: 3,
@@ -3006,17 +3059,17 @@ module Test2
                                 value: "Banana".to_string(),
                             },
                             alias: None,
-                            exposing: vec![Rc::new(Node {
+                            exposing: vec![Node {
                                 start: 37,
                                 end: 42,
                                 line: 3,
                                 column: 24,
                                 value: Export_("phone".to_string()),
-                            })],
+                            }],
                         },
-                    })],
+                    }],
                     definitions: vec![],
-                })]),
+                }]),
             ),
             (
                 "module Test
@@ -3026,7 +3079,7 @@ import Banana as B
 import Phone exposing (raffi)
 
 import Apple as A exposing (orange)",
-                Ok(vec![Rc::new(Module {
+                Ok(vec![Module {
                     name: Node {
                         start: 7,
                         end: 11,
@@ -3036,7 +3089,7 @@ import Apple as A exposing (orange)",
                     },
                     exports: vec![],
                     imports: vec![
-                        Rc::new(Node {
+                        Node {
                             start: 20,
                             end: 33,
                             line: 3,
@@ -3058,8 +3111,8 @@ import Apple as A exposing (orange)",
                                 }),
                                 exposing: vec![],
                             },
-                        }),
-                        Rc::new(Node {
+                        },
+                        Node {
                             start: 40,
                             end: 64,
                             line: 5,
@@ -3073,16 +3126,16 @@ import Apple as A exposing (orange)",
                                     value: "Phone".to_string(),
                                 },
                                 alias: None,
-                                exposing: vec![Rc::new(Node {
+                                exposing: vec![Node {
                                     start: 56,
                                     end: 61,
                                     line: 5,
                                     column: 23,
                                     value: Export_("raffi".to_string()),
-                                })],
+                                }],
                             },
-                        }),
-                        Rc::new(Node {
+                        },
+                        Node {
                             start: 71,
                             end: 99,
                             line: 7,
@@ -3102,18 +3155,18 @@ import Apple as A exposing (orange)",
                                     column: 16,
                                     value: "A".to_string(),
                                 }),
-                                exposing: vec![Rc::new(Node {
+                                exposing: vec![Node {
                                     start: 92,
                                     end: 98,
                                     line: 7,
                                     column: 28,
                                     value: Export_("orange".to_string()),
-                                })],
+                                }],
                             },
-                        }),
+                        },
                     ],
                     definitions: vec![],
-                })]),
+                }]),
             ),
         ];
 

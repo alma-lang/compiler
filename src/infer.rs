@@ -39,15 +39,21 @@ enum UnificationError {
 }
 
 #[derive(Debug)]
-pub enum Error {
-    UndefinedIdentifier(String, Rc<Expression>),
-    TypeMismatch(Rc<Expression>, Rc<Type>, Option<Rc<Expression>>, Rc<Type>),
-    InfiniteType(Rc<Expression>, Rc<Type>),
-    UnknownImport(Rc<Import>),
-    UnknownImportDefinition(Rc<Export>, Rc<Import>),
+pub enum Error<'ast> {
+    UndefinedIdentifier(String, &'ast Expression),
+    TypeMismatch(
+        &'ast Expression,
+        Rc<Type>,
+        Option<&'ast Expression>,
+        Rc<Type>,
+    ),
+    InfiniteType(&'ast Expression, Rc<Type>),
+    UndefinedExport(&'ast Export),
+    UnknownImport(&'ast Import),
+    UnknownImportDefinition(&'ast Export, &'ast Import),
 }
 
-impl Error {
+impl<'ast> Error<'ast> {
     pub fn to_string(&self, source: &Source) -> String {
         use Error::*;
 
@@ -57,6 +63,7 @@ impl Error {
             UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
+            UndefinedExport(node) => (node.start, node.line, node.column, node.end),
             UnknownImport(node) => (node.start, node.line, node.column, node.end),
             UnknownImportDefinition(node, _) => (node.start, node.line, node.column, node.end),
         };
@@ -120,6 +127,13 @@ with type
 
 {1}",
                     typ, typ2, code, code2
+                ));
+            }
+
+            UndefinedExport(export) => {
+                s.push_str(&format!(
+                    "Undefined identifier `{}`\n\n{}",
+                    export.value.0, code
                 ));
             }
 
@@ -314,12 +328,12 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
     }
 }
 
-fn unify(
-    ast: &Rc<Expression>,
+fn unify<'ast>(
+    ast: &'ast Expression,
     t1: &Rc<Type>,
-    ast2: Option<&Rc<Expression>>,
+    ast2: Option<&'ast Expression>,
     t2: &Rc<Type>,
-) -> Result<(), Error> {
+) -> Result<(), Error<'ast>> {
     fn unify_rec(t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), UnificationError> {
         use UnificationError::*;
 
@@ -406,13 +420,10 @@ fn unify(
     }
 
     unify_rec(t1, t2).map_err(|e| match e {
-        UnificationError::TypeMismatch => Error::TypeMismatch(
-            Rc::clone(ast),
-            Rc::clone(&t1),
-            ast2.map(|a| Rc::clone(a)),
-            Rc::clone(&t2),
-        ),
-        UnificationError::InfiniteType => Error::InfiniteType(Rc::clone(ast), Rc::clone(&t1)),
+        UnificationError::TypeMismatch => {
+            Error::TypeMismatch(ast, Rc::clone(&t1), ast2, Rc::clone(&t2))
+        }
+        UnificationError::InfiniteType => Error::InfiniteType(ast, Rc::clone(&t1)),
     })
 }
 
@@ -517,10 +528,10 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
 }
 
 /* The main entry point to type inference */
-pub fn infer(
-    module_interfaces: &HashMap<String, Rc<TypeEnv>>,
-    module: &Rc<Module>,
-) -> Result<Rc<TypeEnv>, Vec<Error>> {
+pub fn infer<'interfaces, 'ast>(
+    module_interfaces: &'interfaces HashMap<String, Rc<TypeEnv>>,
+    module: &'ast Module,
+) -> Result<Rc<TypeEnv>, Vec<Error<'ast>>> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
     base_env(&mut state, &mut env);
@@ -544,14 +555,11 @@ pub fn infer(
                     let name = &exposed.value.0;
                     match imported.get(name) {
                         Some(definition) => env.insert(name.clone(), Rc::clone(definition)),
-                        None => errors.push(Error::UnknownImportDefinition(
-                            Rc::clone(exposed),
-                            Rc::clone(import),
-                        )),
+                        None => errors.push(Error::UnknownImportDefinition(exposed, import)),
                     };
                 }
             }
-            None => errors.push(Error::UnknownImport(Rc::clone(import))),
+            None => errors.push(Error::UnknownImport(import)),
         }
     }
 
@@ -563,17 +571,7 @@ pub fn infer(
         let name = &export.value.0;
         match env.get(name) {
             Some(typ) => module_type.insert(name.to_string(), Rc::clone(typ)),
-            None => errors.push(Error::UndefinedIdentifier(
-                name.clone(),
-                // TODO: Nasty hack to get the error that needs an expression to show. Needs fixing
-                // either by making the error not give a shit about the inner part of the Node, or
-                // by restructuring the Error type. I'm not sure if others won't work with the
-                // module type checking.
-                Rc::new(Node::with_value_from_node(
-                    E::Identifier(name.to_string()),
-                    export,
-                )),
-            )),
+            None => errors.push(Error::UndefinedExport(export)),
         }
     }
 
@@ -586,12 +584,12 @@ pub fn infer(
 
 /* All branches (except for the trivial Unit) of the first match in this function
 are translated directly from the rules for algorithm J, given in comments */
-pub fn infer_expression(
-    ast: &Rc<Expression>,
+pub fn infer_expression<'ast>(
+    ast: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
-) -> Result<Rc<Type>, Vec<Error>> {
-    let mut errors: Vec<Error> = vec![];
+) -> Result<Rc<Type>, Vec<Error<'ast>>> {
+    let mut errors: Vec<Error<'ast>> = vec![];
     let t = infer_rec(ast, state, env, &mut errors);
 
     if errors.len() == 0 {
@@ -601,11 +599,11 @@ pub fn infer_expression(
     }
 }
 
-fn infer_rec(
-    ast: &Rc<Expression>,
+fn infer_rec<'ast>(
+    ast: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
-    errors: &mut Vec<Error>,
+    errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
     // Primitive types
     // TODO: This is horrible, copypastad because globals with Rc in Rust are ASLDKFJNQASLKJDFG
@@ -636,24 +634,12 @@ fn infer_rec(
             t
         }
 
-        E::Binary(left, op, right) => {
+        E::Binary(fn_, _op, (left, right)) => {
             // Convert the binary AST to function calls
-            let fn_call = Rc::new(Expression {
-                value: E::FnCall(
-                    Rc::new(Expression {
-                        value: E::Identifier(op.value.fn_.clone()),
-                        start: op.start,
-                        end: op.end,
-                        line: op.line,
-                        column: op.column,
-                    }),
-                    vec![Rc::clone(left), Rc::clone(right)],
-                ),
-                ..**ast
-            });
+            let args = vec![&**left, &**right];
 
             // Infer the binary op as a function call
-            infer_rec(&fn_call, state, env, errors)
+            infer_fn_call(fn_, &args, ast, state, env, errors)
         }
 
         /* If
@@ -688,10 +674,7 @@ fn infer_rec(
                 t
             }
             None => {
-                add_error(
-                    Err(Error::UndefinedIdentifier(x.clone(), Rc::clone(ast))),
-                    errors,
-                );
+                add_error(Err(Error::UndefinedIdentifier(x.clone(), ast)), errors);
                 state.new_type_var()
             }
         },
@@ -705,36 +688,8 @@ fn infer_rec(
          *   infer env (f x) = t'
          */
         E::FnCall(f, args) => {
-            let fn_type = infer_rec(f, state, env, errors);
-            let param_types = fn_type.parameters();
-
-            let arg_types: Vec<Rc<Type>> = args
-                .iter()
-                .map(|arg| infer_rec(arg, state, env, errors))
-                .collect();
-
-            let return_type = state.new_type_var();
-
-            let call_type: Rc<Type> = arg_types
-                .iter()
-                .rev()
-                .fold(Rc::clone(&return_type), |ret, typ| {
-                    Rc::new(Fn(Rc::clone(typ), ret))
-                });
-
-            // Unify the arguments separately for nicer error messages
-            let res = arg_types
-                .iter()
-                .zip(args.iter())
-                .zip(param_types)
-                .fold(Ok(()), |result, ((arg_type, arg), param_type)| {
-                    result.and_then(|_| unify(arg, arg_type, None, param_type))
-                })
-                // If there weren't any failures, unify the Fn and return types
-                .and_then(|_| unify(ast, &call_type, None, &fn_type));
-            add_error(res, errors);
-
-            return_type
+            let args: Vec<_> = args.iter().map(|t| t).collect();
+            infer_fn_call(f, &args, ast, state, env, errors)
         }
 
         /* Abs
@@ -744,14 +699,14 @@ fn infer_rec(
          *   infer env (fun x -> e) = t -> t'
          */
         E::Lambda(params, e) => {
-            let params_with_type: Vec<(&Rc<ast::Pattern>, Rc<Type>)> =
+            let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> =
                 params.iter().map(|p| (p, state.new_type_var())).collect();
 
             let mut env =
                 params_with_type
                     .iter()
                     .fold(env.clone(), |mut env, (param, param_type)| {
-                        match &***param {
+                        match &**param {
                             Node {
                                 value: P::Identifier(x),
                                 ..
@@ -791,11 +746,11 @@ fn infer_rec(
     }
 }
 
-fn infer_definitions(
-    definitions: &Vec<Rc<Definition>>,
+fn infer_definitions<'ast>(
+    definitions: &'ast Vec<Definition>,
     state: &mut State,
     env: &mut TypeEnv,
-    errors: &mut Vec<Error>,
+    errors: &mut Vec<Error<'ast>>,
 ) {
     for definition in definitions {
         state.enter_level();
@@ -808,7 +763,47 @@ fn infer_definitions(
     }
 }
 
-fn add_error(result: Result<(), Error>, errors: &mut Vec<Error>) {
+fn infer_fn_call<'ast>(
+    f: &'ast Expression,
+    args: &Vec<&'ast Expression>,
+    ast: &'ast Expression,
+    state: &mut State,
+    env: &mut TypeEnv,
+    errors: &mut Vec<Error<'ast>>,
+) -> Rc<Type> {
+    let fn_type = infer_rec(f, state, env, errors);
+    let param_types = fn_type.parameters();
+
+    let arg_types: Vec<Rc<Type>> = args
+        .iter()
+        .map(|arg| infer_rec(arg, state, env, errors))
+        .collect();
+
+    let return_type = state.new_type_var();
+
+    let call_type: Rc<Type> = arg_types
+        .iter()
+        .rev()
+        .fold(Rc::clone(&return_type), |ret, typ| {
+            Rc::new(Fn(Rc::clone(typ), ret))
+        });
+
+    // Unify the arguments separately for nicer error messages
+    let res = arg_types
+        .iter()
+        .zip(args.iter())
+        .zip(param_types)
+        .fold(Ok(()), |result, ((arg_type, arg), param_type)| {
+            result.and_then(|_| unify(arg, arg_type, None, param_type))
+        })
+        // If there weren't any failures, unify the Fn and return types
+        .and_then(|_| unify(ast, &call_type, None, &fn_type));
+    add_error(res, errors);
+
+    return_type
+}
+
+fn add_error<'ast>(result: Result<(), Error<'ast>>, errors: &mut Vec<Error<'ast>>) {
     match result {
         Err(e) => errors.push(e),
         _ => (),
