@@ -24,16 +24,17 @@ impl TypeEnv {
 
 impl fmt::Display for TypeEnv {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = String::new();
-
         let mut entries: Vec<_> = self.0.iter().collect();
+        // we need to sort the entries because they come out with different order and they mess up
+        // tests
+        //
         // what do you want from me rust, here, have a clone
         entries.sort_by_key(|(k, _)| k.clone());
 
         for (name, typ) in &entries {
-            s.push_str(&format!("{} : {}\n\n", name, typ));
+            write!(f, "{} : {}\n\n", name, typ)?;
         }
 
-        write!(f, "{}", s)
+        Ok(())
     }
 }

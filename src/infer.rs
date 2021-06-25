@@ -434,7 +434,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
     let _string = &Rc::new(Type::Named("String".to_owned(), vec![]));
 
     env.insert(
-        "(or)".to_owned(),
+        "(or)".to_string(),
         Rc::new(Type::Fn(
             Rc::clone(bool_),
             Rc::new(Type::Fn(Rc::clone(bool_), Rc::clone(bool_))),
