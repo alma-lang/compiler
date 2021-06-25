@@ -40,7 +40,7 @@ enum UnificationError {
 
 #[derive(Debug)]
 pub enum Error<'ast> {
-    UndefinedIdentifier(String, &'ast Expression),
+    UndefinedIdentifier(&'ast str, &'ast Expression),
     TypeMismatch(
         &'ast Expression,
         Rc<Type>,
@@ -582,8 +582,6 @@ pub fn infer<'interfaces, 'ast>(
     }
 }
 
-/* All branches (except for the trivial Unit) of the first match in this function
-are translated directly from the rules for algorithm J, given in comments */
 pub fn infer_expression<'ast>(
     ast: &'ast Expression,
     state: &mut State,
@@ -674,7 +672,7 @@ fn infer_rec<'ast>(
                 t
             }
             None => {
-                add_error(Err(Error::UndefinedIdentifier(x.clone(), ast)), errors);
+                add_error(Err(Error::UndefinedIdentifier(x, ast)), errors);
                 state.new_type_var()
             }
         },
