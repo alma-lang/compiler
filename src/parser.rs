@@ -993,7 +993,7 @@ fn organize_binops(
                                 &op,
                             )),
                             op,
-                            (Box::new(left), Box::new(right)),
+                            Box::new([left, right]),
                         ),
                         line,
                         column,
@@ -1507,22 +1507,22 @@ fun arg1
                             start: 2,
                             end: 3,
                         },
-                        (
-                            Box::new(Node {
+                        Box::new([
+                            Node {
                                 value: Float(1.),
                                 line: 1,
                                 column: 0,
                                 start: 0,
                                 end: 1,
-                            }),
-                            Box::new(Node {
+                            },
+                            Node {
                                 value: Float(5.),
                                 line: 1,
                                 column: 4,
                                 start: 4,
                                 end: 5,
-                            }),
-                        ),
+                            },
+                        ]),
                     ),
                     line: 1,
                     column: 0,
@@ -1548,15 +1548,15 @@ fun arg1
                             start: 2,
                             end: 3,
                         },
-                        (
-                            Box::new(Node {
+                        Box::new([
+                            Node {
                                 value: Float(1.),
                                 line: 1,
                                 column: 0,
                                 start: 0,
                                 end: 1,
-                            }),
-                            Box::new(Node {
+                            },
+                            Node {
                                 value: Unary(
                                     Node {
                                         value: Minus,
@@ -1577,8 +1577,8 @@ fun arg1
                                 column: 4,
                                 start: 4,
                                 end: 6,
-                            }),
-                        ),
+                            },
+                        ]),
                     ),
                     line: 1,
                     column: 0,
@@ -1608,15 +1608,15 @@ fun arg1
                             end: 3,
                             value: ADDITION.clone(),
                         },
-                        (
-                            Box::new(Node {
+                        Box::new([
+                            Node {
                                 line: 1,
                                 column: 0,
                                 start: 0,
                                 end: 1,
                                 value: Float(1.),
-                            }),
-                            Box::new(Node {
+                            },
+                            Node {
                                 line: 1,
                                 column: 4,
                                 start: 4,
@@ -1636,25 +1636,25 @@ fun arg1
                                         end: 7,
                                         value: DIVISION.clone(),
                                     },
-                                    (
-                                        Box::new(Node {
+                                    Box::new([
+                                        Node {
                                             line: 1,
                                             column: 4,
                                             start: 4,
                                             end: 5,
                                             value: Float(2.),
-                                        }),
-                                        Box::new(Node {
+                                        },
+                                        Node {
                                             line: 1,
                                             column: 8,
                                             start: 8,
                                             end: 9,
                                             value: Float(3.),
-                                        }),
-                                    ),
+                                        },
+                                    ]),
                                 ),
-                            }),
-                        ),
+                            },
+                        ]),
                     ),
                 })),
             ),
@@ -1680,15 +1680,15 @@ fun arg1
                             end: 4,
                             value: EQUAL.clone(),
                         },
-                        (
-                            Box::new(Node {
+                        Box::new([
+                            Node {
                                 line: 1,
                                 column: 0,
                                 start: 0,
                                 end: 1,
                                 value: Float(1.),
-                            }),
-                            Box::new(Node {
+                            },
+                            Node {
                                 line: 1,
                                 column: 5,
                                 start: 5,
@@ -1708,25 +1708,25 @@ fun arg1
                                         end: 8,
                                         value: DIVISION.clone(),
                                     },
-                                    (
-                                        Box::new(Node {
+                                    Box::new([
+                                        Node {
                                             line: 1,
                                             column: 5,
                                             start: 5,
                                             end: 6,
                                             value: Float(2.),
-                                        }),
-                                        Box::new(Node {
+                                        },
+                                        Node {
                                             line: 1,
                                             column: 9,
                                             start: 9,
                                             end: 10,
                                             value: Float(3.),
-                                        }),
-                                    ),
+                                        },
+                                    ]),
                                 ),
-                            }),
-                        ),
+                            },
+                        ]),
                     ),
                 })),
             ),

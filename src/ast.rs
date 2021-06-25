@@ -67,7 +67,7 @@ pub enum Expression_ {
     String_(String),
     Identifier(String),
     Unary(Unary, Box<Expression>),
-    Binary(Box<Expression>, Binop, (Box<Expression>, Box<Expression>)),
+    Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
     Lambda(Vec<Pattern>, Box<Expression>),
     FnCall(Box<Expression>, Vec<Expression>),
     Let(Vec<Definition>, Box<Expression>),

@@ -632,12 +632,9 @@ fn infer_rec<'ast>(
             t
         }
 
-        E::Binary(fn_, _op, (left, right)) => {
-            // Convert the binary AST to function calls
-            let args = vec![&**left, &**right];
-
+        E::Binary(fn_, _op, args) => {
             // Infer the binary op as a function call
-            infer_fn_call(fn_, &args, ast, state, env, errors)
+            infer_fn_call(fn_, args.iter(), ast, state, env, errors)
         }
 
         /* If
@@ -685,10 +682,7 @@ fn infer_rec<'ast>(
          *   ---------------
          *   infer env (f x) = t'
          */
-        E::FnCall(f, args) => {
-            let args: Vec<_> = args.iter().map(|t| t).collect();
-            infer_fn_call(f, &args, ast, state, env, errors)
-        }
+        E::FnCall(f, args) => infer_fn_call(f, args.iter().map(|t| t), ast, state, env, errors),
 
         /* Abs
          *   t = newVar ()
@@ -761,19 +755,22 @@ fn infer_definitions<'ast>(
     }
 }
 
-fn infer_fn_call<'ast>(
+fn infer_fn_call<'ast, Args>(
     f: &'ast Expression,
-    args: &Vec<&'ast Expression>,
+    args: Args,
     ast: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
     errors: &mut Vec<Error<'ast>>,
-) -> Rc<Type> {
+) -> Rc<Type>
+where
+    Args: Iterator<Item = &'ast Expression> + Clone,
+{
     let fn_type = infer_rec(f, state, env, errors);
     let param_types = fn_type.parameters();
 
     let arg_types: Vec<Rc<Type>> = args
-        .iter()
+        .clone()
         .map(|arg| infer_rec(arg, state, env, errors))
         .collect();
 
@@ -789,7 +786,7 @@ fn infer_fn_call<'ast>(
     // Unify the arguments separately for nicer error messages
     let res = arg_types
         .iter()
-        .zip(args.iter())
+        .zip(args.clone())
         .zip(param_types)
         .fold(Ok(()), |result, ((arg_type, arg), param_type)| {
             result.and_then(|_| unify(arg, arg_type, None, param_type))
