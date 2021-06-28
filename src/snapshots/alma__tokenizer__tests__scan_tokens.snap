@@ -1,0 +1,18 @@
+---
+source: src/tokenizer.rs
+expression: "tokenize(\"\")"
+
+---
+Ok(
+    [
+        Token {
+            kind: Eof,
+            position: 0,
+            end_position: 0,
+            lexeme: "[End of file]",
+            line: 1,
+            column: 0,
+            indent: 0,
+        },
+    ],
+)

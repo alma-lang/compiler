@@ -1,0 +1,69 @@
+---
+source: src/parser.rs
+expression: "parse(\"\nfun arg1\n  arg2 arg3\n  arg4\")"
+
+---
+Input:
+
+
+fun arg1
+  arg2 arg3
+  arg4
+
+Result:
+
+Node {
+    start: 1,
+    end: 28,
+    line: 2,
+    column: 0,
+    value: FnCall(
+        Node {
+            start: 1,
+            end: 4,
+            line: 2,
+            column: 0,
+            value: Identifier(
+                "fun",
+            ),
+        },
+        [
+            Node {
+                start: 5,
+                end: 9,
+                line: 2,
+                column: 4,
+                value: Identifier(
+                    "arg1",
+                ),
+            },
+            Node {
+                start: 12,
+                end: 16,
+                line: 3,
+                column: 2,
+                value: Identifier(
+                    "arg2",
+                ),
+            },
+            Node {
+                start: 17,
+                end: 21,
+                line: 3,
+                column: 7,
+                value: Identifier(
+                    "arg3",
+                ),
+            },
+            Node {
+                start: 24,
+                end: 28,
+                line: 4,
+                column: 2,
+                value: Identifier(
+                    "arg4",
+                ),
+            },
+        ],
+    ),
+}

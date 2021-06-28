@@ -1,0 +1,39 @@
+---
+source: src/parser.rs
+expression: "parse(\"\\\\a -> a\")"
+
+---
+Input:
+
+\a -> a
+
+Result:
+
+Node {
+    start: 0,
+    end: 7,
+    line: 1,
+    column: 0,
+    value: Lambda(
+        [
+            Node {
+                start: 1,
+                end: 2,
+                line: 1,
+                column: 1,
+                value: Identifier(
+                    "a",
+                ),
+            },
+        ],
+        Node {
+            start: 6,
+            end: 7,
+            line: 1,
+            column: 6,
+            value: Identifier(
+                "a",
+            ),
+        },
+    ),
+}

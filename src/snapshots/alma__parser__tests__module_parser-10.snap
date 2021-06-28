@@ -1,0 +1,44 @@
+---
+source: src/parser.rs
+expression: "parse({\n          \"module Parent\\n\\nmodule Test\\n\\n  a = 1 + 2) + 3\\n\\n  b = * add\\n    5\\n\\na = 1 + 2) + 3\\n\\nb = * add\\n  5\"\n      })"
+
+---
+Input:
+
+module Parent
+
+module Test
+
+  a = 1 + 2) + 3
+
+  b = * add
+    5
+
+a = 1 + 2) + 3
+
+b = * add
+  5
+
+Result:
+
+5:11: Expected a definition like `n = 5` or `add x y = x + y`, but instead found: ')'
+
+  3│  module Test
+  4│  
+  5│    a = 1 + 2) + 3
+   │             ↑
+  6│  
+  7│    b = * add
+
+Error {
+    message: "5:11: Expected a definition like `n = 5` or `add x y = x + y`, but instead found: \')\'\n\n  3│  module Test\n  4│  \n  5│    a = 1 + 2) + 3\n   │             ↑\n  6│  \n  7│    b = * add",
+    token: Token {
+        kind: RightParen,
+        position: 39,
+        end_position: 40,
+        lexeme: ")",
+        line: 5,
+        column: 11,
+        indent: 2,
+    },
+}

@@ -1,0 +1,20 @@
+---
+source: src/parser.rs
+expression: "parse(\"(\\\"\\\")\")"
+
+---
+Input:
+
+("")
+
+Result:
+
+Node {
+    start: 1,
+    end: 3,
+    line: 1,
+    column: 1,
+    value: String_(
+        "",
+    ),
+}

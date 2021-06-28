@@ -1,0 +1,62 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Parent\\n\\nmodule Test\\n\\n  a = 1\")"
+
+---
+Input:
+
+module Parent
+
+module Test
+
+  a = 1
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 22,
+            end: 26,
+            line: 3,
+            column: 7,
+            value: "Test",
+        },
+        exports: [],
+        imports: [],
+        definitions: [
+            Definition {
+                pattern: Node {
+                    start: 30,
+                    end: 31,
+                    line: 5,
+                    column: 2,
+                    value: Identifier(
+                        "a",
+                    ),
+                },
+                value: Node {
+                    start: 34,
+                    end: 35,
+                    line: 5,
+                    column: 6,
+                    value: Float(
+                        1.0,
+                    ),
+                },
+            },
+        ],
+    },
+    Module {
+        name: Node {
+            start: 7,
+            end: 13,
+            line: 1,
+            column: 7,
+            value: "Parent",
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+    },
+]

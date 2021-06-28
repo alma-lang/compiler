@@ -1,0 +1,72 @@
+---
+source: src/parser.rs
+expression: "parse(\"if True then if False then 1 else 3 else 2\")"
+
+---
+Input:
+
+if True then if False then 1 else 3 else 2
+
+Result:
+
+Node {
+    start: 0,
+    end: 42,
+    line: 1,
+    column: 0,
+    value: If(
+        Node {
+            start: 3,
+            end: 7,
+            line: 1,
+            column: 3,
+            value: Bool(
+                true,
+            ),
+        },
+        Node {
+            start: 13,
+            end: 35,
+            line: 1,
+            column: 13,
+            value: If(
+                Node {
+                    start: 16,
+                    end: 21,
+                    line: 1,
+                    column: 16,
+                    value: Bool(
+                        false,
+                    ),
+                },
+                Node {
+                    start: 27,
+                    end: 28,
+                    line: 1,
+                    column: 27,
+                    value: Float(
+                        1.0,
+                    ),
+                },
+                Node {
+                    start: 34,
+                    end: 35,
+                    line: 1,
+                    column: 34,
+                    value: Float(
+                        3.0,
+                    ),
+                },
+            ),
+        },
+        Node {
+            start: 41,
+            end: 42,
+            line: 1,
+            column: 41,
+            value: Float(
+                2.0,
+            ),
+        },
+    ),
+}

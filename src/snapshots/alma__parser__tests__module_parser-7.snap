@@ -1,0 +1,39 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Parent\\n\\nmodule Test\")"
+
+---
+Input:
+
+module Parent
+
+module Test
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 22,
+            end: 26,
+            line: 3,
+            column: 7,
+            value: "Test",
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+    },
+    Module {
+        name: Node {
+            start: 7,
+            end: 13,
+            line: 1,
+            column: 7,
+            value: "Parent",
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+    },
+]

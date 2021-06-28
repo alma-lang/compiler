@@ -1,0 +1,20 @@
+---
+source: src/parser.rs
+expression: "parse(\"variable_one\")"
+
+---
+Input:
+
+variable_one
+
+Result:
+
+Node {
+    start: 0,
+    end: 12,
+    line: 1,
+    column: 0,
+    value: Identifier(
+        "variable_one",
+    ),
+}

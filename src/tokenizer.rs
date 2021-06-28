@@ -376,165 +376,21 @@ fn is_identifier_rest(c: char) -> bool {
 mod tests {
     use super::*;
     use crate::source::Source;
-    use crate::token::{Token, Type::*};
-    use pretty_assertions::assert_eq;
+    use insta::assert_snapshot;
 
     #[test]
     fn test_scan_tokens() {
-        let tests = vec![
-            (
-                "".to_string(),
-                Ok(vec![Token {
-                    kind: Eof,
-                    position: 0,
-                    end_position: 0,
-                    lexeme: "[End of file]",
-                    line: 1,
-                    indent: 0,
-                    column: 0,
-                }]),
-            ),
-            (
-                "123".to_string(),
-                Ok(vec![
-                    Token {
-                        kind: Float,
-                        position: 0,
-                        end_position: 3,
-                        lexeme: "123",
-                        line: 1,
-                        indent: 0,
-                        column: 0,
-                    },
-                    Token {
-                        kind: Eof,
-                        position: 3,
-                        end_position: 3,
-                        lexeme: "[End of file]",
-                        line: 1,
-                        indent: 0,
-                        column: 3,
-                    },
-                ]),
-            ),
-            (
-                "123.345".to_string(),
-                Ok(vec![
-                    Token {
-                        kind: Float,
-                        position: 0,
-                        end_position: 7,
-                        lexeme: "123.345",
-                        line: 1,
-                        indent: 0,
-                        column: 0,
-                    },
-                    Token {
-                        kind: Eof,
-                        position: 7,
-                        end_position: 7,
-                        lexeme: "[End of file]",
-                        line: 1,
-                        indent: 0,
-                        column: 7,
-                    },
-                ]),
-            ),
-            (
-                "123.sd".to_string(),
-                Err(vec![Error {
-                    line: 1,
-                    column: 3,
-                    message: "Expected more digits after a dot in a number.
-
-  1│  123.sd
-   │     ↑"
-                        .to_string(),
-                }]),
-            ),
-            (
-                "123\n or \"abc\"".to_string(),
-                Ok(vec![
-                    Token {
-                        kind: Float,
-                        position: 0,
-                        end_position: 3,
-                        lexeme: "123",
-                        line: 1,
-                        indent: 0,
-                        column: 0,
-                    },
-                    Token {
-                        kind: Or,
-                        position: 5,
-                        end_position: 7,
-                        lexeme: "or",
-                        line: 2,
-                        indent: 1,
-                        column: 1,
-                    },
-                    Token {
-                        kind: String_,
-                        position: 8,
-                        end_position: 13,
-                        lexeme: "\"abc\"",
-                        line: 2,
-                        indent: 1,
-                        column: 4,
-                    },
-                    Token {
-                        kind: Eof,
-                        position: 13,
-                        end_position: 13,
-                        lexeme: "[End of file]",
-                        line: 2,
-                        indent: 1,
-                        column: 9,
-                    },
-                ]),
-            ),
-            (
-                "123\n or &\"abc\"".to_string(),
-                Err(vec![Error {
-                    line: 2,
-                    column: 4,
-                    message: "Unexpected character \'&\'.
-
-  1│  123
-  2│   or &\"abc\"
-   │      ↑"
-                        .to_string(),
-                }]),
-            ),
-            (
-                r#""asdf\"asdf""#.to_string(),
-                Ok(vec![
-                    Token {
-                        kind: String_,
-                        position: 0,
-                        end_position: 12,
-                        lexeme: r#""asdf\"asdf""#,
-                        line: 1,
-                        indent: 0,
-                        column: 0,
-                    },
-                    Token {
-                        kind: Eof,
-                        position: 12,
-                        end_position: 12,
-                        lexeme: "[End of file]",
-                        line: 1,
-                        indent: 0,
-                        column: 12,
-                    },
-                ]),
-            ),
-        ];
-
-        for (code, expected) in tests {
-            let code = &Source::new_orphan(&code);
-            let result = parse(code);
-            assert_eq!(result, expected, "\nCode:\n{:?}", &code);
+        fn tokenize<'a>(code: &'a str) -> String {
+            let source = &Source::new_orphan(&code);
+            format!("{:#?}", parse(source))
         }
+
+        assert_snapshot!(tokenize(""));
+        assert_snapshot!(tokenize("123"));
+        assert_snapshot!(tokenize("123.345"));
+        assert_snapshot!(tokenize("123.sd"));
+        assert_snapshot!(tokenize("123\n or \"abc\""));
+        assert_snapshot!(tokenize("123\n or &\"abc\""));
+        assert_snapshot!(tokenize(r#""asdf\"asdf""#));
     }
 }

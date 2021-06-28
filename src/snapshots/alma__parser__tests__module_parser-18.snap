@@ -1,0 +1,53 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Test\\n\\nimport Banana as B\")"
+
+---
+Input:
+
+module Test
+
+import Banana as B
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 7,
+            end: 11,
+            line: 1,
+            column: 7,
+            value: "Test",
+        },
+        exports: [],
+        imports: [
+            Node {
+                start: 20,
+                end: 31,
+                line: 3,
+                column: 7,
+                value: Import_ {
+                    module_name: Node {
+                        start: 20,
+                        end: 26,
+                        line: 3,
+                        column: 7,
+                        value: "Banana",
+                    },
+                    alias: Some(
+                        Node {
+                            start: 30,
+                            end: 31,
+                            line: 3,
+                            column: 17,
+                            value: "B",
+                        },
+                    ),
+                    exposing: [],
+                },
+            },
+        ],
+        definitions: [],
+    },
+]

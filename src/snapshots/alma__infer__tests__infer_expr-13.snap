@@ -1,0 +1,32 @@
+---
+source: src/infer.rs
+expression: "infer(r\"let incr = \\n -> n + 1\n\nincr True\")"
+
+---
+Input:
+
+let incr = \n -> n + 1
+
+incr True
+
+---
+Output:
+
+[3:5]
+
+Type mismatch:  Bool  ≠  Float
+
+Expected
+
+  1│  let incr = \n -> n + 1
+  2│  
+  3│  incr True
+   │       ↑↑↑↑
+
+to be
+
+Float
+
+but seems to be
+
+Bool

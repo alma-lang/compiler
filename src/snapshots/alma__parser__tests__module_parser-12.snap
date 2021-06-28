@@ -1,0 +1,80 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Test exposing (a)\\n\\na = 1\\n\\nb = True\")"
+
+---
+Input:
+
+module Test exposing (a)
+
+a = 1
+
+b = True
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 7,
+            end: 11,
+            line: 1,
+            column: 7,
+            value: "Test",
+        },
+        exports: [
+            Node {
+                start: 22,
+                end: 23,
+                line: 1,
+                column: 22,
+                value: Export_(
+                    "a",
+                ),
+            },
+        ],
+        imports: [],
+        definitions: [
+            Definition {
+                pattern: Node {
+                    start: 26,
+                    end: 27,
+                    line: 3,
+                    column: 0,
+                    value: Identifier(
+                        "a",
+                    ),
+                },
+                value: Node {
+                    start: 30,
+                    end: 31,
+                    line: 3,
+                    column: 4,
+                    value: Float(
+                        1.0,
+                    ),
+                },
+            },
+            Definition {
+                pattern: Node {
+                    start: 33,
+                    end: 34,
+                    line: 5,
+                    column: 0,
+                    value: Identifier(
+                        "b",
+                    ),
+                },
+                value: Node {
+                    start: 37,
+                    end: 41,
+                    line: 5,
+                    column: 4,
+                    value: Bool(
+                        true,
+                    ),
+                },
+            },
+        ],
+    },
+]

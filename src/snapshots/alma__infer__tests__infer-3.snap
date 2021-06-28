@@ -1,0 +1,26 @@
+---
+source: src/infer.rs
+expression: "infer(\"\nmodule Test exposing (a, b)\n\na = 1\n\nb = 2\n           \")"
+
+---
+Input:
+
+
+module Test exposing (a, b)
+
+a = 1
+
+b = 2
+           
+
+---
+Output:
+
+Test
+
+a : Float
+
+b : Float
+
+
+

@@ -1,0 +1,40 @@
+---
+source: src/parser.rs
+expression: "parse(\"  fun\\n    arg\")"
+
+---
+Input:
+
+  fun
+    arg
+
+Result:
+
+Node {
+    start: 2,
+    end: 13,
+    line: 1,
+    column: 2,
+    value: FnCall(
+        Node {
+            start: 2,
+            end: 5,
+            line: 1,
+            column: 2,
+            value: Identifier(
+                "fun",
+            ),
+        },
+        [
+            Node {
+                start: 10,
+                end: 13,
+                line: 2,
+                column: 4,
+                value: Identifier(
+                    "arg",
+                ),
+            },
+        ],
+    ),
+}

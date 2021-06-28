@@ -1,0 +1,14 @@
+---
+source: src/tokenizer.rs
+expression: result
+
+---
+Err(
+    [
+        Error {
+            line: 1,
+            column: 3,
+            message: "Expected more digits after a dot in a number.\n\n  1│  123.sd\n   │     ↑",
+        },
+    ],
+)

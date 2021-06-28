@@ -1,0 +1,134 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Parent\n\nmodule Test1\n  a = 1\n\n  module Test1Test\n    b = 1\n\nmodule Test2\n    c = 5\n    \")"
+
+---
+Input:
+
+module Parent
+
+module Test1
+  a = 1
+
+  module Test1Test
+    b = 1
+
+module Test2
+    c = 5
+    
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 46,
+            end: 55,
+            line: 6,
+            column: 9,
+            value: "Test1Test",
+        },
+        exports: [],
+        imports: [],
+        definitions: [
+            Definition {
+                pattern: Node {
+                    start: 60,
+                    end: 61,
+                    line: 7,
+                    column: 4,
+                    value: Identifier(
+                        "b",
+                    ),
+                },
+                value: Node {
+                    start: 64,
+                    end: 65,
+                    line: 7,
+                    column: 8,
+                    value: Float(
+                        1.0,
+                    ),
+                },
+            },
+        ],
+    },
+    Module {
+        name: Node {
+            start: 22,
+            end: 27,
+            line: 3,
+            column: 7,
+            value: "Test1",
+        },
+        exports: [],
+        imports: [],
+        definitions: [
+            Definition {
+                pattern: Node {
+                    start: 30,
+                    end: 31,
+                    line: 4,
+                    column: 2,
+                    value: Identifier(
+                        "a",
+                    ),
+                },
+                value: Node {
+                    start: 34,
+                    end: 35,
+                    line: 4,
+                    column: 6,
+                    value: Float(
+                        1.0,
+                    ),
+                },
+            },
+        ],
+    },
+    Module {
+        name: Node {
+            start: 74,
+            end: 79,
+            line: 9,
+            column: 7,
+            value: "Test2",
+        },
+        exports: [],
+        imports: [],
+        definitions: [
+            Definition {
+                pattern: Node {
+                    start: 84,
+                    end: 85,
+                    line: 10,
+                    column: 4,
+                    value: Identifier(
+                        "c",
+                    ),
+                },
+                value: Node {
+                    start: 88,
+                    end: 89,
+                    line: 10,
+                    column: 8,
+                    value: Float(
+                        5.0,
+                    ),
+                },
+            },
+        ],
+    },
+    Module {
+        name: Node {
+            start: 7,
+            end: 13,
+            line: 1,
+            column: 7,
+            value: "Parent",
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+    },
+]

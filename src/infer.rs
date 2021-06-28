@@ -810,156 +810,61 @@ mod tests {
     use super::*;
     use crate::parser;
     use crate::tokenizer;
-    use pretty_assertions::assert_eq;
+    use insta::assert_snapshot;
 
     #[test]
     fn test_infer_expr() {
-        let tests = vec![
-            (r"\f -> \x -> f x", "(a -> b) -> a -> b"),
-            (r"\f -> \x -> f (f x)", "(a -> a) -> a -> a"),
-            // (+):
-            (
-                r"\m -> \n -> \f -> \x -> m f (n f x)",
-                "(a -> b -> c) -> (a -> d -> b) -> a -> d -> c",
-            ),
-            // succ:
-            (
-                r"\n -> \f -> \x -> f (n f x)",
-                "((a -> b) -> c -> a) -> (a -> b) -> c -> b",
-            ),
-            // mult:
-            (
-                r"\m -> \n -> \f -> \x -> m (n f) x",
-                "(a -> b -> c) -> (d -> a) -> d -> b -> c",
-            ),
-            // pred:
-            (
-                r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)",
-                "(((a -> b) -> (b -> c) -> c) -> (d -> e) -> (f -> f) -> g) -> a -> e -> g",
-            ),
-            // let generalization tests
-            (
-                r"
+        assert_snapshot!(infer(r"\f -> \x -> f x",));
+        assert_snapshot!(infer(r"\f -> \x -> f (f x)",));
+        // (+):
+        assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m f (n f x)",));
+        // succ:
+        assert_snapshot!(infer(r"\n -> \f -> \x -> f (n f x)",));
+        // mult:
+        assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m (n f) x",));
+        // pred:
+        assert_snapshot!(infer(
+            r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)",
+        ));
+        // let generalization tests
+        assert_snapshot!(infer(
+            r"
       \x ->
         let y = x
         y
     ",
-                "a -> a",
-            ),
-            (
-                r"
+        ));
+        assert_snapshot!(infer(
+            r"
       \x ->
         let y = \z -> x
         y
       ",
-                "a -> b -> a",
-            ),
-            // if:
-            ("if 1 == 1 then True else False", "Bool"),
-            ("if 1 == 1 then 1 else 2", "Float"),
-            // errors:
-            (
-                "if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2",
-                "Float",
-            ),
-            (
-                "if 1 then 5 else 1",
-                "[1:3]
+        ));
+        // if:
+        assert_snapshot!(infer("if 1 == 1 then True else False"));
+        assert_snapshot!(infer("if 1 == 1 then 1 else 2"));
+        // errors:
+        assert_snapshot!(infer(
+            "if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2",
+        ));
+        assert_snapshot!(infer("if 1 then 5 else 1"));
+        assert_snapshot!(infer(
+            r"let incr = \n -> n + 1
 
-Type mismatch:  Float  ≠  Bool
-
-Expected
-
-  1│  if 1 then 5 else 1
-   │     ↑
-
-to be
-
-Bool
-
-but seems to be
-
-Float",
-            ),
-            (
-                r"let incr = \n -> n + 1
-
-incr True",
-                r"[3:5]
-
-Type mismatch:  Bool  ≠  Float
-
-Expected
-
-  1│  let incr = \n -> n + 1
-  2│  
-  3│  incr True
-   │       ↑↑↑↑
-
-to be
-
-Float
-
-but seems to be
-
-Bool",
-            ),
-            (
-                r"\x ->
+incr True"
+        ));
+        assert_snapshot!(infer(
+            r"\x ->
     let a = x + 1
     let b = not x
-    x",
-                r"[3:16]
+    x"
+        ));
+        assert_snapshot!(infer("let a = bar\nbar"));
+        assert_snapshot!(infer(r"\a -> a 1 a",));
 
-Type mismatch:  Float  ≠  Bool
-
-Expected
-
-  1│  \x ->
-  2│      let a = x + 1
-  3│      let b = not x
-   │                  ↑
-  4│      x
-
-to be
-
-Bool
-
-but seems to be
-
-Float",
-            ),
-            (
-                "let a = bar\nbar",
-                "[1:8]
-
-Undefined identifier `bar`
-
-  1│  let a = bar
-   │          ↑↑↑
-  2│  bar
-
-[2:0]
-
-Undefined identifier `bar`
-
-  1│  let a = bar
-  2│  bar
-   │  ↑↑↑",
-            ),
-            (
-                r"\a -> a 1 a",
-                r"[1:6]
-
-Infinite type
-
-  1│  \a -> a 1 a
-   │        ↑↑↑↑↑",
-            ),
-        ];
-
-        for (input, expected) in tests {
-            let source = Source::new_orphan(&input);
+        fn infer(code: &str) -> String {
+            let source = Source::new_orphan(&code);
 
             let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {
@@ -987,72 +892,50 @@ Infinite type
                     .join("\n\n"),
             };
 
-            assert_eq!(s, expected, "\n\n{}\n\n{}", &input, s);
+            format!("Input:\n\n{}\n\n---\nOutput:\n\n{}", code, s)
         }
     }
 
     #[test]
     fn test_infer() {
-        let tests = vec![
-            (
-                "
+        assert_snapshot!(infer(
+            "
 module Test
 
 a = 1
 
 b = 2
-           ",
-                "Test\n\n\n",
-            ),
-            (
-                "
+           "
+        ));
+        assert_snapshot!(infer(
+            "
 module Test exposing (a)
 
 a = 1
 
 b = 2
-           ",
-                "Test\n\na : Float\n\n\n",
-            ),
-            (
-                "
+           "
+        ));
+        assert_snapshot!(infer(
+            "
 module Test exposing (a, b)
 
 a = 1
 
 b = 2
-           ",
-                "\
-Test
-
-a : Float
-
-b : Float
-
-
-",
-            ),
-            (
-                "
+           "
+        ));
+        assert_snapshot!(infer(
+            "
 module Test exposing (c)
 
 a = 1
 
 b = 2
-           ",
-                "\
-[2:22]
-
-Undefined identifier `c`
-
-  1│  
-  2│  module Test exposing (c)
-   │                        ↑
-  3│  
-  4│  a = 1",
-            ),
-            (
-                r#"
+           "
+        ));
+        assert_snapshot!(infer(
+            r#"
 module Test exposing (a, b)
 
 a = 1
@@ -1064,28 +947,10 @@ module TestInner exposing (a, b)
   b = \c -> c
 
 c = "hi"
-"#,
-                "\
-TestInner
-
-a : Float -> Float -> Float
-
-b : ∀ a . a -> a
-
-
-
-
-Test
-
-a : Float
-
-b : Float
-
-
-",
-            ),
-            (
-                r#"
+"#
+        ));
+        assert_snapshot!(infer(
+            r#"
 module Parent
 
 import Test exposing (test)
@@ -1095,11 +960,10 @@ add = \x -> x + test
 module Test exposing (test)
 
     test = 5
-"#,
-                "Test\n\ntest : Float\n\n\n\n\nParent\n\n\n",
-            ),
-            (
-                r#"
+"#
+        ));
+        assert_snapshot!(infer(
+            r#"
 module Parent
 
 import Test exposing (test)
@@ -1109,37 +973,10 @@ add = \x -> x + test
 module Test exposing (test)
 
     test = "hi"
-"#,
-                r#"Test
-
-test : String
-
-
-
-
-[6:16]
-
-Type mismatch:  String  ≠  Float
-
-Expected
-
-  4│  import Test exposing (test)
-  5│  
-  6│  add = \x -> x + test
-   │                  ↑↑↑↑
-  7│  
-  8│  module Test exposing (test)
-
-to be
-
-Float
-
-but seems to be
-
-String"#,
-            ),
-            (
-                r#"
+"#
+        ));
+        assert_snapshot!(infer(
+            r#"
 module Parent
 
 import Test exposing (nope)
@@ -1149,40 +986,11 @@ add = \x -> x + test
 module Test exposing (test)
 
     test = "hi"
-"#,
-                r#"Test
+"#
+        ));
 
-test : String
-
-
-
-
-[4:22]
-
-Module `Test` doesn't appear to expose `nope`
-
-  2│  module Parent
-  3│  
-  4│  import Test exposing (nope)
-   │                        ↑↑↑↑
-  5│  
-  6│  add = \x -> x + test
-
-[6:16]
-
-Undefined identifier `test`
-
-  4│  import Test exposing (nope)
-  5│  
-  6│  add = \x -> x + test
-   │                  ↑↑↑↑
-  7│  
-  8│  module Test exposing (test)"#,
-            ),
-        ];
-
-        for (input, expected) in tests {
-            let source = Source::new_orphan(&input);
+        fn infer(code: &str) -> String {
+            let source = Source::new_orphan(&code);
 
             let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {
@@ -1202,7 +1010,7 @@ Undefined identifier `test`
             let mut results = vec![];
 
             for module in modules {
-                let result = match infer(&module_interfaces, &module) {
+                let result = match super::infer(&module_interfaces, &module) {
                     Ok(typ) => {
                         let s = format!("{}\n\n{}\n", module.name.value, &typ);
                         module_interfaces.insert(module.name.value.clone(), typ);
@@ -1220,7 +1028,7 @@ Undefined identifier `test`
 
             let actual = results.join("\n\n");
 
-            assert_eq!(actual, expected, "\n\n{}\n\n{}", &input, actual);
+            format!("Input:\n\n{}\n\n---\nOutput:\n\n{}", &code, actual)
         }
     }
 }

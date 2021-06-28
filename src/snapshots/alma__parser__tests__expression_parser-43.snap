@@ -1,0 +1,72 @@
+---
+source: src/parser.rs
+expression: "parse(\"let x = a\\n  x\\nin\\nx\")"
+
+---
+Input:
+
+let x = a
+  x
+in
+x
+
+Result:
+
+Node {
+    start: 0,
+    end: 18,
+    line: 1,
+    column: 0,
+    value: Let(
+        [
+            Definition {
+                pattern: Node {
+                    start: 4,
+                    end: 5,
+                    line: 1,
+                    column: 4,
+                    value: Identifier(
+                        "x",
+                    ),
+                },
+                value: Node {
+                    start: 8,
+                    end: 13,
+                    line: 1,
+                    column: 8,
+                    value: FnCall(
+                        Node {
+                            start: 8,
+                            end: 9,
+                            line: 1,
+                            column: 8,
+                            value: Identifier(
+                                "a",
+                            ),
+                        },
+                        [
+                            Node {
+                                start: 12,
+                                end: 13,
+                                line: 2,
+                                column: 2,
+                                value: Identifier(
+                                    "x",
+                                ),
+                            },
+                        ],
+                    ),
+                },
+            },
+        ],
+        Node {
+            start: 17,
+            end: 18,
+            line: 4,
+            column: 0,
+            value: Identifier(
+                "x",
+            ),
+        },
+    ),
+}

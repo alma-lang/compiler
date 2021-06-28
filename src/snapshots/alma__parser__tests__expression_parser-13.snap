@@ -1,0 +1,20 @@
+---
+source: src/parser.rs
+expression: "parse(\"(((1)))\")"
+
+---
+Input:
+
+(((1)))
+
+Result:
+
+Node {
+    start: 3,
+    end: 4,
+    line: 1,
+    column: 3,
+    value: Float(
+        1.0,
+    ),
+}

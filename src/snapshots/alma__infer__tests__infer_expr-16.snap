@@ -1,0 +1,18 @@
+---
+source: src/infer.rs
+expression: "infer(r\"\\a -> a 1 a\")"
+
+---
+Input:
+
+\a -> a 1 a
+
+---
+Output:
+
+[1:6]
+
+Infinite type
+
+  1│  \a -> a 1 a
+   │        ↑↑↑↑↑

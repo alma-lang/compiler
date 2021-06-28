@@ -1,0 +1,37 @@
+---
+source: src/parser.rs
+expression: "parse(\"hello ()\")"
+
+---
+Input:
+
+hello ()
+
+Result:
+
+Node {
+    start: 0,
+    end: 8,
+    line: 1,
+    column: 0,
+    value: FnCall(
+        Node {
+            start: 0,
+            end: 5,
+            line: 1,
+            column: 0,
+            value: Identifier(
+                "hello",
+            ),
+        },
+        [
+            Node {
+                start: 6,
+                end: 8,
+                line: 1,
+                column: 6,
+                value: Unit,
+            },
+        ],
+    ),
+}

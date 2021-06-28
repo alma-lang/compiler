@@ -1,0 +1,17 @@
+---
+source: src/infer.rs
+expression: "infer(r\"\n      \\x ->\n        let y = x\n        y\n    \")"
+
+---
+Input:
+
+
+      \x ->
+        let y = x
+        y
+    
+
+---
+Output:
+
+a -> a

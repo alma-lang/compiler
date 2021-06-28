@@ -1,0 +1,34 @@
+---
+source: src/infer.rs
+expression: "infer(r\"\\x ->\n    let a = x + 1\n    let b = not x\n    x\")"
+
+---
+Input:
+
+\x ->
+    let a = x + 1
+    let b = not x
+    x
+
+---
+Output:
+
+[3:16]
+
+Type mismatch:  Float  ≠  Bool
+
+Expected
+
+  1│  \x ->
+  2│      let a = x + 1
+  3│      let b = not x
+   │                  ↑
+  4│      x
+
+to be
+
+Bool
+
+but seems to be
+
+Float

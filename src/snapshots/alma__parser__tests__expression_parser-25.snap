@@ -1,0 +1,54 @@
+---
+source: src/parser.rs
+expression: "parse(\"incr (-5)\")"
+
+---
+Input:
+
+incr (-5)
+
+Result:
+
+Node {
+    start: 0,
+    end: 8,
+    line: 1,
+    column: 0,
+    value: FnCall(
+        Node {
+            start: 0,
+            end: 4,
+            line: 1,
+            column: 0,
+            value: Identifier(
+                "incr",
+            ),
+        },
+        [
+            Node {
+                start: 6,
+                end: 8,
+                line: 1,
+                column: 6,
+                value: Unary(
+                    Node {
+                        start: 6,
+                        end: 7,
+                        line: 1,
+                        column: 6,
+                        value: Minus,
+                    },
+                    Node {
+                        start: 7,
+                        end: 8,
+                        line: 1,
+                        column: 7,
+                        value: Float(
+                            5.0,
+                        ),
+                    },
+                ),
+            },
+        ],
+    ),
+}

@@ -1,0 +1,20 @@
+---
+source: src/parser.rs
+expression: "parse(\"espaÆàʥñÑol\")"
+
+---
+Input:
+
+espaÆàʥñÑol
+
+Result:
+
+Node {
+    start: 0,
+    end: 16,
+    line: 1,
+    column: 0,
+    value: Identifier(
+        "espaÆàʥñÑol",
+    ),
+}

@@ -1,0 +1,119 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\")"
+
+---
+Input:
+
+module Test
+
+import Banana as B
+
+import Phone exposing (raffi)
+
+import Apple as A exposing (orange)
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 7,
+            end: 11,
+            line: 1,
+            column: 7,
+            value: "Test",
+        },
+        exports: [],
+        imports: [
+            Node {
+                start: 20,
+                end: 33,
+                line: 3,
+                column: 7,
+                value: Import_ {
+                    module_name: Node {
+                        start: 20,
+                        end: 26,
+                        line: 3,
+                        column: 7,
+                        value: "Banana",
+                    },
+                    alias: Some(
+                        Node {
+                            start: 30,
+                            end: 31,
+                            line: 3,
+                            column: 17,
+                            value: "B",
+                        },
+                    ),
+                    exposing: [],
+                },
+            },
+            Node {
+                start: 40,
+                end: 64,
+                line: 5,
+                column: 7,
+                value: Import_ {
+                    module_name: Node {
+                        start: 40,
+                        end: 45,
+                        line: 5,
+                        column: 7,
+                        value: "Phone",
+                    },
+                    alias: None,
+                    exposing: [
+                        Node {
+                            start: 56,
+                            end: 61,
+                            line: 5,
+                            column: 23,
+                            value: Export_(
+                                "raffi",
+                            ),
+                        },
+                    ],
+                },
+            },
+            Node {
+                start: 71,
+                end: 99,
+                line: 7,
+                column: 7,
+                value: Import_ {
+                    module_name: Node {
+                        start: 71,
+                        end: 76,
+                        line: 7,
+                        column: 7,
+                        value: "Apple",
+                    },
+                    alias: Some(
+                        Node {
+                            start: 80,
+                            end: 81,
+                            line: 7,
+                            column: 16,
+                            value: "A",
+                        },
+                    ),
+                    exposing: [
+                        Node {
+                            start: 92,
+                            end: 98,
+                            line: 7,
+                            column: 28,
+                            value: Export_(
+                                "orange",
+                            ),
+                        },
+                    ],
+                },
+            },
+        ],
+        definitions: [],
+    },
+]

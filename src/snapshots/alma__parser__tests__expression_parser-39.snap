@@ -1,0 +1,51 @@
+---
+source: src/parser.rs
+expression: "parse(\"let x = 1\\nx\")"
+
+---
+Input:
+
+let x = 1
+x
+
+Result:
+
+Node {
+    start: 0,
+    end: 11,
+    line: 1,
+    column: 0,
+    value: Let(
+        [
+            Definition {
+                pattern: Node {
+                    start: 4,
+                    end: 5,
+                    line: 1,
+                    column: 4,
+                    value: Identifier(
+                        "x",
+                    ),
+                },
+                value: Node {
+                    start: 8,
+                    end: 9,
+                    line: 1,
+                    column: 8,
+                    value: Float(
+                        1.0,
+                    ),
+                },
+            },
+        ],
+        Node {
+            start: 10,
+            end: 11,
+            line: 2,
+            column: 0,
+            value: Identifier(
+                "x",
+            ),
+        },
+    ),
+}

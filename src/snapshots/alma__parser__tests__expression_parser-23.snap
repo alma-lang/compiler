@@ -1,0 +1,35 @@
+---
+source: src/parser.rs
+expression: "parse(\"not False\")"
+
+---
+Input:
+
+not False
+
+Result:
+
+Node {
+    start: 0,
+    end: 9,
+    line: 1,
+    column: 0,
+    value: Unary(
+        Node {
+            start: 0,
+            end: 3,
+            line: 1,
+            column: 0,
+            value: Not,
+        },
+        Node {
+            start: 4,
+            end: 9,
+            line: 1,
+            column: 4,
+            value: Bool(
+                false,
+            ),
+        },
+    ),
+}

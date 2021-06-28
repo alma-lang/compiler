@@ -1,0 +1,30 @@
+---
+source: src/parser.rs
+expression: "parse(\"let x = a\\n  x\")"
+
+---
+Input:
+
+let x = a
+  x
+
+Result:
+
+2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: '[End of file]'
+
+  1│  let x = a
+  2│    x
+   │     ↑
+
+Error {
+    message: "2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: \'[End of file]\'\n\n  1│  let x = a\n  2│    x\n   │     ↑",
+    token: Token {
+        kind: Eof,
+        position: 13,
+        end_position: 13,
+        lexeme: "[End of file]",
+        line: 2,
+        column: 3,
+        indent: 2,
+    },
+}

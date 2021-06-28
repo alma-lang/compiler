@@ -1,0 +1,46 @@
+---
+source: src/parser.rs
+expression: "parse(\"if True then 1 else 2\")"
+
+---
+Input:
+
+if True then 1 else 2
+
+Result:
+
+Node {
+    start: 0,
+    end: 21,
+    line: 1,
+    column: 0,
+    value: If(
+        Node {
+            start: 3,
+            end: 7,
+            line: 1,
+            column: 3,
+            value: Bool(
+                true,
+            ),
+        },
+        Node {
+            start: 13,
+            end: 14,
+            line: 1,
+            column: 13,
+            value: Float(
+                1.0,
+            ),
+        },
+        Node {
+            start: 20,
+            end: 21,
+            line: 1,
+            column: 20,
+            value: Float(
+                2.0,
+            ),
+        },
+    ),
+}

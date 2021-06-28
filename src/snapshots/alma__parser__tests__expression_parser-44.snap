@@ -1,0 +1,35 @@
+---
+source: src/parser.rs
+expression: "parse(\"let\\n  x = a\\n  x\\nin\\nx\")"
+
+---
+Input:
+
+let
+  x = a
+  x
+in
+x
+
+Result:
+
+4:0: Expected an = and an expression for the right side of let expression, but instead found: 'in'
+
+  2│    x = a
+  3│    x
+  4│  in
+   │  ↑↑
+  5│  x
+
+Error {
+    message: "4:0: Expected an = and an expression for the right side of let expression, but instead found: \'in\'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x",
+    token: Token {
+        kind: In,
+        position: 16,
+        end_position: 18,
+        lexeme: "in",
+        line: 4,
+        column: 0,
+        indent: 0,
+    },
+}

@@ -1,0 +1,45 @@
+---
+source: src/tokenizer.rs
+expression: "tokenize(\"123\\n or \\\"abc\\\"\")"
+
+---
+Ok(
+    [
+        Token {
+            kind: Float,
+            position: 0,
+            end_position: 3,
+            lexeme: "123",
+            line: 1,
+            column: 0,
+            indent: 0,
+        },
+        Token {
+            kind: Or,
+            position: 5,
+            end_position: 7,
+            lexeme: "or",
+            line: 2,
+            column: 1,
+            indent: 1,
+        },
+        Token {
+            kind: String_,
+            position: 8,
+            end_position: 13,
+            lexeme: "\"abc\"",
+            line: 2,
+            column: 4,
+            indent: 1,
+        },
+        Token {
+            kind: Eof,
+            position: 13,
+            end_position: 13,
+            lexeme: "[End of file]",
+            line: 2,
+            column: 9,
+            indent: 1,
+        },
+    ],
+)

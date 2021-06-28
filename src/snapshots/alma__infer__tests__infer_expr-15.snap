@@ -1,0 +1,28 @@
+---
+source: src/infer.rs
+expression: "infer(\"let a = bar\\nbar\")"
+
+---
+Input:
+
+let a = bar
+bar
+
+---
+Output:
+
+[1:8]
+
+Undefined identifier `bar`
+
+  1│  let a = bar
+   │          ↑↑↑
+  2│  bar
+
+[2:0]
+
+Undefined identifier `bar`
+
+  1│  let a = bar
+  2│  bar
+   │  ↑↑↑

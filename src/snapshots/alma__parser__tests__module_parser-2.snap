@@ -1,0 +1,25 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Test\")"
+
+---
+Input:
+
+module Test
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 7,
+            end: 11,
+            line: 1,
+            column: 7,
+            value: "Test",
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+    },
+]

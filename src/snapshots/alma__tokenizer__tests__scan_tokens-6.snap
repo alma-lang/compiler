@@ -1,0 +1,14 @@
+---
+source: src/tokenizer.rs
+expression: "tokenize(\"123\\n or &\\\"abc\\\"\")"
+
+---
+Err(
+    [
+        Error {
+            line: 2,
+            column: 4,
+            message: "Unexpected character \'&\'.\n\n  1│  123\n  2│   or &\"abc\"\n   │      ↑",
+        },
+    ],
+)

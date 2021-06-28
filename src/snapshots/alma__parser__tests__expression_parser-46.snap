@@ -1,0 +1,94 @@
+---
+source: src/parser.rs
+expression: "parse(\"let\\n  x = a\\n    x\\n b = 5\\nin\\nx\")"
+
+---
+Input:
+
+let
+  x = a
+    x
+ b = 5
+in
+x
+
+Result:
+
+Node {
+    start: 0,
+    end: 29,
+    line: 1,
+    column: 0,
+    value: Let(
+        [
+            Definition {
+                pattern: Node {
+                    start: 6,
+                    end: 7,
+                    line: 2,
+                    column: 2,
+                    value: Identifier(
+                        "x",
+                    ),
+                },
+                value: Node {
+                    start: 10,
+                    end: 17,
+                    line: 2,
+                    column: 6,
+                    value: FnCall(
+                        Node {
+                            start: 10,
+                            end: 11,
+                            line: 2,
+                            column: 6,
+                            value: Identifier(
+                                "a",
+                            ),
+                        },
+                        [
+                            Node {
+                                start: 16,
+                                end: 17,
+                                line: 3,
+                                column: 4,
+                                value: Identifier(
+                                    "x",
+                                ),
+                            },
+                        ],
+                    ),
+                },
+            },
+            Definition {
+                pattern: Node {
+                    start: 19,
+                    end: 20,
+                    line: 4,
+                    column: 1,
+                    value: Identifier(
+                        "b",
+                    ),
+                },
+                value: Node {
+                    start: 23,
+                    end: 24,
+                    line: 4,
+                    column: 5,
+                    value: Float(
+                        5.0,
+                    ),
+                },
+            },
+        ],
+        Node {
+            start: 28,
+            end: 29,
+            line: 6,
+            column: 0,
+            value: Identifier(
+                "x",
+            ),
+        },
+    ),
+}

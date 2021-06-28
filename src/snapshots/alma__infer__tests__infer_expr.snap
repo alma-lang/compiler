@@ -1,0 +1,13 @@
+---
+source: src/infer.rs
+expression: "infer(r\"\\f -> \\x -> f x\")"
+
+---
+Input:
+
+\f -> \x -> f x
+
+---
+Output:
+
+(a -> b) -> a -> b

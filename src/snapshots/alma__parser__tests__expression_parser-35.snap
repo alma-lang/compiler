@@ -1,0 +1,65 @@
+---
+source: src/parser.rs
+expression: "parse(\"if True then incr 1 else 2\")"
+
+---
+Input:
+
+if True then incr 1 else 2
+
+Result:
+
+Node {
+    start: 0,
+    end: 26,
+    line: 1,
+    column: 0,
+    value: If(
+        Node {
+            start: 3,
+            end: 7,
+            line: 1,
+            column: 3,
+            value: Bool(
+                true,
+            ),
+        },
+        Node {
+            start: 13,
+            end: 19,
+            line: 1,
+            column: 13,
+            value: FnCall(
+                Node {
+                    start: 13,
+                    end: 17,
+                    line: 1,
+                    column: 13,
+                    value: Identifier(
+                        "incr",
+                    ),
+                },
+                [
+                    Node {
+                        start: 18,
+                        end: 19,
+                        line: 1,
+                        column: 18,
+                        value: Float(
+                            1.0,
+                        ),
+                    },
+                ],
+            ),
+        },
+        Node {
+            start: 25,
+            end: 26,
+            line: 1,
+            column: 25,
+            value: Float(
+                2.0,
+            ),
+        },
+    ),
+}
