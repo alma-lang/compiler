@@ -356,7 +356,7 @@ fn unify<'ast>(
                 }
             }
 
-            (Var(var1), b) => {
+            (Var(var1), _b) => {
                 let var1_read = var1.borrow();
                 match &*var1_read {
                     /* the 'find' in the union-find algorithm */
@@ -383,7 +383,7 @@ fn unify<'ast>(
                 }
             }
 
-            (a, Var(var2)) => {
+            (_a, Var(var2)) => {
                 let var2_read = var2.borrow();
                 match &*var2_read {
                     /* the 'find' in the union-find algorithm */
