@@ -22,7 +22,15 @@ Node {
                 line: 1,
                 column: 1,
                 value: Identifier(
-                    "a",
+                    Node {
+                        start: 1,
+                        end: 2,
+                        line: 1,
+                        column: 1,
+                        value: Identifier_ {
+                            name: "a",
+                        },
+                    },
                 ),
             },
         ],
@@ -32,7 +40,15 @@ Node {
             line: 1,
             column: 6,
             value: Identifier(
-                "a",
+                Node {
+                    start: 6,
+                    end: 7,
+                    line: 1,
+                    column: 6,
+                    value: Identifier_ {
+                        name: "a",
+                    },
+                },
             ),
         },
     ),

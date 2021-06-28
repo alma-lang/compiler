@@ -24,7 +24,15 @@ Node {
                     line: 1,
                     column: 4,
                     value: Identifier(
-                        "x",
+                        Node {
+                            start: 4,
+                            end: 5,
+                            line: 1,
+                            column: 4,
+                            value: Identifier_ {
+                                name: "x",
+                            },
+                        },
                     ),
                 },
                 value: Node {
@@ -44,7 +52,15 @@ Node {
             line: 2,
             column: 0,
             value: Identifier(
-                "x",
+                Node {
+                    start: 10,
+                    end: 11,
+                    line: 2,
+                    column: 0,
+                    value: Identifier_ {
+                        name: "x",
+                    },
+                },
             ),
         },
     ),

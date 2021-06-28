@@ -21,7 +21,15 @@ Node {
             line: 1,
             column: 2,
             value: Identifier(
-                "(-)",
+                Node {
+                    start: 2,
+                    end: 3,
+                    line: 1,
+                    column: 2,
+                    value: Identifier_ {
+                        name: "(-)",
+                    },
+                },
             ),
         },
         Node {
@@ -33,7 +41,9 @@ Node {
                 typ: Substraction,
                 precedence: 14,
                 associativity: LTR,
-                fn_: "(-)",
+                fn_: Identifier_ {
+                    name: "(-)",
+                },
             },
         },
         [

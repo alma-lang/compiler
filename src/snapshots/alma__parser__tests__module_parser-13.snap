@@ -20,7 +20,9 @@ Result:
             end: 11,
             line: 1,
             column: 7,
-            value: "Test",
+            value: Identifier_ {
+                name: "Test",
+            },
         },
         exports: [
             Node {
@@ -51,7 +53,15 @@ Result:
                     line: 3,
                     column: 0,
                     value: Identifier(
-                        "a",
+                        Node {
+                            start: 29,
+                            end: 30,
+                            line: 3,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "a",
+                            },
+                        },
                     ),
                 },
                 value: Node {
@@ -71,7 +81,15 @@ Result:
                     line: 5,
                     column: 0,
                     value: Identifier(
-                        "b",
+                        Node {
+                            start: 36,
+                            end: 37,
+                            line: 5,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "b",
+                            },
+                        },
                     ),
                 },
                 value: Node {

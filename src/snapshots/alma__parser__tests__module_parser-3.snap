@@ -18,7 +18,9 @@ Result:
             end: 11,
             line: 1,
             column: 7,
-            value: "Test",
+            value: Identifier_ {
+                name: "Test",
+            },
         },
         exports: [],
         imports: [],
@@ -30,7 +32,15 @@ Result:
                     line: 3,
                     column: 0,
                     value: Identifier(
-                        "a",
+                        Node {
+                            start: 13,
+                            end: 14,
+                            line: 3,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "a",
+                            },
+                        },
                     ),
                 },
                 value: Node {

@@ -36,7 +36,15 @@ Node {
                     line: 1,
                     column: 13,
                     value: Identifier(
-                        "incr",
+                        Node {
+                            start: 13,
+                            end: 17,
+                            line: 1,
+                            column: 13,
+                            value: Identifier_ {
+                                name: "incr",
+                            },
+                        },
                     ),
                 },
                 [

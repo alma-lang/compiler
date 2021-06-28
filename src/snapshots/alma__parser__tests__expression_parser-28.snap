@@ -21,7 +21,15 @@ Node {
             line: 1,
             column: 2,
             value: Identifier(
-                "(+)",
+                Node {
+                    start: 2,
+                    end: 3,
+                    line: 1,
+                    column: 2,
+                    value: Identifier_ {
+                        name: "(+)",
+                    },
+                },
             ),
         },
         Node {
@@ -33,7 +41,9 @@ Node {
                 typ: Addition,
                 precedence: 14,
                 associativity: LTR,
-                fn_: "(+)",
+                fn_: Identifier_ {
+                    name: "(+)",
+                },
             },
         },
         [
@@ -58,7 +68,15 @@ Node {
                         line: 1,
                         column: 6,
                         value: Identifier(
-                            "(/)",
+                            Node {
+                                start: 6,
+                                end: 7,
+                                line: 1,
+                                column: 6,
+                                value: Identifier_ {
+                                    name: "(/)",
+                                },
+                            },
                         ),
                     },
                     Node {
@@ -70,7 +88,9 @@ Node {
                             typ: Division,
                             precedence: 15,
                             associativity: LTR,
-                            fn_: "(/)",
+                            fn_: Identifier_ {
+                                name: "(/)",
+                            },
                         },
                     },
                     [

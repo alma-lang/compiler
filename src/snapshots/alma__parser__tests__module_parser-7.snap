@@ -18,7 +18,9 @@ Result:
             end: 26,
             line: 3,
             column: 7,
-            value: "Test",
+            value: Identifier_ {
+                name: "Test",
+            },
         },
         exports: [],
         imports: [],
@@ -30,7 +32,9 @@ Result:
             end: 13,
             line: 1,
             column: 7,
-            value: "Parent",
+            value: Identifier_ {
+                name: "Parent",
+            },
         },
         exports: [],
         imports: [],

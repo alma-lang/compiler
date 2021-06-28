@@ -24,7 +24,15 @@ Node {
             line: 2,
             column: 0,
             value: Identifier(
-                "fun",
+                Node {
+                    start: 1,
+                    end: 4,
+                    line: 2,
+                    column: 0,
+                    value: Identifier_ {
+                        name: "fun",
+                    },
+                },
             ),
         },
         [
@@ -34,7 +42,15 @@ Node {
                 line: 2,
                 column: 4,
                 value: Identifier(
-                    "arg1",
+                    Node {
+                        start: 5,
+                        end: 9,
+                        line: 2,
+                        column: 4,
+                        value: Identifier_ {
+                            name: "arg1",
+                        },
+                    },
                 ),
             },
             Node {
@@ -43,7 +59,15 @@ Node {
                 line: 3,
                 column: 2,
                 value: Identifier(
-                    "arg2",
+                    Node {
+                        start: 12,
+                        end: 16,
+                        line: 3,
+                        column: 2,
+                        value: Identifier_ {
+                            name: "arg2",
+                        },
+                    },
                 ),
             },
             Node {
@@ -52,7 +76,15 @@ Node {
                 line: 3,
                 column: 7,
                 value: Identifier(
-                    "arg3",
+                    Node {
+                        start: 17,
+                        end: 21,
+                        line: 3,
+                        column: 7,
+                        value: Identifier_ {
+                            name: "arg3",
+                        },
+                    },
                 ),
             },
             Node {
@@ -61,7 +93,15 @@ Node {
                 line: 4,
                 column: 2,
                 value: Identifier(
-                    "arg4",
+                    Node {
+                        start: 24,
+                        end: 28,
+                        line: 4,
+                        column: 2,
+                        value: Identifier_ {
+                            name: "arg4",
+                        },
+                    },
                 ),
             },
         ],

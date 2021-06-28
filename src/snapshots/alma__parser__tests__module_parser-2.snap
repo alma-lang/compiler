@@ -16,7 +16,9 @@ Result:
             end: 11,
             line: 1,
             column: 7,
-            value: "Test",
+            value: Identifier_ {
+                name: "Test",
+            },
         },
         exports: [],
         imports: [],

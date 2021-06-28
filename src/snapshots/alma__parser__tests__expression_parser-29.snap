@@ -21,7 +21,15 @@ Node {
             line: 1,
             column: 2,
             value: Identifier(
-                "(==)",
+                Node {
+                    start: 2,
+                    end: 4,
+                    line: 1,
+                    column: 2,
+                    value: Identifier_ {
+                        name: "(==)",
+                    },
+                },
             ),
         },
         Node {
@@ -33,7 +41,9 @@ Node {
                 typ: Equal,
                 precedence: 11,
                 associativity: LTR,
-                fn_: "(==)",
+                fn_: Identifier_ {
+                    name: "(==)",
+                },
             },
         },
         [
@@ -58,7 +68,15 @@ Node {
                         line: 1,
                         column: 7,
                         value: Identifier(
-                            "(/)",
+                            Node {
+                                start: 7,
+                                end: 8,
+                                line: 1,
+                                column: 7,
+                                value: Identifier_ {
+                                    name: "(/)",
+                                },
+                            },
                         ),
                     },
                     Node {
@@ -70,7 +88,9 @@ Node {
                             typ: Division,
                             precedence: 15,
                             associativity: LTR,
-                            fn_: "(/)",
+                            fn_: Identifier_ {
+                                name: "(/)",
+                            },
                         },
                     },
                     [

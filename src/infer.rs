@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, Export, Expression, Expression_ as E, Import, Module, Node, Pattern_ as P,
-    Unary_ as U,
+    self, Definition, Export, Expression, Expression_ as E, Identifier, Import, Module, Node,
+    Pattern_ as P, Unary_ as U,
 };
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -40,7 +40,7 @@ enum UnificationError {
 
 #[derive(Debug)]
 pub enum Error<'ast> {
-    UndefinedIdentifier(&'ast str, &'ast Expression),
+    UndefinedIdentifier(&'ast Identifier, &'ast Expression),
     TypeMismatch(
         &'ast Expression,
         Rc<Type>,
@@ -76,8 +76,11 @@ impl<'ast> Error<'ast> {
             .unwrap();
 
         match self {
-            UndefinedIdentifier(name, _expr) => {
-                s.push_str(&format!("Undefined identifier `{}`\n\n{}", name, code));
+            UndefinedIdentifier(identifier, _expr) => {
+                s.push_str(&format!(
+                    "Undefined identifier `{}`\n\n{}",
+                    identifier.value.name, code
+                ));
             }
 
             InfiniteType(_, _) => {
@@ -549,7 +552,7 @@ pub fn infer<'interfaces, 'ast>(
         // TODO: Insert or reference these in the type env to be able to access the module
         // functions. Pending the . syntax
 
-        match module_interfaces.get(&module_name.value) {
+        match module_interfaces.get(&module_name.value.name) {
             Some(imported) => {
                 for exposed in &import.value.exposing {
                     let name = &exposed.value.0;
@@ -663,7 +666,7 @@ fn infer_rec<'ast>(
          *   -----------
          *   infer env x = t
          */
-        E::Identifier(x) => match env.get(x) {
+        E::Identifier(x) => match env.get(&x.value.name) {
             Some(s) => {
                 let t = state.instantiate(s);
                 t
@@ -702,7 +705,7 @@ fn infer_rec<'ast>(
                             Node {
                                 value: P::Identifier(x),
                                 ..
-                            } => env.insert(x.clone(), Rc::clone(param_type)),
+                            } => env.insert(x.value.name.clone(), Rc::clone(param_type)),
                         };
                         env
                     });
@@ -750,7 +753,7 @@ fn infer_definitions<'ast>(
         state.exit_level();
 
         match &definition.pattern.value {
-            P::Identifier(x) => env.insert(x.clone(), state.generalize(&t)),
+            P::Identifier(x) => env.insert(x.value.name.clone(), state.generalize(&t)),
         };
     }
 }
@@ -1013,7 +1016,7 @@ module Test exposing (test)
                 let result = match super::infer(&module_interfaces, &module) {
                     Ok(typ) => {
                         let s = format!("{}\n\n{}\n", module.name.value, &typ);
-                        module_interfaces.insert(module.name.value.clone(), typ);
+                        module_interfaces.insert(module.name.value.name.clone(), typ);
                         s
                     }
                     Err(errs) => errs

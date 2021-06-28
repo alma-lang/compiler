@@ -22,7 +22,15 @@ Node {
             line: 1,
             column: 2,
             value: Identifier(
-                "fun",
+                Node {
+                    start: 2,
+                    end: 5,
+                    line: 1,
+                    column: 2,
+                    value: Identifier_ {
+                        name: "fun",
+                    },
+                },
             ),
         },
         [
@@ -32,7 +40,15 @@ Node {
                 line: 2,
                 column: 4,
                 value: Identifier(
-                    "arg",
+                    Node {
+                        start: 10,
+                        end: 13,
+                        line: 2,
+                        column: 4,
+                        value: Identifier_ {
+                            name: "arg",
+                        },
+                    },
                 ),
             },
         ],

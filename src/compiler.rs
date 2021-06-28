@@ -23,7 +23,7 @@ pub fn compile(source: &Source) -> Result<String, String> {
     for module in &modules {
         match infer::infer(&module_interfaces, &module) {
             Ok(typ) => {
-                module_interfaces.insert(module.name.value.clone(), typ);
+                module_interfaces.insert(module.name.value.name.clone(), typ);
             }
             Err(mut module_errors) => {
                 errors.append(&mut module_errors);
@@ -39,7 +39,7 @@ pub fn compile(source: &Source) -> Result<String, String> {
                     "{}\n\n{}\n",
                     m.name.value,
                     module_interfaces
-                        .get(&m.name.value)
+                        .get(&m.name.value.name)
                         .unwrap_or(&Rc::new(TypeEnv::new()))
                 )
             })

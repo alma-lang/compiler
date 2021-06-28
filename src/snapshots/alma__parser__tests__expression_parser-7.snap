@@ -15,6 +15,14 @@ Node {
     line: 1,
     column: 0,
     value: Identifier(
-        "variable_one",
+        Node {
+            start: 0,
+            end: 12,
+            line: 1,
+            column: 0,
+            value: Identifier_ {
+                name: "variable_one",
+            },
+        },
     ),
 }

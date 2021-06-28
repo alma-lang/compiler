@@ -22,7 +22,9 @@ Result:
             end: 11,
             line: 1,
             column: 7,
-            value: "Test",
+            value: Identifier_ {
+                name: "Test",
+            },
         },
         exports: [],
         imports: [
@@ -37,7 +39,9 @@ Result:
                         end: 26,
                         line: 3,
                         column: 7,
-                        value: "Banana",
+                        value: Identifier_ {
+                            name: "Banana",
+                        },
                     },
                     alias: Some(
                         Node {
@@ -45,7 +49,9 @@ Result:
                             end: 31,
                             line: 3,
                             column: 17,
-                            value: "B",
+                            value: Identifier_ {
+                                name: "B",
+                            },
                         },
                     ),
                     exposing: [],
@@ -62,7 +68,9 @@ Result:
                         end: 45,
                         line: 5,
                         column: 7,
-                        value: "Phone",
+                        value: Identifier_ {
+                            name: "Phone",
+                        },
                     },
                     alias: None,
                     exposing: [
@@ -89,7 +97,9 @@ Result:
                         end: 76,
                         line: 7,
                         column: 7,
-                        value: "Apple",
+                        value: Identifier_ {
+                            name: "Apple",
+                        },
                     },
                     alias: Some(
                         Node {
@@ -97,7 +107,9 @@ Result:
                             end: 81,
                             line: 7,
                             column: 16,
-                            value: "A",
+                            value: Identifier_ {
+                                name: "A",
+                            },
                         },
                     ),
                     exposing: [

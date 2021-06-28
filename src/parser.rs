@@ -143,7 +143,11 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 match identifier_token.kind {
                     TT::Identifier => {
                         self.advance();
-                        let name = identifier_token.lexeme;
+                        let name = Node::new(
+                            Identifier_::new(identifier_token.lexeme),
+                            identifier_token,
+                            identifier_token,
+                        );
 
                         let exports = self.exposing()?;
 
@@ -151,14 +155,6 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                         let (mut modules, definitions) =
                             self.module_definitions(top_level, &module_token, vec![], vec![])?;
-
-                        let name = Node {
-                            value: name.to_string(),
-                            start: identifier_token.position,
-                            end: identifier_token.end_position,
-                            line: identifier_token.line,
-                            column: identifier_token.column,
-                        };
 
                         modules.push(Module {
                             name,
@@ -293,7 +289,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                         self.advance();
 
                                         Ok(Some(Node::new(
-                                            alias_token.lexeme.to_string(),
+                                            Identifier_::new(alias_token.lexeme),
                                             &alias_token,
                                             &alias_token,
                                         )))
@@ -315,7 +311,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         Ok(Some(Node {
                             value: Import_ {
                                 module_name: Node::new(
-                                    identifier_token.lexeme.to_string(),
+                                    Identifier_::new(identifier_token.lexeme),
                                     &identifier_token,
                                     &identifier_token,
                                 ),
@@ -671,7 +667,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::Identifier => {
                 self.advance();
                 Ok(Some(Node::new(
-                    Pattern_::Identifier(token.lexeme.to_string()),
+                    Pattern_::Identifier(Node::new(Identifier_::new(token.lexeme), &token, &token)),
                     &token,
                     &token,
                 )))
@@ -846,7 +842,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             }
 
             TT::Identifier => Ok(Some(Node::new(
-                Identifier(token.lexeme.to_string()),
+                Identifier(Node::new(Identifier_::new(token.lexeme), &token, &token)),
                 &token,
                 &token,
             ))),
@@ -989,7 +985,7 @@ fn organize_binops(
                     left = Node {
                         value: Binary(
                             Box::new(Node::with_value_from_node(
-                                Identifier(op.value.fn_.clone()),
+                                Identifier(Node::with_value_from_node(op.value.fn_.clone(), &op)),
                                 &op,
                             )),
                             op,

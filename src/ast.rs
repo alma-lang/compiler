@@ -1,4 +1,5 @@
 use crate::token::Token;
+use std::fmt;
 
 #[derive(PartialEq, Debug)]
 pub struct Node<V> {
@@ -33,7 +34,7 @@ impl<V> Node<V> {
 
 #[derive(Debug, PartialEq)]
 pub struct Module {
-    pub name: Node<String>,
+    pub name: Identifier,
     pub exports: Vec<Export>,
     pub imports: Vec<Import>,
     pub definitions: Vec<Definition>,
@@ -42,11 +43,12 @@ pub struct Module {
 pub type Import = Node<Import_>;
 #[derive(Debug, PartialEq)]
 pub struct Import_ {
-    pub module_name: Node<String>,
-    pub alias: Option<Node<String>>,
+    pub module_name: Identifier,
+    pub alias: Option<Identifier>,
     pub exposing: Vec<Export>,
 }
 
+// TODO: Enum because there may be sub-exports like `exposing (Maybe(Just))`
 pub type Export = Node<Export_>;
 #[derive(Debug, PartialEq)]
 pub struct Export_(pub String);
@@ -65,7 +67,7 @@ pub enum Expression_ {
     Bool(bool),
     Float(f64),
     String_(String),
-    Identifier(String),
+    Identifier(Identifier),
     Unary(Unary, Box<Expression>),
     Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
     Lambda(Vec<Pattern>, Box<Expression>),
@@ -83,7 +85,7 @@ pub enum Unary_ {
 }
 
 pub mod binop {
-    use super::Node;
+    use super::{Identifier_, Node};
     use lazy_static::lazy_static;
 
     #[derive(PartialEq, Debug, Clone)]
@@ -115,7 +117,7 @@ pub mod binop {
         typ: Type,
         pub precedence: u32,
         pub associativity: Associativity,
-        pub fn_: String,
+        pub fn_: Identifier_,
     }
 
     use Associativity::*;
@@ -126,73 +128,73 @@ pub mod binop {
             typ: Or,
             precedence: 6,
             associativity: LTR,
-            fn_: "(or)".to_owned(),
+            fn_: Identifier_::new("(or)"),
         };
         pub static ref AND: Binop_ = Binop_ {
             typ: And,
             precedence: 7,
             associativity: LTR,
-            fn_: "(and)".to_owned(),
+            fn_: Identifier_::new("(and)"),
         };
         pub static ref EQUAL: Binop_ = Binop_ {
             typ: Equal,
             precedence: 11,
             associativity: LTR,
-            fn_: "(==)".to_owned(),
+            fn_: Identifier_::new("(==)"),
         };
         pub static ref NOT_EQUAL: Binop_ = Binop_ {
             typ: NotEqual,
             precedence: 11,
             associativity: LTR,
-            fn_: "(!=)".to_owned(),
+            fn_: Identifier_::new("(!=)"),
         };
         pub static ref GREATER_THAN: Binop_ = Binop_ {
             typ: GreaterThan,
             precedence: 12,
             associativity: LTR,
-            fn_: "(>)".to_owned(),
+            fn_: Identifier_::new("(>)"),
         };
         pub static ref GREATER_EQUAL_THAN: Binop_ = Binop_ {
             typ: GreaterEqualThan,
             precedence: 12,
             associativity: LTR,
-            fn_: "(>=)".to_owned(),
+            fn_: Identifier_::new("(>=)"),
         };
         pub static ref LESS_THAN: Binop_ = Binop_ {
             typ: LessThan,
             precedence: 12,
             associativity: LTR,
-            fn_: "(<)".to_owned(),
+            fn_: Identifier_::new("(<)"),
         };
         pub static ref LESS_EQUAL_THAN: Binop_ = Binop_ {
             typ: LessEqualThan,
             precedence: 12,
             associativity: LTR,
-            fn_: "(<=)".to_owned(),
+            fn_: Identifier_::new("(<=)"),
         };
         pub static ref ADDITION: Binop_ = Binop_ {
             typ: Addition,
             precedence: 14,
             associativity: LTR,
-            fn_: "(+)".to_owned(),
+            fn_: Identifier_::new("(+)"),
         };
         pub static ref SUBSTRACTION: Binop_ = Binop_ {
             typ: Substraction,
             precedence: 14,
             associativity: LTR,
-            fn_: "(-)".to_owned(),
+            fn_: Identifier_::new("(-)"),
         };
         pub static ref MULTIPLICATION: Binop_ = Binop_ {
             typ: Multiplication,
             precedence: 15,
             associativity: LTR,
-            fn_: "(*)".to_owned(),
+            fn_: Identifier_::new("(*)"),
         };
         pub static ref DIVISION: Binop_ = Binop_ {
             typ: Division,
             precedence: 15,
             associativity: LTR,
-            fn_: "(/)".to_owned(),
+            fn_: Identifier_::new("(/)"),
         };
     }
 }
@@ -200,7 +202,27 @@ use binop::Binop;
 
 pub type Pattern = Node<Pattern_>;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub enum Pattern_ {
-    Identifier(String),
+    Identifier(Identifier),
+}
+
+pub type Identifier = Node<Identifier_>;
+#[derive(PartialEq, Debug, Clone)]
+pub struct Identifier_ {
+    pub name: String,
+}
+
+impl Identifier_ {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for Identifier_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
