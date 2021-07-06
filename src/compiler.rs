@@ -25,7 +25,8 @@ pub fn compile(source: &Source) -> Result<String, String> {
             Ok(typ) => {
                 module_interfaces.insert(module.name.value.name.clone(), typ);
             }
-            Err(mut module_errors) => {
+            Err((typ, mut module_errors)) => {
+                module_interfaces.insert(module.name.value.name.clone(), typ);
                 errors.append(&mut module_errors);
             }
         }

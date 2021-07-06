@@ -562,7 +562,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
 pub fn infer<'interfaces, 'ast>(
     module_interfaces: &'interfaces HashMap<String, Rc<TypeEnv>>,
     module: &'ast Module,
-) -> Result<Rc<TypeEnv>, Vec<Error<'ast>>> {
+) -> Result<Rc<TypeEnv>, (Rc<TypeEnv>, Vec<Error<'ast>>)> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
     base_env(&mut state, &mut env);
@@ -609,7 +609,7 @@ pub fn infer<'interfaces, 'ast>(
     if errors.len() == 0 {
         Ok(Rc::new(module_type))
     } else {
-        Err(errors)
+        Err((Rc::new(module_type), errors))
     }
 }
 
@@ -1017,6 +1017,20 @@ module Test exposing (test)
 "#
         ));
 
+        assert_snapshot!(infer(
+            r#"
+module Parent
+
+import Test exposing (test)
+
+add = \x -> x + test x
+
+module Test exposing (test)
+
+    test = \x -> x + "hi"
+"#
+        ));
+
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);
 
@@ -1044,11 +1058,13 @@ module Test exposing (test)
                         module_interfaces.insert(module.name.value.name.clone(), typ);
                         s
                     }
-                    Err(errs) => errs
-                        .iter()
-                        .map(|e| e.to_string(&source))
-                        .collect::<Vec<String>>()
-                        .join("\n\n"),
+                    Err((typ, errs)) => {
+                        module_interfaces.insert(module.name.value.name.clone(), typ);
+                        errs.iter()
+                            .map(|e| e.to_string(&source))
+                            .collect::<Vec<String>>()
+                            .join("\n\n")
+                    }
                 };
 
                 results.push(result);
