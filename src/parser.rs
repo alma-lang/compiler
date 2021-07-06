@@ -1042,47 +1042,80 @@ mod tests {
     #[test]
     fn test_expression_parser() {
         assert_snapshot!(parse("True"));
+
         assert_snapshot!(parse("False"));
+
         assert_snapshot!(parse("()"));
+
         assert_snapshot!(parse("123"));
+
         assert_snapshot!(parse("123.2"));
+
         assert_snapshot!(parse("variableOne"));
+
         assert_snapshot!(parse("variable_one"));
+
         assert_snapshot!(parse("espaÆàʥñÑol"));
+
         assert_snapshot!(parse("\"😄\""));
+
         assert_snapshot!(parse("\"\n\""));
+
         assert_snapshot!(parse("\"\""));
+
         assert_snapshot!(parse("(\"\")"));
+
         assert_snapshot!(parse("(((1)))"));
+
         assert_snapshot!(parse("(((1))"));
+
         assert_snapshot!(parse("(((1))))"));
+
         assert_snapshot!(parse(
             "(
   ((1))
 )",
         ));
+
         assert_snapshot!(parse("fun arg"));
+
         assert_snapshot!(parse("fun\n arg"));
+
         assert_snapshot!(parse("  fun\n    arg"));
+
         assert_snapshot!(parse("fun\narg"));
+
         assert_snapshot!(parse(
             "
 fun arg1
   arg2 arg3
   arg4",
         ));
+
         assert_snapshot!(parse("hello ()"));
+
         assert_snapshot!(parse("not False"));
+
         assert_snapshot!(parse("- 5"));
+
         assert_snapshot!(parse("incr (-5)"));
+
         assert_snapshot!(parse("1 - 5"));
+
         assert_snapshot!(parse("1 - -5"));
+
         assert_snapshot!(parse("1 + 2 / 3"));
+
         assert_snapshot!(parse("1 == 2 / 3"));
+
         assert_snapshot!(parse("\\a -> a"));
+
         assert_snapshot!(parse("\\a -> \\b -> a"));
+
         assert_snapshot!(parse("\\a b -> a"));
+
         assert_snapshot!(parse("if True then 1 else 2"));
+
         assert_snapshot!(parse(
             "
 if True then
@@ -1091,17 +1124,29 @@ if True then
 else
   2",
         ));
+
         assert_snapshot!(parse("if True then incr 1 else 2"));
+
         assert_snapshot!(parse("if True then if False then 1 else 3 else 2"));
+
         assert_snapshot!(parse("if True { 1 } else 2"));
+
         assert_snapshot!(parse("if True then 1"));
+
         assert_snapshot!(parse("let x = 1\nx"));
+
         assert_snapshot!(parse("let x = a\n  x"));
+
         assert_snapshot!(parse("let x = a\n  x\nx"));
+
         assert_snapshot!(parse("let x = a x in x"));
+
         assert_snapshot!(parse("let x = a\n  x\nin\nx"));
+
         assert_snapshot!(parse("let\n  x = a\n  x\nin\nx"));
+
         assert_snapshot!(parse("let\n  x = a\n    x\nin\nx"));
+
         assert_snapshot!(parse("let\n  x = a\n    x\n b = 5\nin\nx"));
 
         fn parse(code: &str) -> String {
@@ -1122,17 +1167,27 @@ else
     #[test]
     fn test_module_parser() {
         assert_snapshot!(parse("True"));
+
         assert_snapshot!(parse("module Test"));
+
         assert_snapshot!(parse("module Test\n\na = 1"));
+
         assert_snapshot!(parse("module Test\n\na = 1\n\nb = True"));
+
         assert_snapshot!(parse("module Test\n\na = 1 + 2) + 3\n\nb = * add\n  5"));
+
         assert_snapshot!(parse("module Test\n\na = 1 + 2 + 3\n\nb = * add\n  5"));
+
         assert_snapshot!(parse("module Parent\n\nmodule Test"));
+
         assert_snapshot!(parse("module Parent\n\nmodule Test\n\n  a = 1"));
+
         assert_snapshot!(parse("module Parent\n\nmodule Test\n\n  a = 1\n\na = 1\n"));
+
         assert_snapshot!(parse({
             "module Parent\n\nmodule Test\n\n  a = 1 + 2) + 3\n\n  b = * add\n    5\n\na = 1 + 2) + 3\n\nb = * add\n  5"
         },));
+
         assert_snapshot!(parse(
             "module Parent
 
@@ -1146,14 +1201,23 @@ module Test2
     c = 5
     ",
         ));
+
         assert_snapshot!(parse("module Test exposing (a)\n\na = 1\n\nb = True"));
+
         assert_snapshot!(parse("module Test exposing (a, b)\n\na = 1\n\nb = True"));
+
         assert_snapshot!(parse("module Test exposing a, b\n\na = 1\n\nb = True"));
+
         assert_snapshot!(parse("module Test exposing (a b)\n\na = 1\n\nb = True"));
+
         assert_snapshot!(parse("module Test exposing (a, b\n\na = 1\n\nb = True"));
+
         assert_snapshot!(parse("module Test\n\nimport Banana"));
+
         assert_snapshot!(parse("module Test\n\nimport Banana as B"));
+
         assert_snapshot!(parse("module Test\n\nimport Banana exposing (phone)"));
+
         assert_snapshot!(parse(
             "module Test
 

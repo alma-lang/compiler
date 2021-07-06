@@ -386,11 +386,17 @@ mod tests {
         }
 
         assert_snapshot!(tokenize(""));
+
         assert_snapshot!(tokenize("123"));
+
         assert_snapshot!(tokenize("123.345"));
+
         assert_snapshot!(tokenize("123.sd"));
+
         assert_snapshot!(tokenize("123\n or \"abc\""));
+
         assert_snapshot!(tokenize("123\n or &\"abc\""));
+
         assert_snapshot!(tokenize(r#""asdf\"asdf""#));
     }
 }

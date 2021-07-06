@@ -843,18 +843,24 @@ mod tests {
     #[test]
     fn test_infer_expr() {
         assert_snapshot!(infer(r"\f -> \x -> f x",));
+
         assert_snapshot!(infer(r"\f -> \x -> f (f x)",));
         // (+):
+
         assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m f (n f x)",));
         // succ:
+
         assert_snapshot!(infer(r"\n -> \f -> \x -> f (n f x)",));
         // mult:
+
         assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m (n f) x",));
         // pred:
+
         assert_snapshot!(infer(
             r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)",
         ));
         // let generalization tests
+
         assert_snapshot!(infer(
             r"
       \x ->
@@ -862,6 +868,7 @@ mod tests {
         y
     ",
         ));
+
         assert_snapshot!(infer(
             r"
       \x ->
@@ -870,25 +877,33 @@ mod tests {
       ",
         ));
         // if:
+
         assert_snapshot!(infer("if 1 == 1 then True else False"));
+
         assert_snapshot!(infer("if 1 == 1 then 1 else 2"));
         // errors:
+
         assert_snapshot!(infer(
             "if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2",
         ));
+
         assert_snapshot!(infer("if 1 then 5 else 1"));
+
         assert_snapshot!(infer(
             r"let incr = \n -> n + 1
 
 incr True"
         ));
+
         assert_snapshot!(infer(
             r"\x ->
     let a = x + 1
     let b = not x
     x"
         ));
+
         assert_snapshot!(infer("let a = bar\nbar"));
+
         assert_snapshot!(infer(r"\a -> a 1 a",));
 
         fn infer(code: &str) -> String {
@@ -935,6 +950,7 @@ a = 1
 b = 2
            "
         ));
+
         assert_snapshot!(infer(
             "
 module Test exposing (a)
@@ -944,6 +960,7 @@ a = 1
 b = 2
            "
         ));
+
         assert_snapshot!(infer(
             "
 module Test exposing (a, b)
@@ -953,6 +970,7 @@ a = 1
 b = 2
            "
         ));
+
         assert_snapshot!(infer(
             "
 module Test exposing (c)
@@ -962,6 +980,7 @@ a = 1
 b = 2
            "
         ));
+
         assert_snapshot!(infer(
             r#"
 module Test exposing (a, b)
@@ -977,6 +996,7 @@ module TestInner exposing (a, b)
 c = "hi"
 "#
         ));
+
         assert_snapshot!(infer(
             r#"
 module Parent
@@ -990,6 +1010,7 @@ module Test exposing (test)
     test = 5
 "#
         ));
+
         assert_snapshot!(infer(
             r#"
 module Parent
@@ -1003,6 +1024,7 @@ module Test exposing (test)
     test = "hi"
 "#
         ));
+
         assert_snapshot!(infer(
             r#"
 module Parent
