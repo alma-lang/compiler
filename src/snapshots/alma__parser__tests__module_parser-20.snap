@@ -29,10 +29,10 @@ Result:
         exports: [],
         imports: [
             Node {
-                start: 20,
-                end: 33,
+                start: 13,
+                end: 31,
                 line: 3,
-                column: 7,
+                column: 0,
                 value: Import_ {
                     module_name: Node {
                         start: 20,
@@ -58,10 +58,10 @@ Result:
                 },
             },
             Node {
-                start: 40,
-                end: 64,
+                start: 33,
+                end: 62,
                 line: 5,
-                column: 7,
+                column: 0,
                 value: Import_ {
                     module_name: Node {
                         start: 40,
@@ -87,10 +87,10 @@ Result:
                 },
             },
             Node {
-                start: 71,
+                start: 64,
                 end: 99,
                 line: 7,
-                column: 7,
+                column: 0,
                 value: Import_ {
                     module_name: Node {
                         start: 71,

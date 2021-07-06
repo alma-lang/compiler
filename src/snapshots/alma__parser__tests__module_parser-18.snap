@@ -25,10 +25,10 @@ Result:
         exports: [],
         imports: [
             Node {
-                start: 20,
+                start: 13,
                 end: 31,
                 line: 3,
-                column: 7,
+                column: 0,
                 value: Import_ {
                     module_name: Node {
                         start: 20,

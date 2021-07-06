@@ -1053,6 +1053,16 @@ module Test exposing (test)
 "#
         ));
 
+        assert_snapshot!(infer(
+            r#"
+module Parent
+
+import Nope exposing (test)
+
+test = 1
+"#
+        ));
+
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);
 

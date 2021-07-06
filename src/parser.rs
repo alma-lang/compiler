@@ -149,7 +149,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             identifier_token,
                         );
 
-                        let exports = self.exposing()?;
+                        let (_, exports) = self.exposing()?;
 
                         let imports = self.imports()?;
 
@@ -179,7 +179,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Export>> {
+    fn exposing(&mut self) -> ParseResult<'source, 'tokens, (usize, Vec<Export>)> {
         // ○ exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
         match self.get_token().kind {
             TT::Exposing => {
@@ -195,9 +195,10 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                         match self.get_token().kind {
                             TT::RightParen => {
+                                let end = self.get_token().end_position;
                                 self.advance();
 
-                                Ok(exports)
+                                Ok((end, exports))
                             }
                             _ => Err(Error::expected_but_found(
                                 self.source,
@@ -217,7 +218,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     )),
                 }
             }
-            _ => Ok(vec![]),
+            _ => Ok((self.get_token().end_position, vec![])),
         }
     }
     fn exposing_rest(
@@ -270,7 +271,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     }
 
     fn import(&mut self) -> ParseResult<'source, 'tokens, Option<Import>> {
-        match self.get_token().kind {
+        let import_token = self.get_token();
+        match import_token.kind {
             TT::Import => {
                 self.advance();
 
@@ -306,7 +308,15 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             _ => Ok(None),
                         }?;
 
-                        let exposing = self.exposing()?;
+                        let (exposing_end, exposing) = self.exposing()?;
+
+                        let end = if !exposing.is_empty() {
+                            exposing_end
+                        } else if let Some(alias) = &alias {
+                            alias.end
+                        } else {
+                            identifier_token.end_position
+                        };
 
                         Ok(Some(Node {
                             value: Import_ {
@@ -318,10 +328,10 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                 alias,
                                 exposing,
                             },
-                            start: identifier_token.position,
-                            end: self.get_token().position,
-                            line: identifier_token.line,
-                            column: identifier_token.column,
+                            start: import_token.position,
+                            end,
+                            line: import_token.line,
+                            column: import_token.column,
                         }))
                     }
                     _ => Err(Error::expected_but_found(
