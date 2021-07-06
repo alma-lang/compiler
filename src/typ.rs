@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use std::cell::RefCell;
 use std::char;
 use std::collections::{HashMap, HashSet};
@@ -185,6 +184,14 @@ fn next_letter(s: &mut Vec<char>) {
     } else {
         s[last_idx] = char::from_u32(code + 1).unwrap();
     }
+}
+
+// Primitive types
+
+thread_local! {
+    pub static FLOAT: Rc<Type> = Rc::new(Type::Named("Float".to_owned(), vec![]));
+    pub static BOOL: Rc<Type> = Rc::new(Type::Named("Bool".to_owned(), vec![]));
+    pub static STRING: Rc<Type> = Rc::new(Type::Named("String".to_owned(), vec![]));
 }
 
 #[cfg(test)]

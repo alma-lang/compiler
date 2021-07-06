@@ -431,101 +431,129 @@ fn unify<'ast>(
 }
 
 fn base_env(state: &mut State, env: &mut TypeEnv) {
-    // Primitive types
-    let float = &Rc::new(Type::Named("Float".to_owned(), vec![]));
-    let bool_ = &Rc::new(Type::Named("Bool".to_owned(), vec![]));
-    let _string = &Rc::new(Type::Named("String".to_owned(), vec![]));
-
     env.insert(
         "(or)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(bool_),
-            Rc::new(Type::Fn(Rc::clone(bool_), Rc::clone(bool_))),
+            BOOL.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                BOOL.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
 
     env.insert(
         "(or)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(bool_),
-            Rc::new(Type::Fn(Rc::clone(bool_), Rc::clone(bool_))),
+            BOOL.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                BOOL.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(and)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(bool_),
-            Rc::new(Type::Fn(Rc::clone(bool_), Rc::clone(bool_))),
+            BOOL.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                BOOL.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert("(==)".to_string(), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
-            Rc::new(Type::Fn(Rc::clone(&a), Rc::clone(bool_))),
+            Rc::new(Type::Fn(Rc::clone(&a), BOOL.with(|t| Rc::clone(t)))),
         )))
     });
     env.insert("(!=)".to_string(), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
-            Rc::new(Type::Fn(Rc::clone(&a), Rc::clone(bool_))),
+            Rc::new(Type::Fn(Rc::clone(&a), BOOL.with(|t| Rc::clone(t)))),
         )))
     });
     env.insert(
         "(>)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(bool_))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(>=)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(bool_))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(<)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(bool_))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(<=)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(bool_))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                BOOL.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(+)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(float))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                FLOAT.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(-)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(float))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                FLOAT.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(*)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(float))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                FLOAT.with(|t| Rc::clone(t)),
+            )),
         )),
     );
     env.insert(
         "(/)".to_string(),
         Rc::new(Type::Fn(
-            Rc::clone(float),
-            Rc::new(Type::Fn(Rc::clone(float), Rc::clone(float))),
+            FLOAT.with(|t| Rc::clone(t)),
+            Rc::new(Type::Fn(
+                FLOAT.with(|t| Rc::clone(t)),
+                FLOAT.with(|t| Rc::clone(t)),
+            )),
         )),
     );
 }
@@ -585,49 +613,28 @@ pub fn infer<'interfaces, 'ast>(
     }
 }
 
-pub fn infer_expression<'ast>(
-    ast: &'ast Expression,
-    state: &mut State,
-    env: &mut TypeEnv,
-) -> Result<Rc<Type>, Vec<Error<'ast>>> {
-    let mut errors: Vec<Error<'ast>> = vec![];
-    let t = infer_rec(ast, state, env, &mut errors);
-
-    if errors.len() == 0 {
-        Ok(t)
-    } else {
-        Err(errors)
-    }
-}
-
 fn infer_rec<'ast>(
     ast: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
-    // Primitive types
-    // TODO: This is horrible, copypastad because globals with Rc in Rust are ASLDKFJNQASLKJDFG
-    let float = &Rc::new(Type::Named("Float".to_owned(), vec![]));
-    let bool_ = &Rc::new(Type::Named("Bool".to_owned(), vec![]));
-    let string = &Rc::new(Type::Named("String".to_owned(), vec![]));
-
     match &ast.value {
         E::Unit => Rc::new(Unit),
 
-        E::Bool(_) => Rc::clone(bool_),
+        E::Bool(_) => BOOL.with(|t| Rc::clone(t)),
 
-        E::Float(_) => Rc::clone(float),
+        E::Float(_) => FLOAT.with(|t| Rc::clone(t)),
 
-        E::String_(_) => Rc::clone(string),
+        E::String_(_) => STRING.with(|t| Rc::clone(t)),
 
         E::Unary(op, e) => {
             let t = infer_rec(e, state, env, errors);
 
             add_error(
                 match op.value {
-                    U::Not => unify(e, &t, None, bool_),
-                    U::Minus => unify(e, &t, None, float),
+                    U::Not => unify(e, &t, None, &BOOL.with(|t| Rc::clone(t))),
+                    U::Minus => unify(e, &t, None, &FLOAT.with(|t| Rc::clone(t))),
                 },
                 errors,
             );
@@ -650,7 +657,10 @@ fn infer_rec<'ast>(
          */
         E::If(condition, then, else_) => {
             let t = infer_rec(condition, state, env, errors);
-            add_error(unify(condition, &t, None, bool_), errors);
+            add_error(
+                unify(condition, &t, None, &BOOL.with(|t| Rc::clone(t))),
+                errors,
+            );
 
             let t1 = infer_rec(then, state, env, errors);
             let t2 = infer_rec(else_, state, env, errors);
@@ -814,6 +824,21 @@ mod tests {
     use crate::parser;
     use crate::tokenizer;
     use insta::assert_snapshot;
+
+    pub fn infer_expression<'ast>(
+        ast: &'ast Expression,
+        state: &mut State,
+        env: &mut TypeEnv,
+    ) -> Result<Rc<Type>, Vec<Error<'ast>>> {
+        let mut errors: Vec<Error<'ast>> = vec![];
+        let t = infer_rec(ast, state, env, &mut errors);
+
+        if errors.len() == 0 {
+            Ok(t)
+        } else {
+            Err(errors)
+        }
+    }
 
     #[test]
     fn test_infer_expr() {
