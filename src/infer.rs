@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, Expression, Expression_ as E, Identifier, Import, Module, Node,
-    Pattern_ as P, Unary_ as U,
+    self, Definition, Expression, Expression_ as E, Identifier, Import, Module, Pattern_ as P,
+    Unary_ as U,
 };
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -715,11 +715,11 @@ fn infer_rec<'ast>(
                 params_with_type
                     .iter()
                     .fold(env.clone(), |mut env, (param, param_type)| {
-                        match &**param {
-                            Node {
-                                value: P::Identifier(x),
-                                ..
-                            } => env.insert(x.value.name.clone(), Rc::clone(param_type)),
+                        match &(**param).value {
+                            P::Hole => (),
+                            P::Identifier(x) => {
+                                env.insert(x.value.name.clone(), Rc::clone(param_type))
+                            }
                         };
                         env
                     });
@@ -767,6 +767,7 @@ fn infer_definitions<'ast>(
         state.exit_level();
 
         match &definition.pattern.value {
+            P::Hole => (),
             P::Identifier(x) => env.insert(x.value.name.clone(), state.generalize(&t)),
         };
     }
@@ -923,7 +924,7 @@ incr True"
                 })
                 .unwrap();
 
-            let ast = parser::parse_repl(&source, &tokens)
+            let ast = parser::parse_expression(&source, &tokens)
                 .map_err(|error| error.to_string(&source))
                 .unwrap();
 

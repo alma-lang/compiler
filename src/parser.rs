@@ -7,9 +7,9 @@
     ● definitions    → ( module | binding )+
     ● expression     → let | lambda | if | binary
     ● let            → "let" MAYBE_INDENT binding+ MAYBE_INDENT "in"? expression
-    ● binding        → binding "=" expression
+    ● binding        → pattern "=" expression
     ● lambda         → "\" params? "->" expression
-    ● params         → "()" | pattern ( pattern )*
+    ● params         → pattern ( pattern )*
     ● pattern        → parsed from Ast.Pattern
     ● if             → "if" binary "then" expression "else" expression
     // Operators
@@ -19,7 +19,7 @@
     // Other primitives
     ● call           → primary ( primary )*
     ● primary        → NUMBER | STRING | IDENTIFIER | "false" | "true"
-                     | "(" expression ")"
+                     | "(" expression? ")"
 */
 
 use crate::ast::{
@@ -115,12 +115,19 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn repl_entry(&mut self) -> ParseResult<'source, 'tokens, Expression> {
-        let expression = self.expression()?;
-        self.eof(expression)
+    fn repl_entry(&mut self) -> ParseResult<'source, 'tokens, ReplEntry> {
+        let result = match self.import()? {
+            Some(import) => ReplEntry::Import(import),
+            None => match self.binding()? {
+                Some(definition) => ReplEntry::Definition(definition),
+                None => ReplEntry::Expression(self.expression()?),
+            },
+        };
+
+        self.eof(result)
     }
 
-    fn eof<T>(&mut self, result: T) -> ParseResult<'source, 'tokens, T> {
+    pub fn eof<T>(&mut self, result: T) -> ParseResult<'source, 'tokens, T> {
         let eof_token = self.get_token();
         match eof_token.kind {
             TT::Eof => Ok(result),
@@ -402,7 +409,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn expression(&mut self) -> ParseResult<'source, 'tokens, Expression> {
+    pub fn expression(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         match self.let_()? {
             Some(let_) => Ok(let_),
             None => match self.if_()? {
@@ -1035,6 +1042,19 @@ pub fn parse<'source, 'tokens>(
 pub fn parse_repl<'source, 'tokens>(
     source: &'source Source,
     tokens: &'tokens Vec<Token<'source>>,
+) -> ParseResult<'source, 'tokens, ReplEntry> {
+    let mut parser = State {
+        source,
+        tokens,
+        current: 0,
+    };
+
+    parser.repl_entry()
+}
+
+pub fn parse_expression<'source, 'tokens>(
+    source: &'source Source,
+    tokens: &'tokens Vec<Token<'source>>,
 ) -> ParseResult<'source, 'tokens, Box<Expression>> {
     let mut parser = State {
         source,
@@ -1042,7 +1062,8 @@ pub fn parse_repl<'source, 'tokens>(
         current: 0,
     };
 
-    parser.repl_entry().map(|e| Box::new(e))
+    let result = parser.expression()?;
+    parser.eof(Box::new(result))
 }
 
 #[cfg(test)]
@@ -1172,7 +1193,7 @@ IAmNotCamelCase"
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);
             let tokens = tokenizer::parse(&source).unwrap();
-            let result = parse_repl(&source, &tokens);
+            let result = parse_expression(&source, &tokens);
             format!(
                 "Input:\n\n{}\n\nResult:\n\n{}",
                 code,

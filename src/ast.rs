@@ -32,6 +32,13 @@ impl<V> Node<V> {
     }
 }
 
+#[derive(Debug)]
+pub enum ReplEntry {
+    Import(Import),
+    Definition(Definition),
+    Expression(Expression),
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Module {
     pub name: Identifier,
@@ -216,6 +223,7 @@ pub type Pattern = Node<Pattern_>;
 
 #[derive(PartialEq, Debug)]
 pub enum Pattern_ {
+    Hole,
     Identifier(Identifier),
 }
 

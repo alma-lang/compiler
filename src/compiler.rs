@@ -1,3 +1,4 @@
+use crate::ast::{self, Module, ReplEntry};
 use crate::infer;
 use crate::parser;
 use crate::source::Source;
@@ -46,6 +47,92 @@ pub fn compile(source: &Source) -> Result<String, String> {
             })
             .collect::<Vec<String>>()
             .join("\n\n"))
+    } else {
+        Err(errors
+            .iter()
+            .map(|e| e.to_string(&source))
+            .collect::<Vec<String>>()
+            .join("\n\n"))
+    }
+}
+
+pub fn compile_repl_entry(
+    module: &mut Module,
+    module_interfaces: &mut HashMap<String, Rc<TypeEnv>>,
+    source: &Source,
+) -> Result<String, String> {
+    let tokens = tokenizer::parse(&source).map_err(|errors| {
+        errors
+            .iter()
+            .map(|e| e.to_string(&source))
+            .collect::<Vec<String>>()
+            .join("\n\n")
+    })?;
+
+    let entry = parser::parse_repl(source, &tokens).map_err(|error| error.to_string(&source))?;
+
+    let mut errors = vec![];
+
+    // TODO: Annotate the AST with types. After inference, fetch what we stored in the module and
+    // print the type of it
+    match entry {
+        ReplEntry::Import(import) => {
+            module.imports.push(import);
+            let result =
+                compile_repl_entry_helper(&module, module_interfaces, &source, &mut errors);
+            if result.is_err() {
+                module.imports.pop();
+            }
+            result
+        }
+        ReplEntry::Definition(definition) => {
+            module.definitions.push(definition);
+            let result =
+                compile_repl_entry_helper(&module, module_interfaces, &source, &mut errors);
+            if result.is_err() {
+                module.definitions.pop();
+            }
+            result
+        }
+        ReplEntry::Expression(expression) => {
+            module.definitions.push(ast::Definition {
+                pattern: ast::Node {
+                    value: ast::Pattern_::Hole,
+                    start: 0,
+                    end: 0,
+                    line: 1,
+                    column: 0,
+                },
+                value: expression,
+            });
+            let result =
+                compile_repl_entry_helper(&module, module_interfaces, &source, &mut errors);
+            module.definitions.pop();
+            result
+        }
+    }
+    .map(|()| "ok.".to_string())
+}
+
+// Encapsulate the compiler logic regardless of repl entry type
+fn compile_repl_entry_helper<'ast>(
+    module: &'ast Module,
+    module_interfaces: &mut HashMap<String, Rc<TypeEnv>>,
+    source: &Source,
+    errors: &mut Vec<infer::Error<'ast>>,
+) -> Result<(), String> {
+    let result = infer::infer(&module_interfaces, &module);
+    match result {
+        Ok(typ) => {
+            module_interfaces.insert(module.name.value.name.clone(), typ);
+        }
+        Err((_, mut module_errors)) => {
+            errors.append(&mut module_errors);
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
     } else {
         Err(errors
             .iter()
