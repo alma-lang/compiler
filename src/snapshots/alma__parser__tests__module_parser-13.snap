@@ -22,6 +22,7 @@ Result:
             column: 7,
             value: Identifier_ {
                 name: "Test",
+                case: Pascal,
             },
         },
         exports: [
@@ -60,6 +61,7 @@ Result:
                             column: 0,
                             value: Identifier_ {
                                 name: "a",
+                                case: Camel,
                             },
                         },
                     ),
@@ -88,6 +90,7 @@ Result:
                             column: 0,
                             value: Identifier_ {
                                 name: "b",
+                                case: Camel,
                             },
                         },
                     ),

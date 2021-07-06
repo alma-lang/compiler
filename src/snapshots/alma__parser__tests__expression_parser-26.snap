@@ -28,6 +28,7 @@ Node {
                     column: 2,
                     value: Identifier_ {
                         name: "(-)",
+                        case: Camel,
                     },
                 },
             ),
@@ -43,6 +44,7 @@ Node {
                 associativity: LTR,
                 fn_: Identifier_ {
                     name: "(-)",
+                    case: Camel,
                 },
             },
         },

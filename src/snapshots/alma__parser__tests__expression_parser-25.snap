@@ -28,6 +28,7 @@ Node {
                     column: 0,
                     value: Identifier_ {
                         name: "incr",
+                        case: Camel,
                     },
                 },
             ),

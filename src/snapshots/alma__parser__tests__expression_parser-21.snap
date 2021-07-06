@@ -31,6 +31,7 @@ Node {
                     column: 0,
                     value: Identifier_ {
                         name: "fun",
+                        case: Camel,
                     },
                 },
             ),
@@ -49,6 +50,7 @@ Node {
                         column: 4,
                         value: Identifier_ {
                             name: "arg1",
+                            case: Camel,
                         },
                     },
                 ),
@@ -66,6 +68,7 @@ Node {
                         column: 2,
                         value: Identifier_ {
                             name: "arg2",
+                            case: Camel,
                         },
                     },
                 ),
@@ -83,6 +86,7 @@ Node {
                         column: 7,
                         value: Identifier_ {
                             name: "arg3",
+                            case: Camel,
                         },
                     },
                 ),
@@ -100,6 +104,7 @@ Node {
                         column: 2,
                         value: Identifier_ {
                             name: "arg4",
+                            case: Camel,
                         },
                     },
                 ),

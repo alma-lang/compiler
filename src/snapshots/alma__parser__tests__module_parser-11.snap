@@ -28,6 +28,7 @@ Result:
             column: 9,
             value: Identifier_ {
                 name: "Test1Test",
+                case: Pascal,
             },
         },
         exports: [],
@@ -47,6 +48,7 @@ Result:
                             column: 4,
                             value: Identifier_ {
                                 name: "b",
+                                case: Camel,
                             },
                         },
                     ),
@@ -71,6 +73,7 @@ Result:
             column: 7,
             value: Identifier_ {
                 name: "Test1",
+                case: Pascal,
             },
         },
         exports: [],
@@ -90,6 +93,7 @@ Result:
                             column: 2,
                             value: Identifier_ {
                                 name: "a",
+                                case: Camel,
                             },
                         },
                     ),
@@ -114,6 +118,7 @@ Result:
             column: 7,
             value: Identifier_ {
                 name: "Test2",
+                case: Pascal,
             },
         },
         exports: [],
@@ -133,6 +138,7 @@ Result:
                             column: 4,
                             value: Identifier_ {
                                 name: "c",
+                                case: Camel,
                             },
                         },
                     ),
@@ -157,6 +163,7 @@ Result:
             column: 7,
             value: Identifier_ {
                 name: "Parent",
+                case: Pascal,
             },
         },
         exports: [],

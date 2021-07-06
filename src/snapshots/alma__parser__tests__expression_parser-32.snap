@@ -29,6 +29,7 @@ Node {
                         column: 1,
                         value: Identifier_ {
                             name: "a",
+                            case: Camel,
                         },
                     },
                 ),
@@ -46,6 +47,7 @@ Node {
                         column: 3,
                         value: Identifier_ {
                             name: "b",
+                            case: Camel,
                         },
                     },
                 ),
@@ -64,6 +66,7 @@ Node {
                     column: 8,
                     value: Identifier_ {
                         name: "a",
+                        case: Camel,
                     },
                 },
             ),

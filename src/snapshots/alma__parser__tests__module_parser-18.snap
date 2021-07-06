@@ -20,6 +20,7 @@ Result:
             column: 7,
             value: Identifier_ {
                 name: "Test",
+                case: Pascal,
             },
         },
         exports: [],
@@ -37,6 +38,7 @@ Result:
                         column: 7,
                         value: Identifier_ {
                             name: "Banana",
+                            case: Pascal,
                         },
                     },
                     alias: Some(
@@ -47,6 +49,7 @@ Result:
                             column: 17,
                             value: Identifier_ {
                                 name: "B",
+                                case: Pascal,
                             },
                         },
                     ),

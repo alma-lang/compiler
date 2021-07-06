@@ -211,14 +211,30 @@ pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Identifier_ {
     pub name: String,
+    pub case: IdentifierCase,
 }
 
 impl Identifier_ {
     pub fn new(name: &str) -> Self {
+        use IdentifierCase::*;
+
+        let case = name
+            .chars()
+            .next()
+            .map(|c| if c.is_uppercase() { Pascal } else { Camel })
+            .expect("Can't construct an empty identifier");
+
         Self {
             name: name.to_string(),
+            case,
         }
     }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum IdentifierCase {
+    Pascal,
+    Camel,
 }
 
 impl fmt::Display for Identifier_ {

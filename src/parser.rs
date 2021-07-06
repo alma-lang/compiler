@@ -143,27 +143,35 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 match identifier_token.kind {
                     TT::Identifier => {
                         self.advance();
-                        let name = Node::new(
-                            Identifier_::new(identifier_token.lexeme),
-                            identifier_token,
-                            identifier_token,
-                        );
 
-                        let (_, exports) = self.exposing()?;
+                        let name_identifier = Identifier_::new(identifier_token.lexeme);
+                        if let IdentifierCase::Pascal = &name_identifier.case {
+                            let name =
+                                Node::new(name_identifier, identifier_token, identifier_token);
 
-                        let imports = self.imports()?;
+                            let (_, exports) = self.exposing()?;
 
-                        let (mut modules, definitions) =
-                            self.module_definitions(top_level, &module_token, vec![], vec![])?;
+                            let imports = self.imports()?;
 
-                        modules.push(Module {
-                            name,
-                            exports,
-                            imports,
-                            definitions,
-                        });
+                            let (mut modules, definitions) =
+                                self.module_definitions(top_level, &module_token, vec![], vec![])?;
 
-                        Ok(Some(modules))
+                            modules.push(Module {
+                                name,
+                                exports,
+                                imports,
+                                definitions,
+                            });
+
+                            Ok(Some(modules))
+                        } else {
+                            Err(Error::expected_but_found(
+                                self.source,
+                                identifier_token,
+                                None,
+                                "The module name should be PascalCase",
+                            ))
+                        }
                     }
 
                     _ => Err(Error::expected_but_found(
@@ -1236,6 +1244,26 @@ import Banana as B
 import Phone exposing (raffi)
 
 import Apple as A exposing (orange)",
+        ));
+
+        assert_snapshot!(parse("module i_am_not_PascalCase"));
+
+        assert_snapshot!(parse(
+            "module Test
+
+module i_am_not_PascalCase
+    test = 1
+"
+        ));
+
+        assert_snapshot!(parse(
+            "module Test
+
+module Test2
+
+    module i_am_not_PascalCase
+        test = 1
+"
         ));
 
         fn parse(code: &str) -> String {
