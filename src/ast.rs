@@ -107,7 +107,7 @@ pub mod binop {
     #[derive(PartialEq, Debug, Clone)]
     pub enum Associativity {
         LTR,
-        RTL,
+        // RTL,
     }
 
     pub type Binop = Node<Binop_>;

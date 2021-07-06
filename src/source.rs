@@ -40,7 +40,7 @@ impl<'a> Source<'a> {
         }
     }
 
-    pub fn char_at(&self, i: usize) -> Option<char> {
+    pub fn _char_at(&self, i: usize) -> Option<char> {
         self.code.get(i..).and_then(|code| code.chars().next())
     }
 
@@ -51,7 +51,7 @@ impl<'a> Source<'a> {
         self.code.get(i)
     }
 
-    fn line_at(&self, position: usize) -> Option<&str> {
+    fn _line_at(&self, position: usize) -> Option<&str> {
         self.code.get(line_at(&self.code, position)?)
     }
 
