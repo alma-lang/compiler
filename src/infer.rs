@@ -1,5 +1,5 @@
 use crate::ast::{
-    self, Definition, Export, Expression, Expression_ as E, Identifier, Import, Module, Node,
+    self, Definition, Expression, Expression_ as E, Identifier, Import, Module, Node,
     Pattern_ as P, Unary_ as U,
 };
 use crate::source::Source;
@@ -48,9 +48,9 @@ pub enum Error<'ast> {
         Rc<Type>,
     ),
     InfiniteType(&'ast Expression, Rc<Type>),
-    UndefinedExport(&'ast Export),
+    UndefinedExport(&'ast Identifier),
     UnknownImport(&'ast Import),
-    UnknownImportDefinition(&'ast Export, &'ast Import),
+    UnknownImportDefinition(&'ast Identifier, &'ast Import),
 }
 
 impl<'ast> Error<'ast> {
@@ -136,7 +136,7 @@ with type
             UndefinedExport(export) => {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
-                    export.value.0, code
+                    export.value.name, code
                 ));
             }
 
@@ -150,7 +150,7 @@ with type
             UnknownImportDefinition(export, import) => {
                 s.push_str(&format!(
                     "Module `{}` doesn't appear to expose `{}`\n\n{}",
-                    import.value.module_name.value, export.value.0, code
+                    import.value.module_name.value, export.value.name, code
                 ));
             }
         };
@@ -583,11 +583,13 @@ pub fn infer<'interfaces, 'ast>(
         match module_interfaces.get(&module_name.value.name) {
             Some(imported) => {
                 for exposed in &import.value.exposing {
-                    let name = &exposed.value.0;
-                    match imported.get(name) {
-                        Some(definition) => env.insert(name.clone(), Rc::clone(definition)),
-                        None => errors.push(Error::UnknownImportDefinition(exposed, import)),
-                    };
+                    for identifier in exposed.value.identifiers() {
+                        let name = &identifier.value.name;
+                        match imported.get(&name) {
+                            Some(definition) => env.insert(name.to_string(), Rc::clone(definition)),
+                            None => errors.push(Error::UnknownImportDefinition(identifier, import)),
+                        };
+                    }
                 }
             }
             None => errors.push(Error::UnknownImport(import)),
@@ -599,10 +601,12 @@ pub fn infer<'interfaces, 'ast>(
 
     // Check exports against this module type to see everything exists and is valid
     for export in &module.exports {
-        let name = &export.value.0;
-        match env.get(name) {
-            Some(typ) => module_type.insert(name.to_string(), Rc::clone(typ)),
-            None => errors.push(Error::UndefinedExport(export)),
+        for identifier in export.value.identifiers() {
+            let name = &identifier.value.name;
+            match env.get(&name) {
+                Some(typ) => module_type.insert(name.to_string(), Rc::clone(typ)),
+                None => errors.push(Error::UndefinedExport(identifier)),
+            }
         }
     }
 

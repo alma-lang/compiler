@@ -83,8 +83,17 @@ Result:
                             end: 61,
                             line: 5,
                             column: 23,
-                            value: Export_(
-                                "raffi",
+                            value: Identifier(
+                                Node {
+                                    start: 56,
+                                    end: 61,
+                                    line: 5,
+                                    column: 23,
+                                    value: Identifier_ {
+                                        name: "raffi",
+                                        case: Camel,
+                                    },
+                                },
                             ),
                         },
                     ],
@@ -124,8 +133,17 @@ Result:
                             end: 98,
                             line: 7,
                             column: 28,
-                            value: Export_(
-                                "orange",
+                            value: Identifier(
+                                Node {
+                                    start: 92,
+                                    end: 98,
+                                    line: 7,
+                                    column: 28,
+                                    value: Identifier_ {
+                                        name: "orange",
+                                        case: Camel,
+                                    },
+                                },
                             ),
                         },
                     ],

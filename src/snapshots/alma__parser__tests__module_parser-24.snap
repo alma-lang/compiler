@@ -1,0 +1,33 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Test\n\nIAmNotCamelCase = 1\n\")"
+
+---
+Input:
+
+module Test
+
+IAmNotCamelCase = 1
+
+
+Result:
+
+3:0: Expected a `camelCase` identifier, but instead found: 'IAmNotCamelCase'
+
+  1│  module Test
+  2│  
+  3│  IAmNotCamelCase = 1
+   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+Error {
+    message: "3:0: Expected a `camelCase` identifier, but instead found: \'IAmNotCamelCase\'\n\n  1│  module Test\n  2│  \n  3│  IAmNotCamelCase = 1\n   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
+    token: Token {
+        kind: Identifier,
+        position: 13,
+        end_position: 28,
+        lexeme: "IAmNotCamelCase",
+        line: 3,
+        column: 0,
+        indent: 0,
+    },
+}

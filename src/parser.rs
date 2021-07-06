@@ -25,8 +25,8 @@
 use crate::ast::{
     binop::*,
     Expression,
-    Expression_::{Float, Identifier, If, Let, String_, *},
-    Import, Module, Node, Pattern, Pattern_,
+    Expression_::{self as E, Float, If, Let, String_, *},
+    Identifier, Import, Module, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
     *,
 };
@@ -139,44 +139,28 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::Module => {
                 self.advance();
 
-                let identifier_token = self.get_token();
-                match identifier_token.kind {
-                    TT::Identifier => {
-                        self.advance();
+                match self.module_identifier()? {
+                    Some(name) => {
+                        let (_, exports) = self.exposing()?;
 
-                        let name_identifier = Identifier_::new(identifier_token.lexeme);
-                        if let IdentifierCase::Pascal = &name_identifier.case {
-                            let name =
-                                Node::new(name_identifier, identifier_token, identifier_token);
+                        let imports = self.imports()?;
 
-                            let (_, exports) = self.exposing()?;
+                        let (mut modules, definitions) =
+                            self.module_definitions(top_level, &module_token, vec![], vec![])?;
 
-                            let imports = self.imports()?;
+                        modules.push(Module {
+                            name,
+                            exports,
+                            imports,
+                            definitions,
+                        });
 
-                            let (mut modules, definitions) =
-                                self.module_definitions(top_level, &module_token, vec![], vec![])?;
-
-                            modules.push(Module {
-                                name,
-                                exports,
-                                imports,
-                                definitions,
-                            });
-
-                            Ok(Some(modules))
-                        } else {
-                            Err(Error::expected_but_found(
-                                self.source,
-                                identifier_token,
-                                None,
-                                "The module name should be PascalCase",
-                            ))
-                        }
+                        Ok(Some(modules))
                     }
 
-                    _ => Err(Error::expected_but_found(
+                    None => Err(Error::expected_but_found(
                         self.source,
-                        identifier_token,
+                        self.get_token(),
                         None,
                         "Expected the module name",
                     )),
@@ -247,27 +231,24 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     }
 
     fn export(&mut self) -> ParseResult<'source, 'tokens, Export> {
-        let identifier_token = self.get_token();
-        match identifier_token.kind {
-            TT::Identifier => {
-                self.advance();
-
-                Ok(Node::new(
-                    Export_(identifier_token.lexeme.to_string()),
-                    &identifier_token,
-                    &identifier_token,
+        match self.binding_identifier()? {
+            Some(export) => {
+                // Make intermediate node to please borrow checker
+                let node = Node::with_value_from_node((), &export);
+                Ok(Node::with_value_from_node(
+                    Export_::Identifier(export),
+                    &node,
                 ))
             }
             _ => Err(Error::expected_but_found(
                 self.source,
-                &identifier_token,
+                self.get_token(),
                 None,
                 "Expected an identifier from the module to expose",
             )),
         }
     }
 
-    // ○ imports        → import ( import )*
     fn imports(&mut self) -> ParseResult<'source, 'tokens, Vec<Import>> {
         let mut imports = vec![];
 
@@ -284,29 +265,17 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::Import => {
                 self.advance();
 
-                let identifier_token = self.get_token();
-                match identifier_token.kind {
-                    TT::Identifier => {
-                        self.advance();
-
+                match self.module_identifier()? {
+                    Some(module_name) => {
                         let alias = match self.get_token().kind {
                             TT::As => {
                                 self.advance();
 
-                                let alias_token = self.get_token();
-                                match alias_token.kind {
-                                    TT::Identifier => {
-                                        self.advance();
-
-                                        Ok(Some(Node::new(
-                                            Identifier_::new(alias_token.lexeme),
-                                            &alias_token,
-                                            &alias_token,
-                                        )))
-                                    }
+                                match self.module_identifier()? {
+                                    Some(alias) => Ok(Some(alias)),
                                     _ => Err(Error::expected_but_found(
                                         self.source,
-                                        &identifier_token,
+                                        self.get_token(),
                                         None,
                                         "Expected an identifier for the alias of the module",
                                     )),
@@ -323,16 +292,12 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         } else if let Some(alias) = &alias {
                             alias.end
                         } else {
-                            identifier_token.end_position
+                            module_name.end
                         };
 
                         Ok(Some(Node {
                             value: Import_ {
-                                module_name: Node::new(
-                                    Identifier_::new(identifier_token.lexeme),
-                                    &identifier_token,
-                                    &identifier_token,
-                                ),
+                                module_name,
                                 alias,
                                 exposing,
                             },
@@ -344,7 +309,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     }
                     _ => Err(Error::expected_but_found(
                         self.source,
-                        &identifier_token,
+                        self.get_token(),
                         None,
                         "Expected an identifier of the module to import",
                     )),
@@ -680,26 +645,14 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
     fn pattern(&mut self) -> ParseResult<'source, 'tokens, Option<Pattern>> {
         let token = self.get_token();
-
-        match token.kind {
-            TT::Identifier => {
-                self.advance();
-                Ok(Some(Node::new(
-                    Pattern_::Identifier(Node::new(Identifier_::new(token.lexeme), &token, &token)),
-                    &token,
-                    &token,
-                )))
-            }
+        match self.binding_identifier()? {
+            Some(identifier) => Ok(Some(Node::new(
+                Pattern_::Identifier(identifier),
+                &token,
+                &token,
+            ))),
             _ => Ok(None),
         }
-        /* For when we need to error out for more complex patterns:
-        Err(
-          Error::expected_but_found(
-            self.input,
-            token,
-            "Expected a pattern (an identifier, destructuring a data structure, etc)",
-          ),
-        ) */
     }
 
     fn binary(&mut self) -> ParseResult<'source, 'tokens, Expression> {
@@ -860,7 +813,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             }
 
             TT::Identifier => Ok(Some(Node::new(
-                Identifier(Node::new(Identifier_::new(token.lexeme), &token, &token)),
+                E::Identifier(Node::new(Identifier_::new(token.lexeme), &token, &token)),
                 &token,
                 &token,
             ))),
@@ -907,6 +860,44 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         };
 
         result
+    }
+
+    fn module_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
+        self.identifier(
+            IdentifierCase::Pascal,
+            "Expected a `PascalCase` module name",
+        )
+    }
+
+    fn binding_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
+        self.identifier(IdentifierCase::Camel, "Expected a `camelCase` identifier")
+    }
+
+    fn identifier(
+        &mut self,
+        expect_case: IdentifierCase,
+        invalid_case_err: &'static str,
+    ) -> ParseResult<'source, 'tokens, Option<Identifier>> {
+        let identifier_token = self.get_token();
+        match identifier_token.kind {
+            TT::Identifier => {
+                self.advance();
+
+                let name_identifier = Identifier_::new(identifier_token.lexeme);
+                if &name_identifier.case == &expect_case {
+                    let name = Node::new(name_identifier, identifier_token, identifier_token);
+                    Ok(Some(name))
+                } else {
+                    Err(Error::expected_but_found(
+                        self.source,
+                        identifier_token,
+                        None,
+                        invalid_case_err,
+                    ))
+                }
+            }
+            _ => Ok(None),
+        }
     }
 
     // Utilities
@@ -1003,7 +994,10 @@ fn organize_binops(
                     left = Node {
                         value: Binary(
                             Box::new(Node::with_value_from_node(
-                                Identifier(Node::with_value_from_node(op.value.fn_.clone(), &op)),
+                                E::Identifier(Node::with_value_from_node(
+                                    op.value.fn_.clone(),
+                                    &op,
+                                )),
                                 &op,
                             )),
                             op,
@@ -1167,6 +1161,14 @@ else
 
         assert_snapshot!(parse("let\n  x = a\n    x\n b = 5\nin\nx"));
 
+        assert_snapshot!(parse(
+            "\
+let
+  IAmNotCamelCase = 1
+in
+IAmNotCamelCase"
+        ));
+
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);
             let tokens = tokenizer::parse(&source).unwrap();
@@ -1263,6 +1265,13 @@ module Test2
 
     module i_am_not_PascalCase
         test = 1
+"
+        ));
+
+        assert_snapshot!(parse(
+            "module Test
+
+IAmNotCamelCase = 1
 "
         ));
 

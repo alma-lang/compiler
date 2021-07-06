@@ -48,8 +48,17 @@ Result:
                             end: 42,
                             line: 3,
                             column: 24,
-                            value: Export_(
-                                "phone",
+                            value: Identifier(
+                                Node {
+                                    start: 37,
+                                    end: 42,
+                                    line: 3,
+                                    column: 24,
+                                    value: Identifier_ {
+                                        name: "phone",
+                                        case: Camel,
+                                    },
+                                },
                             ),
                         },
                     ],

@@ -31,8 +31,17 @@ Result:
                 end: 23,
                 line: 1,
                 column: 22,
-                value: Export_(
-                    "a",
+                value: Identifier(
+                    Node {
+                        start: 22,
+                        end: 23,
+                        line: 1,
+                        column: 22,
+                        value: Identifier_ {
+                            name: "a",
+                            case: Camel,
+                        },
+                    },
                 ),
             },
         ],

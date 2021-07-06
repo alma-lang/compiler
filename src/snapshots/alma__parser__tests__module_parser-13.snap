@@ -31,8 +31,17 @@ Result:
                 end: 23,
                 line: 1,
                 column: 22,
-                value: Export_(
-                    "a",
+                value: Identifier(
+                    Node {
+                        start: 22,
+                        end: 23,
+                        line: 1,
+                        column: 22,
+                        value: Identifier_ {
+                            name: "a",
+                            case: Camel,
+                        },
+                    },
                 ),
             },
             Node {
@@ -40,8 +49,17 @@ Result:
                 end: 26,
                 line: 1,
                 column: 25,
-                value: Export_(
-                    "b",
+                value: Identifier(
+                    Node {
+                        start: 25,
+                        end: 26,
+                        line: 1,
+                        column: 25,
+                        value: Identifier_ {
+                            name: "b",
+                            case: Camel,
+                        },
+                    },
                 ),
             },
         ],

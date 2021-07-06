@@ -48,10 +48,22 @@ pub struct Import_ {
     pub exposing: Vec<Export>,
 }
 
-// TODO: Enum because there may be sub-exports like `exposing (Maybe(Just))`
 pub type Export = Node<Export_>;
 #[derive(Debug, PartialEq)]
-pub struct Export_(pub String);
+pub enum Export_ {
+    // Enum because there may be sub-exports like `exposing (Maybe(Just))` in the future
+    Identifier(Identifier),
+}
+
+impl Export_ {
+    pub fn identifiers(&self) -> Vec<&Identifier> {
+        let mut identifiers = vec![];
+        match self {
+            Self::Identifier(identifier) => identifiers.push(identifier),
+        }
+        identifiers
+    }
+}
 
 #[derive(PartialEq, Debug)]
 pub struct Definition {
