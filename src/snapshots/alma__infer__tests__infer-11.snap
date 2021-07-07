@@ -1,0 +1,25 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main, add)\n\nadd x y = x + y\n\nmain = add 5\n\")"
+
+---
+Input:
+
+module Test exposing (main, add)
+
+add x y = x + y
+
+main = add 5
+
+
+---
+Output:
+
+Test
+
+add : Float -> Float -> Float
+
+main : Float -> Float
+
+
+

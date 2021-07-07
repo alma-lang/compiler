@@ -32,24 +32,26 @@ Result:
         imports: [],
         definitions: [
             Definition {
-                pattern: Node {
-                    start: 30,
-                    end: 31,
-                    line: 5,
-                    column: 2,
-                    value: Identifier(
-                        Node {
-                            start: 30,
-                            end: 31,
-                            line: 5,
-                            column: 2,
-                            value: Identifier_ {
-                                name: "a",
-                                case: Camel,
+                lhs: Pattern(
+                    Node {
+                        start: 30,
+                        end: 31,
+                        line: 5,
+                        column: 2,
+                        value: Identifier(
+                            Node {
+                                start: 30,
+                                end: 31,
+                                line: 5,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "a",
+                                    case: Camel,
+                                },
                             },
-                        },
-                    ),
-                },
+                        ),
+                    },
+                ),
                 value: Node {
                     start: 34,
                     end: 35,
@@ -77,24 +79,26 @@ Result:
         imports: [],
         definitions: [
             Definition {
-                pattern: Node {
-                    start: 37,
-                    end: 38,
-                    line: 7,
-                    column: 0,
-                    value: Identifier(
-                        Node {
-                            start: 37,
-                            end: 38,
-                            line: 7,
-                            column: 0,
-                            value: Identifier_ {
-                                name: "a",
-                                case: Camel,
+                lhs: Pattern(
+                    Node {
+                        start: 37,
+                        end: 38,
+                        line: 7,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 37,
+                                end: 38,
+                                line: 7,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: "a",
+                                    case: Camel,
+                                },
                             },
-                        },
-                    ),
-                },
+                        ),
+                    },
+                ),
                 value: Node {
                     start: 41,
                     end: 42,

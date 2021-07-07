@@ -1,0 +1,15 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nlet add x y = x + y\n\nadd 5\")"
+
+---
+Input:
+
+let add x y = x + y
+
+add 5
+
+---
+Output:
+
+Float -> Float

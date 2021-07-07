@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-expression: "parse(\"module Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\")"
+expression: "parse(\"module Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
 
 ---
 Input:
@@ -12,6 +12,7 @@ import Banana as B
 import Phone exposing (raffi)
 
 import Apple as A exposing (orange)
+
 
 Result:
 

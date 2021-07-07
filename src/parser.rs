@@ -7,7 +7,7 @@
     ● definitions    → ( module | binding )+
     ● expression     → let | lambda | if | binary
     ● let            → "let" MAYBE_INDENT binding+ MAYBE_INDENT "in"? expression
-    ● binding        → pattern "=" expression
+    ● binding        → ( identifier params? | pattern ) "=" expression
     ● lambda         → "\" params? "->" expression
     ● params         → pattern ( pattern )*
     ● pattern        → parsed from Ast.Pattern
@@ -495,17 +495,43 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     }
 
     fn binding(&mut self) -> ParseResult<'source, 'tokens, Option<Definition>> {
+        let token = self.get_token();
+
         let pattern = self.pattern()?;
 
-        match pattern {
-            Some(pattern) => {
+        let lhs = match pattern {
+            Some(Node {
+                value: Pattern_::Identifier(identifier),
+                ..
+            }) => {
+                let equal_token = self.get_token();
+                match equal_token.kind {
+                    // Peek to see if it is just an identifier and =, and return a pattern
+                    Equal => Some(DefinitionLhs::Pattern(Node::new(
+                        Pattern_::Identifier(identifier),
+                        &token,
+                        &token,
+                    ))),
+                    // Otherwise this is a lambda lhs, identifier + params
+                    _ => {
+                        let params = self.params()?;
+                        Some(DefinitionLhs::Lambda(identifier, params))
+                    }
+                }
+            }
+            Some(_) => pattern.map(DefinitionLhs::Pattern),
+            None => None,
+        };
+
+        match lhs {
+            Some(lhs) => {
                 let equal_token = self.get_token();
                 match equal_token.kind {
                     Equal => {
                         self.advance();
 
                         let value = self.expression()?;
-                        Ok(Some(Definition { pattern, value }))
+                        Ok(Some(Definition { lhs, value }))
                     }
 
                     _ => Err(Error::expected_but_found(
@@ -513,7 +539,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         &equal_token,
                         None,
                         "Expected an = and an expression \
-                                for the right side of let expression",
+                        for the right side of the definition",
                     )),
                 }
             }
@@ -587,33 +613,41 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 self.advance();
 
                 let params = self.params()?;
+                if params.is_empty() {
+                    Err(Error::expected_but_found(
+                        &self.source,
+                        &self.get_token(),
+                        None,
+                        "Expected a list of parameters",
+                    ))
+                } else {
+                    let arrow = self.get_token();
+                    match arrow.kind {
+                        Arrow => {
+                            self.advance();
 
-                let arrow = self.get_token();
-                match arrow.kind {
-                    Arrow => {
-                        self.advance();
+                            let body = self.expression()?;
+                            let line = token.line;
+                            let column = token.column;
+                            let start = token.position;
+                            let end = body.end;
 
-                        let body = self.expression()?;
-                        let line = token.line;
-                        let column = token.column;
-                        let start = token.position;
-                        let end = body.end;
+                            Ok(Some(Node {
+                                value: Lambda(params, Box::new(body)),
+                                line,
+                                column,
+                                start,
+                                end,
+                            }))
+                        }
 
-                        Ok(Some(Node {
-                            value: Lambda(params, Box::new(body)),
-                            line,
-                            column,
-                            start,
-                            end,
-                        }))
+                        _ => Err(Error::expected_but_found(
+                            self.source,
+                            &token,
+                            Some(arrow),
+                            "Expected a -> after the list of parameters for the function",
+                        )),
                     }
-
-                    _ => Err(Error::expected_but_found(
-                        self.source,
-                        &token,
-                        Some(arrow),
-                        "Expected a -> after the list of parameters for the function",
-                    )),
                 }
             }
             _ => Ok(None),
@@ -641,12 +675,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 Ok(params)
             }
 
-            None => Err(Error::expected_but_found(
-                &self.source,
-                &self.get_token(),
-                None,
-                "Expected a list of parameters",
-            )),
+            None => Ok(vec![]),
         }
     }
 
@@ -1195,10 +1224,26 @@ else
 let
   IAmNotCamelCase = 1
 in
-IAmNotCamelCase"
+IAmNotCamelCase
+"
         ));
 
         assert_snapshot!(parse("let _ = a x in x"));
+
+        assert_snapshot!(parse(
+            "\
+let
+  incr n = n + 1
+in
+incr 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+let add x y = x + y
+add 5"
+        ));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);
@@ -1276,7 +1321,8 @@ import Banana as B
 
 import Phone exposing (raffi)
 
-import Apple as A exposing (orange)",
+import Apple as A exposing (orange)
+",
         ));
 
         assert_snapshot!(parse("module i_am_not_PascalCase"));
@@ -1303,6 +1349,13 @@ module Test2
             "module Test
 
 IAmNotCamelCase = 1
+"
+        ));
+
+        assert_snapshot!(parse(
+            "module Test
+
+incr n = n + 1
 "
         ));
 

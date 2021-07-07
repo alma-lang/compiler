@@ -1,0 +1,166 @@
+---
+source: src/parser.rs
+expression: "parse(\"\\\nlet\n  incr n = n + 1\nin\nincr 5\n\")"
+
+---
+Input:
+
+let
+  incr n = n + 1
+in
+incr 5
+
+
+Result:
+
+Node {
+    start: 0,
+    end: 30,
+    line: 1,
+    column: 0,
+    value: Let(
+        [
+            Definition {
+                lhs: Lambda(
+                    Node {
+                        start: 6,
+                        end: 10,
+                        line: 2,
+                        column: 2,
+                        value: Identifier_ {
+                            name: "incr",
+                            case: Camel,
+                        },
+                    },
+                    [
+                        Node {
+                            start: 11,
+                            end: 12,
+                            line: 2,
+                            column: 7,
+                            value: Identifier(
+                                Node {
+                                    start: 11,
+                                    end: 12,
+                                    line: 2,
+                                    column: 7,
+                                    value: Identifier_ {
+                                        name: "n",
+                                        case: Camel,
+                                    },
+                                },
+                            ),
+                        },
+                    ],
+                ),
+                value: Node {
+                    start: 15,
+                    end: 20,
+                    line: 2,
+                    column: 11,
+                    value: Binary(
+                        Node {
+                            start: 17,
+                            end: 18,
+                            line: 2,
+                            column: 13,
+                            value: Identifier(
+                                Node {
+                                    start: 17,
+                                    end: 18,
+                                    line: 2,
+                                    column: 13,
+                                    value: Identifier_ {
+                                        name: "(+)",
+                                        case: Camel,
+                                    },
+                                },
+                            ),
+                        },
+                        Node {
+                            start: 17,
+                            end: 18,
+                            line: 2,
+                            column: 13,
+                            value: Binop_ {
+                                typ: Addition,
+                                precedence: 14,
+                                associativity: LTR,
+                                fn_: Identifier_ {
+                                    name: "(+)",
+                                    case: Camel,
+                                },
+                            },
+                        },
+                        [
+                            Node {
+                                start: 15,
+                                end: 16,
+                                line: 2,
+                                column: 11,
+                                value: Identifier(
+                                    Node {
+                                        start: 15,
+                                        end: 16,
+                                        line: 2,
+                                        column: 11,
+                                        value: Identifier_ {
+                                            name: "n",
+                                            case: Camel,
+                                        },
+                                    },
+                                ),
+                            },
+                            Node {
+                                start: 19,
+                                end: 20,
+                                line: 2,
+                                column: 15,
+                                value: Float(
+                                    1.0,
+                                ),
+                            },
+                        ],
+                    ),
+                },
+            },
+        ],
+        Node {
+            start: 24,
+            end: 30,
+            line: 4,
+            column: 0,
+            value: FnCall(
+                Node {
+                    start: 24,
+                    end: 28,
+                    line: 4,
+                    column: 0,
+                    value: Identifier(
+                        Node {
+                            start: 24,
+                            end: 28,
+                            line: 4,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "incr",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+                [
+                    Node {
+                        start: 29,
+                        end: 30,
+                        line: 4,
+                        column: 5,
+                        value: Float(
+                            5.0,
+                        ),
+                    },
+                ],
+            ),
+        },
+    ),
+}

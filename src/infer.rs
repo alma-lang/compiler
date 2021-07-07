@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, Expression, Expression_ as E, Identifier, Import, Module, Pattern_ as P,
-    Unary_ as U,
+    self, Definition, DefinitionLhs, Expression, Expression_ as E, Identifier, Import, Module,
+    Pattern_ as P, Unary_ as U,
 };
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -707,32 +707,7 @@ fn infer_rec<'ast>(
          *   -------------
          *   infer env (fun x -> e) = t -> t'
          */
-        E::Lambda(params, e) => {
-            let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> =
-                params.iter().map(|p| (p, state.new_type_var())).collect();
-
-            let mut env =
-                params_with_type
-                    .iter()
-                    .fold(env.clone(), |mut env, (param, param_type)| {
-                        match &(**param).value {
-                            P::Hole => (),
-                            P::Identifier(x) => {
-                                env.insert(x.value.name.clone(), Rc::clone(param_type))
-                            }
-                        };
-                        env
-                    });
-
-            let return_type = infer_rec(e, state, &mut env, errors);
-
-            params_with_type
-                .iter()
-                .rev()
-                .fold(return_type, |return_type, (_, param_type)| {
-                    Rc::new(Fn(Rc::clone(param_type), return_type))
-                })
-        }
+        E::Lambda(params, body) => infer_lambda(params, body, state, env, errors),
 
         /* Let
          *   infer env e0 = t
@@ -762,15 +737,56 @@ fn infer_definitions<'ast>(
     errors: &mut Vec<Error<'ast>>,
 ) {
     for definition in definitions {
-        state.enter_level();
-        let t = infer_rec(&definition.value, state, env, errors);
-        state.exit_level();
+        match &definition.lhs {
+            DefinitionLhs::Lambda(identifier, params) => {
+                state.enter_level();
+                let t = infer_lambda(params, &definition.value, state, env, errors);
+                state.exit_level();
 
-        match &definition.pattern.value {
-            P::Hole => (),
-            P::Identifier(x) => env.insert(x.value.name.clone(), state.generalize(&t)),
+                env.insert(identifier.value.name.clone(), state.generalize(&t));
+            }
+            DefinitionLhs::Pattern(pattern) => {
+                state.enter_level();
+                let t = infer_rec(&definition.value, state, env, errors);
+                state.exit_level();
+
+                match &pattern.value {
+                    P::Hole => (),
+                    P::Identifier(x) => env.insert(x.value.name.clone(), state.generalize(&t)),
+                };
+            }
         };
     }
+}
+
+fn infer_lambda<'ast>(
+    params: &'ast Vec<ast::Pattern>,
+    body: &'ast Expression,
+    state: &mut State,
+    env: &mut TypeEnv,
+    errors: &mut Vec<Error<'ast>>,
+) -> Rc<Type> {
+    let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> =
+        params.iter().map(|p| (p, state.new_type_var())).collect();
+
+    let mut env = params_with_type
+        .iter()
+        .fold(env.clone(), |mut env, (param, param_type)| {
+            match &(**param).value {
+                P::Hole => (),
+                P::Identifier(x) => env.insert(x.value.name.clone(), Rc::clone(param_type)),
+            };
+            env
+        });
+
+    let return_type = infer_rec(body, state, &mut env, errors);
+
+    params_with_type
+        .iter()
+        .rev()
+        .fold(return_type, |return_type, (_, param_type)| {
+            Rc::new(Fn(Rc::clone(param_type), return_type))
+        })
 }
 
 fn infer_fn_call<'ast, Args>(
@@ -910,6 +926,13 @@ incr True"
         assert_snapshot!(infer("let a = bar\nbar"));
 
         assert_snapshot!(infer(r"\a -> a 1 a",));
+
+        assert_snapshot!(infer(
+            "\
+let add x y = x + y
+
+add 5"
+        ));
 
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);
@@ -1066,6 +1089,23 @@ import Nope exposing (test)
 
 test = 1
 "#
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main, add)
+
+add x y = x + y
+
+main = add 5
+"
+        ));
+
+        assert_snapshot!(infer(
+            "module Test exposing (last)
+
+last _ y = y
+"
         ));
 
         fn infer(code: &str) -> String {

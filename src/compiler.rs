@@ -96,13 +96,13 @@ pub fn compile_repl_entry(
         }
         ReplEntry::Expression(expression) => {
             module.definitions.push(ast::Definition {
-                pattern: ast::Node {
+                lhs: ast::DefinitionLhs::Pattern(ast::Node {
                     value: ast::Pattern_::Hole,
                     start: 0,
                     end: 0,
                     line: 1,
                     column: 0,
-                },
+                }),
                 value: expression,
             });
             let result =

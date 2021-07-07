@@ -1,0 +1,136 @@
+---
+source: src/parser.rs
+expression: "parse(\"module Test\n\nincr n = n + 1\n\")"
+
+---
+Input:
+
+module Test
+
+incr n = n + 1
+
+
+Result:
+
+[
+    Module {
+        name: Node {
+            start: 7,
+            end: 11,
+            line: 1,
+            column: 7,
+            value: Identifier_ {
+                name: "Test",
+                case: Pascal,
+            },
+        },
+        exports: [],
+        imports: [],
+        definitions: [
+            Definition {
+                lhs: Lambda(
+                    Node {
+                        start: 13,
+                        end: 17,
+                        line: 3,
+                        column: 0,
+                        value: Identifier_ {
+                            name: "incr",
+                            case: Camel,
+                        },
+                    },
+                    [
+                        Node {
+                            start: 18,
+                            end: 19,
+                            line: 3,
+                            column: 5,
+                            value: Identifier(
+                                Node {
+                                    start: 18,
+                                    end: 19,
+                                    line: 3,
+                                    column: 5,
+                                    value: Identifier_ {
+                                        name: "n",
+                                        case: Camel,
+                                    },
+                                },
+                            ),
+                        },
+                    ],
+                ),
+                value: Node {
+                    start: 22,
+                    end: 27,
+                    line: 3,
+                    column: 9,
+                    value: Binary(
+                        Node {
+                            start: 24,
+                            end: 25,
+                            line: 3,
+                            column: 11,
+                            value: Identifier(
+                                Node {
+                                    start: 24,
+                                    end: 25,
+                                    line: 3,
+                                    column: 11,
+                                    value: Identifier_ {
+                                        name: "(+)",
+                                        case: Camel,
+                                    },
+                                },
+                            ),
+                        },
+                        Node {
+                            start: 24,
+                            end: 25,
+                            line: 3,
+                            column: 11,
+                            value: Binop_ {
+                                typ: Addition,
+                                precedence: 14,
+                                associativity: LTR,
+                                fn_: Identifier_ {
+                                    name: "(+)",
+                                    case: Camel,
+                                },
+                            },
+                        },
+                        [
+                            Node {
+                                start: 22,
+                                end: 23,
+                                line: 3,
+                                column: 9,
+                                value: Identifier(
+                                    Node {
+                                        start: 22,
+                                        end: 23,
+                                        line: 3,
+                                        column: 9,
+                                        value: Identifier_ {
+                                            name: "n",
+                                            case: Camel,
+                                        },
+                                    },
+                                ),
+                            },
+                            Node {
+                                start: 26,
+                                end: 27,
+                                line: 3,
+                                column: 13,
+                                value: Float(
+                                    1.0,
+                                ),
+                            },
+                        ],
+                    ),
+                },
+            },
+        ],
+    },
+]

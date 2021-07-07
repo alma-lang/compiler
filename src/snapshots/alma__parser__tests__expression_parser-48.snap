@@ -17,13 +17,15 @@ Node {
     value: Let(
         [
             Definition {
-                pattern: Node {
-                    start: 4,
-                    end: 5,
-                    line: 1,
-                    column: 4,
-                    value: Hole,
-                },
+                lhs: Pattern(
+                    Node {
+                        start: 4,
+                        end: 5,
+                        line: 1,
+                        column: 4,
+                        value: Hole,
+                    },
+                ),
                 value: Node {
                     start: 8,
                     end: 11,

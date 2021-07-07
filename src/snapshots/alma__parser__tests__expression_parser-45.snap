@@ -21,24 +21,26 @@ Node {
     value: Let(
         [
             Definition {
-                pattern: Node {
-                    start: 6,
-                    end: 7,
-                    line: 2,
-                    column: 2,
-                    value: Identifier(
-                        Node {
-                            start: 6,
-                            end: 7,
-                            line: 2,
-                            column: 2,
-                            value: Identifier_ {
-                                name: "x",
-                                case: Camel,
+                lhs: Pattern(
+                    Node {
+                        start: 6,
+                        end: 7,
+                        line: 2,
+                        column: 2,
+                        value: Identifier(
+                            Node {
+                                start: 6,
+                                end: 7,
+                                line: 2,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "x",
+                                    case: Camel,
+                                },
                             },
-                        },
-                    ),
-                },
+                        ),
+                    },
+                ),
                 value: Node {
                     start: 10,
                     end: 17,

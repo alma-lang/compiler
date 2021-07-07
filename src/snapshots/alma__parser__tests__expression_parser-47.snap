@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-expression: "parse(\"\\\nlet\n  IAmNotCamelCase = 1\nin\nIAmNotCamelCase\")"
+expression: "parse(\"\\\nlet\n  IAmNotCamelCase = 1\nin\nIAmNotCamelCase\n\")"
 
 ---
 Input:
@@ -9,6 +9,7 @@ let
   IAmNotCamelCase = 1
 in
 IAmNotCamelCase
+
 
 Result:
 

@@ -74,8 +74,14 @@ impl Export_ {
 
 #[derive(PartialEq, Debug)]
 pub struct Definition {
-    pub pattern: Pattern,
+    pub lhs: DefinitionLhs,
     pub value: Expression,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum DefinitionLhs {
+    Lambda(Identifier, Vec<Pattern>),
+    Pattern(Pattern),
 }
 
 pub type Expression = Node<Expression_>;
