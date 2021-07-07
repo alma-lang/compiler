@@ -652,12 +652,20 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
     fn pattern(&mut self) -> ParseResult<'source, 'tokens, Option<Pattern>> {
         let token = self.get_token();
-        match self.binding_identifier()? {
-            Some(identifier) => Ok(Some(Node::new(
-                Pattern_::Identifier(identifier),
-                &token,
-                &token,
-            ))),
+
+        match token.kind {
+            TT::Underscore => {
+                self.advance();
+                Ok(Some(Node::new(Pattern_::Hole, &token, &token)))
+            }
+            TT::Identifier => match self.binding_identifier()? {
+                Some(identifier) => Ok(Some(Node::new(
+                    Pattern_::Identifier(identifier),
+                    &token,
+                    &token,
+                ))),
+                _ => Ok(None),
+            },
             _ => Ok(None),
         }
     }
@@ -1189,6 +1197,8 @@ let
 in
 IAmNotCamelCase"
         ));
+
+        assert_snapshot!(parse("let _ = a x in x"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);

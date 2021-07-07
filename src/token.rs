@@ -25,6 +25,7 @@ pub enum Type {
     Slash,
     Backslash,
     Star,
+    Underscore,
 
     // One or two character tokens.
     Bang,
