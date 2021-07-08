@@ -241,8 +241,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         match self.binding_identifier()? {
             Some(export) => {
                 // Make intermediate node to please borrow checker
-                let node = Node::with_value_from_node((), &export);
-                Ok(Node::with_value_from_node(
+                let node = Node::copy_with_value((), &export);
+                Ok(Node::copy_with_value(
                     Export_::Identifier(export),
                     &node,
                 ))
@@ -1037,8 +1037,8 @@ fn organize_binops(
 
                     left = Node {
                         value: Binary(
-                            Box::new(Node::with_value_from_node(
-                                E::Identifier(Node::with_value_from_node(
+                            Box::new(Node::copy_with_value(
+                                E::Identifier(Node::copy_with_value(
                                     op.value.fn_.clone(),
                                     &op,
                                 )),

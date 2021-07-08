@@ -21,7 +21,7 @@ impl<V> Node<V> {
         }
     }
 
-    pub fn with_value_from_node<T>(value: V, node: &Node<T>) -> Self {
+    pub fn copy_with_value<T>(value: V, node: &Node<T>) -> Self {
         Node {
             value,
             start: node.start,
