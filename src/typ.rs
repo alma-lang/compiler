@@ -1,6 +1,7 @@
+use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::char;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
@@ -45,7 +46,7 @@ pub enum Type {
      * The TypeVar list will be a list of all monomorphic TypeVars in 'z
      * Used only in let-bindings to make the declaration polymorphic
      */
-    PolyType(HashSet<TypeVarId>, Rc<Type>),
+    PolyType(IndexSet<TypeVarId>, Rc<Type>),
 }
 
 impl Type {
@@ -281,7 +282,7 @@ mod test {
             ),
             (
                 Type::PolyType(
-                    HashSet::from_iter(vec![TypeVarId(0)]),
+                    IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(0),
                         Level(0),
@@ -291,7 +292,7 @@ mod test {
             ),
             (
                 Type::PolyType(
-                    HashSet::from_iter(vec![TypeVarId(0)]),
+                    IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(1),
                         Level(0),
@@ -301,7 +302,7 @@ mod test {
             ),
             (
                 Type::PolyType(
-                    HashSet::from_iter(vec![TypeVarId(0)]),
+                    IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Fn(
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),

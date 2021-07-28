@@ -5,9 +5,10 @@ use crate::ast::{
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
+use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::cmp::min;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 /*
@@ -247,7 +248,7 @@ impl State {
         let current_level = self.current_level;
 
         /* collect all the monomorphic typevars */
-        fn find_all_tvs(current_level: &Level, vars: &mut HashSet<TypeVarId>, t: &Rc<Type>) {
+        fn find_all_tvs(current_level: &Level, vars: &mut IndexSet<TypeVarId>, t: &Rc<Type>) {
             match &**t {
                 Unit => (),
 
@@ -273,7 +274,7 @@ impl State {
 
                 /* Remove all of tvs from findAllTvs typ */
                 PolyType(free_tvs, typ) => {
-                    let mut typ_tvs = HashSet::new();
+                    let mut typ_tvs = IndexSet::new();
                     find_all_tvs(current_level, &mut typ_tvs, typ);
 
                     for tv in typ_tvs {
@@ -285,7 +286,7 @@ impl State {
             }
         }
 
-        let mut tvs = HashSet::new();
+        let mut tvs = IndexSet::new();
         find_all_tvs(&current_level, &mut tvs, t);
         Rc::new(PolyType(tvs, Rc::clone(&t)))
     }
