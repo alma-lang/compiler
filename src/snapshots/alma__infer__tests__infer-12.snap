@@ -15,7 +15,7 @@ Output:
 
 Test
 
-last : ∀ a b . b -> a -> a
+last : ∀ a b . a -> b -> b
 
 
 
