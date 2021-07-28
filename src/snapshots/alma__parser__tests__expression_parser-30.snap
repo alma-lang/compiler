@@ -14,44 +14,54 @@ Node {
     end: 7,
     line: 1,
     column: 0,
-    value: Lambda(
-        [
-            Node {
-                start: 1,
-                end: 2,
-                line: 1,
-                column: 1,
-                value: Identifier(
-                    Node {
-                        start: 1,
-                        end: 2,
-                        line: 1,
-                        column: 1,
-                        value: Identifier_ {
-                            name: "a",
-                            case: Camel,
-                        },
-                    },
-                ),
-            },
-        ],
-        Node {
-            start: 6,
-            end: 7,
-            line: 1,
-            column: 6,
-            value: Identifier(
-                Node {
-                    start: 6,
-                    end: 7,
-                    line: 1,
-                    column: 6,
-                    value: Identifier_ {
-                        name: "a",
-                        case: Camel,
-                    },
-                },
-            ),
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
         },
-    ),
+        expr: Lambda(
+            [
+                Node {
+                    start: 1,
+                    end: 2,
+                    line: 1,
+                    column: 1,
+                    value: Identifier(
+                        Node {
+                            start: 1,
+                            end: 2,
+                            line: 1,
+                            column: 1,
+                            value: Identifier_ {
+                                name: "a",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            ],
+            Node {
+                start: 6,
+                end: 7,
+                line: 1,
+                column: 6,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        Node {
+                            start: 6,
+                            end: 7,
+                            line: 1,
+                            column: 6,
+                            value: Identifier_ {
+                                name: "a",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            },
+        ),
+    },
 }

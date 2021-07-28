@@ -52,9 +52,14 @@ Result:
                     end: 18,
                     line: 3,
                     column: 4,
-                    value: Float(
-                        1.0,
-                    ),
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            1.0,
+                        ),
+                    },
                 },
             },
         ],

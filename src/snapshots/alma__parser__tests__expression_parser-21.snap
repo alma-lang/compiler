@@ -17,98 +17,128 @@ Node {
     end: 28,
     line: 2,
     column: 0,
-    value: FnCall(
-        Node {
-            start: 1,
-            end: 4,
-            line: 2,
-            column: 0,
-            value: Identifier(
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: FnCall(
+            Node {
+                start: 1,
+                end: 4,
+                line: 2,
+                column: 0,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        Node {
+                            start: 1,
+                            end: 4,
+                            line: 2,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "fun",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            },
+            [
                 Node {
-                    start: 1,
-                    end: 4,
+                    start: 5,
+                    end: 9,
                     line: 2,
-                    column: 0,
-                    value: Identifier_ {
-                        name: "fun",
-                        case: Camel,
+                    column: 4,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Identifier(
+                            Node {
+                                start: 5,
+                                end: 9,
+                                line: 2,
+                                column: 4,
+                                value: Identifier_ {
+                                    name: "arg1",
+                                    case: Camel,
+                                },
+                            },
+                        ),
                     },
                 },
-            ),
-        },
-        [
-            Node {
-                start: 5,
-                end: 9,
-                line: 2,
-                column: 4,
-                value: Identifier(
-                    Node {
-                        start: 5,
-                        end: 9,
-                        line: 2,
-                        column: 4,
-                        value: Identifier_ {
-                            name: "arg1",
-                            case: Camel,
+                Node {
+                    start: 12,
+                    end: 16,
+                    line: 3,
+                    column: 2,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
                         },
+                        expr: Identifier(
+                            Node {
+                                start: 12,
+                                end: 16,
+                                line: 3,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "arg2",
+                                    case: Camel,
+                                },
+                            },
+                        ),
                     },
-                ),
-            },
-            Node {
-                start: 12,
-                end: 16,
-                line: 3,
-                column: 2,
-                value: Identifier(
-                    Node {
-                        start: 12,
-                        end: 16,
-                        line: 3,
-                        column: 2,
-                        value: Identifier_ {
-                            name: "arg2",
-                            case: Camel,
+                },
+                Node {
+                    start: 17,
+                    end: 21,
+                    line: 3,
+                    column: 7,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
                         },
+                        expr: Identifier(
+                            Node {
+                                start: 17,
+                                end: 21,
+                                line: 3,
+                                column: 7,
+                                value: Identifier_ {
+                                    name: "arg3",
+                                    case: Camel,
+                                },
+                            },
+                        ),
                     },
-                ),
-            },
-            Node {
-                start: 17,
-                end: 21,
-                line: 3,
-                column: 7,
-                value: Identifier(
-                    Node {
-                        start: 17,
-                        end: 21,
-                        line: 3,
-                        column: 7,
-                        value: Identifier_ {
-                            name: "arg3",
-                            case: Camel,
+                },
+                Node {
+                    start: 24,
+                    end: 28,
+                    line: 4,
+                    column: 2,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
                         },
+                        expr: Identifier(
+                            Node {
+                                start: 24,
+                                end: 28,
+                                line: 4,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "arg4",
+                                    case: Camel,
+                                },
+                            },
+                        ),
                     },
-                ),
-            },
-            Node {
-                start: 24,
-                end: 28,
-                line: 4,
-                column: 2,
-                value: Identifier(
-                    Node {
-                        start: 24,
-                        end: 28,
-                        line: 4,
-                        column: 2,
-                        value: Identifier_ {
-                            name: "arg4",
-                            case: Camel,
-                        },
-                    },
-                ),
-            },
-        ],
-    ),
+                },
+            ],
+        ),
+    },
 }

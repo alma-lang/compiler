@@ -73,9 +73,14 @@ Result:
                     end: 31,
                     line: 3,
                     column: 4,
-                    value: Float(
-                        1.0,
-                    ),
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            1.0,
+                        ),
+                    },
                 },
             },
             Definition {
@@ -104,9 +109,14 @@ Result:
                     end: 41,
                     line: 5,
                     column: 4,
-                    value: Bool(
-                        true,
-                    ),
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Bool(
+                            true,
+                        ),
+                    },
                 },
             },
         ],

@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, DefinitionLhs, Expression, Expression_ as E, Identifier, Import, Module,
-    Pattern_ as P, Unary_ as U,
+    self, Definition, DefinitionLhs, Expression, ExpressionType as ET, Expression_ as E,
+    Identifier, Import, Module, Pattern_ as P, Unary_ as U,
 };
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -624,16 +624,16 @@ fn infer_rec<'ast>(
     env: &mut TypeEnv,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
-    match &ast.value {
-        E::Unit => Rc::new(Unit),
+    let typ = match &ast.value.expr {
+        ET::Unit => Rc::new(Unit),
 
-        E::Bool(_) => BOOL.with(|t| Rc::clone(t)),
+        ET::Bool(_) => BOOL.with(|t| Rc::clone(t)),
 
-        E::Float(_) => FLOAT.with(|t| Rc::clone(t)),
+        ET::Float(_) => FLOAT.with(|t| Rc::clone(t)),
 
-        E::String_(_) => STRING.with(|t| Rc::clone(t)),
+        ET::String_(_) => STRING.with(|t| Rc::clone(t)),
 
-        E::Unary(op, e) => {
+        ET::Unary(op, e) => {
             let t = infer_rec(e, state, env, errors);
 
             add_error(
@@ -647,7 +647,7 @@ fn infer_rec<'ast>(
             t
         }
 
-        E::Binary(fn_, _op, args) => {
+        ET::Binary(fn_, _op, args) => {
             // Infer the binary op as a function call
             infer_fn_call(fn_, args.iter(), ast, state, env, errors)
         }
@@ -660,7 +660,7 @@ fn infer_rec<'ast>(
          * unify t1 t2
          * infer env (if condition then else) = t2
          */
-        E::If(condition, then, else_) => {
+        ET::If(condition, then, else_) => {
             let t = infer_rec(condition, state, env, errors);
             add_error(
                 unify(condition, &t, None, &BOOL.with(|t| Rc::clone(t))),
@@ -681,7 +681,7 @@ fn infer_rec<'ast>(
          *   -----------
          *   infer env x = t
          */
-        E::Identifier(x) => match env.get(&x.value.name) {
+        ET::Identifier(x) => match env.get(&x.value.name) {
             Some(s) => {
                 let t = state.instantiate(s);
                 t
@@ -700,7 +700,7 @@ fn infer_rec<'ast>(
          *   ---------------
          *   infer env (f x) = t'
          */
-        E::FnCall(f, args) => infer_fn_call(f, args.iter().map(|t| t), ast, state, env, errors),
+        ET::FnCall(f, args) => infer_fn_call(f, args.iter().map(|t| t), ast, state, env, errors),
 
         /* Abs
          *   t = newVar ()
@@ -708,7 +708,7 @@ fn infer_rec<'ast>(
          *   -------------
          *   infer env (fun x -> e) = t -> t'
          */
-        E::Lambda(params, body) => infer_lambda(params, body, state, env, errors),
+        ET::Lambda(params, body) => infer_lambda(params, body, state, env, errors),
 
         /* Let
          *   infer env e0 = t
@@ -721,14 +721,18 @@ fn infer_rec<'ast>(
          * In this implementation, they're required so we don't generalize types
          * that escape into the environment.
          */
-        E::Let(bindings, e) => {
+        ET::Let(bindings, e) => {
             let mut new_env = env.clone();
 
             infer_definitions(bindings, state, &mut new_env, errors);
 
             infer_rec(e, state, &mut new_env, errors)
         }
-    }
+    };
+
+    ast.value.set_type(Rc::clone(&typ));
+
+    typ
 }
 
 fn infer_definitions<'ast>(

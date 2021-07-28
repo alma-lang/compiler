@@ -14,16 +14,21 @@ Node {
     end: 12,
     line: 1,
     column: 0,
-    value: Identifier(
-        Node {
-            start: 0,
-            end: 12,
-            line: 1,
-            column: 0,
-            value: Identifier_ {
-                name: "variable_one",
-                case: Camel,
-            },
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
         },
-    ),
+        expr: Identifier(
+            Node {
+                start: 0,
+                end: 12,
+                line: 1,
+                column: 0,
+                value: Identifier_ {
+                    name: "variable_one",
+                    case: Camel,
+                },
+            },
+        ),
+    },
 }

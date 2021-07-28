@@ -25,8 +25,8 @@
 use crate::ast::{
     binop::*,
     Expression,
-    Expression_::{self as E, Float, If, Let, String_, *},
-    Identifier, Import, Module, Node, Pattern, Pattern_,
+    ExpressionType::{self as ET, Float, If, Let, String_, *},
+    Expression_ as E, Identifier, Import, Module, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
     *,
 };
@@ -242,10 +242,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             Some(export) => {
                 // Make intermediate node to please borrow checker
                 let node = Node::copy_with_value((), &export);
-                Ok(Node::copy_with_value(
-                    Export_::Identifier(export),
-                    &node,
-                ))
+                Ok(Node::copy_with_value(Export_::Identifier(export), &node))
             }
             _ => Err(Error::expected_but_found(
                 self.source,
@@ -446,7 +443,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         let start = let_token.position;
                         let end = body.end;
                         Ok(Some(Node {
-                            value: Let(bindings, Box::new(body)),
+                            value: E::untyped(Let(bindings, Box::new(body))),
                             line,
                             column,
                             start,
@@ -575,7 +572,11 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                 let end = else_.end;
 
                                 Ok(Some(Node {
-                                    value: If(Box::new(condition), Box::new(then), Box::new(else_)),
+                                    value: E::untyped(If(
+                                        Box::new(condition),
+                                        Box::new(then),
+                                        Box::new(else_),
+                                    )),
                                     line,
                                     column,
                                     start,
@@ -633,7 +634,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             let end = body.end;
 
                             Ok(Some(Node {
-                                value: Lambda(params, Box::new(body)),
+                                value: E::untyped(Lambda(params, Box::new(body))),
                                 line,
                                 column,
                                 start,
@@ -771,7 +772,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 let start = op.start;
                 let end = expr.end;
                 Node {
-                    value: Unary(op, Box::new(expr)),
+                    value: E::untyped(Unary(op, Box::new(expr))),
                     line,
                     column,
                     start,
@@ -797,7 +798,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     let start = expr.start;
                     let end = last_arg.end;
                     Node {
-                        value: FnCall(Box::new(expr), args),
+                        value: E::untyped(FnCall(Box::new(expr), args)),
                         line,
                         column,
                         start,
@@ -839,8 +840,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         let token = self.get_token();
 
         let result = match token.kind {
-            False => Ok(Some(Node::new(Bool(false), &token, &token))),
-            True => Ok(Some(Node::new(Bool(true), &token, &token))),
+            False => Ok(Some(Node::new(E::untyped(Bool(false)), &token, &token))),
+            True => Ok(Some(Node::new(E::untyped(Bool(true)), &token, &token))),
 
             TT::Float => {
                 let lexeme = token.lexeme;
@@ -853,11 +854,15 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     )
                 })?;
 
-                Ok(Some(Node::new(Float(n), &token, &token)))
+                Ok(Some(Node::new(E::untyped(Float(n)), &token, &token)))
             }
 
             TT::Identifier => Ok(Some(Node::new(
-                E::Identifier(Node::new(Identifier_::new(token.lexeme), &token, &token)),
+                E::untyped(ET::Identifier(Node::new(
+                    Identifier_::new(token.lexeme),
+                    &token,
+                    &token,
+                ))),
                 &token,
                 &token,
             ))),
@@ -865,7 +870,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::String_ => {
                 let lexeme = token.lexeme;
                 let value = lexeme[1..(lexeme.len() - 1)].to_string();
-                Ok(Some(Node::new(String_(value), &token, &token)))
+                Ok(Some(Node::new(E::untyped(String_(value)), &token, &token)))
             }
 
             LeftParen => {
@@ -874,7 +879,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 let next_token = self.get_token();
 
                 (match next_token.kind {
-                    RightParen => Ok(Node::new(Unit, &token, next_token)),
+                    RightParen => Ok(Node::new(E::untyped(Unit), &token, next_token)),
 
                     _ => self.expression().and_then(|expr| {
                         let last_token = self.get_token();
@@ -1036,17 +1041,17 @@ fn organize_binops(
                     let end = right.end;
 
                     left = Node {
-                        value: Binary(
+                        value: E::untyped(Binary(
                             Box::new(Node::copy_with_value(
-                                E::Identifier(Node::copy_with_value(
+                                E::untyped(ET::Identifier(Node::copy_with_value(
                                     op.value.fn_.clone(),
                                     &op,
-                                )),
+                                ))),
                                 &op,
                             )),
                             op,
                             Box::new([left, right]),
-                        ),
+                        )),
                         line,
                         column,
                         start,

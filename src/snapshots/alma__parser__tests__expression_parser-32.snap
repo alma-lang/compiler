@@ -14,62 +14,72 @@ Node {
     end: 9,
     line: 1,
     column: 0,
-    value: Lambda(
-        [
-            Node {
-                start: 1,
-                end: 2,
-                line: 1,
-                column: 1,
-                value: Identifier(
-                    Node {
-                        start: 1,
-                        end: 2,
-                        line: 1,
-                        column: 1,
-                        value: Identifier_ {
-                            name: "a",
-                            case: Camel,
-                        },
-                    },
-                ),
-            },
-            Node {
-                start: 3,
-                end: 4,
-                line: 1,
-                column: 3,
-                value: Identifier(
-                    Node {
-                        start: 3,
-                        end: 4,
-                        line: 1,
-                        column: 3,
-                        value: Identifier_ {
-                            name: "b",
-                            case: Camel,
-                        },
-                    },
-                ),
-            },
-        ],
-        Node {
-            start: 8,
-            end: 9,
-            line: 1,
-            column: 8,
-            value: Identifier(
-                Node {
-                    start: 8,
-                    end: 9,
-                    line: 1,
-                    column: 8,
-                    value: Identifier_ {
-                        name: "a",
-                        case: Camel,
-                    },
-                },
-            ),
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
         },
-    ),
+        expr: Lambda(
+            [
+                Node {
+                    start: 1,
+                    end: 2,
+                    line: 1,
+                    column: 1,
+                    value: Identifier(
+                        Node {
+                            start: 1,
+                            end: 2,
+                            line: 1,
+                            column: 1,
+                            value: Identifier_ {
+                                name: "a",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+                Node {
+                    start: 3,
+                    end: 4,
+                    line: 1,
+                    column: 3,
+                    value: Identifier(
+                        Node {
+                            start: 3,
+                            end: 4,
+                            line: 1,
+                            column: 3,
+                            value: Identifier_ {
+                                name: "b",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            ],
+            Node {
+                start: 8,
+                end: 9,
+                line: 1,
+                column: 8,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        Node {
+                            start: 8,
+                            end: 9,
+                            line: 1,
+                            column: 8,
+                            value: Identifier_ {
+                                name: "a",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            },
+        ),
+    },
 }

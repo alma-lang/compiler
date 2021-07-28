@@ -60,9 +60,14 @@ Result:
                     end: 65,
                     line: 7,
                     column: 8,
-                    value: Float(
-                        1.0,
-                    ),
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            1.0,
+                        ),
+                    },
                 },
             },
         ],
@@ -107,9 +112,14 @@ Result:
                     end: 35,
                     line: 4,
                     column: 6,
-                    value: Float(
-                        1.0,
-                    ),
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            1.0,
+                        ),
+                    },
                 },
             },
         ],
@@ -154,9 +164,14 @@ Result:
                     end: 89,
                     line: 10,
                     column: 8,
-                    value: Float(
-                        5.0,
-                    ),
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            5.0,
+                        ),
+                    },
                 },
             },
         ],

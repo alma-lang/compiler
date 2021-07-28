@@ -14,5 +14,10 @@ Node {
     end: 2,
     line: 1,
     column: 0,
-    value: Unit,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Unit,
+    },
 }

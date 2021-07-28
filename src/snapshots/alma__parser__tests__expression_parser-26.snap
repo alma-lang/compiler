@@ -14,59 +14,79 @@ Node {
     end: 5,
     line: 1,
     column: 0,
-    value: Binary(
-        Node {
-            start: 2,
-            end: 3,
-            line: 1,
-            column: 2,
-            value: Identifier(
-                Node {
-                    start: 2,
-                    end: 3,
-                    line: 1,
-                    column: 2,
-                    value: Identifier_ {
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Binary(
+            Node {
+                start: 2,
+                end: 3,
+                line: 1,
+                column: 2,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        Node {
+                            start: 2,
+                            end: 3,
+                            line: 1,
+                            column: 2,
+                            value: Identifier_ {
+                                name: "(-)",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            },
+            Node {
+                start: 2,
+                end: 3,
+                line: 1,
+                column: 2,
+                value: Binop_ {
+                    typ: Substraction,
+                    precedence: 14,
+                    associativity: LTR,
+                    fn_: Identifier_ {
                         name: "(-)",
                         case: Camel,
                     },
                 },
-            ),
-        },
-        Node {
-            start: 2,
-            end: 3,
-            line: 1,
-            column: 2,
-            value: Binop_ {
-                typ: Substraction,
-                precedence: 14,
-                associativity: LTR,
-                fn_: Identifier_ {
-                    name: "(-)",
-                    case: Camel,
+            },
+            [
+                Node {
+                    start: 0,
+                    end: 1,
+                    line: 1,
+                    column: 0,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            1.0,
+                        ),
+                    },
                 },
-            },
-        },
-        [
-            Node {
-                start: 0,
-                end: 1,
-                line: 1,
-                column: 0,
-                value: Float(
-                    1.0,
-                ),
-            },
-            Node {
-                start: 4,
-                end: 5,
-                line: 1,
-                column: 4,
-                value: Float(
-                    5.0,
-                ),
-            },
-        ],
-    ),
+                Node {
+                    start: 4,
+                    end: 5,
+                    line: 1,
+                    column: 4,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            5.0,
+                        ),
+                    },
+                },
+            ],
+        ),
+    },
 }

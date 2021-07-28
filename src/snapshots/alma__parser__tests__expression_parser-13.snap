@@ -14,7 +14,12 @@ Node {
     end: 4,
     line: 1,
     column: 3,
-    value: Float(
-        1.0,
-    ),
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
 }

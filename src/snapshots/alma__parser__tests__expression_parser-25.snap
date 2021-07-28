@@ -14,50 +14,70 @@ Node {
     end: 8,
     line: 1,
     column: 0,
-    value: FnCall(
-        Node {
-            start: 0,
-            end: 4,
-            line: 1,
-            column: 0,
-            value: Identifier(
-                Node {
-                    start: 0,
-                    end: 4,
-                    line: 1,
-                    column: 0,
-                    value: Identifier_ {
-                        name: "incr",
-                        case: Camel,
-                    },
-                },
-            ),
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
         },
-        [
+        expr: FnCall(
             Node {
-                start: 6,
-                end: 8,
+                start: 0,
+                end: 4,
                 line: 1,
-                column: 6,
-                value: Unary(
-                    Node {
-                        start: 6,
-                        end: 7,
-                        line: 1,
-                        column: 6,
-                        value: Minus,
+                column: 0,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
                     },
-                    Node {
-                        start: 7,
-                        end: 8,
-                        line: 1,
-                        column: 7,
-                        value: Float(
-                            5.0,
+                    expr: Identifier(
+                        Node {
+                            start: 0,
+                            end: 4,
+                            line: 1,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "incr",
+                                case: Camel,
+                            },
+                        },
+                    ),
+                },
+            },
+            [
+                Node {
+                    start: 6,
+                    end: 8,
+                    line: 1,
+                    column: 6,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Unary(
+                            Node {
+                                start: 6,
+                                end: 7,
+                                line: 1,
+                                column: 6,
+                                value: Minus,
+                            },
+                            Node {
+                                start: 7,
+                                end: 8,
+                                line: 1,
+                                column: 7,
+                                value: Expression_ {
+                                    typ: RefCell {
+                                        value: None,
+                                    },
+                                    expr: Float(
+                                        5.0,
+                                    ),
+                                },
+                            },
                         ),
                     },
-                ),
-            },
-        ],
-    ),
+                },
+            ],
+        ),
+    },
 }

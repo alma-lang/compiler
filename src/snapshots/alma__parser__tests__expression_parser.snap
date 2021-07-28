@@ -14,7 +14,12 @@ Node {
     end: 4,
     line: 1,
     column: 0,
-    value: Bool(
-        true,
-    ),
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Bool(
+            true,
+        ),
+    },
 }

@@ -15,57 +15,72 @@ Node {
     end: 11,
     line: 1,
     column: 0,
-    value: Let(
-        [
-            Definition {
-                lhs: Pattern(
-                    Node {
-                        start: 4,
-                        end: 5,
-                        line: 1,
-                        column: 4,
-                        value: Identifier(
-                            Node {
-                                start: 4,
-                                end: 5,
-                                line: 1,
-                                column: 4,
-                                value: Identifier_ {
-                                    name: "x",
-                                    case: Camel,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Let(
+            [
+                Definition {
+                    lhs: Pattern(
+                        Node {
+                            start: 4,
+                            end: 5,
+                            line: 1,
+                            column: 4,
+                            value: Identifier(
+                                Node {
+                                    start: 4,
+                                    end: 5,
+                                    line: 1,
+                                    column: 4,
+                                    value: Identifier_ {
+                                        name: "x",
+                                        case: Camel,
+                                    },
                                 },
+                            ),
+                        },
+                    ),
+                    value: Node {
+                        start: 8,
+                        end: 9,
+                        line: 1,
+                        column: 8,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
                             },
-                        ),
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
                     },
-                ),
-                value: Node {
-                    start: 8,
-                    end: 9,
-                    line: 1,
-                    column: 8,
-                    value: Float(
-                        1.0,
+                },
+            ],
+            Node {
+                start: 10,
+                end: 11,
+                line: 2,
+                column: 0,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        Node {
+                            start: 10,
+                            end: 11,
+                            line: 2,
+                            column: 0,
+                            value: Identifier_ {
+                                name: "x",
+                                case: Camel,
+                            },
+                        },
                     ),
                 },
             },
-        ],
-        Node {
-            start: 10,
-            end: 11,
-            line: 2,
-            column: 0,
-            value: Identifier(
-                Node {
-                    start: 10,
-                    end: 11,
-                    line: 2,
-                    column: 0,
-                    value: Identifier_ {
-                        name: "x",
-                        case: Camel,
-                    },
-                },
-            ),
-        },
-    ),
+        ),
+    },
 }

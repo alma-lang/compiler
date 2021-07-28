@@ -1,5 +1,8 @@
 use crate::token::Token;
+use crate::typ::Type;
+use std::cell::RefCell;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
 pub struct Node<V> {
@@ -87,7 +90,26 @@ pub enum DefinitionLhs {
 pub type Expression = Node<Expression_>;
 
 #[derive(PartialEq, Debug)]
-pub enum Expression_ {
+pub struct Expression_ {
+    pub typ: RefCell<Option<Rc<Type>>>,
+    pub expr: ExpressionType,
+}
+
+impl Expression_ {
+    pub fn untyped(expr: ExpressionType) -> Self {
+        Self {
+            typ: RefCell::new(None),
+            expr,
+        }
+    }
+
+    pub fn set_type(&self, typ: Rc<Type>) {
+        *self.typ.borrow_mut() = Some(typ);
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ExpressionType {
     Unit,
     Bool(bool),
     Float(f64),
