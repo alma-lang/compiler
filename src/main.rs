@@ -2,6 +2,7 @@ mod ast;
 mod cli;
 mod compiler;
 mod infer;
+mod javascript;
 mod parser;
 mod source;
 mod token;

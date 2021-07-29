@@ -1,5 +1,6 @@
 use crate::ast::{self, Module, ReplEntry};
 use crate::infer;
+use crate::javascript;
 use crate::parser;
 use crate::source::Source;
 use crate::tokenizer;
@@ -33,27 +34,37 @@ pub fn compile(source: &Source) -> Result<String, String> {
         }
     }
 
-    if errors.is_empty() {
-        Ok(modules
-            .iter()
-            .map(|m| {
-                format!(
-                    "{}\n\n{}\n",
-                    m.name.value,
-                    module_interfaces
-                        .get(&m.name.value.name)
-                        .unwrap_or(&Rc::new(TypeEnv::new()))
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n\n"))
-    } else {
-        Err(errors
+    if !errors.is_empty() {
+        return Err(errors
             .iter()
             .map(|e| e.to_string(&source))
             .collect::<Vec<String>>()
-            .join("\n\n"))
+            .join("\n\n"));
     }
+
+    let javascript_files = javascript::generate(&modules, &module_interfaces);
+
+    // Print types
+    // Ok(modules
+    //     .iter()
+    //     .map(|m| {
+    //         format!(
+    //             "{}\n\n{}\n",
+    //             m.name.value,
+    //             module_interfaces
+    //                 .get(&m.name.value.name)
+    //                 .unwrap_or(&Rc::new(TypeEnv::new()))
+    //         )
+    //     })
+    //     .collect::<Vec<String>>()
+    //     .join("\n\n"))
+
+    // Print code
+    Ok(javascript_files
+        .iter()
+        .map(|f| format!("{}\n\n{}\n", f.name, f.contents))
+        .collect::<Vec<String>>()
+        .join("\n\n"))
 }
 
 pub fn compile_repl_entry(
