@@ -496,7 +496,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
         let pattern = self.pattern()?;
 
-        let lhs = match pattern {
+        let definition = match pattern {
             Some(Node {
                 value: Pattern_::Identifier(identifier),
                 ..
@@ -504,43 +504,56 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 let equal_token = self.get_token();
                 match equal_token.kind {
                     // Peek to see if it is just an identifier and =, and return a pattern
-                    Equal => Some(DefinitionLhs::Pattern(Node::new(
-                        Pattern_::Identifier(identifier),
-                        &token,
-                        &token,
-                    ))),
+                    Equal => {
+                        let expr = self.binding_rhs()?;
+                        Some(Definition::Pattern(
+                            Node::new(Pattern_::Identifier(identifier), &token, &token),
+                            expr,
+                        ))
+                    }
                     // Otherwise this is a lambda lhs, identifier + params
                     _ => {
                         let params = self.params()?;
-                        Some(DefinitionLhs::Lambda(identifier, params))
+                        let expr = self.binding_rhs()?;
+                        let line = token.line;
+                        let column = token.column;
+                        let start = token.position;
+                        let end = expr.end;
+                        Some(Definition::Lambda(
+                            identifier,
+                            Node {
+                                value: E::untyped(ET::Lambda(params, Box::new(expr))),
+                                line,
+                                column,
+                                start,
+                                end,
+                            },
+                        ))
                     }
                 }
             }
-            Some(_) => pattern.map(DefinitionLhs::Pattern),
+            Some(pattern) => Some(Definition::Pattern(pattern, self.binding_rhs()?)),
             None => None,
         };
 
-        match lhs {
-            Some(lhs) => {
-                let equal_token = self.get_token();
-                match equal_token.kind {
-                    Equal => {
-                        self.advance();
+        Ok(definition)
+    }
+    fn binding_rhs(&mut self) -> ParseResult<'source, 'tokens, Expression> {
+        let equal_token = self.get_token();
+        match equal_token.kind {
+            Equal => {
+                self.advance();
 
-                        let value = self.expression()?;
-                        Ok(Some(Definition { lhs, value }))
-                    }
-
-                    _ => Err(Error::expected_but_found(
-                        self.source,
-                        &equal_token,
-                        None,
-                        "Expected an = and an expression \
-                        for the right side of the definition",
-                    )),
-                }
+                self.expression()
             }
-            None => Ok(None),
+
+            _ => Err(Error::expected_but_found(
+                self.source,
+                &equal_token,
+                None,
+                "Expected an = and an expression \
+                        for the right side of the definition",
+            )),
         }
     }
 

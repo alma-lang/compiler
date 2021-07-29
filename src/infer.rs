@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, DefinitionLhs, Expression, ExpressionType as ET, Expression_ as E,
-    Identifier, Import, Module, Pattern_ as P, Unary_ as U,
+    self, Definition, Expression, ExpressionType as ET, Identifier, Import, Module, Pattern_ as P,
+    Unary_ as U,
 };
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -742,17 +742,20 @@ fn infer_definitions<'ast>(
     errors: &mut Vec<Error<'ast>>,
 ) {
     for definition in definitions {
-        match &definition.lhs {
-            DefinitionLhs::Lambda(identifier, params) => {
-                state.enter_level();
-                let t = infer_lambda(params, &definition.value, state, env, errors);
-                state.exit_level();
+        match &definition {
+            Definition::Lambda(identifier, expression) => match &expression.value.expr {
+                ET::Lambda(params, body) => {
+                    state.enter_level();
+                    let t = infer_lambda(params, &body, state, env, errors);
+                    state.exit_level();
 
-                env.insert(identifier.value.name.clone(), state.generalize(&t));
-            }
-            DefinitionLhs::Pattern(pattern) => {
+                    env.insert(identifier.value.name.clone(), state.generalize(&t));
+                }
+                _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
+            },
+            Definition::Pattern(pattern, value) => {
                 state.enter_level();
-                let t = infer_rec(&definition.value, state, env, errors);
+                let t = infer_rec(&value, state, env, errors);
                 state.exit_level();
 
                 match &pattern.value {

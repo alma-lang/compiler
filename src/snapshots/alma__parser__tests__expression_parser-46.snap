@@ -25,28 +25,26 @@ Node {
         },
         expr: Let(
             [
-                Definition {
-                    lhs: Pattern(
-                        Node {
-                            start: 6,
-                            end: 7,
-                            line: 2,
-                            column: 2,
-                            value: Identifier(
-                                Node {
-                                    start: 6,
-                                    end: 7,
-                                    line: 2,
-                                    column: 2,
-                                    value: Identifier_ {
-                                        name: "x",
-                                        case: Camel,
-                                    },
+                Pattern(
+                    Node {
+                        start: 6,
+                        end: 7,
+                        line: 2,
+                        column: 2,
+                        value: Identifier(
+                            Node {
+                                start: 6,
+                                end: 7,
+                                line: 2,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "x",
+                                    case: Camel,
                                 },
-                            ),
-                        },
-                    ),
-                    value: Node {
+                            },
+                        ),
+                    },
+                    Node {
                         start: 10,
                         end: 17,
                         line: 2,
@@ -107,29 +105,27 @@ Node {
                             ),
                         },
                     },
-                },
-                Definition {
-                    lhs: Pattern(
-                        Node {
-                            start: 19,
-                            end: 20,
-                            line: 4,
-                            column: 1,
-                            value: Identifier(
-                                Node {
-                                    start: 19,
-                                    end: 20,
-                                    line: 4,
-                                    column: 1,
-                                    value: Identifier_ {
-                                        name: "b",
-                                        case: Camel,
-                                    },
+                ),
+                Pattern(
+                    Node {
+                        start: 19,
+                        end: 20,
+                        line: 4,
+                        column: 1,
+                        value: Identifier(
+                            Node {
+                                start: 19,
+                                end: 20,
+                                line: 4,
+                                column: 1,
+                                value: Identifier_ {
+                                    name: "b",
+                                    case: Camel,
                                 },
-                            ),
-                        },
-                    ),
-                    value: Node {
+                            },
+                        ),
+                    },
+                    Node {
                         start: 23,
                         end: 24,
                         line: 4,
@@ -143,7 +139,7 @@ Node {
                             ),
                         },
                     },
-                },
+                ),
             ],
             Node {
                 start: 28,
