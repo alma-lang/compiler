@@ -433,7 +433,7 @@ fn unify<'ast>(
 
 fn base_env(state: &mut State, env: &mut TypeEnv) {
     env.insert(
-        "(or)".to_string(),
+        "__op__or".to_string(),
         Rc::new(Type::Fn(
             BOOL.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -444,7 +444,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
     );
 
     env.insert(
-        "(or)".to_string(),
+        "__op__or".to_string(),
         Rc::new(Type::Fn(
             BOOL.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -454,7 +454,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(and)".to_string(),
+        "__op__and".to_string(),
         Rc::new(Type::Fn(
             BOOL.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -463,14 +463,14 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
             )),
         )),
     );
-    env.insert("(==)".to_string(), {
+    env.insert("__op__eq".to_string(), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
             Rc::new(Type::Fn(Rc::clone(&a), BOOL.with(|t| Rc::clone(t)))),
         )))
     });
-    env.insert("(!=)".to_string(), {
+    env.insert("__op__ne".to_string(), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
@@ -478,7 +478,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )))
     });
     env.insert(
-        "(>)".to_string(),
+        "__op__gt".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -488,7 +488,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(>=)".to_string(),
+        "__op__ge".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -498,7 +498,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(<)".to_string(),
+        "__op__lt".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -508,7 +508,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(<=)".to_string(),
+        "__op__le".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -518,7 +518,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(+)".to_string(),
+        "__op__add".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -528,7 +528,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(-)".to_string(),
+        "__op__sub".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -538,7 +538,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(*)".to_string(),
+        "__op__mult".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -548,7 +548,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        "(/)".to_string(),
+        "__op__div".to_string(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
