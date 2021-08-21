@@ -13,6 +13,18 @@ pub struct File {
 
 const INDENT: usize = 4;
 
+pub fn files_to_bundle(files: &Vec<File>) -> String {
+    let mut out = String::new();
+
+    for file in files {
+        out.push_str(&format!("\nfunction {} () {{\n", &file.name));
+        out.push_str(&file.contents);
+        out.push_str("}();\n");
+    }
+
+    out
+}
+
 pub fn generate(
     modules: &Vec<Module>,
     module_interfaces: &HashMap<String, Rc<TypeEnv>>,
@@ -92,13 +104,15 @@ fn generate_definitions(
 ) {
     for definition in definitions {
         match definition {
-            Definition::Lambda(name, expression) =>match &expression.value.expr {
+            Definition::Lambda(name, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
                     generate_function(indent, code, &name.value.name, params, body)
-                },
+                }
                 _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
+            },
+            Definition::Pattern(pattern, expression) => {
+                generate_let(indent, code, pattern, expression)
             }
-            Definition::Pattern(pattern, expression) => generate_let(indent, code, pattern, expression),
         }
         if space_between {
             code.push_str("\n")

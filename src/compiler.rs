@@ -60,11 +60,7 @@ pub fn compile(source: &Source) -> Result<String, String> {
     //     .join("\n\n"))
 
     // Print code
-    Ok(javascript_files
-        .iter()
-        .map(|f| format!("{}\n\n{}\n", f.name, f.contents))
-        .collect::<Vec<String>>()
-        .join("\n\n"))
+    Ok(javascript::files_to_bundle(&javascript_files))
 }
 
 pub fn compile_repl_entry(
