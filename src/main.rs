@@ -10,27 +10,53 @@ mod tokenizer;
 mod typ;
 mod type_env;
 
-use std::env;
-use std::process;
+use clap::{value_t, App, AppSettings, Arg, SubCommand};
 
 fn main() {
-    let argv = env::args().skip(1).collect::<Vec<String>>();
-    let args: Vec<_> = argv.iter().map(|x| x.as_str()).collect();
+    let matches = App::new("Alma")
+        .version("0.0")
+        .about("\nThe Alma language CLI. More info at https://alma-lang.org")
+        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .setting(AppSettings::VersionlessSubcommands)
+        // Subcommands
+        .subcommand(SubCommand::with_name("repl").about("Start the interactive Alma REPL"))
+        .subcommand(
+            SubCommand::with_name("make").about("Compile files").arg(
+                Arg::with_name("FILE")
+                    .required(true)
+                    .multiple(true)
+                    .help("File entry points to compile"),
+            ),
+        )
+        .subcommand(
+            SubCommand::with_name("bench")
+                .about("Benchmark compilation")
+                .setting(AppSettings::Hidden)
+                .arg(
+                    Arg::with_name("FILE")
+                        .required(true)
+                        .index(1)
+                        .help("File to compile for the benchmark"),
+                )
+                .arg(
+                    Arg::with_name("runs")
+                        .default_value("1000")
+                        .long("runs")
+                        .short("r")
+                        .help("Number of times to compile the file after reading it"),
+                ),
+        )
+        .get_matches();
 
-    match args.as_slice() {
-        ["repl"] => cli::prompt(),
-        ["run", path] => cli::file(path.to_string()),
-        // Hidden commands to benchmark compilation of certain files
-        ["bench", path] => cli::bench(1000, path.to_string()),
-        ["bench", n, path] => cli::bench(n.parse::<i32>().unwrap(), path.to_string()),
-        _ => {
-            println!(
-                "
-  repl                 Start the REPL
-  run [file.alma]      Run [file.alma]
-"
-            );
-            process::exit(0);
-        }
-    };
+    if let Some(_) = matches.subcommand_matches("repl") {
+        cli::prompt();
+    } else if let Some(matches) = matches.subcommand_matches("bench") {
+        cli::bench(
+            value_t!(matches, "runs", u32).unwrap_or_else(|e| e.exit()),
+            matches.value_of("FILE").unwrap().to_owned(),
+        );
+    } else if let Some(matches) = matches.subcommand_matches("make") {
+        let files = matches.values_of_lossy("FILE").unwrap();
+        cli::compile_files(files);
+    }
 }

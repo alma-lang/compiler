@@ -52,17 +52,19 @@ fn source_from_path(file_path: &str) -> String {
     })
 }
 
-pub fn file(file_path: String) {
-    let contents = source_from_path(&file_path);
-    let file = Source::new_file(file_path, &contents);
+pub fn compile_files(files: Vec<String>) {
+    for file_path in files {
+        let contents = source_from_path(&file_path);
+        let file = Source::new_file(file_path, &contents);
 
-    match compiler::compile(&file) {
-        Ok(out) => println!("{}", out),
-        Err(errs) => println!("{}", errs),
-    };
+        match compiler::compile(&file) {
+            Ok(out) => println!("{}", out),
+            Err(errs) => println!("{}", errs),
+        };
+    }
 }
 
-pub fn bench(runs: i32, file_path: String) {
+pub fn bench(runs: u32, file_path: String) {
     let contents = source_from_path(&file_path);
     let file = Source::new_file(file_path, &contents);
 
