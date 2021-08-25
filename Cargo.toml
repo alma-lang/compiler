@@ -12,6 +12,8 @@ pretty_assertions = "0.7.2"
 im-rc = "15.0.0"
 indexmap = "1.7"
 clap = "2.33.3"
+rustyline = "9.0.0"
+shellexpand = "2.1.0"
 
 [dev-dependencies]
 insta = "1.7"
