@@ -3,7 +3,7 @@ use im_rc::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeEnv(HashMap<String, Rc<Type>>);
 
 impl TypeEnv {
@@ -19,6 +19,10 @@ impl TypeEnv {
         let env = HashMap::new();
 
         Self(env)
+    }
+
+    pub fn map(&self) -> &HashMap<String, Rc<Type>> {
+        &self.0
     }
 }
 

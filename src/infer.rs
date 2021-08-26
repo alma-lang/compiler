@@ -207,7 +207,14 @@ impl State {
         ) -> Rc<Type> {
             match &**t {
                 Unit => Rc::clone(&t),
-                Named(..) => Rc::clone(&t),
+
+                Named(name, args) => Rc::new(Named(
+                    name.clone(),
+                    args.iter()
+                        .map(|arg| replace_type_vars(vars_to_replace, arg))
+                        .collect(),
+                )),
+
                 Var(var) => match &*var.borrow() {
                     Bound(t) => replace_type_vars(vars_to_replace, t),
                     Unbound(n, _level) => match vars_to_replace.get(&n) {
@@ -220,6 +227,25 @@ impl State {
                     replace_type_vars(vars_to_replace, a),
                     replace_type_vars(vars_to_replace, b),
                 )),
+
+                Record(fields) => {
+                    let mut new_fields = fields.clone();
+                    for (key, value) in fields.map() {
+                        new_fields.insert(key.clone(), replace_type_vars(vars_to_replace, value));
+                    }
+                    Rc::new(Record(new_fields))
+                }
+
+                RecordExt(fields, ext) => {
+                    let mut new_fields = fields.clone();
+                    for (key, value) in fields.map() {
+                        new_fields.insert(key.clone(), replace_type_vars(vars_to_replace, value));
+                    }
+                    Rc::new(RecordExt(
+                        new_fields,
+                        replace_type_vars(vars_to_replace, ext),
+                    ))
+                }
 
                 PolyType(type_vars, typ) => {
                     let mut vars_to_replace_copy = vars_to_replace.clone();
@@ -275,6 +301,19 @@ impl State {
                     find_all_tvs(current_level, vars, b);
                 }
 
+                Record(fields) => {
+                    for t in fields.map().values() {
+                        find_all_tvs(current_level, vars, t);
+                    }
+                }
+
+                RecordExt(fields, ext) => {
+                    for t in fields.map().values() {
+                        find_all_tvs(current_level, vars, t);
+                    }
+                    find_all_tvs(current_level, vars, ext);
+                }
+
                 /* Remove all of tvs from findAllTvs typ */
                 PolyType(free_tvs, typ) => {
                     let mut typ_tvs = IndexSet::new();
@@ -325,6 +364,16 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
 
         Fn(b, c) => occurs(a_id, a_level, b) || occurs(a_id, a_level, c),
 
+        Record(fields) => fields.map().values().any(|tv| occurs(a_id, a_level, tv)),
+
+        RecordExt(fields, record_t) => {
+            if fields.map().values().any(|tv| occurs(a_id, a_level, tv)) {
+                true
+            } else {
+                occurs(a_id, a_level, record_t)
+            }
+        }
+
         PolyType(tvs, t) => {
             if tvs.iter().any(|tv| a_id == *tv) {
                 false
@@ -336,12 +385,13 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
 }
 
 fn unify<'ast>(
+    state: &mut State,
     ast: &'ast Expression,
     t1: &Rc<Type>,
     ast2: Option<&'ast Expression>,
     t2: &Rc<Type>,
 ) -> Result<(), Error<'ast>> {
-    fn unify_rec(t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), UnificationError> {
+    fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), UnificationError> {
         use UnificationError::*;
 
         match (&**t1, &**t2) {
@@ -354,7 +404,7 @@ fn unify<'ast>(
                     Err(TypeMismatch)
                 } else {
                     for (a1, a2) in args.iter().zip(args2.iter()) {
-                        unify_rec(a1, a2)?;
+                        unify_rec(state, a1, a2)?;
                     }
                     Ok(())
                 }
@@ -364,7 +414,7 @@ fn unify<'ast>(
                 let var1_read = var1.borrow();
                 match &*var1_read {
                     /* the 'find' in the union-find algorithm */
-                    Bound(a1) => unify_rec(a1, t2),
+                    Bound(a1) => unify_rec(state, a1, t2),
 
                     /* create binding for boundTy that is currently empty */
                     Unbound(a_id, a_level) => {
@@ -391,7 +441,7 @@ fn unify<'ast>(
                 let var2_read = var2.borrow();
                 match &*var2_read {
                     /* the 'find' in the union-find algorithm */
-                    Bound(b) => unify_rec(t1, b),
+                    Bound(b) => unify_rec(state, t1, b),
 
                     /* create binding for boundTy that is currently empty */
                     Unbound(b_id, b_level) => {
@@ -415,18 +465,116 @@ fn unify<'ast>(
             }
 
             (Fn(arg, body), Fn(arg2, body2)) => {
-                unify_rec(arg, arg2)?;
-                unify_rec(body, body2)
+                unify_rec(state, arg, arg2)?;
+                unify_rec(state, body, body2)
+            }
+
+            (Record(fields1), Record(fields2)) => {
+                // Check fields on each record, and unify types of the values against the other
+                // record. If the field doesn't exist then it is a type mismatch.
+
+                for (key, value) in fields1.map() {
+                    if fields2.map().contains_key(key) {
+                        unify_rec(state, value, fields2.get(key).unwrap())?;
+                    } else {
+                        return Err(TypeMismatch);
+                    }
+                }
+                for (key, value) in fields2.map() {
+                    if fields1.map().contains_key(key) {
+                        unify_rec(state, value, fields1.get(key).unwrap())?;
+                    } else {
+                        return Err(TypeMismatch);
+                    }
+                }
+
+                Ok(())
+            }
+
+            (Record(fields), RecordExt(ext_fields, ext))
+            | (RecordExt(ext_fields, ext), Record(fields)) => {
+                // Check the fields on the open record and match them against the fixed record. If
+                // a field doesn't exist it is a mismatch
+                for (key, value) in ext_fields.map() {
+                    if fields.map().contains_key(key) {
+                        unify_rec(state, value, fields.get(key).unwrap())?;
+                    } else {
+                        return Err(TypeMismatch);
+                    }
+                }
+
+                // Unify the open record type variable with a record of the remaining fields from
+                // the fixed record.
+                let mut rem_fields = TypeEnv::new();
+                for (key, value) in fields.map() {
+                    if !ext_fields.map().contains_key(key) {
+                        rem_fields.insert(key.clone(), Rc::clone(value));
+                    }
+                }
+                let rem_rec = Rc::new(Record(rem_fields));
+                unify_rec(state, ext, &rem_rec)
+            }
+
+            (RecordExt(fields1, var1), RecordExt(fields2, var2)) => {
+                // Check fields on each record, and unify types of the values against the other
+                // record. If the field doesn't exist then it is a type mismatch.
+                for (key, value) in fields1.map() {
+                    if fields2.map().contains_key(key) {
+                        unify_rec(state, value, fields2.get(key).unwrap())?;
+                    } else {
+                        return Err(TypeMismatch);
+                    }
+                }
+                for (key, value) in fields2.map() {
+                    if fields1.map().contains_key(key) {
+                        unify_rec(state, value, fields1.get(key).unwrap())?;
+                    } else {
+                        return Err(TypeMismatch);
+                    }
+                }
+
+                let var = state.new_type_var();
+
+                // unify { <fields-only-found-on-the-left-side> | new-type-var } varRight
+                {
+                    let mut rem_fields1 = TypeEnv::new();
+                    for (key, value) in fields1.map() {
+                        if !fields2.map().contains_key(key) {
+                            rem_fields1.insert(key.clone(), Rc::clone(value));
+                        }
+                    }
+                    let rem_rec1 = Rc::new(RecordExt(rem_fields1, Rc::clone(&var)));
+                    unify_rec(state, var2, &rem_rec1)?;
+                }
+
+                // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
+                {
+                    let mut rem_fields2 = TypeEnv::new();
+                    for (key, value) in fields2.map() {
+                        if !fields1.map().contains_key(key) {
+                            rem_fields2.insert(key.clone(), Rc::clone(value));
+                        }
+                    }
+                    let rem_rec2 = Rc::new(RecordExt(rem_fields2, Rc::clone(&var)));
+                    unify_rec(state, var1, &rem_rec2)?;
+                }
+
+                Ok(())
             }
 
             /* NOTE: Unneeded rule, never used due to [Var] and inst */
-            (PolyType(_vars, typ1), PolyType(_vars2, typ2)) => unify_rec(typ1, typ2),
+            (PolyType(_vars, typ1), PolyType(_vars2, typ2)) => unify_rec(state, typ1, typ2),
 
-            (_a, _b) => Err(TypeMismatch),
+            (Unit, _)
+            | (Named(..), _)
+            | (Fn(..), _)
+            | (PolyType(..), _)
+            | (Record(_), _)
+            | (RecordExt(..), _) => Err(TypeMismatch),
         }
     }
 
-    unify_rec(t1, t2).map_err(|e| match e {
+    unify_rec(state, t1, t2).map_err(|e| match e {
         UnificationError::TypeMismatch => {
             Error::TypeMismatch(ast, Rc::clone(&t1), ast2, Rc::clone(&t2))
         }
@@ -641,8 +789,8 @@ fn infer_rec<'ast>(
 
             add_error(
                 match op.value {
-                    U::Not => unify(e, &t, None, &BOOL.with(|t| Rc::clone(t))),
-                    U::Minus => unify(e, &t, None, &FLOAT.with(|t| Rc::clone(t))),
+                    U::Not => unify(state, e, &t, None, &BOOL.with(|t| Rc::clone(t))),
+                    U::Minus => unify(state, e, &t, None, &FLOAT.with(|t| Rc::clone(t))),
                 },
                 errors,
             );
@@ -666,13 +814,13 @@ fn infer_rec<'ast>(
         ET::If(condition, then, else_) => {
             let t = infer_rec(condition, state, env, errors);
             add_error(
-                unify(condition, &t, None, &BOOL.with(|t| Rc::clone(t))),
+                unify(state, condition, &t, None, &BOOL.with(|t| Rc::clone(t))),
                 errors,
             );
 
             let t1 = infer_rec(then, state, env, errors);
             let t2 = infer_rec(else_, state, env, errors);
-            add_error(unify(then, &t1, Some(else_), &t2), errors);
+            add_error(unify(state, then, &t1, Some(else_), &t2), errors);
 
             t2
         }
@@ -834,10 +982,10 @@ where
         .zip(args.clone())
         .zip(param_types)
         .fold(Ok(()), |result, ((arg_type, arg), param_type)| {
-            result.and_then(|_| unify(arg, arg_type, None, param_type))
+            result.and_then(|_| unify(state, arg, arg_type, None, param_type))
         })
         // If there weren't any failures, unify the Fn and return types
-        .and_then(|_| unify(ast, &call_type, None, &fn_type));
+        .and_then(|_| unify(state, ast, &call_type, None, &fn_type));
     add_error(res, errors);
 
     return_type

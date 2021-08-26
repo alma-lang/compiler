@@ -1,3 +1,5 @@
+use crate::type_env::TypeEnv;
+use indexmap::IndexMap;
 use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::char;
@@ -42,6 +44,9 @@ pub enum Type {
      */
     Fn(Rc<Type>, Rc<Type>),
 
+    Record(TypeEnv),
+    RecordExt(TypeEnv, Rc<Type>),
+
     /* PolyTypes in the form  forall 'a 'b ... 'y :: 'z
      * The TypeVar list will be a list of all monomorphic TypeVars in 'z
      * Used only in let-bindings to make the declaration polymorphic
@@ -82,6 +87,33 @@ impl Type {
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fields_to_string<'a>(
+            fields: &'a TypeEnv,
+            cur_type_var_name: &'a mut Vec<char>,
+            type_var_names: &'a mut HashMap<u32, String>,
+            s: &'a mut String,
+        ) -> u32 {
+            let mut i: u32 = 0;
+            let mut keys: Vec<_> = fields.map().keys().collect();
+            keys.sort();
+            for key in keys {
+                let value = &fields.map()[key];
+
+                if i != 0 {
+                    s.push_str(",");
+                }
+                s.push_str(" ");
+
+                s.push_str(key);
+                s.push_str(" : ");
+                to_string_rec(value, cur_type_var_name, type_var_names, s);
+
+                i += 1;
+            }
+
+            i
+        }
+
         /* keep track of number to character bindings for typevars
          * e.g. '2 => 'a, '5 => 'b, etc.
          * letters are assigned to typevars by the order in which the typevars
@@ -136,6 +168,32 @@ impl fmt::Display for Type {
                     s.push_str(" -> ");
 
                     to_string_rec(body, cur_type_var_name, type_var_names, s);
+                }
+
+                Record(fields) => {
+                    s.push_str("{");
+
+                    let num_fields = fields_to_string(fields, cur_type_var_name, type_var_names, s);
+
+                    if num_fields > 0 {
+                        s.push_str(" ");
+                    }
+                    s.push_str("}");
+                }
+
+                RecordExt(fields, var) => {
+                    s.push_str("{");
+
+                    let num_fields = fields_to_string(fields, cur_type_var_name, type_var_names, s);
+
+                    if num_fields > 0 {
+                        s.push_str(" |");
+                    }
+                    s.push_str(" ");
+
+                    to_string_rec(var, cur_type_var_name, type_var_names, s);
+
+                    s.push_str(" }");
                 }
 
                 PolyType(type_vars, t) => {
@@ -315,6 +373,87 @@ mod test {
                     )),
                 ),
                 "∀ a . a -> a",
+            ),
+            (Type::Record(TypeEnv::new()), "{}"),
+            (
+                Type::Record({
+                    let mut fields = TypeEnv::new();
+                    fields.insert(
+                        "a".to_string(),
+                        Rc::new(Type::Named("Int".to_string(), vec![])),
+                    );
+                    fields
+                }),
+                "{ a : Int }",
+            ),
+            (
+                Type::Record({
+                    let mut fields = TypeEnv::new();
+                    fields.insert(
+                        "age".to_string(),
+                        Rc::new(Type::Named("Int".to_string(), vec![])),
+                    );
+                    fields.insert(
+                        "extra".to_string(),
+                        Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                            TypeVarId(0),
+                            Level(0),
+                        ))))),
+                    );
+                    fields
+                }),
+                "{ age : Int, extra : a }",
+            ),
+            (
+                Type::RecordExt(
+                    TypeEnv::new(),
+                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(0),
+                        Level(0),
+                    ))))),
+                ),
+                "{ a }",
+            ),
+            (
+                Type::RecordExt(
+                    {
+                        let mut fields = TypeEnv::new();
+                        fields.insert(
+                            "age".to_string(),
+                            Rc::new(Type::Named("Int".to_string(), vec![])),
+                        );
+                        fields
+                    },
+                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(0),
+                        Level(0),
+                    ))))),
+                ),
+                "{ age : Int | a }",
+            ),
+            (
+                Type::RecordExt(
+                    {
+                        let mut fields = TypeEnv::new();
+                        fields.insert(
+                            "age".to_string(),
+                            Rc::new(Type::Named("Int".to_string(), vec![])),
+                        );
+                        fields.insert(
+                            "extra".to_string(),
+                            Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                                TypeVarId(0),
+                                Level(0),
+                            ))))),
+                        );
+                        fields
+                    },
+                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(1),
+                        Level(0),
+                    ))))),
+                ),
+                "{ age : Int, extra : a | b }",
             ),
         ];
 
