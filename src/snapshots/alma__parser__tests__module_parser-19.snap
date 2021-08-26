@@ -13,16 +13,20 @@ Result:
 
 [
     Module {
-        name: Node {
-            start: 7,
-            end: 11,
-            line: 1,
-            column: 7,
-            value: Identifier_ {
-                name: "Test",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Test",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [
             Node {
@@ -31,16 +35,20 @@ Result:
                 line: 3,
                 column: 0,
                 value: Import_ {
-                    module_name: Node {
-                        start: 20,
-                        end: 26,
-                        line: 3,
-                        column: 7,
-                        value: Identifier_ {
-                            name: "Banana",
-                            case: Pascal,
-                        },
-                    },
+                    module_name: ModuleName(
+                        [
+                            Node {
+                                start: 20,
+                                end: 26,
+                                line: 3,
+                                column: 7,
+                                value: Identifier_ {
+                                    name: "Banana",
+                                    case: Pascal,
+                                },
+                            },
+                        ],
+                    ),
                     alias: None,
                     exposing: [
                         Node {

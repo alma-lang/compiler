@@ -21,16 +21,20 @@ Result:
 
 [
     Module {
-        name: Node {
-            start: 46,
-            end: 55,
-            line: 6,
-            column: 9,
-            value: Identifier_ {
-                name: "Test1Test",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 46,
+                    end: 55,
+                    line: 6,
+                    column: 9,
+                    value: Identifier_ {
+                        name: "Test1Test",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [
@@ -71,16 +75,20 @@ Result:
         ],
     },
     Module {
-        name: Node {
-            start: 22,
-            end: 27,
-            line: 3,
-            column: 7,
-            value: Identifier_ {
-                name: "Test1",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 22,
+                    end: 27,
+                    line: 3,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Test1",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [
@@ -121,16 +129,20 @@ Result:
         ],
     },
     Module {
-        name: Node {
-            start: 74,
-            end: 79,
-            line: 9,
-            column: 7,
-            value: Identifier_ {
-                name: "Test2",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 74,
+                    end: 79,
+                    line: 9,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Test2",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [
@@ -171,16 +183,20 @@ Result:
         ],
     },
     Module {
-        name: Node {
-            start: 7,
-            end: 13,
-            line: 1,
-            column: 7,
-            value: Identifier_ {
-                name: "Parent",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 7,
+                    end: 13,
+                    line: 1,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Parent",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [],

@@ -14,16 +14,20 @@ Result:
 
 [
     Module {
-        name: Node {
-            start: 7,
-            end: 11,
-            line: 1,
-            column: 7,
-            value: Identifier_ {
-                name: "Test",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Test",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [
@@ -94,7 +98,7 @@ Result:
                                                         line: 3,
                                                         column: 11,
                                                         value: Identifier_ {
-                                                            name: "(+)",
+                                                            name: "__op__add",
                                                             case: Camel,
                                                         },
                                                     },
@@ -111,7 +115,7 @@ Result:
                                                 precedence: 14,
                                                 associativity: LTR,
                                                 fn_: Identifier_ {
-                                                    name: "(+)",
+                                                    name: "__op__add",
                                                     case: Camel,
                                                 },
                                             },

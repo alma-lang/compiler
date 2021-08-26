@@ -144,14 +144,17 @@ with type
             UnknownImport(import) => {
                 s.push_str(&format!(
                     "Couldn't find module `{}`\n\n{}",
-                    import.value.module_name.value, code
+                    import.value.module_name.to_string(),
+                    code
                 ));
             }
 
             UnknownImportDefinition(export, import) => {
                 s.push_str(&format!(
                     "Module `{}` doesn't appear to expose `{}`\n\n{}",
-                    import.value.module_name.value, export.value.name, code
+                    import.value.module_name.to_string(),
+                    export.value.name,
+                    code
                 ));
             }
         };
@@ -573,15 +576,15 @@ pub fn infer<'interfaces, 'ast>(
 
     // Check imports and add them to the env to type check this module
     for import in &module.imports {
-        let module_name = &import.value.module_name;
-        let mut names = vec![module_name];
+        let module_name = import.value.module_name.to_string();
+        let mut names = vec![module_name.clone()];
         if let Some(alias) = &import.value.alias {
-            names.push(alias);
+            names.push(alias.value.name.clone());
         }
         // TODO: Insert or reference these in the type env to be able to access the module
         // functions. Pending the . syntax
 
-        match module_interfaces.get(&module_name.value.name) {
+        match module_interfaces.get(&module_name) {
             Some(imported) => {
                 for exposed in &import.value.exposing {
                     for identifier in exposed.value.identifiers() {
@@ -1139,12 +1142,13 @@ last _ y = y
             for module in modules {
                 let result = match super::infer(&module_interfaces, &module) {
                     Ok(typ) => {
-                        let s = format!("{}\n\n{}\n", module.name.value, &typ);
-                        module_interfaces.insert(module.name.value.name.clone(), typ);
+                        let module_name = module.name.to_string();
+                        let s = format!("{}\n\n{}\n", &module_name, &typ);
+                        module_interfaces.insert(module_name, typ);
                         s
                     }
                     Err((typ, errs)) => {
-                        module_interfaces.insert(module.name.value.name.clone(), typ);
+                        module_interfaces.insert(module.name.to_string(), typ);
                         errs.iter()
                             .map(|e| e.to_string(&source))
                             .collect::<Vec<String>>()

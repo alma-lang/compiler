@@ -43,8 +43,34 @@ pub enum ReplEntry {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct ModuleName(pub Vec<Identifier>);
+
+impl ModuleName {
+    pub fn end(&self) -> usize {
+        self.0
+            .last()
+            .expect("Module names should never be empty")
+            .end
+    }
+}
+
+impl fmt::Display for ModuleName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|i| i.value.name.clone())
+                .collect::<Vec<String>>()
+                .join(".")
+        )
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Module {
-    pub name: Identifier,
+    pub name: ModuleName,
     pub exports: Vec<Export>,
     pub imports: Vec<Import>,
     pub definitions: Vec<Definition>,
@@ -53,7 +79,7 @@ pub struct Module {
 pub type Import = Node<Import_>;
 #[derive(Debug, PartialEq)]
 pub struct Import_ {
-    pub module_name: Identifier,
+    pub module_name: ModuleName,
     pub alias: Option<Identifier>,
     pub exposing: Vec<Export>,
 }

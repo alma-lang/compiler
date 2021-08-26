@@ -91,7 +91,7 @@ Node {
                                                             line: 2,
                                                             column: 13,
                                                             value: Identifier_ {
-                                                                name: "(+)",
+                                                                name: "__op__add",
                                                                 case: Camel,
                                                             },
                                                         },
@@ -108,7 +108,7 @@ Node {
                                                     precedence: 14,
                                                     associativity: LTR,
                                                     fn_: Identifier_ {
-                                                        name: "(+)",
+                                                        name: "__op__add",
                                                         case: Camel,
                                                     },
                                                 },

@@ -275,7 +275,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             TT::As => {
                                 self.advance();
 
-                                match self.module_identifier()? {
+                                match self.module_identifier_part()? {
                                     Some(alias) => Ok(Some(alias)),
                                     _ => Err(Error::expected_but_found(
                                         self.source,
@@ -296,7 +296,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         } else if let Some(alias) = &alias {
                             alias.end
                         } else {
-                            module_name.end
+                            module_name.end()
                         };
 
                         Ok(Some(Node {
@@ -924,11 +924,40 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         result
     }
 
-    fn module_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
+    fn module_identifier_part(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
         self.identifier(
             IdentifierCase::Pascal,
             "Expected a `PascalCase` module name",
         )
+    }
+
+    fn module_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
+        match self.module_identifier_part()? {
+            Some(name) => self
+                .module_identifier_rest(vec![name])
+                .map(|name| Some(name)),
+            None => Ok(None),
+        }
+    }
+    fn module_identifier_rest(
+        &mut self,
+        mut names: Vec<Identifier>,
+    ) -> ParseResult<'source, 'tokens, ModuleName> {
+        let dot_token = self.get_token();
+        match dot_token.kind {
+            TT::Dot => {
+                self.advance();
+
+                match self.module_identifier_part()? {
+                    Some(name) => {
+                        names.push(name);
+                        self.module_identifier_rest(names)
+                    }
+                    None => Ok(ModuleName(names)),
+                }
+            }
+            _ => Ok(ModuleName(names)),
+        }
     }
 
     fn binding_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {

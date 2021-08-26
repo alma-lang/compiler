@@ -25,10 +25,10 @@ pub fn compile(source: &Source) -> Result<String, String> {
     for module in &modules {
         match infer::infer(&module_interfaces, &module) {
             Ok(typ) => {
-                module_interfaces.insert(module.name.value.name.clone(), typ);
+                module_interfaces.insert(module.name.to_string(), typ);
             }
             Err((typ, mut module_errors)) => {
-                module_interfaces.insert(module.name.value.name.clone(), typ);
+                module_interfaces.insert(module.name.to_string(), typ);
                 errors.append(&mut module_errors);
             }
         }
@@ -131,7 +131,7 @@ fn compile_repl_entry_helper<'ast>(
     let result = infer::infer(&module_interfaces, &module);
     match result {
         Ok(typ) => {
-            module_interfaces.insert(module.name.value.name.clone(), typ);
+            module_interfaces.insert(module.name.to_string(), typ);
         }
         Err((_, mut module_errors)) => {
             errors.append(&mut module_errors);

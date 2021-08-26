@@ -10,13 +10,13 @@ use std::rc::Rc;
 
 pub fn prompt() {
     let mut module = ast::Module {
-        name: ast::Node {
+        name: ast::ModuleName(vec![ast::Node {
             value: ast::Identifier_::new("REPL"),
             start: 0,
             end: 0,
             line: 1,
             column: 0,
-        },
+        }]),
         exports: vec![],
         imports: vec![],
         definitions: vec![],

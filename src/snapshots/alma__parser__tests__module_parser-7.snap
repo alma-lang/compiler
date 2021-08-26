@@ -13,31 +13,39 @@ Result:
 
 [
     Module {
-        name: Node {
-            start: 22,
-            end: 26,
-            line: 3,
-            column: 7,
-            value: Identifier_ {
-                name: "Test",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 22,
+                    end: 26,
+                    line: 3,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Test",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [],
     },
     Module {
-        name: Node {
-            start: 7,
-            end: 13,
-            line: 1,
-            column: 7,
-            value: Identifier_ {
-                name: "Parent",
-                case: Pascal,
-            },
-        },
+        name: ModuleName(
+            [
+                Node {
+                    start: 7,
+                    end: 13,
+                    line: 1,
+                    column: 7,
+                    value: Identifier_ {
+                        name: "Parent",
+                        case: Pascal,
+                    },
+                },
+            ],
+        ),
         exports: [],
         imports: [],
         definitions: [],

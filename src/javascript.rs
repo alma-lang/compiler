@@ -33,7 +33,7 @@ pub fn generate(
     for module in modules {
         let file = generate_file(
             module,
-            module_interfaces.get(&module.name.value.name).unwrap(),
+            module_interfaces.get(&module.name.to_string()).unwrap(),
         );
         files.push(file);
     }
@@ -50,7 +50,7 @@ fn generate_file(module: &Module, _interface: &TypeEnv) -> File {
     generate_definitions(0, &mut code, true, &module.definitions);
 
     File {
-        name: module.name.value.name.clone(),
+        name: module.name.to_string(),
         contents: code,
     }
 }
@@ -58,20 +58,21 @@ fn generate_file(module: &Module, _interface: &TypeEnv) -> File {
 fn generate_imports(code: &mut String, module: &Module) {
     for import in &module.imports {
         let import = &import.value;
-        let alias = &import
-            .alias
-            .as_ref()
-            .unwrap_or(&import.module_name)
-            .value
-            .name;
 
-        write!(
-            code,
-            "import * as {} from \"{}\"\n",
-            alias,
-            import.module_name.value.name, // TODO: Wrong path
-        )
-        .unwrap();
+        // TODO: import the alias or full name module in to the JS
+        // let alias = &import
+        //     .alias
+        //     .as_ref()
+        //     .unwrap_or(&import.module_name)
+        //     .value
+        //     .name;
+        // write!(
+        //     code,
+        //     "import * as {} from \"{}\"\n",
+        //     alias,
+        //     import.module_name.value.name, // TODO: Wrong path
+        // )
+        // .unwrap();
 
         if !import.exposing.is_empty() {
             let mut identifiers = vec![];
@@ -89,7 +90,7 @@ fn generate_imports(code: &mut String, module: &Module) {
                 code,
                 "import {{{}}} from \"{}\"\n",
                 identifiers.join(", "),
-                import.module_name.value.name,
+                import.module_name.to_string(),
             )
             .unwrap();
         }
