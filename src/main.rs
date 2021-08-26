@@ -24,7 +24,8 @@ fn main() {
             SubCommand::with_name("make").about("Compile files").arg(
                 Arg::with_name("FILE")
                     .required(true)
-                    .multiple(true)
+                    // Just one file for now
+                    // .multiple(true)
                     .help("File entry points to compile"),
             ),
         )
@@ -56,7 +57,9 @@ fn main() {
             matches.value_of("FILE").unwrap().to_owned(),
         );
     } else if let Some(matches) = matches.subcommand_matches("make") {
-        let files = matches.values_of_lossy("FILE").unwrap();
+        // TODO: Just one file for now
+        // let files = matches.values_of_lossy("FILE").unwrap();
+        let files = vec![matches.value_of_lossy("FILE").unwrap().into_owned()];
         cli::compile_files(files);
     }
 }
