@@ -1,15 +1,18 @@
 ---
 source: src/infer.rs
-expression: "infer(\"\\\nlet add x y = x + y\n\nadd 5\")"
+expression: "infer(r\"\\a -> a 1 a\")"
 
 ---
 Input:
 
-let add x y = x + y
-
-add 5
+\a -> a 1 a
 
 ---
 Output:
 
-Float -> Float
+[1:6]
+
+Infinite type
+
+  1│  \a -> a 1 a
+   │        ↑↑↑↑↑

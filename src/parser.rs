@@ -1383,6 +1383,8 @@ add 5"
 
         assert_snapshot!(parse("{ x = 5 }"));
 
+        assert_snapshot!(parse("{ x = { x = 5 } }"));
+
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);
             let tokens = tokenizer::parse(&source).unwrap();

@@ -1,0 +1,13 @@
+---
+source: src/infer.rs
+expression: "infer(r\"{ x = 1, y = True }\")"
+
+---
+Input:
+
+{ x = 1, y = True }
+
+---
+Output:
+
+{ x : Float, y : Bool }

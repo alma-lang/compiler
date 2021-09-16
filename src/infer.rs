@@ -784,7 +784,16 @@ fn infer_rec<'ast>(
 
         ET::String_(_) => STRING.with(|t| Rc::clone(t)),
 
-        ET::Record(_) => todo!(),
+        ET::Record(fields) => {
+            let mut typed_fields = TypeEnv::new();
+
+            for (name, value) in fields {
+                let t = infer_rec(value, state, env, errors);
+                typed_fields.insert(name.value.name.clone(), t);
+            }
+
+            Rc::new(Record(typed_fields))
+        }
 
         ET::Unary(op, e) => {
             let t = infer_rec(e, state, env, errors);
@@ -1027,20 +1036,25 @@ mod tests {
         assert_snapshot!(infer(r"\f -> \x -> f x",));
 
         assert_snapshot!(infer(r"\f -> \x -> f (f x)",));
+
         // (+):
 
         assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m f (n f x)",));
+
         // succ:
 
         assert_snapshot!(infer(r"\n -> \f -> \x -> f (n f x)",));
+
         // mult:
 
         assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m (n f) x",));
+
         // pred:
 
         assert_snapshot!(infer(
             r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)",
         ));
+
         // let generalization tests
 
         assert_snapshot!(infer(
@@ -1058,11 +1072,13 @@ mod tests {
         y
       ",
         ));
+
         // if:
 
         assert_snapshot!(infer("if 1 == 1 then True else False"));
 
         assert_snapshot!(infer("if 1 == 1 then 1 else 2"));
+
         // errors:
 
         assert_snapshot!(infer(
@@ -1070,6 +1086,8 @@ mod tests {
         ));
 
         assert_snapshot!(infer("if 1 then 5 else 1"));
+
+        // let:
 
         assert_snapshot!(infer(
             r"let incr = \n -> n + 1
@@ -1086,14 +1104,26 @@ incr True"
 
         assert_snapshot!(infer("let a = bar\nbar"));
 
-        assert_snapshot!(infer(r"\a -> a 1 a",));
-
         assert_snapshot!(infer(
             "\
 let add x y = x + y
 
 add 5"
         ));
+
+        // Infinite type:
+
+        assert_snapshot!(infer(r"\a -> a 1 a",));
+
+        // Record literal
+
+        assert_snapshot!(infer(r"{}"));
+
+        assert_snapshot!(infer(r"{ x = 1 }"));
+
+        assert_snapshot!(infer(r"{ x = 1, y = True }"));
+
+        assert_snapshot!(infer("{ x = { x = 5 } }"));
 
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);

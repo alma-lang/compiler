@@ -1,0 +1,79 @@
+---
+source: src/parser.rs
+expression: "parse(\"{ x = { x = 5 } }\")"
+
+---
+Input:
+
+{ x = { x = 5 } }
+
+Result:
+
+Node {
+    start: 0,
+    end: 17,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Record(
+            [
+                (
+                    Node {
+                        start: 2,
+                        end: 3,
+                        line: 1,
+                        column: 2,
+                        value: Identifier_ {
+                            name: "x",
+                            case: Camel,
+                        },
+                    },
+                    Node {
+                        start: 6,
+                        end: 15,
+                        line: 1,
+                        column: 6,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Record(
+                                [
+                                    (
+                                        Node {
+                                            start: 8,
+                                            end: 9,
+                                            line: 1,
+                                            column: 8,
+                                            value: Identifier_ {
+                                                name: "x",
+                                                case: Camel,
+                                            },
+                                        },
+                                        Node {
+                                            start: 12,
+                                            end: 13,
+                                            line: 1,
+                                            column: 12,
+                                            value: Expression_ {
+                                                typ: RefCell {
+                                                    value: None,
+                                                },
+                                                expr: Float(
+                                                    5.0,
+                                                ),
+                                            },
+                                        },
+                                    ),
+                                ],
+                            ),
+                        },
+                    },
+                ),
+            ],
+        ),
+    },
+}

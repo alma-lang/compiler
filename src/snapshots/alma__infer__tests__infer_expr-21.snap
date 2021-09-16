@@ -1,0 +1,13 @@
+---
+source: src/infer.rs
+expression: "infer(\"{ x = { x = 5 } }\")"
+
+---
+Input:
+
+{ x = { x = 5 } }
+
+---
+Output:
+
+{ x : { x : Float } }

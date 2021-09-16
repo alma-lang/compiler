@@ -1,0 +1,13 @@
+---
+source: src/infer.rs
+expression: "infer(r\"{}\")"
+
+---
+Input:
+
+{}
+
+---
+Output:
+
+{}
