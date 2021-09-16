@@ -1,5 +1,4 @@
 use crate::type_env::TypeEnv;
-use indexmap::IndexMap;
 use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::char;

@@ -1,0 +1,25 @@
+---
+source: src/parser.rs
+expression: "parse(\"{}\")"
+
+---
+Input:
+
+{}
+
+Result:
+
+Node {
+    start: 0,
+    end: 2,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Record(
+            [],
+        ),
+    },
+}

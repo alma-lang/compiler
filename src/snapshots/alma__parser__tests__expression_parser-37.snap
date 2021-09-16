@@ -9,20 +9,20 @@ if True { 1 } else 2
 
 Result:
 
-1:8: Expected the keyword `then` and an expression to parse the if expression, but instead found: '{'
+1:10: Expected an identifier for the name of the field in the record, but instead found: '1'
 
   1│  if True { 1 } else 2
-   │          ↑
+   │            ↑
 
 Error {
-    message: "1:8: Expected the keyword `then` and an expression to parse the if expression, but instead found: \'{\'\n\n  1│  if True { 1 } else 2\n   │          ↑",
+    message: "1:10: Expected an identifier for the name of the field in the record, but instead found: \'1\'\n\n  1│  if True { 1 } else 2\n   │            ↑",
     token: Token {
-        kind: LeftBrace,
-        position: 8,
-        end_position: 9,
-        lexeme: "{",
+        kind: Float,
+        position: 10,
+        end_position: 11,
+        lexeme: "1",
         line: 1,
-        column: 8,
+        column: 10,
         indent: 0,
     },
 }

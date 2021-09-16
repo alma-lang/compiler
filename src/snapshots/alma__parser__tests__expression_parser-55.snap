@@ -1,0 +1,28 @@
+---
+source: src/parser.rs
+expression: "parse(\"{ Sneaky : 5 }\")"
+
+---
+Input:
+
+{ Sneaky : 5 }
+
+Result:
+
+1:2: Expected a `camelCase` identifier, but instead found: 'Sneaky'
+
+  1│  { Sneaky : 5 }
+   │    ↑↑↑↑↑↑
+
+Error {
+    message: "1:2: Expected a `camelCase` identifier, but instead found: \'Sneaky\'\n\n  1│  { Sneaky : 5 }\n   │    ↑↑↑↑↑↑",
+    token: Token {
+        kind: Identifier,
+        position: 2,
+        end_position: 8,
+        lexeme: "Sneaky",
+        line: 1,
+        column: 2,
+        indent: 0,
+    },
+}

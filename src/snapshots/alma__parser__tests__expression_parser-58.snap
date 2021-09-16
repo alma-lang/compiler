@@ -1,0 +1,78 @@
+---
+source: src/parser.rs
+expression: "parse(\"{ x : 5 , y : 10 }\")"
+
+---
+Input:
+
+{ x : 5 , y : 10 }
+
+Result:
+
+Node {
+    start: 0,
+    end: 18,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Record(
+            [
+                (
+                    Node {
+                        start: 2,
+                        end: 3,
+                        line: 1,
+                        column: 2,
+                        value: Identifier_ {
+                            name: "x",
+                            case: Camel,
+                        },
+                    },
+                    Node {
+                        start: 6,
+                        end: 7,
+                        line: 1,
+                        column: 6,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                5.0,
+                            ),
+                        },
+                    },
+                ),
+                (
+                    Node {
+                        start: 10,
+                        end: 11,
+                        line: 1,
+                        column: 10,
+                        value: Identifier_ {
+                            name: "y",
+                            case: Camel,
+                        },
+                    },
+                    Node {
+                        start: 14,
+                        end: 16,
+                        line: 1,
+                        column: 14,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                10.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        ),
+    },
+}

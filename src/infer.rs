@@ -784,6 +784,8 @@ fn infer_rec<'ast>(
 
         ET::String_(_) => STRING.with(|t| Rc::clone(t)),
 
+        ET::Record(_) => todo!(),
+
         ET::Unary(op, e) => {
             let t = infer_rec(e, state, env, errors);
 

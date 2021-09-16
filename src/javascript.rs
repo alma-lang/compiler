@@ -173,6 +173,7 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
         ET::Float(float) => float.to_string(),
         ET::String_(string) => format!("\"{}\"", string),
         ET::Identifier(identifier) => identifier.value.name.to_string(),
+        ET::Record(_fields) => todo!(),
         ET::Unary(unary, expression) => format!(
             "{}{}",
             match &unary.value {

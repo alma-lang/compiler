@@ -19,7 +19,10 @@
     // Other primitives
     ● call           → primary ( primary )*
     ● primary        → NUMBER | STRING | IDENTIFIER | "false" | "true"
+                     | record
                      | "(" expression? ")"
+    ● record         → "{" ( field ("," field)* )? "}"
+    ● field          → IDENTIFIER ":" expression
 */
 
 use crate::ast::{
@@ -886,6 +889,33 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 Ok(Some(Node::new(E::untyped(String_(value)), &token, &token)))
             }
 
+            LeftBrace => {
+                self.advance();
+
+                let next_token = self.get_token();
+
+                (match next_token.kind {
+                    RightBrace => Ok(Node::new(E::untyped(Record(vec![])), &token, next_token)),
+
+                    _ => self.record_fields().and_then(|fields| {
+                        let last_token = self.get_token();
+
+                        match last_token.kind {
+                            RightBrace => {
+                                Ok(Node::new(E::untyped(Record(fields)), &token, &last_token))
+                            }
+                            _ => Err(Error::expected_but_found(
+                                self.source,
+                                &last_token,
+                                Some(&token),
+                                "Expected ')' after parenthesized expression",
+                            )),
+                        }
+                    }),
+                })
+                .map(|ast| Some(ast))
+            }
+
             LeftParen => {
                 self.advance();
 
@@ -922,6 +952,49 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         };
 
         result
+    }
+
+    fn record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Expression)>> {
+        let mut fields = vec![];
+
+        loop {
+            let field = self.record_field()?;
+            fields.push(field);
+
+            let comma_token = self.get_token();
+            if let TT::Comma = comma_token.kind {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        Ok(fields)
+    }
+
+    fn record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Expression)> {
+        match self.binding_identifier()? {
+            Some(identifier) => match self.get_token().kind {
+                Colon | Equal => {
+                    self.advance();
+
+                    Ok((identifier, self.expression()?))
+                }
+                _ => Err(Error::expected_but_found(
+                    self.source,
+                    self.get_token(),
+                    None,
+                    "Expected a ':' separating the name of \
+                        the field and the value in the record",
+                )),
+            },
+            _ => Err(Error::expected_but_found(
+                self.source,
+                self.get_token(),
+                None,
+                "Expected an identifier for the name of the field in the record",
+            )),
+        }
     }
 
     fn module_identifier_part(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
@@ -1291,6 +1364,24 @@ incr 5
 let add x y = x + y
 add 5"
         ));
+
+        assert_snapshot!(parse("{}"));
+
+        assert_snapshot!(parse("let a = { in 5"));
+
+        assert_snapshot!(parse("{ 1 : 5 }"));
+
+        assert_snapshot!(parse("{ x : 5 }"));
+
+        assert_snapshot!(parse("{ Sneaky : 5 }"));
+
+        assert_snapshot!(parse("{ , x : 5 }"));
+
+        assert_snapshot!(parse("{ x : 5 , }"));
+
+        assert_snapshot!(parse("{ x : 5 , y : 10 }"));
+
+        assert_snapshot!(parse("{ x = 5 }"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);

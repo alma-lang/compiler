@@ -135,6 +135,7 @@ pub enum ExpressionType {
     Float(f64),
     String_(String),
     Identifier(Identifier),
+    Record(Vec<(Identifier, Expression)>),
     Unary(Unary, Box<Expression>),
     Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
     Lambda(Vec<Pattern>, Box<Expression>),
