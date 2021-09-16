@@ -1,13 +1,3 @@
+# alma
 
-
-# Build
-```
-npm run build
-```
-
-# Watch
-
-```
-npm run watch
-```
-
+The alma compiler.
