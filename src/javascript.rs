@@ -173,7 +173,27 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
         ET::Float(float) => float.to_string(),
         ET::String_(string) => format!("\"{}\"", string),
         ET::Identifier(identifier) => identifier.value.name.to_string(),
-        ET::Record(_fields) => todo!(),
+        ET::Record(fields) => {
+            let mut record = String::new();
+            record.push_str("{\n");
+
+            {
+                let indent = add_indent(indent);
+
+                for (key, value) in fields {
+                    let value = generate_expression(indent, &mut record, value);
+                    line(
+                        &mut record,
+                        indent,
+                        &format!("{}: {},", key.value.name, value),
+                    );
+                }
+            }
+
+            indented(&mut record, indent, "}");
+
+            record
+        }
         ET::Unary(unary, expression) => format!(
             "{}{}",
             match &unary.value {
