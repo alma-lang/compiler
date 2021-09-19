@@ -91,7 +91,7 @@ impl fmt::Display for Type {
             cur_type_var_name: &'a mut Vec<char>,
             type_var_names: &'a mut HashMap<u32, String>,
             s: &'a mut String,
-        ) -> u32 {
+        ) {
             let mut i: u32 = 0;
             let mut keys: Vec<_> = fields.map().keys().collect();
             keys.sort();
@@ -109,8 +109,6 @@ impl fmt::Display for Type {
 
                 i += 1;
             }
-
-            i
         }
 
         /* keep track of number to character bindings for typevars
@@ -172,25 +170,24 @@ impl fmt::Display for Type {
                 Record(fields) => {
                     s.push_str("{");
 
-                    let num_fields = fields_to_string(fields, cur_type_var_name, type_var_names, s);
+                    fields_to_string(fields, cur_type_var_name, type_var_names, s);
 
-                    if num_fields > 0 {
+                    if fields.map().len() > 0 {
                         s.push_str(" ");
                     }
                     s.push_str("}");
                 }
 
                 RecordExt(fields, var) => {
-                    s.push_str("{");
-
-                    let num_fields = fields_to_string(fields, cur_type_var_name, type_var_names, s);
-
-                    if num_fields > 0 {
-                        s.push_str(" |");
-                    }
-                    s.push_str(" ");
+                    s.push_str("{ ");
 
                     to_string_rec(var, cur_type_var_name, type_var_names, s);
+
+                    if fields.map().len() > 0 {
+                        s.push_str(" |");
+                    }
+
+                    fields_to_string(fields, cur_type_var_name, type_var_names, s);
 
                     s.push_str(" }");
                 }
@@ -428,7 +425,7 @@ mod test {
                         Level(0),
                     ))))),
                 ),
-                "{ age : Int | a }",
+                "{ a | age : Int }",
             ),
             (
                 Type::RecordExt(
@@ -452,7 +449,7 @@ mod test {
                         Level(0),
                     ))))),
                 ),
-                "{ age : Int, extra : a | b }",
+                "{ a | age : Int, extra : b }",
             ),
         ];
 
