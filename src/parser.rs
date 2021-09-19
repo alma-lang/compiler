@@ -13,12 +13,14 @@
     ● pattern        → parsed from Ast.Pattern
     ● if             → "if" binary "then" expression "else" expression
     // Operators
-    ● binary         → binary ( binop binary )*
+    ● binary         → unary ( binop unary )*
     ● binop          → // parsed from Ast.Binop operator list
     ● unary          → ( "not" | "-" )? call
     // Other primitives
-    ● call           → primary ( primary )*
-    ● primary        → NUMBER | STRING | IDENTIFIER | "false" | "true"
+    ● call           → prop_access ( prop_access )*
+    ● prop_access    → primary ( "." IDENTIFIER )*
+    ● primary        → NUMBER | STRING | "false" | "true"
+                     | IDENTIFIER
                      | record
                      | "(" expression? ")"
     ● record         → "{" ( field ("," field)* )? "}"
@@ -802,7 +804,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     fn call(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         let token = self.get_token();
 
-        self.primary().and_then(|expr| match expr {
+        self.prop_access().and_then(|expr| match expr {
             Some(expr) => self.arguments(&token, vec![]).map(|args| {
                 if args.len() == 0 {
                     expr
@@ -850,6 +852,80 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         } else {
             Ok(args)
         }
+    }
+
+    fn prop_access(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+        self.primary().and_then(|expr| match expr {
+            Some(expr) => {
+                let mut expr = expr;
+
+                loop {
+                    let dot_token = self.get_token();
+                    match dot_token.kind {
+                        // Dot token without whitespace between the prev token is a record access
+                        Dot if dot_token.position == expr.end => {
+                            self.advance();
+
+                            let identifier_token = self.get_token();
+                            match identifier_token.kind {
+                                // Dot token without whitespace between it and the identifier is a prop access
+                                TT::Identifier
+                                    if identifier_token.position == dot_token.end_position =>
+                                {
+                                    self.advance();
+
+                                    let name_identifier = Node::new(
+                                        Identifier_::new(identifier_token.lexeme),
+                                        &identifier_token,
+                                        &identifier_token,
+                                    );
+                                    expr = {
+                                        let start = expr.start;
+                                        let end = name_identifier.end;
+                                        let line = expr.line;
+                                        let column = expr.column;
+                                        Node {
+                                            value: E::untyped(PropAccess(
+                                                Box::new(expr),
+                                                name_identifier,
+                                            )),
+                                            start,
+                                            end,
+                                            line,
+                                            column,
+                                        }
+                                    };
+                                }
+
+                                TT::Identifier => {
+                                    return Err(Error::new(
+                                        &self.source,
+                                        &dot_token,
+                                        None,
+                                        "A property access must have the dot \
+                                        and identifier together, \
+                                        like this `a.b.c`",
+                                    ));
+                                }
+                                _ => {
+                                    return Err(Error::new(
+                                        &self.source,
+                                        &dot_token,
+                                        None,
+                                        "Expected an identifier after a \
+                                        dot for the property access",
+                                    ));
+                                }
+                            }
+                        }
+                        _ => break,
+                    }
+                }
+
+                Ok(Some(expr))
+            }
+            None => Ok(None),
+        })
     }
 
     fn primary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
@@ -1384,6 +1460,14 @@ add 5"
         assert_snapshot!(parse("{ x = 5 }"));
 
         assert_snapshot!(parse("{ x = { x = 5 } }"));
+
+        assert_snapshot!(parse("a.b"));
+
+        assert_snapshot!(parse("a. b"));
+
+        assert_snapshot!(parse("a.b.c.d"));
+
+        // assert_snapshot!(parse("a .b"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);

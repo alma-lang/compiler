@@ -795,6 +795,8 @@ fn infer_rec<'ast>(
             Rc::new(Record(typed_fields))
         }
 
+        ET::PropAccess(_expr, _accessors) => todo!(),
+
         ET::Unary(op, e) => {
             let t = infer_rec(e, state, env, errors);
 
