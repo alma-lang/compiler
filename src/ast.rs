@@ -136,6 +136,7 @@ pub enum ExpressionType {
     String_(String),
     Identifier(Identifier),
     PropAccess(Box<Expression>, Identifier),
+    PropAccessLambda(Identifier),
     Record(Vec<(Identifier, Expression)>),
     Unary(Unary, Box<Expression>),
     Binary(Box<Expression>, Binop, Box<[Expression; 2]>),

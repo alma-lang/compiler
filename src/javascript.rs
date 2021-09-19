@@ -195,6 +195,7 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             record
         }
         ET::PropAccess(_expr, _accessors) => todo!(),
+        ET::PropAccessLambda(_field) => todo!(),
         ET::Unary(unary, expression) => format!(
             "{}{}",
             match &unary.value {

@@ -21,6 +21,7 @@
     ● prop_access    → primary ( "." IDENTIFIER )*
     ● primary        → NUMBER | STRING | "false" | "true"
                      | IDENTIFIER
+                     | "." IDENTIFIER
                      | record
                      | "(" expression? ")"
     ● record         → "{" ( field ("," field)* )? "}"
@@ -1017,6 +1018,51 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 .map(|ast| Some(ast))
             }
 
+            Dot => {
+                self.advance();
+
+                let identifier_token = self.get_token();
+                match identifier_token.kind {
+                    // Dot token without whitespace between it and the identifier is a lambda w/ prop access
+                    TT::Identifier if identifier_token.position == token.end_position => {
+                        self.advance();
+
+                        let name_identifier = Node::new(
+                            Identifier_::new(identifier_token.lexeme),
+                            &identifier_token,
+                            &identifier_token,
+                        );
+                        Ok(Some(Node::new(
+                            E::untyped(PropAccessLambda(name_identifier)),
+                            &token,
+                            &identifier_token,
+                        )))
+                    }
+
+                    // Dot with whitespace and an identifier afterwards
+                    TT::Identifier => {
+                        return Err(Error::new(
+                            &self.source,
+                            &token,
+                            None,
+                            "A property access must have the dot \
+                                and identifier together, \
+                                        like this `.name`",
+                        ));
+                    }
+
+                    _ => {
+                        return Err(Error::new(
+                            &self.source,
+                            &token,
+                            None,
+                            "Expected an identifier after a \
+                                dot for the property access",
+                        ));
+                    }
+                }
+            }
+
             _ => Ok(None),
         };
 
@@ -1467,7 +1513,11 @@ add 5"
 
         assert_snapshot!(parse("a.b.c.d"));
 
-        // assert_snapshot!(parse("a .b"));
+        assert_snapshot!(parse(".b"));
+
+        assert_snapshot!(parse(". b"));
+
+        assert_snapshot!(parse("a .b"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);
