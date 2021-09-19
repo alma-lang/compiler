@@ -1025,8 +1025,6 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 match identifier_token.kind {
                     // Dot token without whitespace between it and the identifier is a lambda w/ prop access
                     TT::Identifier if identifier_token.position == token.end_position => {
-                        self.advance();
-
                         let name_identifier = Node::new(
                             Identifier_::new(identifier_token.lexeme),
                             &identifier_token,
@@ -1518,6 +1516,8 @@ add 5"
         assert_snapshot!(parse(". b"));
 
         assert_snapshot!(parse("a .b"));
+
+        assert_snapshot!(parse(".a b"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(&code);
