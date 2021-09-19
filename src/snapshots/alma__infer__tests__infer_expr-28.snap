@@ -1,0 +1,28 @@
+---
+source: src/infer.rs
+expression: "infer(\".name { age = 1 }\")"
+
+---
+Input:
+
+.name { age = 1 }
+
+---
+Output:
+
+[1:6]
+
+Type mismatch:  { age : Float }  ≠  { a | name : b }
+
+Expected
+
+  1│  .name { age = 1 }
+   │        ↑↑↑↑↑↑↑↑↑↑↑
+
+to be
+
+{ a | name : b }
+
+but seems to be
+
+{ age : Float }

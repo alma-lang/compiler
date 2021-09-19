@@ -125,7 +125,7 @@ with type
 
 to have the same type as
 
-${3}
+{3}
 
 with type
 
@@ -795,9 +795,41 @@ fn infer_rec<'ast>(
             Rc::new(Record(typed_fields))
         }
 
-        ET::PropAccess(_expr, _field) => todo!(),
+        ET::PropAccess(expr, field) => {
+            let field_type = state.new_type_var();
+            let remaining_fields_type = state.new_type_var();
+            let record_type = Rc::new(RecordExt(
+                {
+                    let mut fields = TypeEnv::new();
+                    fields.insert(field.value.name.clone(), Rc::clone(&field_type));
+                    fields
+                },
+                remaining_fields_type,
+            ));
 
-        ET::PropAccessLambda(_field) => todo!(),
+            let expr_type = infer_rec(expr, state, env, errors);
+
+            add_error(unify(state, expr, &expr_type, None, &record_type), errors);
+
+            field_type
+        }
+
+        ET::PropAccessLambda(field) => {
+            let field_type = state.new_type_var();
+            let remaining_fields_type = state.new_type_var();
+
+            Rc::new(Fn(
+                Rc::new(RecordExt(
+                    {
+                        let mut fields = TypeEnv::new();
+                        fields.insert(field.value.name.clone(), Rc::clone(&field_type));
+                        fields
+                    },
+                    remaining_fields_type,
+                )),
+                field_type,
+            ))
+        }
 
         ET::Unary(op, e) => {
             let t = infer_rec(e, state, env, errors);
@@ -1128,6 +1160,24 @@ add 5"
         assert_snapshot!(infer(r"{ x = 1, y = True }"));
 
         assert_snapshot!(infer("{ x = { x = 5 } }"));
+
+        // Property access
+
+        assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.age"#));
+
+        assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.msg"#));
+
+        assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.wat"#));
+
+        assert_snapshot!(infer(r#"let a = "Hi" in a.wat"#));
+
+        // Property access shorthand lambda
+
+        assert_snapshot!(infer(".name"));
+
+        assert_snapshot!(infer(".name { name = 1 }"));
+
+        assert_snapshot!(infer(".name { age = 1 }"));
 
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);

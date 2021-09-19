@@ -1,0 +1,13 @@
+---
+source: src/infer.rs
+expression: "infer(r#\"{ age = 1, msg = \"Hello\" }.age\"#)"
+
+---
+Input:
+
+{ age = 1, msg = "Hello" }.age
+
+---
+Output:
+
+Float
