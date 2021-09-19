@@ -163,6 +163,7 @@ fn generate_let(indent: usize, code: &mut String, pattern: &Pattern, expression:
 fn generate_expression(indent: usize, code: &mut String, expression: &Expression) -> String {
     match &expression.value.expr {
         ET::Unit => "()".to_string(),
+
         ET::Bool(bool_) => {
             if *bool_ {
                 "true".to_string()
@@ -170,9 +171,13 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
                 "false".to_string()
             }
         }
+
         ET::Float(float) => float.to_string(),
+
         ET::String_(string) => format!("\"{}\"", string),
+
         ET::Identifier(identifier) => identifier.value.name.to_string(),
+
         ET::Record(fields) => {
             let mut record = String::new();
             record.push_str("{\n");
@@ -181,7 +186,7 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
                 let indent = add_indent(indent);
 
                 for (key, value) in fields {
-                    let value = generate_expression(indent, &mut record, value);
+                    let value = generate_expression(indent, code, value);
                     line(
                         &mut record,
                         indent,
@@ -194,8 +199,15 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
 
             record
         }
-        ET::PropAccess(_expr, _accessors) => todo!(),
-        ET::PropAccessLambda(_field) => todo!(),
+
+        ET::PropAccess(expr, field) => format!(
+            "{}.{}",
+            generate_expression(indent, code, expr),
+            field.value.name
+        ),
+
+        ET::PropAccessLambda(field) => format!("(r => r.{})", field.value.name),
+
         ET::Unary(unary, expression) => format!(
             "{}{}",
             match &unary.value {
@@ -204,15 +216,19 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             },
             generate_expression(indent, code, expression)
         ),
+
         ET::Binary(binop_expression, _binop, arg_expressions) => {
             generate_fn_call(indent, code, binop_expression, arg_expressions.iter())
         }
+
         ET::Lambda(patterns, body) => {
             let mut lambda = String::new();
             generate_function(indent, &mut lambda, "", patterns, body);
             lambda
         }
+
         ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter().map(|t| t)),
+
         ET::Let(definitions, body) => {
             let mut let_ = String::new();
             let_.push_str("function() {\n");
@@ -227,6 +243,7 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             indented(&mut let_, indent, "}()");
             let_
         }
+
         ET::If(condition, then, else_) => {
             // TODO: Use ternary if the if doesn't need many statements
             let mut if_ = String::new();
