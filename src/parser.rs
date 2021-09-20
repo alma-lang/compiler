@@ -933,8 +933,14 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         let token = self.get_token();
 
         let result = match token.kind {
-            False => Ok(Some(Node::new(E::untyped(Bool(false)), &token, &token))),
-            True => Ok(Some(Node::new(E::untyped(Bool(true)), &token, &token))),
+            False => {
+                self.advance();
+                Ok(Some(Node::new(E::untyped(Bool(false)), &token, &token)))
+            }
+            True => {
+                self.advance();
+                Ok(Some(Node::new(E::untyped(Bool(true)), &token, &token)))
+            }
 
             TT::Float => {
                 let lexeme = token.lexeme;
@@ -947,20 +953,28 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     )
                 })?;
 
+                self.advance();
+
                 Ok(Some(Node::new(E::untyped(Float(n)), &token, &token)))
             }
 
-            TT::Identifier => Ok(Some(Node::new(
-                E::untyped(ET::Identifier(Node::new(
-                    Identifier_::new(token.lexeme),
+            TT::Identifier => {
+                self.advance();
+
+                Ok(Some(Node::new(
+                    E::untyped(ET::Identifier(Node::new(
+                        Identifier_::new(token.lexeme),
+                        &token,
+                        &token,
+                    ))),
                     &token,
                     &token,
-                ))),
-                &token,
-                &token,
-            ))),
+                )))
+            }
 
             TT::String_ => {
+                self.advance();
+
                 let lexeme = token.lexeme;
                 let value = lexeme[1..(lexeme.len() - 1)].to_string();
                 Ok(Some(Node::new(E::untyped(String_(value)), &token, &token)))
@@ -968,18 +982,30 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
             LeftBrace => {
                 self.advance();
-
                 let next_token = self.get_token();
 
-                (match next_token.kind {
-                    RightBrace => Ok(Node::new(E::untyped(Record(vec![])), &token, next_token)),
+                match next_token.kind {
+                    RightBrace => {
+                        self.advance();
+                        Ok(Some(Node::new(
+                            E::untyped(Record(vec![])),
+                            &token,
+                            next_token,
+                        )))
+                    }
 
                     _ => self.record_fields().and_then(|fields| {
                         let last_token = self.get_token();
 
                         match last_token.kind {
                             RightBrace => {
-                                Ok(Node::new(E::untyped(Record(fields)), &token, &last_token))
+                                self.advance();
+
+                                Ok(Some(Node::new(
+                                    E::untyped(Record(fields)),
+                                    &token,
+                                    &last_token,
+                                )))
                             }
                             _ => Err(Error::expected_but_found(
                                 self.source,
@@ -989,23 +1015,27 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             )),
                         }
                     }),
-                })
-                .map(|ast| Some(ast))
+                }
             }
 
             LeftParen => {
                 self.advance();
-
                 let next_token = self.get_token();
 
-                (match next_token.kind {
-                    RightParen => Ok(Node::new(E::untyped(Unit), &token, next_token)),
+                match next_token.kind {
+                    RightParen => {
+                        self.advance();
+                        Ok(Some(Node::new(E::untyped(Unit), &token, next_token)))
+                    }
 
                     _ => self.expression().and_then(|expr| {
                         let last_token = self.get_token();
 
                         match last_token.kind {
-                            RightParen => Ok(expr),
+                            RightParen => {
+                                self.advance();
+                                Ok(Some(expr))
+                            }
                             _ => Err(Error::expected_but_found(
                                 self.source,
                                 &last_token,
@@ -1014,17 +1044,18 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             )),
                         }
                     }),
-                })
-                .map(|ast| Some(ast))
+                }
             }
 
             Dot => {
                 self.advance();
-
                 let identifier_token = self.get_token();
+
                 match identifier_token.kind {
                     // Dot token without whitespace between it and the identifier is a lambda w/ prop access
                     TT::Identifier if identifier_token.position == token.end_position => {
+                        self.advance();
+
                         let name_identifier = Node::new(
                             Identifier_::new(identifier_token.lexeme),
                             &identifier_token,
@@ -1062,13 +1093,6 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             }
 
             _ => Ok(None),
-        };
-
-        // None of the branches advance after the last successful token, so we do it
-        // here to avoid repetition
-        match result {
-            Ok(Some(_)) => self.advance(),
-            _ => (),
         };
 
         result
