@@ -72,11 +72,12 @@ impl<'a> Source<'a> {
         self.code.char_indices()
     }
 
-    pub fn lines_report_at_position_with_pointer(
+    pub fn lines_report_at_position(
         &self,
         position: usize,
         end_position: Option<usize>,
         line_number: u32,
+        show_pointer: bool,
     ) -> Option<String> {
         if self.len() == 0 {
             return None;
@@ -123,20 +124,22 @@ impl<'a> Source<'a> {
                     line_number, line_number_width, line
                 ));
 
-                let num_pointers = max(1, end_position.unwrap_or(position) - position);
-                let num_spaces = if point_to_end_of_input {
-                    column_number + 1
-                } else {
-                    column_number
-                };
+                if show_pointer {
+                    let num_pointers = max(1, end_position.unwrap_or(position) - position);
+                    let num_spaces = if point_to_end_of_input {
+                        column_number + 1
+                    } else {
+                        column_number
+                    };
 
-                message.push_str(&format!(
-                    "  {0:1$}│  {2}{3}",
-                    " ",
-                    line_number_width,
-                    str::repeat(" ", num_spaces as usize),
-                    str::repeat("↑", num_pointers as usize)
-                ));
+                    message.push_str(&format!(
+                        "  {0:1$}│  {2}{3}",
+                        " ",
+                        line_number_width,
+                        str::repeat(" ", num_spaces as usize),
+                        str::repeat("↑", num_pointers as usize)
+                    ));
+                }
             }
             lines => {
                 for (i, l) in lines.iter().enumerate() {
@@ -144,10 +147,11 @@ impl<'a> Source<'a> {
                         message.push_str("\n");
                     }
                     message.push_str(&format!(
-                        "  {0:1$}│→ {2}",
+                        "  {0:1$}│{3} {2}",
                         line_number + i as u32,
                         line_number_width,
-                        l
+                        l,
+                        if show_pointer { "→" } else { " " },
                     ));
                 }
             }
@@ -163,6 +167,15 @@ impl<'a> Source<'a> {
             ));
         }
         Some(message)
+    }
+
+    pub fn lines_report_at_position_with_pointer(
+        &self,
+        position: usize,
+        end_position: Option<usize>,
+        line_number: u32,
+    ) -> Option<String> {
+        self.lines_report_at_position(position, end_position, line_number, true)
     }
 
     pub fn to_string_with_line_and_col(&self, line: u32, column: u32) -> String {

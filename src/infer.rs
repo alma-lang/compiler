@@ -42,6 +42,7 @@ enum UnificationError {
 #[derive(Debug)]
 pub enum Error<'ast> {
     UndefinedIdentifier(&'ast Identifier, &'ast Expression),
+    DuplicateField(&'ast Identifier, &'ast Expression),
     TypeMismatch(
         &'ast Expression,
         Rc<Type>,
@@ -62,6 +63,7 @@ impl<'ast> Error<'ast> {
 
         let (position, line_number, column, end) = match self {
             UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
+            DuplicateField(node, _) => (node.start, node.line, node.column, node.end),
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
             UndefinedExport(node) => (node.start, node.line, node.column, node.end),
@@ -81,6 +83,22 @@ impl<'ast> Error<'ast> {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
                     identifier.value.name, code
+                ));
+            }
+
+            DuplicateField(identifier, expr) => {
+                let record_code = source
+                    .lines_report_at_position(expr.start, Some(expr.end), expr.line, false)
+                    .unwrap();
+                s.push_str(&format!(
+                    "Duplicate field `{0}`
+
+{1}
+
+in record
+
+{2}",
+                    identifier.value.name, code, record_code
                 ));
             }
 
@@ -823,7 +841,11 @@ fn infer_rec<'ast>(
 
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, errors);
-                typed_fields.insert(name.value.name.clone(), t);
+                if typed_fields.map().contains_key(&name.value.name) {
+                    errors.push(Error::DuplicateField(name, ast));
+                } else {
+                    typed_fields.insert(name.value.name.clone(), t);
+                }
             }
 
             Rc::new(Record(typed_fields))
@@ -833,7 +855,11 @@ fn infer_rec<'ast>(
             let mut typed_fields = TypeEnv::new();
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, errors);
-                typed_fields.insert(name.value.name.clone(), t);
+                if typed_fields.map().contains_key(&name.value.name) {
+                    errors.push(Error::DuplicateField(name, ast));
+                } else {
+                    typed_fields.insert(name.value.name.clone(), t);
+                }
             }
 
             let inferred_type = Rc::new(RecordExt(typed_fields, Rc::clone(&state.new_type_var())));
@@ -1251,6 +1277,14 @@ add 5"
         assert_snapshot!(infer(
             r#"(\thing -> { thing | age = 5 }) { name = "Joe", age = 1 }"#
         ));
+
+        // Duplicate fields in records
+
+        assert_snapshot!(infer("{ age = 1, age = 1 }"));
+
+        assert_snapshot!(infer("{ name = 1, age = 1, name = 1 }"));
+
+        assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
 
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);
