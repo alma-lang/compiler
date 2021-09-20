@@ -200,7 +200,30 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             record
         }
 
-        ET::RecordUpdate(_record, _fields) => todo!(),
+        ET::RecordUpdate(record, fields) => {
+            let mut record_update = String::new();
+            record_update.push_str("{\n");
+
+            {
+                let indent = add_indent(indent);
+
+                let record_str = generate_expression(indent, code, record);
+                line(&mut record_update, indent, &format!("...{},", record_str));
+
+                for (key, value) in fields {
+                    let value = generate_expression(indent, code, value);
+                    line(
+                        &mut record_update,
+                        indent,
+                        &format!("{}: {},", key.value.name, value),
+                    );
+                }
+            }
+
+            indented(&mut record_update, indent, "}");
+
+            record_update
+        }
 
         ET::PropAccess(expr, field) => format!(
             "{}.{}",
