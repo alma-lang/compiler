@@ -384,6 +384,56 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
     }
 }
 
+fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
+    let typ = find(typ);
+    if let RecordExt(_, _) = &*typ {
+        let mut all_fields = TypeEnv::new();
+        let mut typ = typ;
+
+        loop {
+            match &*typ {
+                Record(fields) => {
+                    for (k, v) in fields.map() {
+                        all_fields.insert(k.clone(), Rc::clone(v));
+                    }
+                    return Some(Rc::new(Record(all_fields)));
+                }
+                RecordExt(fields, ext) => {
+                    for (k, v) in fields.map() {
+                        all_fields.insert(k.clone(), Rc::clone(v));
+                    }
+                    typ = find(ext);
+                }
+                Var(var) => {
+                    let var_read = var.borrow();
+                    match &*var_read {
+                        Unbound(_, _) => {
+                            return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
+                        }
+                        Bound(_) => unreachable!(),
+                    };
+                }
+                _ => return None,
+            }
+        }
+    } else {
+        None
+    }
+}
+
+fn find(typ: &Rc<Type>) -> Rc<Type> {
+    match &**typ {
+        Var(var) => {
+            let var_read = var.borrow();
+            match &*var_read {
+                Bound(t) => find(t),
+                Unbound(_, _) => Rc::clone(typ),
+            }
+        }
+        _ => Rc::clone(typ),
+    }
+}
+
 fn unify<'ast>(
     state: &mut State,
     ast: &'ast Expression,
@@ -391,6 +441,40 @@ fn unify<'ast>(
     ast2: Option<&'ast Expression>,
     t2: &Rc<Type>,
 ) -> Result<(), Error<'ast>> {
+    fn unify_var(
+        state: &mut State,
+        typ: &Rc<Type>,
+        var: &Rc<RefCell<TypeVar>>,
+        other_type: &Rc<Type>,
+    ) -> Result<(), UnificationError> {
+        let var_read = var.borrow();
+        match &*var_read {
+            // The 'find' in the union-find algorithm
+            Bound(dest_var) => unify_rec(state, dest_var, other_type),
+
+            // Create binding for unbound type variable
+            Unbound(a_id, a_level) => {
+                let (a_id, a_level) = (*a_id, *a_level);
+                // Drop the read borrow before the occurs check since it is not used and
+                // can panic the occurs check if type 1 and type 2 point to the same thing
+                drop(var_read);
+
+                if typ == other_type {
+                    Ok(())
+                } else if occurs(a_id, a_level, other_type) {
+                    /* a = a, but dont create a recursive binding to itself */
+                    Err(UnificationError::InfiniteType)
+                } else {
+                    let mut var = var.borrow_mut();
+                    let new_dest_type =
+                        flatten_record(&other_type).unwrap_or(Rc::clone(&other_type));
+                    *var = Bound(new_dest_type);
+                    Ok(())
+                }
+            }
+        }
+    }
+
     fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), UnificationError> {
         use UnificationError::*;
 
@@ -410,59 +494,9 @@ fn unify<'ast>(
                 }
             }
 
-            (Var(var1), _b) => {
-                let var1_read = var1.borrow();
-                match &*var1_read {
-                    /* the 'find' in the union-find algorithm */
-                    Bound(a1) => unify_rec(state, a1, t2),
+            (Var(var), _) => unify_var(state, t1, var, t2),
 
-                    /* create binding for boundTy that is currently empty */
-                    Unbound(a_id, a_level) => {
-                        let (a_id, a_level) = (*a_id, *a_level);
-                        // Drop the read borrow before the occurs check since it is not used and
-                        // can panic the occurs check if t1 and t2 point to the same thing
-                        drop(var1_read);
-
-                        if t1 == t2 {
-                            Ok(())
-                        } else if occurs(a_id, a_level, t2) {
-                            /* a = a, but dont create a recursive binding to itself */
-                            Err(InfiniteType)
-                        } else {
-                            let mut var1 = var1.borrow_mut();
-                            *var1 = Bound(Rc::clone(&t2));
-                            Ok(())
-                        }
-                    }
-                }
-            }
-
-            (_a, Var(var2)) => {
-                let var2_read = var2.borrow();
-                match &*var2_read {
-                    /* the 'find' in the union-find algorithm */
-                    Bound(b) => unify_rec(state, t1, b),
-
-                    /* create binding for boundTy that is currently empty */
-                    Unbound(b_id, b_level) => {
-                        let (b_id, b_level) = (*b_id, *b_level);
-                        // Drop the read borrow before the occurs check since it is not used and
-                        // can panic the occurs check if t1 and t2 point to the same thing
-                        drop(var2_read);
-
-                        if t1 == t2 {
-                            Ok(())
-                        } else if occurs(b_id, b_level, t1) {
-                            /* a = a, but dont create a recursive binding to itself */
-                            Err(InfiniteType)
-                        } else {
-                            let mut var2 = var2.borrow_mut();
-                            *var2 = Bound(Rc::clone(&t1));
-                            Ok(())
-                        }
-                    }
-                }
-            }
+            (_, Var(var)) => unify_var(state, t2, var, t1),
 
             (Fn(arg, body), Fn(arg2, body2)) => {
                 unify_rec(state, arg, arg2)?;
@@ -797,21 +831,27 @@ fn infer_rec<'ast>(
 
         ET::RecordUpdate(record, fields) => {
             let mut typed_fields = TypeEnv::new();
-            let updated_record_type = state.new_type_var();
-
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, errors);
                 typed_fields.insert(name.value.name.clone(), t);
             }
 
+            let inferred_type = Rc::new(RecordExt(typed_fields, Rc::clone(&state.new_type_var())));
+
             let record_type = infer_rec(record, state, env, errors);
 
+            // Unify the base record with the extensible record represented by this update
             add_error(
-                unify(state, record, &record_type, None, &updated_record_type),
+                unify(state, record, &record_type, None, &inferred_type),
                 errors,
             );
 
-            Rc::new(RecordExt(typed_fields, updated_record_type))
+            // Unify the type of this expression with the inferred type after the unification with
+            // the base record. Gives a chance to flatten the inner record types when substituting.
+            let t = state.new_type_var();
+            add_error(unify(state, record, &t, None, &inferred_type), errors);
+
+            t
         }
 
         ET::PropAccess(expr, field) => {
