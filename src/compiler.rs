@@ -44,23 +44,29 @@ pub fn compile(source: &Source) -> Result<String, String> {
 
     let javascript_files = javascript::generate(&modules, &module_interfaces);
 
+    let mut out = String::new();
+
     // Print types
-    // Ok(modules
-    //     .iter()
-    //     .map(|m| {
-    //         format!(
-    //             "{}\n\n{}\n",
-    //             m.name.value,
-    //             module_interfaces
-    //                 .get(&m.name.value.name)
-    //                 .unwrap_or(&Rc::new(TypeEnv::new()))
-    //         )
-    //     })
-    //     .collect::<Vec<String>>()
-    //     .join("\n\n"))
+    out.push_str(
+        &modules
+            .iter()
+            .map(|m| {
+                format!(
+                    "{}\n\n{}\n",
+                    m.name.to_string(),
+                    module_interfaces
+                        .get(&m.name.to_string())
+                        .unwrap_or(&Rc::new(TypeEnv::new()))
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n\n"),
+    );
 
     // Print code
-    Ok(javascript::files_to_bundle(&javascript_files))
+    out.push_str(&javascript::files_to_bundle(&javascript_files));
+
+    Ok(out)
 }
 
 pub fn compile_repl_entry(
