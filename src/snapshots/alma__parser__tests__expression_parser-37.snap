@@ -9,20 +9,20 @@ if True { 1 } else 2
 
 Result:
 
-1:10: Expected an identifier for the name of the field in the record, but instead found: '1'
+1:12: Expected '|' between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: '}'
 
   1│  if True { 1 } else 2
-   │            ↑
+   │              ↑
 
 Error {
-    message: "1:10: Expected an identifier for the name of the field in the record, but instead found: \'1\'\n\n  1│  if True { 1 } else 2\n   │            ↑",
+    message: "1:12: Expected \'|\' between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: \'}\'\n\n  1│  if True { 1 } else 2\n   │              ↑",
     token: Token {
-        kind: Float,
-        position: 10,
-        end_position: 11,
-        lexeme: "1",
+        kind: RightBrace,
+        position: 12,
+        end_position: 13,
+        lexeme: "}",
         line: 1,
-        column: 10,
+        column: 12,
         indent: 0,
     },
 }

@@ -795,6 +795,25 @@ fn infer_rec<'ast>(
             Rc::new(Record(typed_fields))
         }
 
+        ET::RecordUpdate(record, fields) => {
+            let mut typed_fields = TypeEnv::new();
+            let updated_record_type = state.new_type_var();
+
+            for (name, value) in fields {
+                let t = infer_rec(value, state, env, errors);
+                typed_fields.insert(name.value.name.clone(), t);
+            }
+
+            let record_type = infer_rec(record, state, env, errors);
+
+            add_error(
+                unify(state, record, &record_type, None, &updated_record_type),
+                errors,
+            );
+
+            Rc::new(RecordExt(typed_fields, updated_record_type))
+        }
+
         ET::PropAccess(expr, field) => {
             let field_type = state.new_type_var();
             let remaining_fields_type = state.new_type_var();
@@ -1178,6 +1197,20 @@ add 5"
         assert_snapshot!(infer(".name { name = 1 }"));
 
         assert_snapshot!(infer(".name { age = 1 }"));
+
+        // Record update
+
+        assert_snapshot!(infer("{ {} | age = 1 }"));
+
+        assert_snapshot!(infer("{ { age = 5 } | age = 1 }"));
+
+        assert_snapshot!(infer("{ { age = 5 } | age = \"Hi\" }"));
+
+        assert_snapshot!(infer(r"\thing -> { thing | age = 5 }"));
+
+        assert_snapshot!(infer(
+            r#"(\thing -> { thing | age = 5 }) { name = "Joe", age = 1 }"#
+        ));
 
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(&code);

@@ -14,7 +14,7 @@ b = * add
 
 Result:
 
-5:4: Expected an expression (a number, string, a let binding, function call, an identifier, etc.), but instead found: '*'
+5:4: Expected an expression for the right side of the definition, but instead found: '*'
 
   3│  a = 1 + 2 + 3
   4│  
@@ -23,7 +23,7 @@ Result:
   6│    5
 
 Error {
-    message: "5:4: Expected an expression (a number, string, a let binding, function call, an identifier, etc.), but instead found: \'*\'\n\n  3│  a = 1 + 2 + 3\n  4│  \n  5│  b = * add\n   │      ↑\n  6│    5",
+    message: "5:4: Expected an expression for the right side of the definition, but instead found: \'*\'\n\n  3│  a = 1 + 2 + 3\n  4│  \n  5│  b = * add\n   │      ↑\n  6│    5",
     token: Token {
         kind: Star,
         position: 32,

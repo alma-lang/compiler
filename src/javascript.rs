@@ -200,6 +200,8 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             record
         }
 
+        ET::RecordUpdate(_record, _fields) => todo!(),
+
         ET::PropAccess(expr, field) => format!(
             "{}.{}",
             generate_expression(indent, code, expr),

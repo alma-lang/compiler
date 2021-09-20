@@ -162,6 +162,7 @@ impl<'source> State<'source> {
                     '/' => self.add_token(Slash),
                     '\\' => self.add_token(Backslash),
                     '_' => self.add_token(Underscore),
+                    '|' => self.add_token(Pipe),
 
                     '-' => match self.peek() {
                         Some('-') => self.status = Status::LineCommentToken,

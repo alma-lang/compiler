@@ -138,6 +138,7 @@ pub enum ExpressionType {
     PropAccess(Box<Expression>, Identifier),
     PropAccessLambda(Identifier),
     Record(Vec<(Identifier, Expression)>),
+    RecordUpdate(Box<Expression>, Vec<(Identifier, Expression)>),
     Unary(Unary, Box<Expression>),
     Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
     Lambda(Vec<Pattern>, Box<Expression>),
