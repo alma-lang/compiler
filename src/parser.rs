@@ -103,7 +103,7 @@ type ParseResult<'source, 'tokens, A> = Result<A, Error<'source, 'tokens>>;
 #[derive(Debug)]
 struct State<'source, 'tokens> {
     source: &'source Source<'source>,
-    tokens: &'tokens Vec<Token<'source>>,
+    tokens: &'tokens [Token<'source>],
     current: usize,
 }
 
@@ -1278,9 +1278,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
     fn module_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
         match self.module_identifier_part()? {
-            Some(name) => self
-                .module_identifier_rest(vec![name])
-                .map(Some),
+            Some(name) => self.module_identifier_rest(vec![name]).map(Some),
             None => Ok(None),
         }
     }
@@ -1320,7 +1318,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 self.advance();
 
                 let name_identifier = Identifier_::new(identifier_token.lexeme);
-                if &name_identifier.case == &expect_case {
+                if name_identifier.case == expect_case {
                     let name = Node::new(name_identifier, identifier_token, identifier_token);
                     Ok(Some(name))
                 } else {
@@ -1413,10 +1411,7 @@ fn organize_binops(
 
         match next {
             Some(op_and_expr) => {
-                let keep_parsing = match &op_and_expr {
-                    Some((op, _rhs)) if op.value.precedence >= min_precedence => true,
-                    _ => false,
-                };
+                let keep_parsing = matches!(op_and_expr, Some((op, _rhs)) if op.value.precedence >= min_precedence);
 
                 if keep_parsing {
                     // Take ownership of the op and rhs
@@ -1425,7 +1420,7 @@ fn organize_binops(
                     *current += 1;
 
                     let next_min_precedence = op.value.precedence
-                        + if op.value.associativity == Associativity::LTR {
+                        + if op.value.associativity == Associativity::Ltr {
                             1
                         } else {
                             0
@@ -1468,7 +1463,7 @@ fn organize_binops(
 
 pub fn parse<'source, 'tokens>(
     source: &'source Source,
-    tokens: &'tokens Vec<Token<'source>>,
+    tokens: &'tokens [Token<'source>],
 ) -> ParseResult<'source, 'tokens, Vec<Module>> {
     let mut parser = State {
         source,
@@ -1481,7 +1476,7 @@ pub fn parse<'source, 'tokens>(
 
 pub fn parse_repl<'source, 'tokens>(
     source: &'source Source,
-    tokens: &'tokens Vec<Token<'source>>,
+    tokens: &'tokens [Token<'source>],
 ) -> ParseResult<'source, 'tokens, ReplEntry> {
     let mut parser = State {
         source,
@@ -1492,25 +1487,25 @@ pub fn parse_repl<'source, 'tokens>(
     parser.repl_entry()
 }
 
-pub fn parse_expression<'source, 'tokens>(
-    source: &'source Source,
-    tokens: &'tokens Vec<Token<'source>>,
-) -> ParseResult<'source, 'tokens, Box<Expression>> {
-    let mut parser = State {
-        source,
-        tokens,
-        current: 0,
-    };
-
-    let result = parser.required_expression(None)?;
-    parser.eof(Box::new(result))
-}
-
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::tokenizer;
     use insta::assert_snapshot;
+
+    pub fn parse_expression<'source, 'tokens>(
+        source: &'source Source,
+        tokens: &'tokens [Token<'source>],
+    ) -> ParseResult<'source, 'tokens, Box<Expression>> {
+        let mut parser = State {
+            source,
+            tokens,
+            current: 0,
+        };
+
+        let result = parser.required_expression(None)?;
+        parser.eof(Box::new(result))
+    }
 
     #[test]
     fn test_expression_parser() {

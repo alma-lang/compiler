@@ -113,7 +113,7 @@ Result:
                                             value: Binop_ {
                                                 typ: Addition,
                                                 precedence: 14,
-                                                associativity: LTR,
+                                                associativity: Ltr,
                                                 fn_: Identifier_ {
                                                     name: "__op__add",
                                                     case: Camel,

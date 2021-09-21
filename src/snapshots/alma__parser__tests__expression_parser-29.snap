@@ -50,7 +50,7 @@ Node {
                 value: Binop_ {
                     typ: Equal,
                     precedence: 11,
-                    associativity: LTR,
+                    associativity: Ltr,
                     fn_: Identifier_ {
                         name: "__op__eq",
                         case: Camel,
@@ -113,7 +113,7 @@ Node {
                                 value: Binop_ {
                                     typ: Division,
                                     precedence: 15,
-                                    associativity: LTR,
+                                    associativity: Ltr,
                                     fn_: Identifier_ {
                                         name: "__op__div",
                                         case: Camel,

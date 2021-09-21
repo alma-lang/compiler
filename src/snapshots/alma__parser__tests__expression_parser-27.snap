@@ -50,7 +50,7 @@ Node {
                 value: Binop_ {
                     typ: Substraction,
                     precedence: 14,
-                    associativity: LTR,
+                    associativity: Ltr,
                     fn_: Identifier_ {
                         name: "__op__sub",
                         case: Camel,

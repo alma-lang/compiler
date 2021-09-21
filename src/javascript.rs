@@ -13,7 +13,7 @@ pub struct File {
 
 const INDENT: usize = 4;
 
-pub fn files_to_bundle(files: &Vec<File>) -> String {
+pub fn files_to_bundle(files: &[File]) -> String {
     let mut out = String::new();
 
     for file in files {
@@ -25,10 +25,7 @@ pub fn files_to_bundle(files: &Vec<File>) -> String {
     out
 }
 
-pub fn generate(
-    modules: &Vec<Module>,
-    module_interfaces: &HashMap<String, Rc<TypeEnv>>,
-) -> Vec<File> {
+pub fn generate(modules: &[Module], module_interfaces: &HashMap<String, Rc<TypeEnv>>) -> Vec<File> {
     let mut files = vec![];
     for module in modules {
         let file = generate_file(
@@ -101,7 +98,7 @@ fn generate_definitions(
     indent: usize,
     code: &mut String,
     space_between: bool,
-    definitions: &Vec<Definition>,
+    definitions: &[Definition],
 ) {
     for definition in definitions {
         match definition {
@@ -125,7 +122,7 @@ fn generate_function(
     indent: usize,
     code: &mut String,
     name: &str,
-    params: &Vec<Pattern>,
+    params: &[Pattern],
     body: &Expression,
 ) {
     code.push_str(&format!("function {}(", name));

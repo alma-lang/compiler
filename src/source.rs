@@ -12,6 +12,8 @@ enum SourceOrigin {
     NotAFile,
 }
 
+type LinesAround<'str> = (Vec<&'str str>, (usize, Vec<&'str str>), Vec<&'str str>);
+
 #[derive(Debug)]
 pub struct Source<'a> {
     source: SourceOrigin,
@@ -60,7 +62,7 @@ impl<'a> Source<'a> {
         position: usize,
         end_position: Option<usize>,
         number_of_lines: u32,
-    ) -> Option<(Vec<&str>, (usize, Vec<&str>), Vec<&str>)> {
+    ) -> Option<LinesAround> {
         lines_around_position(self.code, position, end_position, number_of_lines)
     }
 
@@ -326,7 +328,7 @@ fn lines_around_position(
     position: usize,
     end_position: Option<usize>,
     number_of_lines: u32,
-) -> Option<(Vec<&str>, (usize, Vec<&str>), Vec<&str>)> {
+) -> Option<LinesAround> {
     let line_bounds = line_at(code, position)?;
 
     match end_position {

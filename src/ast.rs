@@ -177,7 +177,7 @@ pub mod binop {
 
     #[derive(PartialEq, Debug, Clone)]
     pub enum Associativity {
-        LTR,
+        Ltr,
         // RTL,
     }
 
@@ -198,73 +198,73 @@ pub mod binop {
         pub static ref OR: Binop_ = Binop_ {
             typ: Or,
             precedence: 6,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__or"),
         };
         pub static ref AND: Binop_ = Binop_ {
             typ: And,
             precedence: 7,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__and"),
         };
         pub static ref EQUAL: Binop_ = Binop_ {
             typ: Equal,
             precedence: 11,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__eq"),
         };
         pub static ref NOT_EQUAL: Binop_ = Binop_ {
             typ: NotEqual,
             precedence: 11,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__ne"),
         };
         pub static ref GREATER_THAN: Binop_ = Binop_ {
             typ: GreaterThan,
             precedence: 12,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__gt"),
         };
         pub static ref GREATER_EQUAL_THAN: Binop_ = Binop_ {
             typ: GreaterEqualThan,
             precedence: 12,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__ge"),
         };
         pub static ref LESS_THAN: Binop_ = Binop_ {
             typ: LessThan,
             precedence: 12,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__lt"),
         };
         pub static ref LESS_EQUAL_THAN: Binop_ = Binop_ {
             typ: LessEqualThan,
             precedence: 12,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__le"),
         };
         pub static ref ADDITION: Binop_ = Binop_ {
             typ: Addition,
             precedence: 14,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__add"),
         };
         pub static ref SUBSTRACTION: Binop_ = Binop_ {
             typ: Substraction,
             precedence: 14,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__sub"),
         };
         pub static ref MULTIPLICATION: Binop_ = Binop_ {
             typ: Multiplication,
             precedence: 15,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__mult"),
         };
         pub static ref DIVISION: Binop_ = Binop_ {
             typ: Division,
             precedence: 15,
-            associativity: LTR,
+            associativity: Ltr,
             fn_: Identifier_::new("__op__div"),
         };
     }

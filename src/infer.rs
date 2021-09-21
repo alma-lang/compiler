@@ -265,12 +265,12 @@ impl State {
                     ))
                 }
 
-                PolyType(type_vars, typ) => {
+                Poly(type_vars, typ) => {
                     let mut vars_to_replace_copy = vars_to_replace.clone();
                     for var in type_vars.iter() {
                         vars_to_replace_copy.remove(var);
                     }
-                    Rc::new(PolyType(
+                    Rc::new(Poly(
                         type_vars.clone(),
                         replace_type_vars(&vars_to_replace_copy, typ),
                     ))
@@ -278,7 +278,7 @@ impl State {
             }
         }
 
-        if let Type::PolyType(vars, typ) = &**t {
+        if let Type::Poly(vars, typ) = &**t {
             let mut vars_to_replace: HashMap<TypeVarId, Rc<Type>> = HashMap::new();
             for var in vars.iter() {
                 vars_to_replace.insert(*var, self.new_type_var());
@@ -289,7 +289,7 @@ impl State {
         }
     }
 
-    /* Find all typevars and wrap the type in a PolyType */
+    /* Find all typevars and wrap the type in a Poly */
     /* e.g.  generalize (a -> b -> b) = forall a b. a -> b -> b */
     fn generalize(&self, t: &Rc<Type>) -> Rc<Type> {
         let current_level = self.current_level;
@@ -333,7 +333,7 @@ impl State {
                 }
 
                 /* Remove all of tvs from findAllTvs typ */
-                PolyType(free_tvs, typ) => {
+                Poly(free_tvs, typ) => {
                     let mut typ_tvs = IndexSet::new();
                     find_all_tvs(current_level, &mut typ_tvs, typ);
 
@@ -348,7 +348,7 @@ impl State {
 
         let mut tvs = IndexSet::new();
         find_all_tvs(&current_level, &mut tvs, t);
-        Rc::new(PolyType(tvs, Rc::clone(t)))
+        Rc::new(Poly(tvs, Rc::clone(t)))
     }
 }
 
@@ -392,7 +392,7 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
             }
         }
 
-        PolyType(tvs, t) => {
+        Poly(tvs, t) => {
             if tvs.iter().any(|tv| a_id == *tv) {
                 false
             } else {
@@ -485,7 +485,7 @@ fn unify<'ast>(
                 } else {
                     let mut var = var.borrow_mut();
                     let new_dest_type =
-                        flatten_record(other_type).unwrap_or(Rc::clone(other_type));
+                        flatten_record(other_type).unwrap_or_else(|| Rc::clone(other_type));
                     *var = Bound(new_dest_type);
                     Ok(())
                 }
@@ -500,9 +500,7 @@ fn unify<'ast>(
             (Unit, Unit) => Ok(()),
 
             (Named(name, args), Named(name2, args2)) => {
-                if name != name2 {
-                    Err(TypeMismatch)
-                } else if args.len() != args2.len() {
+                if name != name2 || args.len() != args2.len() {
                     Err(TypeMismatch)
                 } else {
                     for (a1, a2) in args.iter().zip(args2.iter()) {
@@ -615,12 +613,12 @@ fn unify<'ast>(
             }
 
             /* NOTE: Unneeded rule, never used due to [Var] and inst */
-            (PolyType(_vars, typ1), PolyType(_vars2, typ2)) => unify_rec(state, typ1, typ2),
+            (Poly(_vars, typ1), Poly(_vars2, typ2)) => unify_rec(state, typ1, typ2),
 
             (Unit, _)
             | (Named(..), _)
             | (Fn(..), _)
-            | (PolyType(..), _)
+            | (Poly(..), _)
             | (Record(_), _)
             | (RecordExt(..), _) => Err(TypeMismatch),
         }
@@ -965,10 +963,7 @@ fn infer_rec<'ast>(
          *   infer env x = t
          */
         ET::Identifier(x) => match env.get(&x.value.name) {
-            Some(s) => {
-                
-                state.instantiate(s)
-            }
+            Some(s) => state.instantiate(s),
             None => {
                 add_error(Err(Error::UndefinedIdentifier(x, ast)), errors);
                 state.new_type_var()
@@ -1019,7 +1014,7 @@ fn infer_rec<'ast>(
 }
 
 fn infer_definitions<'ast>(
-    definitions: &'ast Vec<Definition>,
+    definitions: &'ast [Definition],
     state: &mut State,
     env: &mut TypeEnv,
     errors: &mut Vec<Error<'ast>>,
@@ -1051,7 +1046,7 @@ fn infer_definitions<'ast>(
 }
 
 fn infer_lambda<'ast>(
-    params: &'ast Vec<ast::Pattern>,
+    params: &'ast [ast::Pattern],
     body: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
@@ -1124,9 +1119,8 @@ where
 }
 
 fn add_error<'ast>(result: Result<(), Error<'ast>>, errors: &mut Vec<Error<'ast>>) {
-    match result {
-        Err(e) => errors.push(e),
-        _ => (),
+    if let Err(e) = result {
+        errors.push(e);
     }
 }
 
@@ -1299,7 +1293,7 @@ add 5"
                 })
                 .unwrap();
 
-            let ast = parser::parse_expression(&source, &tokens)
+            let ast = parser::tests::parse_expression(&source, &tokens)
                 .map_err(|error| error.to_string(&source))
                 .unwrap();
 

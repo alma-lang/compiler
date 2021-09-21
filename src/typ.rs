@@ -50,7 +50,7 @@ pub enum Type {
      * The TypeVar list will be a list of all monomorphic TypeVars in 'z
      * Used only in let-bindings to make the declaration polymorphic
      */
-    PolyType(IndexSet<TypeVarId>, Rc<Type>),
+    Poly(IndexSet<TypeVarId>, Rc<Type>),
 }
 
 impl Type {
@@ -64,7 +64,7 @@ impl Type {
                 TypeVar::Bound(t) => t.should_parenthesize(),
                 _ => false,
             },
-            Fn(..) | PolyType(..) => true,
+            Fn(..) | Poly(..) => true,
             _ => false,
         }
     }
@@ -92,10 +92,9 @@ impl fmt::Display for Type {
             type_var_names: &'a mut HashMap<u32, String>,
             s: &'a mut String,
         ) {
-            let mut i: u32 = 0;
             let mut keys: Vec<_> = fields.map().keys().collect();
             keys.sort();
-            for key in keys {
+            for (i, key) in keys.into_iter().enumerate() {
                 let value = &fields.map()[key];
 
                 if i != 0 {
@@ -106,8 +105,6 @@ impl fmt::Display for Type {
                 s.push_str(key);
                 s.push_str(" : ");
                 to_string_rec(value, cur_type_var_name, type_var_names, s);
-
-                i += 1;
             }
         }
 
@@ -192,7 +189,7 @@ impl fmt::Display for Type {
                     s.push_str(" }");
                 }
 
-                PolyType(type_vars, t) => {
+                Poly(type_vars, t) => {
                     if !type_vars.is_empty() {
                         s.push('∀');
 
@@ -335,7 +332,7 @@ mod test {
                 "String -> Float -> String",
             ),
             (
-                Type::PolyType(
+                Type::Poly(
                     IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(0),
@@ -345,7 +342,7 @@ mod test {
                 "∀ a . a",
             ),
             (
-                Type::PolyType(
+                Type::Poly(
                     IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(1),
@@ -355,7 +352,7 @@ mod test {
                 "∀ a . b",
             ),
             (
-                Type::PolyType(
+                Type::Poly(
                     IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Fn(
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
