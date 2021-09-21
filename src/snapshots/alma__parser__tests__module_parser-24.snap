@@ -20,7 +20,7 @@ Result:
    │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 
 Error {
-    message: "3:0: Expected a `camelCase` identifier, but instead found: \'IAmNotCamelCase\'\n\n  1│  module Test\n  2│  \n  3│  IAmNotCamelCase = 1\n   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
+    message: "3:0: Expected a `camelCase` identifier, but instead found: 'IAmNotCamelCase'\n\n  1│  module Test\n  2│  \n  3│  IAmNotCamelCase = 1\n   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
     token: Token {
         kind: Identifier,
         position: 13,

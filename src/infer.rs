@@ -224,7 +224,7 @@ impl State {
             t: &Rc<Type>,
         ) -> Rc<Type> {
             match &**t {
-                Unit => Rc::clone(&t),
+                Unit => Rc::clone(t),
 
                 Named(name, args) => Rc::new(Named(
                     name.clone(),
@@ -235,9 +235,9 @@ impl State {
 
                 Var(var) => match &*var.borrow() {
                     Bound(t) => replace_type_vars(vars_to_replace, t),
-                    Unbound(n, _level) => match vars_to_replace.get(&n) {
+                    Unbound(n, _level) => match vars_to_replace.get(n) {
                         Some(t_) => Rc::clone(t_),
-                        None => Rc::clone(&t),
+                        None => Rc::clone(t),
                     },
                 },
 
@@ -348,7 +348,7 @@ impl State {
 
         let mut tvs = IndexSet::new();
         find_all_tvs(&current_level, &mut tvs, t);
-        Rc::new(PolyType(tvs, Rc::clone(&t)))
+        Rc::new(PolyType(tvs, Rc::clone(t)))
     }
 }
 
@@ -485,7 +485,7 @@ fn unify<'ast>(
                 } else {
                     let mut var = var.borrow_mut();
                     let new_dest_type =
-                        flatten_record(&other_type).unwrap_or(Rc::clone(&other_type));
+                        flatten_record(other_type).unwrap_or(Rc::clone(other_type));
                     *var = Bound(new_dest_type);
                     Ok(())
                 }
@@ -628,9 +628,9 @@ fn unify<'ast>(
 
     unify_rec(state, t1, t2).map_err(|e| match e {
         UnificationError::TypeMismatch => {
-            Error::TypeMismatch(ast, Rc::clone(&t1), ast2, Rc::clone(&t2))
+            Error::TypeMismatch(ast, Rc::clone(t1), ast2, Rc::clone(t2))
         }
-        UnificationError::InfiniteType => Error::InfiniteType(ast, Rc::clone(&t1)),
+        UnificationError::InfiniteType => Error::InfiniteType(ast, Rc::clone(t1)),
     })
 }
 
@@ -789,7 +789,7 @@ pub fn infer<'interfaces, 'ast>(
                 for exposed in &import.value.exposing {
                     for identifier in exposed.value.identifiers() {
                         let name = &identifier.value.name;
-                        match imported.get(&name) {
+                        match imported.get(name) {
                             Some(definition) => env.insert(name.to_string(), Rc::clone(definition)),
                             None => errors.push(Error::UnknownImportDefinition(identifier, import)),
                         };
@@ -807,14 +807,14 @@ pub fn infer<'interfaces, 'ast>(
     for export in &module.exports {
         for identifier in export.value.identifiers() {
             let name = &identifier.value.name;
-            match env.get(&name) {
+            match env.get(name) {
                 Some(typ) => module_type.insert(name.to_string(), Rc::clone(typ)),
                 None => errors.push(Error::UndefinedExport(identifier)),
             }
         }
     }
 
-    if errors.len() == 0 {
+    if errors.is_empty() {
         Ok(Rc::new(module_type))
     } else {
         Err((Rc::new(module_type), errors))
@@ -966,8 +966,8 @@ fn infer_rec<'ast>(
          */
         ET::Identifier(x) => match env.get(&x.value.name) {
             Some(s) => {
-                let t = state.instantiate(s);
-                t
+                
+                state.instantiate(s)
             }
             None => {
                 add_error(Err(Error::UndefinedIdentifier(x, ast)), errors);
@@ -983,7 +983,7 @@ fn infer_rec<'ast>(
          *   ---------------
          *   infer env (f x) = t'
          */
-        ET::FnCall(f, args) => infer_fn_call(f, args.iter().map(|t| t), ast, state, env, errors),
+        ET::FnCall(f, args) => infer_fn_call(f, args.iter(), ast, state, env, errors),
 
         /* Abs
          *   t = newVar ()
@@ -1029,7 +1029,7 @@ fn infer_definitions<'ast>(
             Definition::Lambda(identifier, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
                     state.enter_level();
-                    let t = infer_lambda(params, &body, state, env, errors);
+                    let t = infer_lambda(params, body, state, env, errors);
                     state.exit_level();
 
                     env.insert(identifier.value.name.clone(), state.generalize(&t));
@@ -1038,7 +1038,7 @@ fn infer_definitions<'ast>(
             },
             Definition::Pattern(pattern, value) => {
                 state.enter_level();
-                let t = infer_rec(&value, state, env, errors);
+                let t = infer_rec(value, state, env, errors);
                 state.exit_level();
 
                 match &pattern.value {
@@ -1111,7 +1111,7 @@ where
     // Unify the arguments separately for nicer error messages
     let res = arg_types
         .iter()
-        .zip(args.clone())
+        .zip(args)
         .zip(param_types)
         .fold(Ok(()), |result, ((arg_type, arg), param_type)| {
             result.and_then(|_| unify(state, arg, arg_type, None, param_type))
@@ -1145,7 +1145,7 @@ mod tests {
         let mut errors: Vec<Error<'ast>> = vec![];
         let t = infer_rec(ast, state, env, &mut errors);
 
-        if errors.len() == 0 {
+        if errors.is_empty() {
             Ok(t)
         } else {
             Err(errors)
@@ -1287,7 +1287,7 @@ add 5"
         assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
 
         fn infer(code: &str) -> String {
-            let source = Source::new_orphan(&code);
+            let source = Source::new_orphan(code);
 
             let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {
@@ -1461,7 +1461,7 @@ last _ y = y
         ));
 
         fn infer(code: &str) -> String {
-            let source = Source::new_orphan(&code);
+            let source = Source::new_orphan(code);
 
             let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {

@@ -22,7 +22,7 @@ Result:
   5│  x
 
 Error {
-    message: "4:0: Expected an = and an expression for the right side of the definition, but instead found: \'in\'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x",
+    message: "4:0: Expected an = and an expression for the right side of the definition, but instead found: 'in'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x",
     token: Token {
         kind: In,
         position: 16,

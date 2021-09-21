@@ -22,7 +22,7 @@ Result:
   4│      test = 1
 
 Error {
-    message: "3:7: Expected a `PascalCase` module name, but instead found: \'i_am_not_PascalCase\'\n\n  1│  module Test\n  2│  \n  3│  module i_am_not_PascalCase\n   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  4│      test = 1",
+    message: "3:7: Expected a `PascalCase` module name, but instead found: 'i_am_not_PascalCase'\n\n  1│  module Test\n  2│  \n  3│  module i_am_not_PascalCase\n   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  4│      test = 1",
     token: Token {
         kind: Identifier,
         position: 20,

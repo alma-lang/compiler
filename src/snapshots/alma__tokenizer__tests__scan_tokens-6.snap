@@ -8,7 +8,7 @@ Err(
         Error {
             line: 2,
             column: 4,
-            message: "Unexpected character \'&\'.\n\n  1│  123\n  2│   or &\"abc\"\n   │      ↑",
+            message: "Unexpected character '&'.\n\n  1│  123\n  2│   or &\"abc\"\n   │      ↑",
         },
     ],
 )

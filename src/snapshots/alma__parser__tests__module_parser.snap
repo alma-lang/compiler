@@ -15,7 +15,7 @@ Result:
    │  ↑↑↑↑
 
 Error {
-    message: "1:0: Expected `module FileName` at the start of the file, but instead found: \'True\'\n\n  1│  True\n   │  ↑↑↑↑",
+    message: "1:0: Expected `module FileName` at the start of the file, but instead found: 'True'\n\n  1│  True\n   │  ↑↑↑↑",
     token: Token {
         kind: True,
         position: 0,

@@ -224,14 +224,14 @@ impl<'source> State<'source> {
                 match ch {
                     Some(' ') => {
                         if line_started {
-                            self.indent = self.indent + 1;
+                            self.indent += 1;
                         }
                         self.status = Status::WhitespaceToken(line_started);
                     }
 
                     Some('\n') => {
                         self.status = Status::WhitespaceToken(true);
-                        self.line = self.line + 1;
+                        self.line += 1;
                         self.indent = 0;
                         self.line_start_position = self.current + 1;
                     }
@@ -346,9 +346,7 @@ impl<'source> State<'source> {
             // position. Default to column 0 then.
             column: self
                 .source
-                .len()
-                .checked_sub(self.line_start_position)
-                .unwrap_or(0) as u32,
+                .len().saturating_sub(self.line_start_position) as u32,
             indent: self.indent,
 
             position: self.source.len(),
@@ -359,11 +357,11 @@ impl<'source> State<'source> {
 }
 
 pub fn parse<'source>(source: &'source Source) -> Result<Vec<Token<'source>>, Vec<Error>> {
-    let mut tokenizer = State::new(&source);
+    let mut tokenizer = State::new(source);
 
     tokenizer.parse();
 
-    if tokenizer.errors.len() > 0 {
+    if !tokenizer.errors.is_empty() {
         Err(tokenizer.errors)
     } else {
         Ok(tokenizer.tokens)
@@ -383,7 +381,7 @@ mod tests {
     #[test]
     fn test_scan_tokens() {
         fn tokenize<'a>(code: &'a str) -> String {
-            let source = &Source::new_orphan(&code);
+            let source = &Source::new_orphan(code);
             format!("{:#?}", parse(source))
         }
 

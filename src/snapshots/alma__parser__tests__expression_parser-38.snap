@@ -15,7 +15,7 @@ Result:
    │                ↑
 
 Error {
-    message: "1:14: Expected the `else` branch of the if expression, but instead found: \'[End of file]\'\n\n  1│  if True then 1\n   │                ↑",
+    message: "1:14: Expected the `else` branch of the if expression, but instead found: '[End of file]'\n\n  1│  if True then 1\n   │                ↑",
     token: Token {
         kind: Eof,
         position: 14,

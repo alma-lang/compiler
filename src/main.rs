@@ -49,7 +49,7 @@ fn main() {
         )
         .get_matches();
 
-    if let Some(_) = matches.subcommand_matches("repl") {
+    if matches.subcommand_matches("repl").is_some() {
         cli::prompt();
     } else if let Some(matches) = matches.subcommand_matches("bench") {
         cli::bench(

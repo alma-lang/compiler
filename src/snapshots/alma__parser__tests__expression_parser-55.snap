@@ -15,7 +15,7 @@ Result:
    │    ↑↑↑↑↑↑
 
 Error {
-    message: "1:2: Expected a `camelCase` identifier, but instead found: \'Sneaky\'\n\n  1│  { Sneaky : 5 }\n   │    ↑↑↑↑↑↑",
+    message: "1:2: Expected a `camelCase` identifier, but instead found: 'Sneaky'\n\n  1│  { Sneaky : 5 }\n   │    ↑↑↑↑↑↑",
     token: Token {
         kind: Identifier,
         position: 2,

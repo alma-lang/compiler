@@ -9,21 +9,21 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 pub fn compile(source: &Source) -> Result<String, String> {
-    let tokens = tokenizer::parse(&source).map_err(|errors| {
+    let tokens = tokenizer::parse(source).map_err(|errors| {
         errors
             .iter()
-            .map(|e| e.to_string(&source))
+            .map(|e| e.to_string(source))
             .collect::<Vec<String>>()
             .join("\n\n")
     })?;
 
-    let modules = parser::parse(source, &tokens).map_err(|error| error.to_string(&source))?;
+    let modules = parser::parse(source, &tokens).map_err(|error| error.to_string(source))?;
 
     let mut module_interfaces: HashMap<String, Rc<TypeEnv>> = HashMap::new();
     let mut errors = vec![];
 
     for module in &modules {
-        match infer::infer(&module_interfaces, &module) {
+        match infer::infer(&module_interfaces, module) {
             Ok(typ) => {
                 module_interfaces.insert(module.name.to_string(), typ);
             }
@@ -37,7 +37,7 @@ pub fn compile(source: &Source) -> Result<String, String> {
     if !errors.is_empty() {
         return Err(errors
             .iter()
-            .map(|e| e.to_string(&source))
+            .map(|e| e.to_string(source))
             .collect::<Vec<String>>()
             .join("\n\n"));
     }
@@ -74,15 +74,15 @@ pub fn compile_repl_entry(
     module_interfaces: &mut HashMap<String, Rc<TypeEnv>>,
     source: &Source,
 ) -> Result<String, String> {
-    let tokens = tokenizer::parse(&source).map_err(|errors| {
+    let tokens = tokenizer::parse(source).map_err(|errors| {
         errors
             .iter()
-            .map(|e| e.to_string(&source))
+            .map(|e| e.to_string(source))
             .collect::<Vec<String>>()
             .join("\n\n")
     })?;
 
-    let entry = parser::parse_repl(source, &tokens).map_err(|error| error.to_string(&source))?;
+    let entry = parser::parse_repl(source, &tokens).map_err(|error| error.to_string(source))?;
 
     let mut errors = vec![];
 
@@ -92,7 +92,7 @@ pub fn compile_repl_entry(
         ReplEntry::Import(import) => {
             module.imports.push(import);
             let result =
-                compile_repl_entry_helper(&module, module_interfaces, &source, &mut errors);
+                compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
             if result.is_err() {
                 module.imports.pop();
             }
@@ -101,7 +101,7 @@ pub fn compile_repl_entry(
         ReplEntry::Definition(definition) => {
             module.definitions.push(definition);
             let result =
-                compile_repl_entry_helper(&module, module_interfaces, &source, &mut errors);
+                compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
             if result.is_err() {
                 module.definitions.pop();
             }
@@ -119,7 +119,7 @@ pub fn compile_repl_entry(
                 expression,
             ));
             let result =
-                compile_repl_entry_helper(&module, module_interfaces, &source, &mut errors);
+                compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
             module.definitions.pop();
             result
         }
@@ -134,7 +134,7 @@ fn compile_repl_entry_helper<'ast>(
     source: &Source,
     errors: &mut Vec<infer::Error<'ast>>,
 ) -> Result<(), String> {
-    let result = infer::infer(&module_interfaces, &module);
+    let result = infer::infer(module_interfaces, module);
     match result {
         Ok(typ) => {
             module_interfaces.insert(module.name.to_string(), typ);
@@ -149,7 +149,7 @@ fn compile_repl_entry_helper<'ast>(
     } else {
         Err(errors
             .iter()
-            .map(|e| e.to_string(&source))
+            .map(|e| e.to_string(source))
             .collect::<Vec<String>>()
             .join("\n\n"))
     }

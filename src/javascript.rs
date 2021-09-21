@@ -45,7 +45,7 @@ fn generate_file(module: &Module, _interface: &TypeEnv) -> File {
 
     generate_imports(&mut code, module);
 
-    code.push_str("\n");
+    code.push('\n');
 
     generate_definitions(0, &mut code, true, &module.definitions);
 
@@ -86,9 +86,9 @@ fn generate_imports(code: &mut String, module: &Module) {
                         .collect(),
                 );
             }
-            write!(
+            writeln!(
                 code,
-                "import {{{}}} from \"{}\"\n",
+                "import {{{}}} from \"{}\"",
                 identifiers.join(", "),
                 import.module_name.to_string(),
             )
@@ -116,7 +116,7 @@ fn generate_definitions(
             }
         }
         if space_between {
-            code.push_str("\n")
+            code.push('\n')
         }
     }
 }
@@ -147,7 +147,7 @@ fn generate_function(
 
 fn generate_pattern(code: &mut String, pattern: &Pattern) {
     match &pattern.value {
-        P::Hole => code.push_str("_"),
+        P::Hole => code.push('_'),
         P::Identifier(identifier) => code.push_str(&identifier.value.name),
     }
 }
@@ -157,7 +157,7 @@ fn generate_let(indent: usize, code: &mut String, pattern: &Pattern, expression:
 
     indented(code, indent, "var ");
     generate_pattern(code, pattern);
-    write!(code, " = {}\n", expr).unwrap();
+    writeln!(code, " = {}", expr).unwrap();
 }
 
 fn generate_expression(indent: usize, code: &mut String, expression: &Expression) -> String {
@@ -252,7 +252,7 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             lambda
         }
 
-        ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter().map(|t| t)),
+        ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter()),
 
         ET::Let(definitions, body) => {
             let mut let_ = String::new();
@@ -317,9 +317,9 @@ where
         .join(", ");
 
     call.push_str(&fun);
-    call.push_str("(");
+    call.push('(');
     call.push_str(&params);
-    call.push_str(")");
+    call.push(')');
     call
 }
 

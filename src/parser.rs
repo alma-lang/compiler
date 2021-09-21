@@ -162,7 +162,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         let imports = self.imports()?;
 
                         let (mut modules, definitions) =
-                            self.module_definitions(top_level, &module_token, vec![], vec![])?;
+                            self.module_definitions(top_level, module_token, vec![], vec![])?;
 
                         modules.push(Module {
                             name,
@@ -210,7 +210,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             }
                             _ => Err(Error::expected_but_found(
                                 self.source,
-                                &self.get_token(),
+                                self.get_token(),
                                 None,
                                 "Parsing the module exports expected a comma \
                                 separated list of exports inside parenthesis",
@@ -219,7 +219,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     }
                     _ => Err(Error::expected_but_found(
                         self.source,
-                        &self.get_token(),
+                        self.get_token(),
                         None,
                         "Parsing the module exports expected a comma \
                         separated list of exports inside parenthesis",
@@ -347,20 +347,20 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             match self.module(false)? {
                 Some(mut nested_modules) => {
                     modules.append(&mut nested_modules);
-                    self.module_definitions(top_level, &module_token, modules, definitions)
+                    self.module_definitions(top_level, module_token, modules, definitions)
                 }
 
                 None => match self.binding()? {
                     Some(definition) => {
                         definitions.push(definition);
-                        self.module_definitions(top_level, &module_token, modules, definitions)
+                        self.module_definitions(top_level, module_token, modules, definitions)
                     }
 
                     None => match self.get_token().kind {
                         TT::Eof => Ok((modules, definitions)),
                         _ => Err(Error::expected_but_found(
                             self.source,
-                            &self.get_token(),
+                            self.get_token(),
                             None,
                             "Expected the left side of a definition like `n = 5` \
                              or `add x y = x + y`",
@@ -380,7 +380,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     } else {
                         Err(Error::expected_but_found(
                             self.source,
-                            &self.get_token(),
+                            self.get_token(),
                             None,
                             "Expected a definition like `n = 5` \
                                         or `add x y = x + y`",
@@ -426,7 +426,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                            function call, an identifier, etc.)";
                 Err(Error::expected_but_found(
                     self.source,
-                    &self.get_token(),
+                    self.get_token(),
                     None,
                     msg.unwrap_or(default_msg),
                 ))
@@ -454,16 +454,16 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::Let => {
                 self.advance();
 
-                let bindings = self.let_bindings(&let_token, vec![])?;
+                let bindings = self.let_bindings(let_token, vec![])?;
 
-                if bindings.len() > 0 {
+                if !bindings.is_empty() {
                     let is_in_keyword = if let TT::In = self.get_token().kind {
                         self.advance();
                         true
                     } else {
                         false
                     };
-                    if is_in_keyword || self.is_token_after_line_and_same_indent_as(&let_token) {
+                    if is_in_keyword || self.is_token_after_line_and_same_indent_as(let_token) {
                         let body = self.required_expression(Some(
                             "Expected an expression for the body of the let bindings",
                         ))?;
@@ -482,7 +482,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     } else {
                         Err(Error::expected_but_found(
                             self.source,
-                            &self.get_token(),
+                            self.get_token(),
                             None,
                             "Expected the let definition \
                                 to be followed by another \
@@ -493,7 +493,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 } else {
                     Err(Error::expected_but_found(
                         self.source,
-                        &let_token,
+                        let_token,
                         None,
                         "Expected a pattern for the left side of the let expression",
                     ))
@@ -537,7 +537,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                     Equal => {
                         let expr = self.binding_rhs()?;
                         Some(Definition::Pattern(
-                            Node::new(Pattern_::Identifier(identifier), &token, &token),
+                            Node::new(Pattern_::Identifier(identifier), token, token),
                             expr,
                         ))
                     }
@@ -581,7 +581,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
             _ => Err(Error::expected_but_found(
                 self.source,
-                &equal_token,
+                equal_token,
                 None,
                 "Expected an = and an expression \
                 for the right side of the definition",
@@ -637,7 +637,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                                     _ => Err(Error::expected_but_found(
                                         self.source,
-                                        &else_token,
+                                        else_token,
                                         None,
                                         "Expected the `else` branch of the if expression",
                                     )),
@@ -646,7 +646,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                             _ => Err(Error::expected_but_found(
                                 self.source,
-                                &then_token,
+                                then_token,
                                 None,
                                 "Expected the keyword `then` and \
                                 an expression to parse the if expression",
@@ -656,7 +656,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                     None => Err(Error::expected_but_found(
                         self.source,
-                        &self.get_token(),
+                        self.get_token(),
                         None,
                         "Expected an expression for the condition \
                         in the if expression (eg: if True then 1 else 2)",
@@ -678,8 +678,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 let params = self.params()?;
                 if params.is_empty() {
                     Err(Error::expected_but_found(
-                        &self.source,
-                        &self.get_token(),
+                        self.source,
+                        self.get_token(),
                         None,
                         "Expected a list of parameters",
                     ))
@@ -708,7 +708,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                         _ => Err(Error::expected_but_found(
                             self.source,
-                            &token,
+                            token,
                             Some(arrow),
                             "Expected a -> after the list of parameters for the function",
                         )),
@@ -750,13 +750,13 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         match token.kind {
             TT::Underscore => {
                 self.advance();
-                Ok(Some(Node::new(Pattern_::Hole, &token, &token)))
+                Ok(Some(Node::new(Pattern_::Hole, token, token)))
             }
             TT::Identifier => match self.binding_identifier()? {
                 Some(identifier) => Ok(Some(Node::new(
                     Pattern_::Identifier(identifier),
-                    &token,
-                    &token,
+                    token,
+                    token,
                 ))),
                 _ => Ok(None),
             },
@@ -770,7 +770,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 self.binary_step().map(|mut binops| {
                     // Make the binops options to be able to take them later
                     let mut binops: Vec<Option<(Binop, Expression)>> =
-                        binops.drain(..).map(|b| Some(b)).collect();
+                        binops.drain(..).map(Some).collect();
 
                     Some(organize_binops(expr, &mut binops, &mut (0), 0))
                 })
@@ -804,7 +804,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 Some(op) => {
                     self.advance();
 
-                    let op_node = Node::new(op, &token, &token);
+                    let op_node = Node::new(op, token, token);
                     match self.unary()? {
                         Some(right) => {
                             binops.push((op_node, right));
@@ -812,7 +812,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         None => {
                             return Err(Error::expected_but_found(
                                 self.source,
-                                &self.get_token(),
+                                self.get_token(),
                                 None,
                                 &format!(
                                     "Expected an expression after the binary operator '{}'",
@@ -847,7 +847,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
         match (u, self.call()?) {
             (Some(u), Some(expr)) => {
-                let op = Node::new(u, &token, &token);
+                let op = Node::new(u, token, token);
                 let line = op.line;
                 let column = op.column;
                 let start = op.start;
@@ -868,7 +868,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 );
                 Err(Error::expected_but_found(
                     self.source,
-                    &self.get_token(),
+                    self.get_token(),
                     None,
                     &msg,
                 ))
@@ -882,8 +882,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
         match self.prop_access()? {
             Some(expr) => {
-                let args = self.arguments(&token, vec![])?;
-                if args.len() == 0 {
+                let args = self.arguments(token, vec![])?;
+                if args.is_empty() {
                     Ok(Some(expr))
                 } else {
                     let last_arg = &args[args.len() - 1];
@@ -949,8 +949,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                                     let name_identifier = Node::new(
                                         Identifier_::new(identifier_token.lexeme),
-                                        &identifier_token,
-                                        &identifier_token,
+                                        identifier_token,
+                                        identifier_token,
                                     );
                                     expr = {
                                         let start = expr.start;
@@ -972,8 +972,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                                 TT::Identifier => {
                                     return Err(Error::new(
-                                        &self.source,
-                                        &dot_token,
+                                        self.source,
+                                        dot_token,
                                         None,
                                         "A property access must have the dot \
                                         and identifier together, \
@@ -982,8 +982,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                 }
                                 _ => {
                                     return Err(Error::new(
-                                        &self.source,
-                                        &dot_token,
+                                        self.source,
+                                        dot_token,
                                         None,
                                         "Expected an identifier after a \
                                         dot for the property access",
@@ -1007,19 +1007,19 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         let result = match token.kind {
             False => {
                 self.advance();
-                Ok(Some(Node::new(E::untyped(Bool(false)), &token, &token)))
+                Ok(Some(Node::new(E::untyped(Bool(false)), token, token)))
             }
             True => {
                 self.advance();
-                Ok(Some(Node::new(E::untyped(Bool(true)), &token, &token)))
+                Ok(Some(Node::new(E::untyped(Bool(true)), token, token)))
             }
 
             TT::Float => {
                 let lexeme = token.lexeme;
                 let n = lexeme.parse::<f64>().map_err(|_| {
                     Error::new(
-                        &self.source,
-                        &token,
+                        self.source,
+                        token,
                         None,
                         &format!("Failed to parse number token '{}'", lexeme),
                     )
@@ -1027,7 +1027,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                 self.advance();
 
-                Ok(Some(Node::new(E::untyped(Float(n)), &token, &token)))
+                Ok(Some(Node::new(E::untyped(Float(n)), token, token)))
             }
 
             TT::Identifier => {
@@ -1036,11 +1036,11 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 Ok(Some(Node::new(
                     E::untyped(ET::Identifier(Node::new(
                         Identifier_::new(token.lexeme),
-                        &token,
-                        &token,
+                        token,
+                        token,
                     ))),
-                    &token,
-                    &token,
+                    token,
+                    token,
                 )))
             }
 
@@ -1049,7 +1049,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                 let lexeme = token.lexeme;
                 let value = lexeme[1..(lexeme.len() - 1)].to_string();
-                Ok(Some(Node::new(E::untyped(String_(value)), &token, &token)))
+                Ok(Some(Node::new(E::untyped(String_(value)), token, token)))
             }
 
             LeftBrace => {
@@ -1063,7 +1063,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         self.advance();
                         Ok(Some(Node::new(
                             E::untyped(Record(vec![])),
-                            &token,
+                            token,
                             next_token,
                         )))
                     }
@@ -1079,14 +1079,14 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                                 Ok(Some(Node::new(
                                     E::untyped(Record(fields)),
-                                    &token,
-                                    &last_token,
+                                    token,
+                                    last_token,
                                 )))
                             }
                             _ => Err(Error::expected_but_found(
                                 self.source,
-                                &last_token,
-                                Some(&token),
+                                last_token,
+                                Some(token),
                                 "Expected '}' to close a record literal",
                             )),
                         }
@@ -1112,21 +1112,21 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                                         Ok(Some(Node::new(
                                             E::untyped(RecordUpdate(Box::new(record), fields)),
-                                            &token,
-                                            &last_token,
+                                            token,
+                                            last_token,
                                         )))
                                     }
                                     _ => Err(Error::expected_but_found(
                                         self.source,
-                                        &last_token,
-                                        Some(&token),
+                                        last_token,
+                                        Some(token),
                                         "Expected '}' to close a record update expression",
                                     )),
                                 }
                             }
                             _ => Err(Error::expected_but_found(
                                 self.source,
-                                &pipe_token,
+                                pipe_token,
                                 None,
                                 "Expected '|' between the record and \
                                 the fields to update (like this \
@@ -1144,7 +1144,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 match next_token.kind {
                     RightParen => {
                         self.advance();
-                        Ok(Some(Node::new(E::untyped(Unit), &token, next_token)))
+                        Ok(Some(Node::new(E::untyped(Unit), token, next_token)))
                     }
 
                     _ => {
@@ -1160,8 +1160,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                             }
                             _ => Err(Error::expected_but_found(
                                 self.source,
-                                &last_token,
-                                Some(&token),
+                                last_token,
+                                Some(token),
                                 "Expected ')' after parenthesized expression",
                             )),
                         }
@@ -1180,21 +1180,21 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                         let name_identifier = Node::new(
                             Identifier_::new(identifier_token.lexeme),
-                            &identifier_token,
-                            &identifier_token,
+                            identifier_token,
+                            identifier_token,
                         );
                         Ok(Some(Node::new(
                             E::untyped(PropAccessLambda(name_identifier)),
-                            &token,
-                            &identifier_token,
+                            token,
+                            identifier_token,
                         )))
                     }
 
                     // Dot with whitespace and an identifier afterwards
                     TT::Identifier => {
                         return Err(Error::new(
-                            &self.source,
-                            &token,
+                            self.source,
+                            token,
                             None,
                             "A property access must have the dot \
                                 and identifier together, \
@@ -1204,8 +1204,8 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                     _ => {
                         return Err(Error::new(
-                            &self.source,
-                            &token,
+                            self.source,
+                            token,
                             None,
                             "Expected an identifier after a \
                                 dot for the property access",
@@ -1280,7 +1280,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         match self.module_identifier_part()? {
             Some(name) => self
                 .module_identifier_rest(vec![name])
-                .map(|name| Some(name)),
+                .map(Some),
             None => Ok(None),
         }
     }
@@ -1691,7 +1691,7 @@ add 5"
         assert_snapshot!(parse("{ if True then {} else {} | x = 1, y = 3 }"));
 
         fn parse(code: &str) -> String {
-            let source = Source::new_orphan(&code);
+            let source = Source::new_orphan(code);
             let tokens = tokenizer::parse(&source).unwrap();
             let result = parse_expression(&source, &tokens);
             format!(
@@ -1805,7 +1805,7 @@ incr n = n + 1
         ));
 
         fn parse(code: &str) -> String {
-            let source = Source::new_orphan(&code);
+            let source = Source::new_orphan(code);
             let tokens = tokenizer::parse(&source).unwrap();
             let result = super::parse(&source, &tokens);
             format!(

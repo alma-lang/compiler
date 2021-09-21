@@ -38,7 +38,7 @@ pub fn prompt() {
                     Ok(out) => println!("{}", out),
                     Err(errs) => println!("{}", errs),
                 };
-                println!("");
+                println!();
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Bye!");

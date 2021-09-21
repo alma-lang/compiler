@@ -52,7 +52,7 @@ impl<'a> Source<'a> {
     }
 
     fn _line_at(&self, position: usize) -> Option<&str> {
-        self.code.get(line_at(&self.code, position)?)
+        self.code.get(line_at(self.code, position)?)
     }
 
     pub fn lines_around_position(
@@ -61,7 +61,7 @@ impl<'a> Source<'a> {
         end_position: Option<usize>,
         number_of_lines: u32,
     ) -> Option<(Vec<&str>, (usize, Vec<&str>), Vec<&str>)> {
-        lines_around_position(&self.code, position, end_position, number_of_lines)
+        lines_around_position(self.code, position, end_position, number_of_lines)
     }
 
     pub fn len(&self) -> usize {
@@ -103,7 +103,7 @@ impl<'a> Source<'a> {
 
         for (i, l) in lines_before.iter().enumerate() {
             if !message.is_empty() {
-                message.push_str("\n");
+                message.push('\n');
             }
             message.push_str(&format!(
                 "  {0:1$}│  {2}",
@@ -117,7 +117,7 @@ impl<'a> Source<'a> {
             [] => panic!("Empty code for report, should've bailed earlier at line_at"),
             [line] => {
                 if !message.is_empty() {
-                    message.push_str("\n");
+                    message.push('\n');
                 }
                 message.push_str(&format!(
                     "  {0:1$}│  {2}\n",
@@ -144,7 +144,7 @@ impl<'a> Source<'a> {
             lines => {
                 for (i, l) in lines.iter().enumerate() {
                     if !message.is_empty() {
-                        message.push_str("\n");
+                        message.push('\n');
                     }
                     message.push_str(&format!(
                         "  {0:1$}│{3} {2}",
@@ -158,7 +158,7 @@ impl<'a> Source<'a> {
         }
 
         for (i, l) in lines_after.iter().enumerate() {
-            message.push_str("\n");
+            message.push('\n');
             message.push_str(&format!(
                 "  {0:1$}│  {2}",
                 line_number + 1 + i as u32,
@@ -221,7 +221,7 @@ fn line_at(code: &str, position: usize) -> Option<Range<usize>> {
 
     let line_start = {
         let back = code.get(..position)?;
-        if back.len() == 0 {
+        if back.is_empty() {
             position
         } else {
             back.char_indices()

@@ -15,7 +15,7 @@ Result:
    │            ↑
 
 Error {
-    message: "1:10: Expected an identifier for the name of the field in the record, but instead found: \'}\'\n\n  1│  { x : 5 , }\n   │            ↑",
+    message: "1:10: Expected an identifier for the name of the field in the record, but instead found: '}'\n\n  1│  { x : 5 , }\n   │            ↑",
     token: Token {
         kind: RightBrace,
         position: 10,

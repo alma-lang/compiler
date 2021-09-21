@@ -99,9 +99,9 @@ impl fmt::Display for Type {
                 let value = &fields.map()[key];
 
                 if i != 0 {
-                    s.push_str(",");
+                    s.push(',');
                 }
-                s.push_str(" ");
+                s.push(' ');
 
                 s.push_str(key);
                 s.push_str(" : ");
@@ -129,15 +129,15 @@ impl fmt::Display for Type {
                 Named(name, params) => {
                     s.push_str(name);
                     for param in params.iter() {
-                        s.push_str(" ");
+                        s.push(' ');
                         to_string_rec(param, cur_type_var_name, type_var_names, s);
                     }
                 }
 
                 Var(var) => match &*var.borrow() {
-                    TypeVar::Bound(t) => to_string_rec(&t, cur_type_var_name, type_var_names, s),
+                    TypeVar::Bound(t) => to_string_rec(t, cur_type_var_name, type_var_names, s),
 
-                    TypeVar::Unbound(TypeVarId(n), _) => match type_var_names.get(&n) {
+                    TypeVar::Unbound(TypeVarId(n), _) => match type_var_names.get(n) {
                         Some(name) => s.push_str(name),
 
                         None => {
@@ -154,13 +154,13 @@ impl fmt::Display for Type {
                     let parens = arg.should_parenthesize();
 
                     if parens {
-                        s.push_str("(");
+                        s.push('(');
                     }
 
                     to_string_rec(arg, cur_type_var_name, type_var_names, s);
 
                     if parens {
-                        s.push_str(")");
+                        s.push(')');
                     }
                     s.push_str(" -> ");
 
@@ -168,14 +168,14 @@ impl fmt::Display for Type {
                 }
 
                 Record(fields) => {
-                    s.push_str("{");
+                    s.push('{');
 
                     fields_to_string(fields, cur_type_var_name, type_var_names, s);
 
-                    if fields.map().len() > 0 {
-                        s.push_str(" ");
+                    if !fields.map().is_empty() {
+                        s.push(' ');
                     }
-                    s.push_str("}");
+                    s.push('}');
                 }
 
                 RecordExt(fields, var) => {
@@ -183,7 +183,7 @@ impl fmt::Display for Type {
 
                     to_string_rec(var, cur_type_var_name, type_var_names, s);
 
-                    if fields.map().len() > 0 {
+                    if !fields.map().is_empty() {
                         s.push_str(" |");
                     }
 
@@ -194,10 +194,10 @@ impl fmt::Display for Type {
 
                 PolyType(type_vars, t) => {
                     if !type_vars.is_empty() {
-                        s.push_str("∀");
+                        s.push('∀');
 
                         for var in type_vars.iter() {
-                            s.push_str(" ");
+                            s.push(' ');
                             to_string_rec(
                                 &Var(Rc::new(RefCell::new(TypeVar::Unbound(
                                     *var,

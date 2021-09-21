@@ -17,7 +17,7 @@ Result:
    │     ↑
 
 Error {
-    message: "2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: \'[End of file]\'\n\n  1│  let x = a\n  2│    x\n   │     ↑",
+    message: "2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: '[End of file]'\n\n  1│  let x = a\n  2│    x\n   │     ↑",
     token: Token {
         kind: Eof,
         position: 13,

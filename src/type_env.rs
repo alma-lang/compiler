@@ -31,9 +31,7 @@ impl fmt::Display for TypeEnv {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
-        //
-        // what do you want from me rust, here, have a clone
-        entries.sort_by_key(|(k, _)| k.clone());
+        entries.sort_by_key(|(k, _)| *k);
 
         for (name, typ) in &entries {
             write!(f, "{} : {}\n\n", name, typ)?;

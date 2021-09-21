@@ -15,7 +15,7 @@ Result:
    │         ↑
 
 Error {
-    message: "1:7: Expected the end of input, but instead found: \')\'\n\n  1│  (((1))))\n   │         ↑",
+    message: "1:7: Expected the end of input, but instead found: ')'\n\n  1│  (((1))))\n   │         ↑",
     token: Token {
         kind: RightParen,
         position: 7,
