@@ -41,7 +41,6 @@ use crate::token::{
     Token,
     Type::{self as TT, *},
 };
-use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
 pub struct Error<'source, 'tokens> {
@@ -1049,9 +1048,9 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 self.advance();
 
                 let lexeme = token.lexeme;
-                let value = lexeme[1..(lexeme.len() - 1)].to_string();
+                let value = &lexeme[1..(lexeme.len() - 1)];
                 Ok(Some(Node::new(
-                    E::untyped(String_(Rc::new(value))),
+                    E::untyped(String_(value.into())),
                     token,
                     token,
                 )))

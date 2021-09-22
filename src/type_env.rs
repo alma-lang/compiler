@@ -1,17 +1,18 @@
 use crate::typ::Type;
 use im_rc::HashMap;
+use smol_str::SmolStr;
 use std::fmt;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeEnv(HashMap<Rc<String>, Rc<Type>>);
+pub struct TypeEnv(HashMap<SmolStr, Rc<Type>>);
 
 impl TypeEnv {
-    pub fn get(&self, key: &Rc<String>) -> Option<&Rc<Type>> {
+    pub fn get(&self, key: &SmolStr) -> Option<&Rc<Type>> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: Rc<String>, value: Rc<Type>) {
+    pub fn insert(&mut self, key: SmolStr, value: Rc<Type>) {
         self.0.insert(key, value);
     }
 
@@ -21,7 +22,7 @@ impl TypeEnv {
         Self(env)
     }
 
-    pub fn map(&self) -> &HashMap<Rc<String>, Rc<Type>> {
+    pub fn map(&self) -> &HashMap<SmolStr, Rc<Type>> {
         &self.0
     }
 }

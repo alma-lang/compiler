@@ -1,5 +1,6 @@
 use crate::token::Token;
 use crate::typ::Type;
+use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
@@ -45,7 +46,7 @@ pub enum ReplEntry {
 #[derive(Debug, PartialEq)]
 pub struct ModuleName {
     parts: Vec<Identifier>,
-    pub full_name: Rc<String>,
+    pub full_name: SmolStr,
 }
 
 impl ModuleName {
@@ -54,11 +55,9 @@ impl ModuleName {
             .iter()
             .map(|i| i.value.name.as_str())
             .collect::<Vec<_>>()
-            .join(".");
-        Self {
-            parts,
-            full_name: Rc::new(full_name),
-        }
+            .join(".")
+            .into();
+        Self { parts, full_name }
     }
 
     pub fn end(&self) -> usize {
@@ -140,7 +139,7 @@ pub enum ExpressionType {
     Unit,
     Bool(bool),
     Float(f64),
-    String_(Rc<String>),
+    String_(SmolStr),
     Identifier(Identifier),
     PropAccess(Box<Expression>, Identifier),
     PropAccessLambda(Identifier),
@@ -288,7 +287,7 @@ pub enum Pattern_ {
 pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Identifier_ {
-    pub name: Rc<String>,
+    pub name: SmolStr,
     pub case: IdentifierCase,
 }
 
@@ -303,7 +302,7 @@ impl Identifier_ {
             .expect("Can't construct an empty identifier");
 
         Self {
-            name: Rc::new(name.to_string()),
+            name: name.into(),
             case,
         }
     }

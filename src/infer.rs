@@ -635,7 +635,7 @@ fn unify<'ast>(
 
 fn base_env(state: &mut State, env: &mut TypeEnv) {
     env.insert(
-        Rc::new("__op__or".to_string()),
+        "__op__or".into(),
         Rc::new(Type::Fn(
             BOOL.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -646,7 +646,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
     );
 
     env.insert(
-        Rc::new("__op__or".to_string()),
+        "__op__or".into(),
         Rc::new(Type::Fn(
             BOOL.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -656,7 +656,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__and".to_string()),
+        "__op__and".into(),
         Rc::new(Type::Fn(
             BOOL.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -665,14 +665,14 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
             )),
         )),
     );
-    env.insert(Rc::new("__op__eq".to_string()), {
+    env.insert("__op__eq".into(), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
             Rc::new(Type::Fn(Rc::clone(&a), BOOL.with(|t| Rc::clone(t)))),
         )))
     });
-    env.insert(Rc::new("__op__ne".to_string()), {
+    env.insert("__op__ne".into(), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
@@ -680,7 +680,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )))
     });
     env.insert(
-        Rc::new("__op__gt".to_string()),
+        "__op__gt".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -690,7 +690,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__ge".to_string()),
+        "__op__ge".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -700,7 +700,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__lt".to_string()),
+        "__op__lt".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -710,7 +710,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__le".to_string()),
+        "__op__le".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -720,7 +720,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__add".to_string()),
+        "__op__add".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -730,7 +730,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__sub".to_string()),
+        "__op__sub".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -740,7 +740,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__mult".to_string()),
+        "__op__mult".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -750,7 +750,7 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
         )),
     );
     env.insert(
-        Rc::new("__op__div".to_string()),
+        "__op__div".into(),
         Rc::new(Type::Fn(
             FLOAT.with(|t| Rc::clone(t)),
             Rc::new(Type::Fn(
@@ -776,9 +776,9 @@ pub fn infer<'interfaces, 'ast>(
     // Check imports and add them to the env to type check this module
     for import in &module.imports {
         let module_name = &import.value.module_name.full_name;
-        let mut names = vec![Rc::clone(module_name)];
+        let mut names = vec![module_name];
         if let Some(alias) = &import.value.alias {
-            names.push(Rc::clone(&alias.value.name));
+            names.push(&alias.value.name);
         }
         // TODO: Insert or reference these in the type env to be able to access the module
         // functions. Pending the . syntax
@@ -789,7 +789,7 @@ pub fn infer<'interfaces, 'ast>(
                     for identifier in exposed.value.identifiers() {
                         let name = &identifier.value.name;
                         match imported.get(name) {
-                            Some(definition) => env.insert(Rc::clone(name), Rc::clone(definition)),
+                            Some(definition) => env.insert(name.clone(), Rc::clone(definition)),
                             None => errors.push(Error::UnknownImportDefinition(identifier, import)),
                         };
                     }
@@ -807,7 +807,7 @@ pub fn infer<'interfaces, 'ast>(
         for identifier in export.value.identifiers() {
             let name = &identifier.value.name;
             match env.get(name) {
-                Some(typ) => module_type.insert(Rc::clone(name), Rc::clone(typ)),
+                Some(typ) => module_type.insert(name.clone(), Rc::clone(typ)),
                 None => errors.push(Error::UndefinedExport(identifier)),
             }
         }
@@ -843,7 +843,7 @@ fn infer_rec<'ast>(
                 if typed_fields.map().contains_key(&name.value.name) {
                     errors.push(Error::DuplicateField(name, ast));
                 } else {
-                    typed_fields.insert(Rc::clone(&name.value.name), t);
+                    typed_fields.insert(name.value.name.clone(), t);
                 }
             }
 
@@ -1484,7 +1484,7 @@ last _ y = y
                         s
                     }
                     Err((typ, errs)) => {
-                        module_interfaces.insert(Rc::clone(&module.name.full_name), typ);
+                        module_interfaces.insert(module.name.full_name.clone(), typ);
                         errs.iter()
                             .map(|e| e.to_string(&source))
                             .collect::<Vec<String>>()

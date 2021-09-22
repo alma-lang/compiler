@@ -1,9 +1,10 @@
 use crate::type_env::TypeEnv;
+use smol_str::SmolStr;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-pub struct ModuleInterfaces(HashMap<Rc<String>, Rc<TypeEnv>>);
+pub struct ModuleInterfaces(HashMap<SmolStr, Rc<TypeEnv>>);
 
 impl ModuleInterfaces {
     pub fn new() -> Self {
@@ -12,15 +13,15 @@ impl ModuleInterfaces {
         Self(env)
     }
 
-    pub fn get(&self, key: &Rc<String>) -> Option<&Rc<TypeEnv>> {
+    pub fn get(&self, key: &SmolStr) -> Option<&Rc<TypeEnv>> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: Rc<String>, value: Rc<TypeEnv>) {
+    pub fn insert(&mut self, key: SmolStr, value: Rc<TypeEnv>) {
         self.0.insert(key, value);
     }
 
-    pub fn map(&self) -> &HashMap<Rc<String>, Rc<TypeEnv>> {
+    pub fn map(&self) -> &HashMap<SmolStr, Rc<TypeEnv>> {
         &self.0
     }
 }
