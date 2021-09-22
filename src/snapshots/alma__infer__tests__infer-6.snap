@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-expression: "infer(r#\"\nmodule Parent\n\nimport Test exposing (test)\n\nadd = \\x -> x + test\n\nmodule Test exposing (test)\n\n    test = 5\n\"#)"
+expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (test)\n\nadd = \\x -> x + test\n\nmodule Parent.Test exposing (test)\n\n    test = 5\n\"#)"
 
 ---
 Input:
@@ -8,11 +8,11 @@ Input:
 
 module Parent
 
-import Test exposing (test)
+import Parent.Test exposing (test)
 
 add = \x -> x + test
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = 5
 
@@ -20,7 +20,7 @@ module Test exposing (test)
 ---
 Output:
 
-Test
+Parent.Test
 
 test : Float
 

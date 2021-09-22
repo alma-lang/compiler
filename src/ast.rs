@@ -1,5 +1,8 @@
+use crate::source::Source;
 use crate::token::Token;
 use crate::typ::Type;
+use lazy_static::lazy_static;
+use regex::Regex;
 use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::fmt;
@@ -50,14 +53,64 @@ pub struct ModuleName {
 }
 
 impl ModuleName {
-    pub fn new(parts: Vec<Identifier>) -> Self {
-        let full_name = parts
+    pub fn new(parts: Vec<Identifier>) -> Result<Self, (usize, Vec<Identifier>)> {
+        let str_parts = parts
             .iter()
             .map(|i| i.value.name.as_str())
-            .collect::<Vec<_>>()
-            .join(".")
-            .into();
-        Self { parts, full_name }
+            .collect::<Vec<_>>();
+
+        match ModuleName::valid_parts(&str_parts) {
+            Ok(()) => {
+                let full_name = str_parts.join(".").into();
+                Ok(Self { parts, full_name })
+            }
+            Err(i) => Err((i, parts)),
+        }
+    }
+
+    pub fn valid_part(part: &str) -> bool {
+        lazy_static! {
+            static ref MODULE_IDENTIFIER_RE: Regex = Regex::new(r"^[A-Z][a-zA-Z0-9]*$").unwrap();
+        }
+
+        MODULE_IDENTIFIER_RE.is_match(part)
+    }
+
+    pub fn valid_parts(parts: &Vec<&str>) -> Result<(), usize> {
+        for (i, part) in parts.iter().enumerate() {
+            if !ModuleName::valid_part(part) {
+                return Err(i);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn valid_top_level_in_file(&self, source: &Source) -> bool {
+        if let Some(file_name) = source.file_stem() {
+            let last_module_segment = self
+                .parts
+                .last()
+                .expect("Module name parts should never be empty");
+
+            last_module_segment.value.name == file_name
+        } else {
+            true
+        }
+    }
+
+    pub fn valid_in_parent_module(&self, parent: &ModuleName) -> bool {
+        if parent.parts.len() != self.parts.len() - 1 {
+            return false;
+        }
+
+        for (i, parent_name) in parent.parts.iter().enumerate() {
+            let name = &self.parts[i];
+            if name.value.name != parent_name.value.name {
+                return false;
+            }
+        }
+
+        true
     }
 
     pub fn end(&self) -> usize {

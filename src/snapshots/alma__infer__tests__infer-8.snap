@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-expression: "infer(r#\"\nmodule Parent\n\nimport Test exposing (nope)\n\nadd = \\x -> x + test\n\nmodule Test exposing (test)\n\n    test = \"hi\"\n\"#)"
+expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (nope)\n\nadd = \\x -> x + test\n\nmodule Parent.Test exposing (test)\n\n    test = \"hi\"\n\"#)"
 
 ---
 Input:
@@ -8,11 +8,11 @@ Input:
 
 module Parent
 
-import Test exposing (nope)
+import Parent.Test exposing (nope)
 
 add = \x -> x + test
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = "hi"
 
@@ -20,21 +20,21 @@ module Test exposing (test)
 ---
 Output:
 
-Test
+Parent.Test
 
 test : String
 
 
 
 
-[4:22]
+[4:29]
 
-Module `Test` doesn't appear to expose `nope`
+Module `Parent.Test` doesn't appear to expose `nope`
 
   2│  module Parent
   3│  
-  4│  import Test exposing (nope)
-   │                        ↑↑↑↑
+  4│  import Parent.Test exposing (nope)
+   │                               ↑↑↑↑
   5│  
   6│  add = \x -> x + test
 
@@ -42,9 +42,9 @@ Module `Test` doesn't appear to expose `nope`
 
 Undefined identifier `test`
 
-  4│  import Test exposing (nope)
+  4│  import Parent.Test exposing (nope)
   5│  
   6│  add = \x -> x + test
    │                  ↑↑↑↑
   7│  
-  8│  module Test exposing (test)
+  8│  module Parent.Test exposing (test)

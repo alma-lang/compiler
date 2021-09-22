@@ -102,14 +102,14 @@ type ParseResult<'source, 'tokens, A> = Result<A, Error<'source, 'tokens>>;
 
 #[derive(Debug)]
 struct State<'source, 'tokens> {
-    source: &'source Source<'source>,
+    source: &'source Source,
     tokens: &'tokens [Token<'source>],
     current: usize,
 }
 
 impl<'source, 'tokens> State<'source, 'tokens> {
     fn file(&mut self) -> ParseResult<'source, 'tokens, Vec<Module>> {
-        let module = self.module(true)?;
+        let module = self.module(None)?;
         match module {
             Some(modules) => self.eof(modules),
             None => Err(Error::expected_but_found(
@@ -149,7 +149,16 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
 
-    fn module(&mut self, top_level: bool) -> ParseResult<'source, 'tokens, Option<Vec<Module>>> {
+    fn module(
+        &mut self,
+        parent_module: Option<&ModuleName>,
+    ) -> ParseResult<'source, 'tokens, Option<Vec<Module>>> {
+        let top_level = if let Some(_) = parent_module {
+            false
+        } else {
+            true
+        };
+
         let module_token = self.get_token();
         match module_token.kind {
             TT::Module => {
@@ -157,12 +166,50 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                 match self.module_identifier()? {
                     Some(name) => {
+                        if top_level && !name.valid_top_level_in_file(self.source) {
+                            return Err(Error::new(
+                                self.source,
+                                module_token,
+                                None,
+                                &format!(
+                                    "The module name '{}' differs from the name of the file.\n\n\
+                                    Module names need to match the folder and file names from the \
+                                    file system",
+                                    &name.full_name
+                                ),
+                            ));
+                        } else if parent_module
+                            .map(|m| !name.valid_in_parent_module(m))
+                            .unwrap_or(false)
+                        {
+                            return Err(Error::new(
+                                self.source,
+                                module_token,
+                                None,
+                                &format!(
+                                    "The sub-module name '{}' differs from the name of the parent \
+                                    module.\n\nModule names need to match their parent module path \
+                                    names and specify their name at the end.\n\nLike this:\n\
+                                    \n    module Admin\
+                                    \n        module Admin.User\
+                                    \n            module Admin.User.Id\
+                                    \n\n",
+                                    &name.full_name
+                                ),
+                            ));
+                        }
+
                         let (_, exports) = self.exposing()?;
 
                         let imports = self.imports()?;
 
-                        let (mut modules, definitions) =
-                            self.module_definitions(top_level, module_token, vec![], vec![])?;
+                        let (mut modules, definitions) = self.module_definitions(
+                            top_level,
+                            &name,
+                            module_token,
+                            vec![],
+                            vec![],
+                        )?;
 
                         modules.push(Module {
                             name,
@@ -336,6 +383,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     fn module_definitions(
         &mut self,
         top_level: bool,
+        module_name: &ModuleName,
         module_token: &Token,
         mut modules: Vec<Module>,
         mut definitions: Vec<Definition>,
@@ -344,16 +392,28 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
         if current_token_has_valid_indent {
-            match self.module(false)? {
+            match self.module(Some(module_name))? {
                 Some(mut nested_modules) => {
                     modules.append(&mut nested_modules);
-                    self.module_definitions(top_level, module_token, modules, definitions)
+                    self.module_definitions(
+                        top_level,
+                        module_name,
+                        module_token,
+                        modules,
+                        definitions,
+                    )
                 }
 
                 None => match self.binding()? {
                     Some(definition) => {
                         definitions.push(definition);
-                        self.module_definitions(top_level, module_token, modules, definitions)
+                        self.module_definitions(
+                            top_level,
+                            module_name,
+                            module_token,
+                            modules,
+                            definitions,
+                        )
                     }
 
                     None => match self.get_token().kind {
@@ -1281,13 +1341,17 @@ impl<'source, 'tokens> State<'source, 'tokens> {
     }
 
     fn module_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
+        let first_token = self.get_token();
         match self.module_identifier_part()? {
-            Some(name) => self.module_identifier_rest(vec![name]).map(Some),
+            Some(name) => self
+                .module_identifier_rest(vec![first_token], vec![name])
+                .map(Some),
             None => Ok(None),
         }
     }
     fn module_identifier_rest(
         &mut self,
+        mut tokens: Vec<&'tokens Token<'source>>,
         mut names: Vec<Identifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         let dot_token = self.get_token();
@@ -1295,16 +1359,39 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::Dot => {
                 self.advance();
 
+                let token = self.get_token();
                 match self.module_identifier_part()? {
                     Some(name) => {
                         names.push(name);
-                        self.module_identifier_rest(names)
+                        tokens.push(token);
+                        self.module_identifier_rest(tokens, names)
                     }
-                    None => Ok(ModuleName::new(names)),
+                    None => self.module_name(tokens, names),
                 }
             }
-            _ => Ok(ModuleName::new(names)),
+            _ => self.module_name(tokens, names),
         }
+    }
+    fn module_name(
+        &self,
+        tokens: Vec<&'tokens Token<'source>>,
+        names: Vec<Identifier>,
+    ) -> ParseResult<'source, 'tokens, ModuleName> {
+        ModuleName::new(names).map_err(|(i, names)| {
+            Error::new(
+                self.source,
+                tokens[i],
+                None,
+                &format!(
+                    "Invalid module name '{}'.\n\n\
+                Module names have to be `PascalCase` \
+                and also not have extraneous characters, \
+                because they need to match the file name \
+                in the file system.",
+                    &names[i].value.name
+                ),
+            )
+        })
     }
 
     fn binding_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
@@ -1690,7 +1777,7 @@ add 5"
         assert_snapshot!(parse("{ if True then {} else {} | x = 1, y = 3 }"));
 
         fn parse(code: &str) -> String {
-            let source = Source::new_orphan(code);
+            let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
             let result = parse_expression(&source, &tokens);
             format!(
@@ -1718,26 +1805,57 @@ add 5"
 
         assert_snapshot!(parse("module Test\n\na = 1 + 2 + 3\n\nb = * add\n  5"));
 
-        assert_snapshot!(parse("module Parent\n\nmodule Test"));
+        assert_snapshot!(parse("module Parent\n\nmodule Parent.Test"));
 
-        assert_snapshot!(parse("module Parent\n\nmodule Test\n\n  a = 1"));
+        assert_snapshot!(parse(
+            "\
+module Parent
 
-        assert_snapshot!(parse("module Parent\n\nmodule Test\n\n  a = 1\n\na = 1\n"));
+module Parent.Test
+
+  a = 1"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Parent
+
+module Parent.Test
+
+  a = 1
+
+a = 1
+"
+        ));
 
         assert_snapshot!(parse({
-            "module Parent\n\nmodule Test\n\n  a = 1 + 2) + 3\n\n  b = * add\n    5\n\na = 1 + 2) + 3\n\nb = * add\n  5"
+            "\
+module Parent
+
+module Parent.Test
+
+  a = 1 + 2) + 3
+
+  b = * add
+    5
+
+a = 1 + 2) + 3
+
+b = * add
+  5"
         },));
 
         assert_snapshot!(parse(
-            "module Parent
+            "\
+module Parent
 
-module Test1
+module Parent.Test1
   a = 1
 
-  module Test1Test
+  module Parent.Test1.Test1Test
     b = 1
 
-module Test2
+module Parent.Test2
     c = 5
     ",
         ));
@@ -1759,7 +1877,8 @@ module Test2
         assert_snapshot!(parse("module Test\n\nimport Banana exposing (phone)"));
 
         assert_snapshot!(parse(
-            "module Test
+            "\
+module Test
 
 import Banana as B
 
@@ -1772,7 +1891,8 @@ import Apple as A exposing (orange)
         assert_snapshot!(parse("module i_am_not_PascalCase"));
 
         assert_snapshot!(parse(
-            "module Test
+            "\
+module Test
 
 module i_am_not_PascalCase
     test = 1
@@ -1780,9 +1900,10 @@ module i_am_not_PascalCase
         ));
 
         assert_snapshot!(parse(
-            "module Test
+            "\
+module Test
 
-module Test2
+module Test.Test2
 
     module i_am_not_PascalCase
         test = 1
@@ -1790,21 +1911,37 @@ module Test2
         ));
 
         assert_snapshot!(parse(
-            "module Test
+            "\
+module Test
 
 IAmNotCamelCase = 1
 "
         ));
 
         assert_snapshot!(parse(
-            "module Test
+            "\
+module Test
 
 incr n = n + 1
 "
         ));
 
+        assert_snapshot!(parse("module Te_st"));
+
+        assert_snapshot!(parse("module Test.Te_st"));
+
+        assert_snapshot!(parse("module Test.Te_st.Test"));
+
+        assert_snapshot!(parse(
+            "
+module Test.Something
+
+module Test.Banana
+"
+        ));
+
         fn parse(code: &str) -> String {
-            let source = Source::new_orphan(code);
+            let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
             let result = super::parse(&source, &tokens);
             format!(

@@ -40,7 +40,7 @@ enum Status {
 
 struct State<'source> {
     status: Status,
-    source: &'source Source<'source>,
+    source: &'source Source,
     chars: Peekable<CharIndices<'source>>,
     tokens: Vec<Token<'source>>,
     errors: Vec<Error>,
@@ -344,9 +344,7 @@ impl<'source> State<'source> {
             line: self.line,
             // If the last char is a \n, then line_start_position may be bigger than the last \n
             // position. Default to column 0 then.
-            column: self
-                .source
-                .len().saturating_sub(self.line_start_position) as u32,
+            column: self.source.len().saturating_sub(self.line_start_position) as u32,
             indent: self.indent,
 
             position: self.source.len(),
@@ -381,7 +379,7 @@ mod tests {
     #[test]
     fn test_scan_tokens() {
         fn tokenize<'a>(code: &'a str) -> String {
-            let source = &Source::new_orphan(code);
+            let source = &Source::new_orphan(code.to_string());
             format!("{:#?}", parse(source))
         }
 

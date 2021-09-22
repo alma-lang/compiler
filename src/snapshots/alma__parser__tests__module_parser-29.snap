@@ -1,0 +1,44 @@
+---
+source: src/parser.rs
+expression: "parse(\"\nmodule Test.Something\n\nmodule Test.Banana\n\")"
+
+---
+Input:
+
+
+module Test.Something
+
+module Test.Banana
+
+
+Result:
+
+4:0: The sub-module name 'Test.Banana' differs from the name of the parent module.
+
+Module names need to match their parent module path names and specify their name at the end.
+
+Like this:
+
+    module Admin
+        module Admin.User
+            module Admin.User.Id
+
+
+
+  2│  module Test.Something
+  3│  
+  4│  module Test.Banana
+   │  ↑↑↑↑↑↑
+
+Error {
+    message: "4:0: The sub-module name 'Test.Banana' differs from the name of the parent module.\n\nModule names need to match their parent module path names and specify their name at the end.\n\nLike this:\n\n    module Admin\n        module Admin.User\n            module Admin.User.Id\n\n\n\n  2│  module Test.Something\n  3│  \n  4│  module Test.Banana\n   │  ↑↑↑↑↑↑",
+    token: Token {
+        kind: Module,
+        position: 24,
+        end_position: 30,
+        lexeme: "module",
+        line: 4,
+        column: 0,
+        indent: 0,
+    },
+}

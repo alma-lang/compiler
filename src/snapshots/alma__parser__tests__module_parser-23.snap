@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-expression: "parse(\"module Test\n\nmodule Test2\n\n    module i_am_not_PascalCase\n        test = 1\n\")"
+expression: "parse(\"\\\nmodule Test\n\nmodule Test.Test2\n\n    module i_am_not_PascalCase\n        test = 1\n\")"
 
 ---
 Input:
 
 module Test
 
-module Test2
+module Test.Test2
 
     module i_am_not_PascalCase
         test = 1
@@ -17,18 +17,18 @@ Result:
 
 5:11: Expected a `PascalCase` module name, but instead found: 'i_am_not_PascalCase'
 
-  3│  module Test2
+  3│  module Test.Test2
   4│  
   5│      module i_am_not_PascalCase
    │             ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
   6│          test = 1
 
 Error {
-    message: "5:11: Expected a `PascalCase` module name, but instead found: 'i_am_not_PascalCase'\n\n  3│  module Test2\n  4│  \n  5│      module i_am_not_PascalCase\n   │             ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  6│          test = 1",
+    message: "5:11: Expected a `PascalCase` module name, but instead found: 'i_am_not_PascalCase'\n\n  3│  module Test.Test2\n  4│  \n  5│      module i_am_not_PascalCase\n   │             ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  6│          test = 1",
     token: Token {
         kind: Identifier,
-        position: 38,
-        end_position: 57,
+        position: 43,
+        end_position: 62,
         lexeme: "i_am_not_PascalCase",
         line: 5,
         column: 11,

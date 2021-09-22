@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-expression: "parse(\"module Parent\\n\\nmodule Test\")"
+expression: "parse(\"module Parent\\n\\nmodule Parent.Test\")"
 
 ---
 Input:
 
 module Parent
 
-module Test
+module Parent.Test
 
 Result:
 
@@ -17,16 +17,26 @@ Result:
             parts: [
                 Node {
                     start: 22,
-                    end: 26,
+                    end: 28,
                     line: 3,
                     column: 7,
+                    value: Identifier_ {
+                        name: "Parent",
+                        case: Pascal,
+                    },
+                },
+                Node {
+                    start: 29,
+                    end: 33,
+                    line: 3,
+                    column: 14,
                     value: Identifier_ {
                         name: "Test",
                         case: Pascal,
                     },
                 },
             ],
-            full_name: "Test",
+            full_name: "Parent.Test",
         },
         exports: [],
         imports: [],

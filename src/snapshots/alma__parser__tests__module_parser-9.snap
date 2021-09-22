@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-expression: "parse(\"module Parent\\n\\nmodule Test\\n\\n  a = 1\\n\\na = 1\\n\")"
+expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1\n\na = 1\n\")"
 
 ---
 Input:
 
 module Parent
 
-module Test
+module Parent.Test
 
   a = 1
 
@@ -22,30 +22,40 @@ Result:
             parts: [
                 Node {
                     start: 22,
-                    end: 26,
+                    end: 28,
                     line: 3,
                     column: 7,
+                    value: Identifier_ {
+                        name: "Parent",
+                        case: Pascal,
+                    },
+                },
+                Node {
+                    start: 29,
+                    end: 33,
+                    line: 3,
+                    column: 14,
                     value: Identifier_ {
                         name: "Test",
                         case: Pascal,
                     },
                 },
             ],
-            full_name: "Test",
+            full_name: "Parent.Test",
         },
         exports: [],
         imports: [],
         definitions: [
             Pattern(
                 Node {
-                    start: 30,
-                    end: 31,
+                    start: 37,
+                    end: 38,
                     line: 5,
                     column: 2,
                     value: Identifier(
                         Node {
-                            start: 30,
-                            end: 31,
+                            start: 37,
+                            end: 38,
                             line: 5,
                             column: 2,
                             value: Identifier_ {
@@ -56,8 +66,8 @@ Result:
                     ),
                 },
                 Node {
-                    start: 34,
-                    end: 35,
+                    start: 41,
+                    end: 42,
                     line: 5,
                     column: 6,
                     value: Expression_ {
@@ -93,14 +103,14 @@ Result:
         definitions: [
             Pattern(
                 Node {
-                    start: 37,
-                    end: 38,
+                    start: 44,
+                    end: 45,
                     line: 7,
                     column: 0,
                     value: Identifier(
                         Node {
-                            start: 37,
-                            end: 38,
+                            start: 44,
+                            end: 45,
                             line: 7,
                             column: 0,
                             value: Identifier_ {
@@ -111,8 +121,8 @@ Result:
                     ),
                 },
                 Node {
-                    start: 41,
-                    end: 42,
+                    start: 48,
+                    end: 49,
                     line: 7,
                     column: 4,
                     value: Expression_ {

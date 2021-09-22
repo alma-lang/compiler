@@ -1282,7 +1282,7 @@ add 5"
         assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
 
         fn infer(code: &str) -> String {
-            let source = Source::new_orphan(code);
+            let source = Source::new_orphan(code.to_string());
 
             let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {
@@ -1364,7 +1364,7 @@ a = 1
 
 b = 2
 
-module TestInner exposing (a, b)
+module Test.TestInner exposing (a, b)
   a = \x y -> x + y
   b = \c -> c
 
@@ -1376,11 +1376,11 @@ c = "hi"
             r#"
 module Parent
 
-import Test exposing (test)
+import Parent.Test exposing (test)
 
 add = \x -> x + test
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = 5
 "#
@@ -1390,11 +1390,11 @@ module Test exposing (test)
             r#"
 module Parent
 
-import Test exposing (test)
+import Parent.Test exposing (test)
 
 add = \x -> x + test
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = "hi"
 "#
@@ -1404,11 +1404,11 @@ module Test exposing (test)
             r#"
 module Parent
 
-import Test exposing (nope)
+import Parent.Test exposing (nope)
 
 add = \x -> x + test
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = "hi"
 "#
@@ -1418,11 +1418,11 @@ module Test exposing (test)
             r#"
 module Parent
 
-import Test exposing (test)
+import Parent.Test exposing (test)
 
 add = \x -> x + test x
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = \x -> x + "hi"
 "#
@@ -1456,7 +1456,7 @@ last _ y = y
         ));
 
         fn infer(code: &str) -> String {
-            let source = Source::new_orphan(code);
+            let source = Source::new_orphan(code.to_string());
 
             let tokens = tokenizer::parse(&source)
                 .map_err(|errors| {

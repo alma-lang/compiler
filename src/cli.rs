@@ -3,18 +3,20 @@ use crate::compiler;
 use crate::module_interfaces::ModuleInterfaces;
 use crate::source::Source;
 use rustyline::{error::ReadlineError, Editor};
-use std::fs;
 use std::process;
 
 pub fn prompt() {
+    let module_name = ast::ModuleName::new(vec![ast::Node {
+        value: ast::Identifier_::new("REPL"),
+        start: 0,
+        end: 0,
+        line: 1,
+        column: 0,
+    }])
+    .unwrap();
+
     let mut module = ast::Module {
-        name: ast::ModuleName::new(vec![ast::Node {
-            value: ast::Identifier_::new("REPL"),
-            start: 0,
-            end: 0,
-            line: 1,
-            column: 0,
-        }]),
+        name: module_name,
         exports: vec![],
         imports: vec![],
         definitions: vec![],
@@ -31,7 +33,7 @@ pub fn prompt() {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
 
-                let file = Source::new_orphan(&line);
+                let file = Source::new_orphan(line);
                 match compiler::compile_repl_entry(&mut module, &mut module_interfaces, &file) {
                     Ok(out) => println!("{}", out),
                     Err(errs) => println!("{}", errs),
@@ -57,18 +59,20 @@ pub fn prompt() {
     // rl.append_history(repl_history_path).unwrap();
 }
 
-fn source_from_path(file_path: &str) -> String {
-    fs::read_to_string(&file_path).unwrap_or_else(|err| {
-        println!("Failed to read file {}", file_path);
-        println!("  {}", err);
-        process::exit(1);
-    })
+fn source_from_path(file_path: String) -> Source {
+    match Source::new_file(file_path.clone()) {
+        Ok(source) => source,
+        Err(err) => {
+            eprintln!("There was a problem with the file '{}'", file_path);
+            eprintln!("{}", err);
+            process::exit(1);
+        }
+    }
 }
 
 pub fn compile_files(files: Vec<String>) {
     for file_path in files {
-        let contents = source_from_path(&file_path);
-        let file = Source::new_file(file_path, &contents);
+        let file = source_from_path(file_path);
 
         match compiler::compile(&file) {
             Ok(out) => println!("{}", out),
@@ -78,8 +82,7 @@ pub fn compile_files(files: Vec<String>) {
 }
 
 pub fn bench(runs: u32, file_path: String) {
-    let contents = source_from_path(&file_path);
-    let file = Source::new_file(file_path, &contents);
+    let file = source_from_path(file_path);
 
     for _ in 0..runs {
         match compiler::compile(&file) {

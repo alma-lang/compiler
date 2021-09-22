@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-expression: "infer(r#\"\nmodule Parent\n\nimport Test exposing (test)\n\nadd = \\x -> x + test x\n\nmodule Test exposing (test)\n\n    test = \\x -> x + \"hi\"\n\"#)"
+expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (test)\n\nadd = \\x -> x + test x\n\nmodule Parent.Test exposing (test)\n\n    test = \\x -> x + \"hi\"\n\"#)"
 
 ---
 Input:
@@ -8,11 +8,11 @@ Input:
 
 module Parent
 
-import Test exposing (test)
+import Parent.Test exposing (test)
 
 add = \x -> x + test x
 
-module Test exposing (test)
+module Parent.Test exposing (test)
 
     test = \x -> x + "hi"
 
@@ -26,7 +26,7 @@ Type mismatch:  String  ≠  Float
 
 Expected
 
-   8│  module Test exposing (test)
+   8│  module Parent.Test exposing (test)
    9│  
   10│      test = \x -> x + "hi"
     │                       ↑↑↑↑

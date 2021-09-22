@@ -1,34 +1,94 @@
+use crate::ast::ModuleName;
 use std::cmp::max;
+use std::fmt;
+use std::fs;
+use std::io;
 use std::ops::Range;
+use std::path::{Path, PathBuf};
 use std::slice::SliceIndex;
 use std::str::CharIndices;
 
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
+pub enum Error {
+    InvalidExtension(String),
+    InvalidFileName(String),
+    IOError(io::Error),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Error::*;
+        match self {
+            InvalidExtension(extension) => write!(
+                f,
+                "Invalid file extension '{}'. Please use the '.alma' extension",
+                extension
+            ),
+            InvalidFileName(name) => write!(
+                f,
+                "Invalid file name '{}'. Alma file names must look like this 'MyFile.alma'",
+                name
+            ),
+            IOError(err) => write!(f, "There was an error reading the file.\n\n{}", err),
+        }
+    }
+}
+
 #[derive(Debug)]
 enum SourceOrigin {
-    File(String),
+    File(PathBuf),
     NotAFile,
 }
 
 type LinesAround<'str> = (Vec<&'str str>, (usize, Vec<&'str str>), Vec<&'str str>);
 
 #[derive(Debug)]
-pub struct Source<'a> {
+pub struct Source {
     source: SourceOrigin,
-    code: &'a str,
+    code: String,
 }
 
-impl<'a> Source<'a> {
-    pub fn new_file(path: String, code: &'a str) -> Self {
-        Source {
+impl Source {
+    pub fn new_file(file: String) -> Result<Self, Error> {
+        let path = Path::new(&file).to_path_buf();
+
+        Source::validate_file_name(&path)?;
+        let code = Source::read_file(&path)?;
+
+        Ok(Source {
             source: SourceOrigin::File(path),
             code,
+        })
+    }
+
+    fn validate_file_name(file_path: &Path) -> Result<(), Error> {
+        let file_name = file_path
+            .file_stem()
+            // Convert OSStr to str
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        let extension = file_path
+            .extension()
+            // Convert OSStr to str
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+
+        if extension != "alma" {
+            Err(Error::InvalidExtension(extension.to_string()))
+        } else if !ModuleName::valid_part(file_name) {
+            Err(Error::InvalidFileName(file_name.to_string()))
+        } else {
+            Ok(())
         }
     }
 
-    pub fn new_orphan(code: &'a str) -> Self {
+    fn read_file(file_path: &Path) -> Result<String, Error> {
+        fs::read_to_string(file_path).map_err(Error::IOError)
+    }
+
+    pub fn new_orphan(code: String) -> Self {
         Source {
             source: SourceOrigin::NotAFile,
             code,
@@ -37,8 +97,15 @@ impl<'a> Source<'a> {
 
     pub fn name(&self) -> &str {
         match &self.source {
-            SourceOrigin::File(path) => path,
-            SourceOrigin::NotAFile => "Main",
+            SourceOrigin::File(path) => path.to_str().unwrap(),
+            SourceOrigin::NotAFile => "",
+        }
+    }
+
+    pub fn file_stem(&self) -> Option<&str> {
+        match &self.source {
+            SourceOrigin::File(path) => Some(path.file_stem().unwrap().to_str().unwrap()),
+            SourceOrigin::NotAFile => None,
         }
     }
 
@@ -54,7 +121,7 @@ impl<'a> Source<'a> {
     }
 
     fn _line_at(&self, position: usize) -> Option<&str> {
-        self.code.get(line_at(self.code, position)?)
+        self.code.get(line_at(&self.code, position)?)
     }
 
     pub fn lines_around_position(
@@ -63,7 +130,7 @@ impl<'a> Source<'a> {
         end_position: Option<usize>,
         number_of_lines: u32,
     ) -> Option<LinesAround> {
-        lines_around_position(self.code, position, end_position, number_of_lines)
+        lines_around_position(&self.code, position, end_position, number_of_lines)
     }
 
     pub fn len(&self) -> usize {
@@ -182,10 +249,10 @@ impl<'a> Source<'a> {
 
     pub fn to_string_with_line_and_col(&self, line: u32, column: u32) -> String {
         let s = match &self.source {
-            SourceOrigin::File(path) => path.to_string(),
-            SourceOrigin::NotAFile => "".to_string(),
+            SourceOrigin::File(path) => path.to_str().unwrap(),
+            SourceOrigin::NotAFile => "",
         };
-        let space = if s.is_empty() { "" } else { " " }.to_string();
+        let space = if s.is_empty() { "" } else { " " };
         format!("{}{}[{}:{}]", s, space, line, column)
     }
 }
