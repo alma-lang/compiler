@@ -18,8 +18,8 @@ Result:
 
 [
     Module {
-        name: ModuleName(
-            [
+        name: ModuleName {
+            parts: [
                 Node {
                     start: 7,
                     end: 11,
@@ -31,7 +31,8 @@ Result:
                     },
                 },
             ],
-        ),
+            full_name: "Test",
+        },
         exports: [],
         imports: [
             Node {
@@ -40,8 +41,8 @@ Result:
                 line: 3,
                 column: 0,
                 value: Import_ {
-                    module_name: ModuleName(
-                        [
+                    module_name: ModuleName {
+                        parts: [
                             Node {
                                 start: 20,
                                 end: 26,
@@ -53,7 +54,8 @@ Result:
                                 },
                             },
                         ],
-                    ),
+                        full_name: "Banana",
+                    },
                     alias: Some(
                         Node {
                             start: 30,
@@ -75,8 +77,8 @@ Result:
                 line: 5,
                 column: 0,
                 value: Import_ {
-                    module_name: ModuleName(
-                        [
+                    module_name: ModuleName {
+                        parts: [
                             Node {
                                 start: 40,
                                 end: 45,
@@ -88,7 +90,8 @@ Result:
                                 },
                             },
                         ],
-                    ),
+                        full_name: "Phone",
+                    },
                     alias: None,
                     exposing: [
                         Node {
@@ -118,8 +121,8 @@ Result:
                 line: 7,
                 column: 0,
                 value: Import_ {
-                    module_name: ModuleName(
-                        [
+                    module_name: ModuleName {
+                        parts: [
                             Node {
                                 start: 71,
                                 end: 76,
@@ -131,7 +134,8 @@ Result:
                                 },
                             },
                         ],
-                    ),
+                        full_name: "Apple",
+                    },
                     alias: Some(
                         Node {
                             start: 80,

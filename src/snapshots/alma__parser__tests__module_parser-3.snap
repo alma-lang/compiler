@@ -13,8 +13,8 @@ Result:
 
 [
     Module {
-        name: ModuleName(
-            [
+        name: ModuleName {
+            parts: [
                 Node {
                     start: 7,
                     end: 11,
@@ -26,7 +26,8 @@ Result:
                     },
                 },
             ],
-        ),
+            full_name: "Test",
+        },
         exports: [],
         imports: [],
         definitions: [
