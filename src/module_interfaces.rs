@@ -1,6 +1,6 @@
 use crate::type_env::TypeEnv;
+use fnv::FnvHashMap as HashMap;
 use smol_str::SmolStr;
-use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
@@ -8,7 +8,7 @@ pub struct ModuleInterfaces(HashMap<SmolStr, Rc<TypeEnv>>);
 
 impl ModuleInterfaces {
     pub fn new() -> Self {
-        let env = HashMap::new();
+        let env = HashMap::default();
 
         Self(env)
     }

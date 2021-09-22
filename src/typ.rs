@@ -1,8 +1,9 @@
 use crate::type_env::TypeEnv;
+use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
+use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::char;
-use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
@@ -24,7 +25,7 @@ pub enum Type {
     Unit,
 
     /* Named type (Int, Bool, List a, ...) */
-    Named(Rc<String>, Vec<Rc<Type>>),
+    Named(SmolStr, Vec<Rc<Type>>),
 
     /* 'a, 'b, etc.
      *
@@ -215,7 +216,7 @@ impl fmt::Display for Type {
         }
 
         let mut s = String::new();
-        to_string_rec(self, &mut vec!['a'], &mut HashMap::new(), &mut s);
+        to_string_rec(self, &mut vec!['a'], &mut HashMap::default(), &mut s);
 
         write!(f, "{}", s)
     }
@@ -241,9 +242,9 @@ fn next_letter(s: &mut Vec<char>) {
 // Primitive types
 
 thread_local! {
-    pub static FLOAT: Rc<Type> = Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![]));
-    pub static BOOL: Rc<Type> = Rc::new(Type::Named(Rc::new("Bool".to_owned()), vec![]));
-    pub static STRING: Rc<Type> = Rc::new(Type::Named(Rc::new("String".to_owned()), vec![]));
+    pub static FLOAT: Rc<Type> = Rc::new(Type::Named("Float".into(), vec![]));
+    pub static BOOL: Rc<Type> = Rc::new(Type::Named("Bool".into(), vec![]));
+    pub static STRING: Rc<Type> = Rc::new(Type::Named("String".into(), vec![]));
 }
 
 #[cfg(test)]
@@ -256,10 +257,10 @@ mod test {
     fn test_printing() {
         let tests = vec![
             (Type::Unit, "()"),
-            (Type::Named(Rc::new("Float".to_string()), vec![]), "Float"),
+            (Type::Named("Float".into(), vec![]), "Float"),
             (
                 Type::Named(
-                    Rc::new("Result".to_string()),
+                    "Result".into(),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
@@ -275,7 +276,7 @@ mod test {
             ),
             (
                 Type::Named(
-                    Rc::new("Result".to_string()),
+                    "Result".into(),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
@@ -306,27 +307,27 @@ mod test {
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![])),
-                    Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
+                    Rc::new(Type::Named("Float".into(), vec![])),
+                    Rc::new(Type::Named("String".into(), vec![])),
                 ),
                 "Float -> String",
             ),
             (
                 Type::Fn(
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![])),
-                        Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
+                        Rc::new(Type::Named("Float".into(), vec![])),
+                        Rc::new(Type::Named("String".into(), vec![])),
                     )),
-                    Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
+                    Rc::new(Type::Named("String".into(), vec![])),
                 ),
                 "(Float -> String) -> String",
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
+                    Rc::new(Type::Named("String".into(), vec![])),
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![])),
-                        Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
+                        Rc::new(Type::Named("Float".into(), vec![])),
+                        Rc::new(Type::Named("String".into(), vec![])),
                     )),
                 ),
                 "String -> Float -> String",
@@ -371,10 +372,7 @@ mod test {
             (
                 Type::Record({
                     let mut fields = TypeEnv::new();
-                    fields.insert(
-                        Rc::new("a".to_string()),
-                        Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
-                    );
+                    fields.insert("a".into(), Rc::new(Type::Named("Int".into(), vec![])));
                     fields
                 }),
                 "{ a : Int }",
@@ -382,12 +380,9 @@ mod test {
             (
                 Type::Record({
                     let mut fields = TypeEnv::new();
+                    fields.insert("age".into(), Rc::new(Type::Named("Int".into(), vec![])));
                     fields.insert(
-                        Rc::new("age".to_string()),
-                        Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
-                    );
-                    fields.insert(
-                        Rc::new("extra".to_string()),
+                        "extra".into(),
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
@@ -411,10 +406,7 @@ mod test {
                 Type::RecordExt(
                     {
                         let mut fields = TypeEnv::new();
-                        fields.insert(
-                            Rc::new("age".to_string()),
-                            Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
-                        );
+                        fields.insert("age".into(), Rc::new(Type::Named("Int".into(), vec![])));
                         fields
                     },
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
@@ -428,12 +420,9 @@ mod test {
                 Type::RecordExt(
                     {
                         let mut fields = TypeEnv::new();
+                        fields.insert("age".into(), Rc::new(Type::Named("Int".into(), vec![])));
                         fields.insert(
-                            Rc::new("age".to_string()),
-                            Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
-                        );
-                        fields.insert(
-                            Rc::new("extra".to_string()),
+                            "extra".into(),
                             Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                                 TypeVarId(0),
                                 Level(0),

@@ -1,11 +1,14 @@
 use crate::typ::Type;
+use fnv::FnvBuildHasher;
 use im_rc::HashMap;
 use smol_str::SmolStr;
 use std::fmt;
 use std::rc::Rc;
 
+type Map = HashMap<SmolStr, Rc<Type>, FnvBuildHasher>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeEnv(HashMap<SmolStr, Rc<Type>>);
+pub struct TypeEnv(Map);
 
 impl TypeEnv {
     pub fn get(&self, key: &SmolStr) -> Option<&Rc<Type>> {
@@ -17,12 +20,12 @@ impl TypeEnv {
     }
 
     pub fn new() -> Self {
-        let env = HashMap::new();
+        let env = HashMap::default();
 
         Self(env)
     }
 
-    pub fn map(&self) -> &HashMap<SmolStr, Rc<Type>> {
+    pub fn map(&self) -> &Map {
         &self.0
     }
 }

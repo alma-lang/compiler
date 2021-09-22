@@ -6,10 +6,10 @@ use crate::module_interfaces::ModuleInterfaces;
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
+use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::cmp::min;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /*
@@ -228,7 +228,7 @@ impl State {
                 Unit => Rc::clone(t),
 
                 Named(name, args) => Rc::new(Named(
-                    Rc::clone(name),
+                    name.clone(),
                     args.iter()
                         .map(|arg| replace_type_vars(vars_to_replace, arg))
                         .collect(),
@@ -280,7 +280,7 @@ impl State {
         }
 
         if let Type::Poly(vars, typ) = &**t {
-            let mut vars_to_replace: HashMap<TypeVarId, Rc<Type>> = HashMap::new();
+            let mut vars_to_replace: HashMap<TypeVarId, Rc<Type>> = HashMap::default();
             for var in vars.iter() {
                 vars_to_replace.insert(*var, self.new_type_var());
             }
