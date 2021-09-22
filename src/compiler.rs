@@ -1,11 +1,11 @@
 use crate::ast::{self, Module, ReplEntry};
 use crate::infer;
 use crate::javascript;
+use crate::module_interfaces::ModuleInterfaces;
 use crate::parser;
 use crate::source::Source;
 use crate::tokenizer;
 use crate::type_env::TypeEnv;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 pub fn compile(source: &Source) -> Result<String, String> {
@@ -19,16 +19,16 @@ pub fn compile(source: &Source) -> Result<String, String> {
 
     let modules = parser::parse(source, &tokens).map_err(|error| error.to_string(source))?;
 
-    let mut module_interfaces: HashMap<String, Rc<TypeEnv>> = HashMap::new();
+    let mut module_interfaces = ModuleInterfaces::new();
     let mut errors = vec![];
 
     for module in &modules {
         match infer::infer(&module_interfaces, module) {
             Ok(typ) => {
-                module_interfaces.insert(module.name.to_string(), typ);
+                module_interfaces.insert(Rc::clone(&module.name.full_name), typ);
             }
             Err((typ, mut module_errors)) => {
-                module_interfaces.insert(module.name.to_string(), typ);
+                module_interfaces.insert(Rc::clone(&module.name.full_name), typ);
                 errors.append(&mut module_errors);
             }
         }
@@ -55,7 +55,7 @@ pub fn compile(source: &Source) -> Result<String, String> {
                     "{}\n\n{}\n",
                     m.name.to_string(),
                     module_interfaces
-                        .get(&m.name.to_string())
+                        .get(&m.name.full_name)
                         .unwrap_or(&Rc::new(TypeEnv::new()))
                 )
             })
@@ -71,7 +71,7 @@ pub fn compile(source: &Source) -> Result<String, String> {
 
 pub fn compile_repl_entry(
     module: &mut Module,
-    module_interfaces: &mut HashMap<String, Rc<TypeEnv>>,
+    module_interfaces: &mut ModuleInterfaces,
     source: &Source,
 ) -> Result<String, String> {
     let tokens = tokenizer::parse(source).map_err(|errors| {
@@ -91,8 +91,7 @@ pub fn compile_repl_entry(
     match entry {
         ReplEntry::Import(import) => {
             module.imports.push(import);
-            let result =
-                compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
+            let result = compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
             if result.is_err() {
                 module.imports.pop();
             }
@@ -100,8 +99,7 @@ pub fn compile_repl_entry(
         }
         ReplEntry::Definition(definition) => {
             module.definitions.push(definition);
-            let result =
-                compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
+            let result = compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
             if result.is_err() {
                 module.definitions.pop();
             }
@@ -118,8 +116,7 @@ pub fn compile_repl_entry(
                 },
                 expression,
             ));
-            let result =
-                compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
+            let result = compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
             module.definitions.pop();
             result
         }
@@ -130,14 +127,14 @@ pub fn compile_repl_entry(
 // Encapsulate the compiler logic regardless of repl entry type
 fn compile_repl_entry_helper<'ast>(
     module: &'ast Module,
-    module_interfaces: &mut HashMap<String, Rc<TypeEnv>>,
+    module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     errors: &mut Vec<infer::Error<'ast>>,
 ) -> Result<(), String> {
     let result = infer::infer(module_interfaces, module);
     match result {
         Ok(typ) => {
-            module_interfaces.insert(module.name.to_string(), typ);
+            module_interfaces.insert(Rc::clone(&module.name.full_name), typ);
         }
         Err((_, mut module_errors)) => {
             errors.append(&mut module_errors);

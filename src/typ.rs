@@ -24,7 +24,7 @@ pub enum Type {
     Unit,
 
     /* Named type (Int, Bool, List a, ...) */
-    Named(String, Vec<Rc<Type>>),
+    Named(Rc<String>, Vec<Rc<Type>>),
 
     /* 'a, 'b, etc.
      *
@@ -241,9 +241,9 @@ fn next_letter(s: &mut Vec<char>) {
 // Primitive types
 
 thread_local! {
-    pub static FLOAT: Rc<Type> = Rc::new(Type::Named("Float".to_owned(), vec![]));
-    pub static BOOL: Rc<Type> = Rc::new(Type::Named("Bool".to_owned(), vec![]));
-    pub static STRING: Rc<Type> = Rc::new(Type::Named("String".to_owned(), vec![]));
+    pub static FLOAT: Rc<Type> = Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![]));
+    pub static BOOL: Rc<Type> = Rc::new(Type::Named(Rc::new("Bool".to_owned()), vec![]));
+    pub static STRING: Rc<Type> = Rc::new(Type::Named(Rc::new("String".to_owned()), vec![]));
 }
 
 #[cfg(test)]
@@ -256,10 +256,10 @@ mod test {
     fn test_printing() {
         let tests = vec![
             (Type::Unit, "()"),
-            (Type::Named("Float".to_string(), vec![]), "Float"),
+            (Type::Named(Rc::new("Float".to_string()), vec![]), "Float"),
             (
                 Type::Named(
-                    "Result".to_string(),
+                    Rc::new("Result".to_string()),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
@@ -275,7 +275,7 @@ mod test {
             ),
             (
                 Type::Named(
-                    "Result".to_string(),
+                    Rc::new("Result".to_string()),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
@@ -306,27 +306,27 @@ mod test {
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named("Float".to_owned(), vec![])),
-                    Rc::new(Type::Named("String".to_owned(), vec![])),
+                    Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![])),
+                    Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
                 ),
                 "Float -> String",
             ),
             (
                 Type::Fn(
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named("Float".to_owned(), vec![])),
-                        Rc::new(Type::Named("String".to_owned(), vec![])),
+                        Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![])),
+                        Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
                     )),
-                    Rc::new(Type::Named("String".to_owned(), vec![])),
+                    Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
                 ),
                 "(Float -> String) -> String",
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named("String".to_owned(), vec![])),
+                    Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named("Float".to_owned(), vec![])),
-                        Rc::new(Type::Named("String".to_owned(), vec![])),
+                        Rc::new(Type::Named(Rc::new("Float".to_owned()), vec![])),
+                        Rc::new(Type::Named(Rc::new("String".to_owned()), vec![])),
                     )),
                 ),
                 "String -> Float -> String",
@@ -372,8 +372,8 @@ mod test {
                 Type::Record({
                     let mut fields = TypeEnv::new();
                     fields.insert(
-                        "a".to_string(),
-                        Rc::new(Type::Named("Int".to_string(), vec![])),
+                        Rc::new("a".to_string()),
+                        Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
                     );
                     fields
                 }),
@@ -383,11 +383,11 @@ mod test {
                 Type::Record({
                     let mut fields = TypeEnv::new();
                     fields.insert(
-                        "age".to_string(),
-                        Rc::new(Type::Named("Int".to_string(), vec![])),
+                        Rc::new("age".to_string()),
+                        Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
                     );
                     fields.insert(
-                        "extra".to_string(),
+                        Rc::new("extra".to_string()),
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
@@ -412,8 +412,8 @@ mod test {
                     {
                         let mut fields = TypeEnv::new();
                         fields.insert(
-                            "age".to_string(),
-                            Rc::new(Type::Named("Int".to_string(), vec![])),
+                            Rc::new("age".to_string()),
+                            Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
                         );
                         fields
                     },
@@ -429,11 +429,11 @@ mod test {
                     {
                         let mut fields = TypeEnv::new();
                         fields.insert(
-                            "age".to_string(),
-                            Rc::new(Type::Named("Int".to_string(), vec![])),
+                            Rc::new("age".to_string()),
+                            Rc::new(Type::Named(Rc::new("Int".to_string()), vec![])),
                         );
                         fields.insert(
-                            "extra".to_string(),
+                            Rc::new("extra".to_string()),
                             Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                                 TypeVarId(0),
                                 Level(0),

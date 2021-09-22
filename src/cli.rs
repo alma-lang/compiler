@@ -1,16 +1,14 @@
 use crate::ast;
 use crate::compiler;
+use crate::module_interfaces::ModuleInterfaces;
 use crate::source::Source;
-use crate::type_env::TypeEnv;
 use rustyline::{error::ReadlineError, Editor};
-use std::collections::HashMap;
 use std::fs;
 use std::process;
-use std::rc::Rc;
 
 pub fn prompt() {
     let mut module = ast::Module {
-        name: ast::ModuleName(vec![ast::Node {
+        name: ast::ModuleName::new(vec![ast::Node {
             value: ast::Identifier_::new("REPL"),
             start: 0,
             end: 0,
@@ -21,7 +19,7 @@ pub fn prompt() {
         imports: vec![],
         definitions: vec![],
     };
-    let mut module_interfaces: HashMap<String, Rc<TypeEnv>> = HashMap::new();
+    let mut module_interfaces = ModuleInterfaces::new();
 
     let mut rl = Editor::<()>::new();
     // TODO: figure out how to store this inthe global config dir

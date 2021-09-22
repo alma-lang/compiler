@@ -4,14 +4,14 @@ use std::fmt;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeEnv(HashMap<String, Rc<Type>>);
+pub struct TypeEnv(HashMap<Rc<String>, Rc<Type>>);
 
 impl TypeEnv {
-    pub fn get(&self, key: &str) -> Option<&Rc<Type>> {
+    pub fn get(&self, key: &Rc<String>) -> Option<&Rc<Type>> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: String, value: Rc<Type>) {
+    pub fn insert(&mut self, key: Rc<String>, value: Rc<Type>) {
         self.0.insert(key, value);
     }
 
@@ -21,7 +21,7 @@ impl TypeEnv {
         Self(env)
     }
 
-    pub fn map(&self) -> &HashMap<String, Rc<Type>> {
+    pub fn map(&self) -> &HashMap<Rc<String>, Rc<Type>> {
         &self.0
     }
 }

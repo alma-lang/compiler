@@ -1,10 +1,9 @@
 use crate::ast::{
     Definition, Expression, ExpressionType as ET, Module, Pattern, Pattern_ as P, Unary_ as U,
 };
+use crate::module_interfaces::ModuleInterfaces;
 use crate::type_env::TypeEnv;
-use std::collections::HashMap;
 use std::fmt::Write;
-use std::rc::Rc;
 
 pub struct File {
     pub name: String,
@@ -25,12 +24,12 @@ pub fn files_to_bundle(files: &[File]) -> String {
     out
 }
 
-pub fn generate(modules: &[Module], module_interfaces: &HashMap<String, Rc<TypeEnv>>) -> Vec<File> {
+pub fn generate(modules: &[Module], module_interfaces: &ModuleInterfaces) -> Vec<File> {
     let mut files = vec![];
     for module in modules {
         let file = generate_file(
             module,
-            module_interfaces.get(&module.name.to_string()).unwrap(),
+            module_interfaces.get(&module.name.full_name).unwrap(),
         );
         files.push(file);
     }
@@ -79,7 +78,7 @@ fn generate_imports(code: &mut String, module: &Module) {
                         .value
                         .identifiers()
                         .into_iter()
-                        .map(|i| i.value.name.clone())
+                        .map(|i| i.value.name.as_str())
                         .collect(),
                 );
             }

@@ -43,11 +43,26 @@ pub enum ReplEntry {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ModuleName(pub Vec<Identifier>);
+pub struct ModuleName {
+    parts: Vec<Identifier>,
+    pub full_name: Rc<String>,
+}
 
 impl ModuleName {
+    pub fn new(parts: Vec<Identifier>) -> Self {
+        let full_name = parts
+            .iter()
+            .map(|i| i.value.name.as_str())
+            .collect::<Vec<_>>()
+            .join(".");
+        Self {
+            parts,
+            full_name: Rc::new(full_name),
+        }
+    }
+
     pub fn end(&self) -> usize {
-        self.0
+        self.parts
             .last()
             .expect("Module names should never be empty")
             .end
@@ -56,15 +71,7 @@ impl ModuleName {
 
 impl fmt::Display for ModuleName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.0
-                .iter()
-                .map(|i| i.value.name.clone())
-                .collect::<Vec<String>>()
-                .join(".")
-        )
+        write!(f, "{}", self.full_name)
     }
 }
 
@@ -133,7 +140,7 @@ pub enum ExpressionType {
     Unit,
     Bool(bool),
     Float(f64),
-    String_(String),
+    String_(Rc<String>),
     Identifier(Identifier),
     PropAccess(Box<Expression>, Identifier),
     PropAccessLambda(Identifier),
@@ -157,7 +164,6 @@ pub enum Unary_ {
 
 pub mod binop {
     use super::{Identifier_, Node};
-    use lazy_static::lazy_static;
 
     #[derive(PartialEq, Debug, Clone)]
     pub enum Type {
@@ -194,74 +200,74 @@ pub mod binop {
     use Associativity::*;
     use Type::*;
 
-    lazy_static! {
-        pub static ref OR: Binop_ = Binop_ {
+    thread_local! {
+        pub static OR: Binop_ = Binop_ {
             typ: Or,
             precedence: 6,
             associativity: Ltr,
             fn_: Identifier_::new("__op__or"),
         };
-        pub static ref AND: Binop_ = Binop_ {
+        pub static AND: Binop_ = Binop_ {
             typ: And,
             precedence: 7,
             associativity: Ltr,
             fn_: Identifier_::new("__op__and"),
         };
-        pub static ref EQUAL: Binop_ = Binop_ {
+        pub static EQUAL: Binop_ = Binop_ {
             typ: Equal,
             precedence: 11,
             associativity: Ltr,
             fn_: Identifier_::new("__op__eq"),
         };
-        pub static ref NOT_EQUAL: Binop_ = Binop_ {
+        pub static NOT_EQUAL: Binop_ = Binop_ {
             typ: NotEqual,
             precedence: 11,
             associativity: Ltr,
             fn_: Identifier_::new("__op__ne"),
         };
-        pub static ref GREATER_THAN: Binop_ = Binop_ {
+        pub static GREATER_THAN: Binop_ = Binop_ {
             typ: GreaterThan,
             precedence: 12,
             associativity: Ltr,
             fn_: Identifier_::new("__op__gt"),
         };
-        pub static ref GREATER_EQUAL_THAN: Binop_ = Binop_ {
+        pub static GREATER_EQUAL_THAN: Binop_ = Binop_ {
             typ: GreaterEqualThan,
             precedence: 12,
             associativity: Ltr,
             fn_: Identifier_::new("__op__ge"),
         };
-        pub static ref LESS_THAN: Binop_ = Binop_ {
+        pub static LESS_THAN: Binop_ = Binop_ {
             typ: LessThan,
             precedence: 12,
             associativity: Ltr,
             fn_: Identifier_::new("__op__lt"),
         };
-        pub static ref LESS_EQUAL_THAN: Binop_ = Binop_ {
+        pub static LESS_EQUAL_THAN: Binop_ = Binop_ {
             typ: LessEqualThan,
             precedence: 12,
             associativity: Ltr,
             fn_: Identifier_::new("__op__le"),
         };
-        pub static ref ADDITION: Binop_ = Binop_ {
+        pub static ADDITION: Binop_ = Binop_ {
             typ: Addition,
             precedence: 14,
             associativity: Ltr,
             fn_: Identifier_::new("__op__add"),
         };
-        pub static ref SUBSTRACTION: Binop_ = Binop_ {
+        pub static SUBSTRACTION: Binop_ = Binop_ {
             typ: Substraction,
             precedence: 14,
             associativity: Ltr,
             fn_: Identifier_::new("__op__sub"),
         };
-        pub static ref MULTIPLICATION: Binop_ = Binop_ {
+        pub static MULTIPLICATION: Binop_ = Binop_ {
             typ: Multiplication,
             precedence: 15,
             associativity: Ltr,
             fn_: Identifier_::new("__op__mult"),
         };
-        pub static ref DIVISION: Binop_ = Binop_ {
+        pub static DIVISION: Binop_ = Binop_ {
             typ: Division,
             precedence: 15,
             associativity: Ltr,
@@ -282,7 +288,7 @@ pub enum Pattern_ {
 pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Identifier_ {
-    pub name: String,
+    pub name: Rc<String>,
     pub case: IdentifierCase,
 }
 
@@ -297,7 +303,7 @@ impl Identifier_ {
             .expect("Can't construct an empty identifier");
 
         Self {
-            name: name.to_string(),
+            name: Rc::new(name.to_string()),
             case,
         }
     }

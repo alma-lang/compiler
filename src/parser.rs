@@ -41,6 +41,7 @@ use crate::token::{
     Token,
     Type::{self as TT, *},
 };
+use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
 pub struct Error<'source, 'tokens> {
@@ -785,18 +786,18 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             let token = self.get_token();
 
             let op = match token.kind {
-                Slash => Some(DIVISION.clone()),
-                Star => Some(MULTIPLICATION.clone()),
-                Plus => Some(ADDITION.clone()),
-                TT::Minus => Some(SUBSTRACTION.clone()),
-                BangEqual => Some(NOT_EQUAL.clone()),
-                EqualEqual => Some(EQUAL.clone()),
-                Greater => Some(GREATER_THAN.clone()),
-                GreaterEqual => Some(GREATER_EQUAL_THAN.clone()),
-                Less => Some(LESS_THAN.clone()),
-                LessEqual => Some(LESS_EQUAL_THAN.clone()),
-                And => Some(AND.clone()),
-                Or => Some(OR.clone()),
+                Slash => Some(DIVISION.with(|t| t.clone())),
+                Star => Some(MULTIPLICATION.with(|t| t.clone())),
+                Plus => Some(ADDITION.with(|t| t.clone())),
+                TT::Minus => Some(SUBSTRACTION.with(|t| t.clone())),
+                BangEqual => Some(NOT_EQUAL.with(|t| t.clone())),
+                EqualEqual => Some(EQUAL.with(|t| t.clone())),
+                Greater => Some(GREATER_THAN.with(|t| t.clone())),
+                GreaterEqual => Some(GREATER_EQUAL_THAN.with(|t| t.clone())),
+                Less => Some(LESS_THAN.with(|t| t.clone())),
+                LessEqual => Some(LESS_EQUAL_THAN.with(|t| t.clone())),
+                And => Some(AND.with(|t| t.clone())),
+                Or => Some(OR.with(|t| t.clone())),
                 _ => None,
             };
 
@@ -1049,7 +1050,11 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                 let lexeme = token.lexeme;
                 let value = lexeme[1..(lexeme.len() - 1)].to_string();
-                Ok(Some(Node::new(E::untyped(String_(value)), token, token)))
+                Ok(Some(Node::new(
+                    E::untyped(String_(Rc::new(value))),
+                    token,
+                    token,
+                )))
             }
 
             LeftBrace => {
@@ -1296,10 +1301,10 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         names.push(name);
                         self.module_identifier_rest(names)
                     }
-                    None => Ok(ModuleName(names)),
+                    None => Ok(ModuleName::new(names)),
                 }
             }
-            _ => Ok(ModuleName(names)),
+            _ => Ok(ModuleName::new(names)),
         }
     }
 
