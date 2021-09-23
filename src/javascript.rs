@@ -1,6 +1,7 @@
 use crate::ast::{
     Definition, Expression, ExpressionType as ET, Module, Pattern, Pattern_ as P, Unary_ as U,
 };
+use crate::module_asts::ModuleAsts;
 use crate::module_interfaces::ModuleInterfaces;
 use crate::type_env::TypeEnv;
 use std::fmt::Write;
@@ -24,13 +25,10 @@ pub fn files_to_bundle(files: &[File]) -> String {
     out
 }
 
-pub fn generate(modules: &[Module], module_interfaces: &ModuleInterfaces) -> Vec<File> {
+pub fn generate(module_asts: &ModuleAsts, module_interfaces: &ModuleInterfaces) -> Vec<File> {
     let mut files = vec![];
-    for module in modules {
-        let file = generate_file(
-            module,
-            module_interfaces.get(&module.name.full_name).unwrap(),
-        );
+    for (name, module) in module_asts.map() {
+        let file = generate_file(module, module_interfaces.get(&name).unwrap());
         files.push(file);
     }
     files

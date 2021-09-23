@@ -36,7 +36,7 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum SourceOrigin {
     File(PathBuf),
     NotAFile,
@@ -44,7 +44,7 @@ enum SourceOrigin {
 
 type LinesAround<'str> = (Vec<&'str str>, (usize, Vec<&'str str>), Vec<&'str str>);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Source {
     source: SourceOrigin,
     code: String,

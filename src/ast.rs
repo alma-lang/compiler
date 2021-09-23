@@ -135,6 +135,16 @@ pub struct Module {
     pub definitions: Vec<Definition>,
 }
 
+impl Module {
+    pub fn dependencies(&self) -> Vec<&ModuleName> {
+        let mut deps = vec![];
+        for import in &self.imports {
+            deps.push(&import.value.module_name);
+        }
+        deps
+    }
+}
+
 pub type Import = Node<Import_>;
 #[derive(Debug, PartialEq)]
 pub struct Import_ {

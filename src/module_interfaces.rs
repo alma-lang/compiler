@@ -34,7 +34,7 @@ impl fmt::Display for ModuleInterfaces {
         entries.sort_by_key(|(k, _)| *k);
 
         for (name, type_env) in &entries {
-            write!(f, "module {}\n{}\n\n", name, type_env)?;
+            write!(f, "module {}\n\n{}\n", name, type_env)?;
         }
 
         Ok(())

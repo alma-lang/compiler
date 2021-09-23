@@ -108,10 +108,10 @@ struct State<'source, 'tokens> {
 }
 
 impl<'source, 'tokens> State<'source, 'tokens> {
-    fn file(&mut self) -> ParseResult<'source, 'tokens, Vec<Module>> {
+    fn file(&mut self) -> ParseResult<'source, 'tokens, (Module, Vec<Module>)> {
         let module = self.module(None)?;
         match module {
-            Some(modules) => self.eof(modules),
+            Some(mut modules) => self.eof((modules.pop().unwrap(), modules)),
             None => Err(Error::expected_but_found(
                 self.source,
                 self.get_token(),
@@ -1555,7 +1555,7 @@ fn organize_binops(
 pub fn parse<'source, 'tokens>(
     source: &'source Source,
     tokens: &'tokens [Token<'source>],
-) -> ParseResult<'source, 'tokens, Vec<Module>> {
+) -> ParseResult<'source, 'tokens, (Module, Vec<Module>)> {
     let mut parser = State {
         source,
         tokens,
