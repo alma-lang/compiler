@@ -5,6 +5,7 @@ use crate::infer;
 use crate::parser;
 use crate::source::Source;
 use crate::tokenizer;
+use fnv::FnvHashSet as HashSet;
 
 pub fn process_sources(entry_sources: Vec<Source>) -> (Vec<String>, Sources) {
     let entry_files: Vec<String> = entry_sources.iter().map(|s| s.name().to_string()).collect();
@@ -122,6 +123,96 @@ fn parse_file<'source>(
     Ok(module_names)
 }
 
+pub fn check_cycles(
+    entry_modules: &Vec<ModuleFullName>,
+    module_asts: &ModuleAsts,
+) -> Result<(), String> {
+    // // TODO: Breaks with CycleModule2.
+    // todo!();
+    let mut errors: Vec<String> = vec![];
+    let mut visited_modules: HashSet<ModuleFullName> = HashSet::default();
+    let mut cycle_queue: Vec<Vec<ModuleFullName>> = vec![];
+    cycle_queue.extend(entry_modules.iter().map(|m| vec![m.clone()]));
+
+    fn last_visited_is(name: &ModuleFullName, visited_path: &Vec<ModuleFullName>) -> bool {
+        visited_path.last().map(|m| m == name).unwrap_or(false)
+    }
+
+    // For each entry point module, check for cycles separately
+    'check_from_module: loop {
+        let mut visited_path: Vec<ModuleFullName> = Vec::new();
+
+        match cycle_queue.pop() {
+            None => break,
+            Some(mut modules) => loop {
+                // Check the modules to visit queue
+                match modules.pop() {
+                    None => break,
+                    Some(module_name) => {
+                        let already_visited = visited_modules.contains(&module_name);
+
+                        // If I haven't checked this module before at all in any entrypoint...
+                        if !already_visited {
+                            // Place it in the queue of modules to check it, in the visited modules
+                            // path, and add its dependencies to check after it to the modules
+                            // queue
+                            let module = module_asts.get(&module_name).unwrap();
+                            modules.push(module_name.clone());
+                            visited_modules.insert(module_name.clone());
+                            visited_path.push(module_name.clone());
+
+                            if !module.imports.is_empty() {
+                                for module in module.dependencies() {
+                                    // Check for direct cycles before adding it to the queue since
+                                    // this disrupts the popping of elements from visited_path when
+                                    // the module directly references itself, because we check by
+                                    // name. Instead report the error here if it exists and bail
+                                    // out.
+                                    if module.full_name != module_name {
+                                        modules.push(module.full_name.clone());
+                                    } else {
+                                        errors.push(cycle_error(&[
+                                            module_name.clone(),
+                                            module_name.clone(),
+                                        ]));
+                                        break 'check_from_module;
+                                    }
+                                }
+                            }
+                        } else {
+                            // If the module has already been visited then we check it for cycles
+                            // in the current visited_path
+
+                            // If the module was visited during this modules queue, it should be in
+                            // the visited_path last, so we remove it for check_cycles_in_path.
+                            // This one check was problematic with direct cycles like A imports A,
+                            // but this is checked separately when adding dependencies above.
+                            if last_visited_is(&module_name, &visited_path) {
+                                visited_path.pop();
+                            }
+
+                            let found_cycle =
+                                check_cycles_in_path(&module_name, &visited_path, &mut errors);
+
+                            // If there is a cycle, don't bother checking anything else for this
+                            // entry point module, try reporting cycles in other entry points.
+                            if found_cycle {
+                                break 'check_from_module;
+                            }
+                        }
+                    }
+                }
+            },
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors::to_string(errors))
+    }
+}
+
 fn check_cycles_in_path(
     module_name: &ModuleFullName,
     visited_path: &[ModuleFullName],
@@ -130,29 +221,31 @@ fn check_cycles_in_path(
     let mut cycle = false;
     let mut cycle_names = visited_path;
 
-    debug_assert!(
-        &cycle_names[cycle_names.len() - 1] == module_name,
-        "Last item in visited_path should always be this module's name"
-    );
-
     for (i, visited) in visited_path.iter().rev().enumerate() {
-        // Skip the last one, since it should always be this module's name
-        if i > 0 && visited == module_name {
+        if visited == module_name {
             cycle = true;
             cycle_names = &visited_path[visited_path.len() - (i + 1)..];
+            break;
         }
     }
 
     if cycle {
-        errors.push(format!(
-            "Cycle detected between modules:\n\n    {}\n\n\
-                            Alma's module system does not support \
-                            cyclic dependencies.",
-            cycle_names.join("\n        ↓\n    ")
-        ));
+        let mut cycle_names = cycle_names.to_vec();
+        cycle_names.push(module_name.clone());
+
+        errors.push(cycle_error(&cycle_names));
     }
 
     cycle
+}
+
+fn cycle_error(cycle_names: &[ModuleFullName]) -> String {
+    format!(
+        "Cycle detected between modules:\n\n    {}\n\n\
+                            Alma's module system does not support \
+                            cyclic dependencies.",
+        cycle_names.join("\n        ↓\n    ")
+    )
 }
 
 pub fn infer(

@@ -3,7 +3,7 @@ pub mod stages;
 pub mod types;
 
 use crate::ast::{self, Module, ReplEntry};
-use crate::compiler::stages::{infer, parse_files, process_sources};
+use crate::compiler::stages::{check_cycles, infer, parse_files, process_sources};
 use crate::compiler::types::ModuleInterfaces;
 use crate::infer;
 use crate::javascript;
@@ -16,6 +16,8 @@ pub fn compile(entry_sources: Vec<Source>) -> Result<String, String> {
     let (entry_sources, sources) = process_sources(entry_sources);
 
     let (entry_modules, module_sources, module_asts) = parse_files(&entry_sources, &sources)?;
+
+    check_cycles(&entry_modules, &module_asts)?;
 
     let module_interfaces = infer(entry_modules, &module_sources, &module_asts)?;
 
