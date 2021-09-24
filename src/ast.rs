@@ -46,10 +46,12 @@ pub enum ReplEntry {
     Expression(Expression),
 }
 
+pub type ModuleFullName = SmolStr;
+
 #[derive(Debug, PartialEq)]
 pub struct ModuleName {
     parts: Vec<Identifier>,
-    pub full_name: SmolStr,
+    pub full_name: ModuleFullName,
 }
 
 impl ModuleName {
@@ -347,10 +349,12 @@ pub enum Pattern_ {
     Identifier(Identifier),
 }
 
+type IdentifierName = SmolStr;
+
 pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Identifier_ {
-    pub name: SmolStr,
+    pub name: IdentifierName,
     pub case: IdentifierCase,
 }
 

@@ -19,212 +19,7 @@ module Parent.Test2
 
 Result:
 
-[
-    Module {
-        name: ModuleName {
-            parts: [
-                Node {
-                    start: 53,
-                    end: 59,
-                    line: 6,
-                    column: 9,
-                    value: Identifier_ {
-                        name: "Parent",
-                        case: Pascal,
-                    },
-                },
-                Node {
-                    start: 60,
-                    end: 65,
-                    line: 6,
-                    column: 16,
-                    value: Identifier_ {
-                        name: "Test1",
-                        case: Pascal,
-                    },
-                },
-                Node {
-                    start: 66,
-                    end: 75,
-                    line: 6,
-                    column: 22,
-                    value: Identifier_ {
-                        name: "Test1Test",
-                        case: Pascal,
-                    },
-                },
-            ],
-            full_name: "Parent.Test1.Test1Test",
-        },
-        exports: [],
-        imports: [],
-        definitions: [
-            Pattern(
-                Node {
-                    start: 80,
-                    end: 81,
-                    line: 7,
-                    column: 4,
-                    value: Identifier(
-                        Node {
-                            start: 80,
-                            end: 81,
-                            line: 7,
-                            column: 4,
-                            value: Identifier_ {
-                                name: "b",
-                                case: Camel,
-                            },
-                        },
-                    ),
-                },
-                Node {
-                    start: 84,
-                    end: 85,
-                    line: 7,
-                    column: 8,
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
-                },
-            ),
-        ],
-    },
-    Module {
-        name: ModuleName {
-            parts: [
-                Node {
-                    start: 22,
-                    end: 28,
-                    line: 3,
-                    column: 7,
-                    value: Identifier_ {
-                        name: "Parent",
-                        case: Pascal,
-                    },
-                },
-                Node {
-                    start: 29,
-                    end: 34,
-                    line: 3,
-                    column: 14,
-                    value: Identifier_ {
-                        name: "Test1",
-                        case: Pascal,
-                    },
-                },
-            ],
-            full_name: "Parent.Test1",
-        },
-        exports: [],
-        imports: [],
-        definitions: [
-            Pattern(
-                Node {
-                    start: 37,
-                    end: 38,
-                    line: 4,
-                    column: 2,
-                    value: Identifier(
-                        Node {
-                            start: 37,
-                            end: 38,
-                            line: 4,
-                            column: 2,
-                            value: Identifier_ {
-                                name: "a",
-                                case: Camel,
-                            },
-                        },
-                    ),
-                },
-                Node {
-                    start: 41,
-                    end: 42,
-                    line: 4,
-                    column: 6,
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
-                },
-            ),
-        ],
-    },
-    Module {
-        name: ModuleName {
-            parts: [
-                Node {
-                    start: 94,
-                    end: 100,
-                    line: 9,
-                    column: 7,
-                    value: Identifier_ {
-                        name: "Parent",
-                        case: Pascal,
-                    },
-                },
-                Node {
-                    start: 101,
-                    end: 106,
-                    line: 9,
-                    column: 14,
-                    value: Identifier_ {
-                        name: "Test2",
-                        case: Pascal,
-                    },
-                },
-            ],
-            full_name: "Parent.Test2",
-        },
-        exports: [],
-        imports: [],
-        definitions: [
-            Pattern(
-                Node {
-                    start: 111,
-                    end: 112,
-                    line: 10,
-                    column: 4,
-                    value: Identifier(
-                        Node {
-                            start: 111,
-                            end: 112,
-                            line: 10,
-                            column: 4,
-                            value: Identifier_ {
-                                name: "c",
-                                case: Camel,
-                            },
-                        },
-                    ),
-                },
-                Node {
-                    start: 115,
-                    end: 116,
-                    line: 10,
-                    column: 8,
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            5.0,
-                        ),
-                    },
-                },
-            ),
-        ],
-    },
+(
     Module {
         name: ModuleName {
             parts: [
@@ -245,4 +40,211 @@ Result:
         imports: [],
         definitions: [],
     },
-]
+    [
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 53,
+                        end: 59,
+                        line: 6,
+                        column: 9,
+                        value: Identifier_ {
+                            name: "Parent",
+                            case: Pascal,
+                        },
+                    },
+                    Node {
+                        start: 60,
+                        end: 65,
+                        line: 6,
+                        column: 16,
+                        value: Identifier_ {
+                            name: "Test1",
+                            case: Pascal,
+                        },
+                    },
+                    Node {
+                        start: 66,
+                        end: 75,
+                        line: 6,
+                        column: 22,
+                        value: Identifier_ {
+                            name: "Test1Test",
+                            case: Pascal,
+                        },
+                    },
+                ],
+                full_name: "Parent.Test1.Test1Test",
+            },
+            exports: [],
+            imports: [],
+            definitions: [
+                Pattern(
+                    Node {
+                        start: 80,
+                        end: 81,
+                        line: 7,
+                        column: 4,
+                        value: Identifier(
+                            Node {
+                                start: 80,
+                                end: 81,
+                                line: 7,
+                                column: 4,
+                                value: Identifier_ {
+                                    name: "b",
+                                    case: Camel,
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 84,
+                        end: 85,
+                        line: 7,
+                        column: 8,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        },
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 22,
+                        end: 28,
+                        line: 3,
+                        column: 7,
+                        value: Identifier_ {
+                            name: "Parent",
+                            case: Pascal,
+                        },
+                    },
+                    Node {
+                        start: 29,
+                        end: 34,
+                        line: 3,
+                        column: 14,
+                        value: Identifier_ {
+                            name: "Test1",
+                            case: Pascal,
+                        },
+                    },
+                ],
+                full_name: "Parent.Test1",
+            },
+            exports: [],
+            imports: [],
+            definitions: [
+                Pattern(
+                    Node {
+                        start: 37,
+                        end: 38,
+                        line: 4,
+                        column: 2,
+                        value: Identifier(
+                            Node {
+                                start: 37,
+                                end: 38,
+                                line: 4,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "a",
+                                    case: Camel,
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 41,
+                        end: 42,
+                        line: 4,
+                        column: 6,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        },
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 94,
+                        end: 100,
+                        line: 9,
+                        column: 7,
+                        value: Identifier_ {
+                            name: "Parent",
+                            case: Pascal,
+                        },
+                    },
+                    Node {
+                        start: 101,
+                        end: 106,
+                        line: 9,
+                        column: 14,
+                        value: Identifier_ {
+                            name: "Test2",
+                            case: Pascal,
+                        },
+                    },
+                ],
+                full_name: "Parent.Test2",
+            },
+            exports: [],
+            imports: [],
+            definitions: [
+                Pattern(
+                    Node {
+                        start: 111,
+                        end: 112,
+                        line: 10,
+                        column: 4,
+                        value: Identifier(
+                            Node {
+                                start: 111,
+                                end: 112,
+                                line: 10,
+                                column: 4,
+                                value: Identifier_ {
+                                    name: "c",
+                                    case: Camel,
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 115,
+                        end: 116,
+                        line: 10,
+                        column: 8,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                5.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        },
+    ],
+)

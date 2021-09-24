@@ -1,3 +1,17 @@
+use crate::ast::{
+    binop::*,
+    Expression,
+    ExpressionType::{self as ET, Float, If, Let, String_, *},
+    Expression_ as E, Identifier, Import, Module, Node, Pattern, Pattern_,
+    Unary_::{Minus, Not},
+    *,
+};
+use crate::source::Source;
+use crate::token::{
+    Token,
+    Type::{self as TT, *},
+};
+
 /* Grammar draft (●○):
     ● file           → module EOF
     ● module         → "module" IDENTIFIER exposing? imports? definitions?
@@ -27,20 +41,6 @@
     ● record         → "{" ( expression "|" )? ( field ("," field)* )? "}"
     ● field          → IDENTIFIER ":" expression
 */
-
-use crate::ast::{
-    binop::*,
-    Expression,
-    ExpressionType::{self as ET, Float, If, Let, String_, *},
-    Expression_ as E, Identifier, Import, Module, Node, Pattern, Pattern_,
-    Unary_::{Minus, Not},
-    *,
-};
-use crate::source::Source;
-use crate::token::{
-    Token,
-    Type::{self as TT, *},
-};
 
 #[derive(PartialEq, Debug)]
 pub struct Error<'source, 'tokens> {

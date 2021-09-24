@@ -15,7 +15,7 @@ main = add 5
 ---
 Output:
 
-Test
+module Test
 
 add : Float -> Float -> Float
 

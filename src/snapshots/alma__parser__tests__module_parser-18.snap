@@ -11,7 +11,7 @@ import Banana as B
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -69,4 +69,5 @@ Result:
         ],
         definitions: [],
     },
-]
+    [],
+)

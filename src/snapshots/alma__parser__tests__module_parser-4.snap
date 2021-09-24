@@ -13,7 +13,7 @@ b = True
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -103,4 +103,5 @@ Result:
             ),
         ],
     },
-]
+    [],
+)

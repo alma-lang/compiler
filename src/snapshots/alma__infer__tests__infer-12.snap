@@ -13,7 +13,7 @@ last _ y = y
 ---
 Output:
 
-Test
+module Test
 
 last : ∀ a b . a -> b -> b
 

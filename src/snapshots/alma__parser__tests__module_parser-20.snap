@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-expression: "parse(\"module Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
+expression: "parse(\"\\\nmodule Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
 
 ---
 Input:
@@ -16,7 +16,7 @@ import Apple as A exposing (orange)
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -173,4 +173,5 @@ Result:
         ],
         definitions: [],
     },
-]
+    [],
+)

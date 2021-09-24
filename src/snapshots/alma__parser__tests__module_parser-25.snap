@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-expression: "parse(\"module Test\n\nincr n = n + 1\n\")"
+expression: "parse(\"\\\nmodule Test\n\nincr n = n + 1\n\")"
 
 ---
 Input:
@@ -12,7 +12,7 @@ incr n = n + 1
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -169,4 +169,5 @@ Result:
             ),
         ],
     },
-]
+    [],
+)

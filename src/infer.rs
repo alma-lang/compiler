@@ -2,7 +2,7 @@ use crate::ast::{
     self, Definition, Expression, ExpressionType as ET, Identifier, Import, Module, Pattern_ as P,
     Unary_ as U,
 };
-use crate::module_interfaces::ModuleInterfaces;
+use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
@@ -1128,6 +1128,7 @@ fn add_error<'ast>(result: Result<(), Error<'ast>>, errors: &mut Vec<Error<'ast>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compiler::stages as compiler;
     use crate::parser;
     use crate::tokenizer;
     use insta::assert_snapshot;
@@ -1458,44 +1459,15 @@ last _ y = y
         fn infer(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
 
-            let tokens = tokenizer::parse(&source)
-                .map_err(|errors| {
-                    errors
-                        .iter()
-                        .map(|e| e.to_string(&source))
-                        .collect::<Vec<String>>()
-                        .join("\n\n")
-                })
-                .unwrap();
+            let (entry_sources, sources) = compiler::process_sources(vec![source]);
 
-            let modules = parser::parse(&source, &tokens)
-                .map_err(|error| error.to_string(&source))
-                .unwrap();
+            let (entry_modules, module_sources, module_asts) =
+                compiler::parse_files(&entry_sources, &sources).unwrap();
 
-            let mut module_interfaces = ModuleInterfaces::new();
-            let mut results = vec![];
-
-            for module in modules {
-                let result = match super::infer(&module_interfaces, &module) {
-                    Ok(typ) => {
-                        let module_name = module.name.full_name;
-                        let s = format!("{}\n\n{}\n", &module_name, &typ);
-                        module_interfaces.insert(module_name, typ);
-                        s
-                    }
-                    Err((typ, errs)) => {
-                        module_interfaces.insert(module.name.full_name.clone(), typ);
-                        errs.iter()
-                            .map(|e| e.to_string(&source))
-                            .collect::<Vec<String>>()
-                            .join("\n\n")
-                    }
-                };
-
-                results.push(result);
-            }
-
-            let actual = results.join("\n\n");
+            let actual = match compiler::infer(entry_modules, &module_sources, &module_asts) {
+                Ok(module_interfaces) => module_interfaces.to_string(),
+                Err(err) => err,
+            };
 
             format!("Input:\n\n{}\n\n---\nOutput:\n\n{}", &code, actual)
         }

@@ -20,13 +20,6 @@ module Parent.Test exposing (test)
 ---
 Output:
 
-Parent.Test
-
-test : String
-
-
-
-
 [4:29]
 
 Module `Parent.Test` doesn't appear to expose `nope`
@@ -37,6 +30,8 @@ Module `Parent.Test` doesn't appear to expose `nope`
    │                               ↑↑↑↑
   5│  
   6│  add = \x -> x + test
+
+----------------------------------------
 
 [6:16]
 

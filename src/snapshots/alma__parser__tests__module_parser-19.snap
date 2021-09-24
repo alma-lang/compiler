@@ -11,7 +11,7 @@ import Banana exposing (phone)
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -77,4 +77,5 @@ Result:
         ],
         definitions: [],
     },
-]
+    [],
+)

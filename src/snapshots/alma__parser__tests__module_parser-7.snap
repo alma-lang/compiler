@@ -11,37 +11,7 @@ module Parent.Test
 
 Result:
 
-[
-    Module {
-        name: ModuleName {
-            parts: [
-                Node {
-                    start: 22,
-                    end: 28,
-                    line: 3,
-                    column: 7,
-                    value: Identifier_ {
-                        name: "Parent",
-                        case: Pascal,
-                    },
-                },
-                Node {
-                    start: 29,
-                    end: 33,
-                    line: 3,
-                    column: 14,
-                    value: Identifier_ {
-                        name: "Test",
-                        case: Pascal,
-                    },
-                },
-            ],
-            full_name: "Parent.Test",
-        },
-        exports: [],
-        imports: [],
-        definitions: [],
-    },
+(
     Module {
         name: ModuleName {
             parts: [
@@ -62,4 +32,36 @@ Result:
         imports: [],
         definitions: [],
     },
-]
+    [
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 22,
+                        end: 28,
+                        line: 3,
+                        column: 7,
+                        value: Identifier_ {
+                            name: "Parent",
+                            case: Pascal,
+                        },
+                    },
+                    Node {
+                        start: 29,
+                        end: 33,
+                        line: 3,
+                        column: 14,
+                        value: Identifier_ {
+                            name: "Test",
+                            case: Pascal,
+                        },
+                    },
+                ],
+                full_name: "Parent.Test",
+            },
+            exports: [],
+            imports: [],
+            definitions: [],
+        },
+    ],
+)

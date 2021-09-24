@@ -20,13 +20,6 @@ module Parent.Test exposing (test)
 ---
 Output:
 
-Parent.Test
-
-test : String
-
-
-
-
 [6:16]
 
 Type mismatch:  String  ≠  Float

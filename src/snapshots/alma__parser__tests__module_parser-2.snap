@@ -9,7 +9,7 @@ module Test
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -30,4 +30,5 @@ Result:
         imports: [],
         definitions: [],
     },
-]
+    [],
+)

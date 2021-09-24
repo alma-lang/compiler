@@ -13,72 +13,7 @@ module Parent.Test
 
 Result:
 
-[
-    Module {
-        name: ModuleName {
-            parts: [
-                Node {
-                    start: 22,
-                    end: 28,
-                    line: 3,
-                    column: 7,
-                    value: Identifier_ {
-                        name: "Parent",
-                        case: Pascal,
-                    },
-                },
-                Node {
-                    start: 29,
-                    end: 33,
-                    line: 3,
-                    column: 14,
-                    value: Identifier_ {
-                        name: "Test",
-                        case: Pascal,
-                    },
-                },
-            ],
-            full_name: "Parent.Test",
-        },
-        exports: [],
-        imports: [],
-        definitions: [
-            Pattern(
-                Node {
-                    start: 37,
-                    end: 38,
-                    line: 5,
-                    column: 2,
-                    value: Identifier(
-                        Node {
-                            start: 37,
-                            end: 38,
-                            line: 5,
-                            column: 2,
-                            value: Identifier_ {
-                                name: "a",
-                                case: Camel,
-                            },
-                        },
-                    ),
-                },
-                Node {
-                    start: 41,
-                    end: 42,
-                    line: 5,
-                    column: 6,
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
-                },
-            ),
-        ],
-    },
+(
     Module {
         name: ModuleName {
             parts: [
@@ -99,4 +34,71 @@ Result:
         imports: [],
         definitions: [],
     },
-]
+    [
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 22,
+                        end: 28,
+                        line: 3,
+                        column: 7,
+                        value: Identifier_ {
+                            name: "Parent",
+                            case: Pascal,
+                        },
+                    },
+                    Node {
+                        start: 29,
+                        end: 33,
+                        line: 3,
+                        column: 14,
+                        value: Identifier_ {
+                            name: "Test",
+                            case: Pascal,
+                        },
+                    },
+                ],
+                full_name: "Parent.Test",
+            },
+            exports: [],
+            imports: [],
+            definitions: [
+                Pattern(
+                    Node {
+                        start: 37,
+                        end: 38,
+                        line: 5,
+                        column: 2,
+                        value: Identifier(
+                            Node {
+                                start: 37,
+                                end: 38,
+                                line: 5,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: "a",
+                                    case: Camel,
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 41,
+                        end: 42,
+                        line: 5,
+                        column: 6,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        },
+    ],
+)

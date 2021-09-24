@@ -22,20 +22,18 @@ c = "hi"
 ---
 Output:
 
-Test.TestInner
-
-a : Float -> Float -> Float
-
-b : ∀ a . a -> a
-
-
-
-
-Test
+module Test
 
 a : Float
 
 b : Float
+
+
+module Test.TestInner
+
+a : Float -> Float -> Float
+
+b : ∀ a . a -> a
 
 
 

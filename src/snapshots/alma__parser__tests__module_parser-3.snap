@@ -11,7 +11,7 @@ a = 1
 
 Result:
 
-[
+(
     Module {
         name: ModuleName {
             parts: [
@@ -67,4 +67,5 @@ Result:
             ),
         ],
     },
-]
+    [],
+)

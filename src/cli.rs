@@ -1,6 +1,6 @@
 use crate::ast;
 use crate::compiler;
-use crate::module_interfaces::ModuleInterfaces;
+use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
 use rustyline::{error::ReadlineError, Editor};
 use std::process;
@@ -36,7 +36,7 @@ pub fn prompt() {
                 let file = Source::new_orphan(line);
                 match compiler::compile_repl_entry(&mut module, &mut module_interfaces, &file) {
                     Ok(out) => println!("{}", out),
-                    Err(errs) => println!("{}", errs),
+                    Err(errs) => eprintln!("{}", errs),
                 };
                 println!();
             }
@@ -49,7 +49,7 @@ pub fn prompt() {
                 break;
             }
             Err(err) => {
-                println!("Error: {:?}", err);
+                eprintln!("Error: {:?}", err);
                 break;
             }
         }
@@ -71,23 +71,27 @@ fn source_from_path(file_path: String) -> Source {
 }
 
 pub fn compile_files(files: Vec<String>) {
-    for file_path in files {
-        let file = source_from_path(file_path);
+    let sources: Vec<Source> = files
+        .into_iter()
+        .map(|file| source_from_path(file))
+        .collect();
 
-        match compiler::compile(&file) {
-            Ok(out) => println!("{}", out),
-            Err(errs) => println!("{}", errs),
-        };
-    }
+    match compiler::compile(sources) {
+        Ok(out) => println!("{}", out),
+        Err(errs) => eprintln!("\n{}\n", errs),
+    };
 }
 
-pub fn bench(runs: u32, file_path: String) {
-    let file = source_from_path(file_path);
+pub fn bench(_runs: u32, file_path: String) {
+    let sources = vec![source_from_path(file_path)];
 
-    for _ in 0..runs {
-        match compiler::compile(&file) {
-            Ok(out) => println!("{}", out),
-            Err(errs) => println!("{}", errs),
-        };
-    }
+    eprintln!("Benchmarking is broken right now. Only runs once.");
+
+    // for _ in 0..runs {
+    // TODO: fix ownership error maybe
+    match compiler::compile(sources) {
+        Ok(out) => println!("{}", out),
+        Err(errs) => eprintln!("{}", errs),
+    };
+    // }
 }

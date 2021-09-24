@@ -20,14 +20,12 @@ module Parent.Test exposing (test)
 ---
 Output:
 
-Parent.Test
+module Parent
+
+
+module Parent.Test
 
 test : Float
-
-
-
-
-Parent
 
 
 

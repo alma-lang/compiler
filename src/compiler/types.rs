@@ -1,8 +1,16 @@
+use crate::ast::Module;
+use crate::source::Source;
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
 use smol_str::SmolStr;
 use std::fmt;
 use std::rc::Rc;
+
+pub type Sources = HashMap<String, Source>;
+
+pub type ModuleSources<'source> = HashMap<SmolStr, &'source Source>;
+
+pub type ModuleAsts = HashMap<SmolStr, Module>;
 
 pub struct ModuleInterfaces(HashMap<SmolStr, Rc<TypeEnv>>);
 
