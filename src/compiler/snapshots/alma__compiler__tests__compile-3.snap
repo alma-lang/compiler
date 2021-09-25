@@ -1,0 +1,12 @@
+---
+source: src/compiler/mod.rs
+expression: "compile(&[r\"\nmodule CycleModule\n\nimport CycleModule\n        \"])"
+
+---
+Cycle detected between modules:
+
+    CycleModule
+        ↓
+    CycleModule
+
+Alma's module system does not support cyclic dependencies.

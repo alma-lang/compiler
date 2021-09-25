@@ -116,3 +116,66 @@ fn compile_repl_entry_helper<'ast>(
             .join("\n\n"))
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::source::Source;
+    use insta::assert_snapshot;
+
+    #[test]
+    pub fn test_compile() {
+        fn compile(source_codes: &[&'static str]) -> String {
+            match super::compile(
+                source_codes
+                    .iter()
+                    .map(|s| Source::new_orphan(s.to_string()))
+                    .collect(),
+            ) {
+                Ok(s) => s,
+                Err(e) => e,
+            }
+        }
+
+        // Normal modules
+
+        assert_snapshot!(compile(&[r"
+module Modules exposing (main)
+
+import Modules.WeirdMath exposing (weirdAdd)
+
+main = weirdAdd
+
+
+
+module Modules.Constants exposing (five)
+
+    five = 5
+
+
+
+module Modules.WeirdMath exposing (weirdAdd)
+
+    import Modules.Constants exposing (five)
+
+    weirdAdd = \x y -> x * y + five
+        "]));
+
+        // Cycle modules
+
+        assert_snapshot!(compile(&[r"
+module CycleModule
+
+import CycleModule.Test
+
+
+module CycleModule.Test
+    import CycleModule
+        "]));
+
+        assert_snapshot!(compile(&[r"
+module CycleModule
+
+import CycleModule
+        "]));
+    }
+}
