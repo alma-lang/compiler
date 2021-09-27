@@ -4,7 +4,9 @@ use crate::compiler::types::{ModuleAsts, ModuleInterfaces, ModuleSources, Source
 use crate::infer;
 use crate::parser;
 use crate::source::Source;
+use crate::strings::Strings;
 use crate::tokenizer;
+use crate::typ::PrimitiveTypes;
 use fnv::FnvHashSet as HashSet;
 
 pub fn process_sources(entry_sources: Vec<Source>) -> (Vec<String>, Sources) {
@@ -21,6 +23,7 @@ pub fn process_sources(entry_sources: Vec<Source>) -> (Vec<String>, Sources) {
 pub fn parse_files<'sources>(
     entry_files: &Vec<String>,
     sources: &'sources Sources,
+    strings: &mut Strings,
 ) -> Result<(Vec<ModuleFullName>, ModuleSources<'sources>, ModuleAsts), String> {
     let mut errors: Vec<String> = vec![];
     let mut module_sources = ModuleSources::default();
@@ -37,6 +40,7 @@ pub fn parse_files<'sources>(
             &mut parse_queue,
             &mut module_asts,
             &mut module_sources,
+            strings,
         );
 
         match parse_result {
@@ -76,6 +80,7 @@ fn parse_file<'source>(
     parse_queue: &mut Vec<ModuleFullName>,
     module_asts: &mut ModuleAsts,
     module_sources: &mut ModuleSources<'source>,
+    strings: &mut Strings,
 ) -> Result<Vec<ModuleFullName>, Vec<String>> {
     let tokens = tokenizer::parse(source).map_err(|errors| {
         errors
@@ -87,7 +92,7 @@ fn parse_file<'source>(
     let mut module_names = vec![];
 
     let (module, submodules) =
-        parser::parse(source, &tokens).map_err(|error| vec![error.to_string(source)])?;
+        parser::parse(source, &tokens, strings).map_err(|error| vec![error.to_string(source)])?;
 
     for module in submodules {
         // Add all submodules to queue
@@ -126,9 +131,8 @@ fn parse_file<'source>(
 pub fn check_cycles(
     entry_modules: &Vec<ModuleFullName>,
     module_asts: &ModuleAsts,
+    strings: &Strings,
 ) -> Result<(), String> {
-    // // TODO: Breaks with CycleModule2.
-    // todo!();
     let mut errors: Vec<String> = vec![];
     let mut visited_modules: HashSet<ModuleFullName> = HashSet::default();
     let mut cycle_queue: Vec<Vec<ModuleFullName>> = vec![];
@@ -171,10 +175,8 @@ pub fn check_cycles(
                                     if module.full_name != module_name {
                                         modules.push(module.full_name.clone());
                                     } else {
-                                        errors.push(cycle_error(&[
-                                            module_name.clone(),
-                                            module_name.clone(),
-                                        ]));
+                                        let name = strings.resolve(module_name);
+                                        errors.push(cycle_error(&[name, name]));
                                         break 'check_from_module;
                                     }
                                 }
@@ -191,8 +193,12 @@ pub fn check_cycles(
                                 visited_path.pop();
                             }
 
-                            let found_cycle =
-                                check_cycles_in_path(&module_name, &visited_path, &mut errors);
+                            let found_cycle = check_cycles_in_path(
+                                &module_name,
+                                &visited_path,
+                                &mut errors,
+                                strings,
+                            );
 
                             // If there is a cycle, don't bother checking anything else for this
                             // entry point module, try reporting cycles in other entry points.
@@ -217,6 +223,7 @@ fn check_cycles_in_path(
     module_name: &ModuleFullName,
     visited_path: &[ModuleFullName],
     errors: &mut Vec<String>,
+    strings: &Strings,
 ) -> bool {
     let mut cycle = false;
     let mut cycle_names = visited_path;
@@ -230,8 +237,8 @@ fn check_cycles_in_path(
     }
 
     if cycle {
-        let mut cycle_names = cycle_names.to_vec();
-        cycle_names.push(module_name.clone());
+        let mut cycle_names: Vec<&str> = cycle_names.iter().map(|m| strings.resolve(*m)).collect();
+        cycle_names.push(strings.resolve(*module_name));
 
         errors.push(cycle_error(&cycle_names));
     }
@@ -239,7 +246,7 @@ fn check_cycles_in_path(
     cycle
 }
 
-fn cycle_error(cycle_names: &[ModuleFullName]) -> String {
+fn cycle_error(cycle_names: &[&str]) -> String {
     format!(
         "Cycle detected between modules:\n\n    {}\n\n\
                             Alma's module system does not support \
@@ -252,6 +259,8 @@ pub fn infer(
     entry_modules: Vec<ModuleFullName>,
     module_sources: &ModuleSources,
     module_asts: &ModuleAsts,
+    primitive_types: &PrimitiveTypes,
+    strings: &mut Strings,
 ) -> Result<ModuleInterfaces, String> {
     let mut errors = vec![];
     let mut module_interfaces = ModuleInterfaces::new();
@@ -266,9 +275,12 @@ pub fn infer(
                 if module_interfaces.map().contains_key(&module_name) {
                     continue;
                 }
-                let module = module_asts
-                    .get(&module_name)
-                    .unwrap_or_else(|| panic!("Couldn't find module {} in the ASTs", module_name));
+                let module = module_asts.get(&module_name).unwrap_or_else(|| {
+                    panic!(
+                        "Couldn't find module {} in the ASTs",
+                        strings.resolve(module_name)
+                    )
+                });
 
                 // Check dependencies and skip back to queue if there are any that need processing
                 // before this module.
@@ -298,13 +310,15 @@ pub fn infer(
                 }
 
                 // Process this module
-                let typ = match infer::infer(&module_interfaces, module) {
+                let typ = match infer::infer(&module_interfaces, module, primitive_types, strings) {
                     Ok(typ) => typ,
                     Err((typ, module_errors)) => {
                         errors.append(
                             &mut module_errors
                                 .iter()
-                                .map(|e| e.to_string(module_sources.get(&module_name).unwrap()))
+                                .map(|e| {
+                                    e.to_string(module_sources.get(&module_name).unwrap(), strings)
+                                })
                                 .collect::<Vec<String>>(),
                         );
                         typ

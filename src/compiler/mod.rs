@@ -9,22 +9,35 @@ use crate::infer;
 use crate::javascript;
 use crate::parser;
 use crate::source::Source;
+use crate::strings::Strings;
 use crate::tokenizer;
+use crate::typ::{PrimitiveTypes, Type};
 use std::fmt::Write;
 
 pub fn compile(entry_sources: &Vec<String>, sources: &Sources) -> Result<String, String> {
-    let (entry_modules, module_sources, module_asts) = parse_files(&entry_sources, &sources)?;
+    let mut strings = Strings::new();
 
-    check_cycles(&entry_modules, &module_asts)?;
+    let (entry_modules, module_sources, module_asts) =
+        parse_files(&entry_sources, &sources, &mut strings)?;
 
-    let module_interfaces = infer(entry_modules, &module_sources, &module_asts)?;
+    check_cycles(&entry_modules, &module_asts, &strings)?;
 
-    let javascript_files = javascript::generate(&module_asts, &module_interfaces);
+    let primitive_types = Type::primitive_types(&mut strings);
+
+    let module_interfaces = infer(
+        entry_modules,
+        &module_sources,
+        &module_asts,
+        &primitive_types,
+        &mut strings,
+    )?;
+
+    let javascript_files = javascript::generate(&module_asts, &module_interfaces, &strings);
 
     let mut out = String::new();
 
     // Print types
-    write!(&mut out, "{}", &module_interfaces).unwrap();
+    write!(&mut out, "{}", &module_interfaces.to_string(&strings)).unwrap();
 
     // Print code
     out.push_str(&javascript::files_to_bundle(&javascript_files));
@@ -36,6 +49,8 @@ pub fn compile_repl_entry(
     module: &mut Module,
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
+    strings: &mut Strings,
+    primitive_types: &PrimitiveTypes,
 ) -> Result<String, String> {
     let tokens = tokenizer::parse(source).map_err(|errors| {
         errors
@@ -45,7 +60,8 @@ pub fn compile_repl_entry(
             .join("\n\n")
     })?;
 
-    let entry = parser::parse_repl(source, &tokens).map_err(|error| error.to_string(source))?;
+    let entry =
+        parser::parse_repl(source, &tokens, strings).map_err(|error| error.to_string(source))?;
 
     let mut errors = vec![];
 
@@ -54,7 +70,14 @@ pub fn compile_repl_entry(
     match entry {
         ReplEntry::Import(import) => {
             module.imports.push(import);
-            let result = compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
+            let result = compile_repl_entry_helper(
+                module,
+                module_interfaces,
+                source,
+                &mut errors,
+                strings,
+                primitive_types,
+            );
             if result.is_err() {
                 module.imports.pop();
             }
@@ -62,7 +85,14 @@ pub fn compile_repl_entry(
         }
         ReplEntry::Definition(definition) => {
             module.definitions.push(definition);
-            let result = compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
+            let result = compile_repl_entry_helper(
+                module,
+                module_interfaces,
+                source,
+                &mut errors,
+                strings,
+                primitive_types,
+            );
             if result.is_err() {
                 module.definitions.pop();
             }
@@ -79,7 +109,14 @@ pub fn compile_repl_entry(
                 },
                 expression,
             ));
-            let result = compile_repl_entry_helper(module, module_interfaces, source, &mut errors);
+            let result = compile_repl_entry_helper(
+                module,
+                module_interfaces,
+                source,
+                &mut errors,
+                strings,
+                primitive_types,
+            );
             module.definitions.pop();
             result
         }
@@ -93,8 +130,10 @@ fn compile_repl_entry_helper<'ast>(
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     errors: &mut Vec<infer::Error<'ast>>,
+    strings: &mut Strings,
+    primitive_types: &PrimitiveTypes,
 ) -> Result<(), String> {
-    let result = infer::infer(module_interfaces, module);
+    let result = infer::infer(module_interfaces, module, primitive_types, strings);
     match result {
         Ok(typ) => {
             module_interfaces.insert(module.name.full_name.clone(), typ);
@@ -109,7 +148,7 @@ fn compile_repl_entry_helper<'ast>(
     } else {
         Err(errors
             .iter()
-            .map(|e| e.to_string(source))
+            .map(|e| e.to_string(source, strings))
             .collect::<Vec<String>>()
             .join("\n\n"))
     }

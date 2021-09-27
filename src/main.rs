@@ -5,6 +5,7 @@ mod infer;
 mod javascript;
 mod parser;
 mod source;
+mod strings;
 mod token;
 mod tokenizer;
 mod typ;
@@ -50,7 +51,7 @@ fn main() {
         .get_matches();
 
     if matches.subcommand_matches("repl").is_some() {
-        cli::prompt();
+        cli::repl();
     } else if let Some(matches) = matches.subcommand_matches("bench") {
         cli::bench(
             value_t!(matches, "runs", u32).unwrap_or_else(|e| e.exit()),

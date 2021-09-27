@@ -7,6 +7,7 @@ use crate::ast::{
     *,
 };
 use crate::source::Source;
+use crate::strings::Strings;
 use crate::token::{
     Token,
     Type::{self as TT, *},
@@ -101,13 +102,14 @@ impl<'source, 'tokens> Error<'source, 'tokens> {
 type ParseResult<'source, 'tokens, A> = Result<A, Error<'source, 'tokens>>;
 
 #[derive(Debug)]
-struct State<'source, 'tokens> {
+struct State<'source, 'strings, 'tokens> {
+    strings: &'strings mut Strings,
     source: &'source Source,
     tokens: &'tokens [Token<'source>],
     current: usize,
 }
 
-impl<'source, 'tokens> State<'source, 'tokens> {
+impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn file(&mut self) -> ParseResult<'source, 'tokens, (Module, Vec<Module>)> {
         let module = self.module(None)?;
         match module {
@@ -166,7 +168,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                 match self.module_identifier()? {
                     Some(name) => {
-                        if top_level && !name.valid_top_level_in_file(self.source) {
+                        if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                             return Err(Error::new(
                                 self.source,
                                 module_token,
@@ -175,7 +177,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                     "The module name '{}' differs from the name of the file.\n\n\
                                     Module names need to match the folder and file names from the \
                                     file system",
-                                    &name.full_name
+                                    &name.to_string(self.strings)
                                 ),
                             ));
                         } else if parent_module
@@ -194,7 +196,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                     \n        module Admin.User\
                                     \n            module Admin.User.Id\
                                     \n\n",
-                                    &name.full_name
+                                    &name.to_string(self.strings)
                                 ),
                             ));
                         }
@@ -845,18 +847,18 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             let token = self.get_token();
 
             let op = match token.kind {
-                Slash => Some(DIVISION.with(|t| t.clone())),
-                Star => Some(MULTIPLICATION.with(|t| t.clone())),
-                Plus => Some(ADDITION.with(|t| t.clone())),
-                TT::Minus => Some(SUBSTRACTION.with(|t| t.clone())),
-                BangEqual => Some(NOT_EQUAL.with(|t| t.clone())),
-                EqualEqual => Some(EQUAL.with(|t| t.clone())),
-                Greater => Some(GREATER_THAN.with(|t| t.clone())),
-                GreaterEqual => Some(GREATER_EQUAL_THAN.with(|t| t.clone())),
-                Less => Some(LESS_THAN.with(|t| t.clone())),
-                LessEqual => Some(LESS_EQUAL_THAN.with(|t| t.clone())),
-                And => Some(AND.with(|t| t.clone())),
-                Or => Some(OR.with(|t| t.clone())),
+                Slash => Some(Binop_::division(self.strings)),
+                Star => Some(Binop_::multiplication(self.strings)),
+                Plus => Some(Binop_::addition(self.strings)),
+                TT::Minus => Some(Binop_::substraction(self.strings)),
+                BangEqual => Some(Binop_::notEqual(self.strings)),
+                EqualEqual => Some(Binop_::equal(self.strings)),
+                Greater => Some(Binop_::greaterThan(self.strings)),
+                GreaterEqual => Some(Binop_::greaterEqualThan(self.strings)),
+                Less => Some(Binop_::lessThan(self.strings)),
+                LessEqual => Some(Binop_::lessEqualThan(self.strings)),
+                And => Some(Binop_::and(self.strings)),
+                Or => Some(Binop_::or(self.strings)),
                 _ => None,
             };
 
@@ -1008,7 +1010,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                                     self.advance();
 
                                     let name_identifier = Node::new(
-                                        Identifier_::new(identifier_token.lexeme),
+                                        Identifier_::new(identifier_token.lexeme, self.strings),
                                         identifier_token,
                                         identifier_token,
                                     );
@@ -1095,7 +1097,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
 
                 Ok(Some(Node::new(
                     E::untyped(ET::Identifier(Node::new(
-                        Identifier_::new(token.lexeme),
+                        Identifier_::new(token.lexeme, self.strings),
                         token,
                         token,
                     ))),
@@ -1110,7 +1112,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 let lexeme = token.lexeme;
                 let value = &lexeme[1..(lexeme.len() - 1)];
                 Ok(Some(Node::new(
-                    E::untyped(String_(value.into())),
+                    E::untyped(String_(self.strings.get_or_intern(value))),
                     token,
                     token,
                 )))
@@ -1243,7 +1245,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                         self.advance();
 
                         let name_identifier = Node::new(
-                            Identifier_::new(identifier_token.lexeme),
+                            Identifier_::new(identifier_token.lexeme, self.strings),
                             identifier_token,
                             identifier_token,
                         );
@@ -1373,11 +1375,11 @@ impl<'source, 'tokens> State<'source, 'tokens> {
         }
     }
     fn module_name(
-        &self,
+        &mut self,
         tokens: Vec<&'tokens Token<'source>>,
         names: Vec<Identifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
-        ModuleName::new(names).map_err(|(i, names)| {
+        ModuleName::new(names, self.strings).map_err(|(i, names)| {
             Error::new(
                 self.source,
                 tokens[i],
@@ -1388,7 +1390,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
                 and also not have extraneous characters, \
                 because they need to match the file name \
                 in the file system.",
-                    &names[i].value.name
+                    names[i].value.to_string(self.strings)
                 ),
             )
         })
@@ -1408,7 +1410,7 @@ impl<'source, 'tokens> State<'source, 'tokens> {
             TT::Identifier => {
                 self.advance();
 
-                let name_identifier = Identifier_::new(identifier_token.lexeme);
+                let name_identifier = Identifier_::new(identifier_token.lexeme, self.strings);
                 if name_identifier.case == expect_case {
                     let name = Node::new(name_identifier, identifier_token, identifier_token);
                     Ok(Some(name))
@@ -1552,11 +1554,13 @@ fn organize_binops(
     left
 }
 
-pub fn parse<'source, 'tokens>(
+pub fn parse<'source, 'strings, 'tokens>(
     source: &'source Source,
     tokens: &'tokens [Token<'source>],
+    strings: &'strings mut Strings,
 ) -> ParseResult<'source, 'tokens, (Module, Vec<Module>)> {
     let mut parser = State {
+        strings,
         source,
         tokens,
         current: 0,
@@ -1565,11 +1569,13 @@ pub fn parse<'source, 'tokens>(
     parser.file()
 }
 
-pub fn parse_repl<'source, 'tokens>(
+pub fn parse_repl<'source, 'strings, 'tokens>(
     source: &'source Source,
     tokens: &'tokens [Token<'source>],
+    strings: &'strings mut Strings,
 ) -> ParseResult<'source, 'tokens, ReplEntry> {
     let mut parser = State {
+        strings,
         source,
         tokens,
         current: 0,
@@ -1584,11 +1590,13 @@ pub mod tests {
     use crate::tokenizer;
     use insta::assert_snapshot;
 
-    pub fn parse_expression<'source, 'tokens>(
+    pub fn parse_expression<'source, 'strings, 'tokens>(
         source: &'source Source,
         tokens: &'tokens [Token<'source>],
+        strings: &'strings mut Strings,
     ) -> ParseResult<'source, 'tokens, Box<Expression>> {
         let mut parser = State {
+            strings,
             source,
             tokens,
             current: 0,
@@ -1779,7 +1787,8 @@ add 5"
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
-            let result = parse_expression(&source, &tokens);
+            let mut strings = Strings::new();
+            let result = parse_expression(&source, &tokens, &mut strings);
             format!(
                 "Input:\n\n{}\n\nResult:\n\n{}",
                 code,
@@ -1943,7 +1952,8 @@ module Test.Banana
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
-            let result = super::parse(&source, &tokens);
+            let mut strings = Strings::new();
+            let result = super::parse(&source, &tokens, &mut strings);
             format!(
                 "Input:\n\n{}\n\nResult:\n\n{}",
                 code,

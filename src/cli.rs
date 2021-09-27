@@ -3,17 +3,25 @@ use crate::compiler;
 use crate::compiler::stages::process_sources;
 use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
+use crate::strings::Strings;
+use crate::typ::Type;
 use rustyline::{error::ReadlineError, Editor};
 use std::process;
 
-pub fn prompt() {
-    let module_name = ast::ModuleName::new(vec![ast::Node {
-        value: ast::Identifier_::new("REPL"),
-        start: 0,
-        end: 0,
-        line: 1,
-        column: 0,
-    }])
+pub fn repl() {
+    let mut strings = Strings::new();
+    let primitive_types = Type::primitive_types(&mut strings);
+
+    let module_name = ast::ModuleName::new(
+        vec![ast::Node {
+            value: ast::Identifier_::new("Repl", &mut strings),
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 0,
+        }],
+        &mut strings,
+    )
     .unwrap();
 
     let mut module = ast::Module {
@@ -35,7 +43,13 @@ pub fn prompt() {
                 rl.add_history_entry(line.as_str());
 
                 let file = Source::new_orphan(line);
-                match compiler::compile_repl_entry(&mut module, &mut module_interfaces, &file) {
+                match compiler::compile_repl_entry(
+                    &mut module,
+                    &mut module_interfaces,
+                    &file,
+                    &mut strings,
+                    &primitive_types,
+                ) {
                     Ok(out) => println!("{}", out),
                     Err(errs) => eprintln!("{}", errs),
                 };

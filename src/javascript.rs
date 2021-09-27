@@ -2,6 +2,7 @@ use crate::ast::{
     Definition, Expression, ExpressionType as ET, Module, Pattern, Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::{ModuleAsts, ModuleInterfaces};
+use crate::strings::Strings;
 use crate::type_env::TypeEnv;
 use std::fmt::Write;
 
@@ -24,31 +25,35 @@ pub fn files_to_bundle(files: &[File]) -> String {
     out
 }
 
-pub fn generate(module_asts: &ModuleAsts, module_interfaces: &ModuleInterfaces) -> Vec<File> {
+pub fn generate(
+    module_asts: &ModuleAsts,
+    module_interfaces: &ModuleInterfaces,
+    strings: &Strings,
+) -> Vec<File> {
     let mut files = vec![];
     for (name, module) in module_asts {
-        let file = generate_file(module, module_interfaces.get(&name).unwrap());
+        let file = generate_file(module, module_interfaces.get(&name).unwrap(), strings);
         files.push(file);
     }
     files
 }
 
-fn generate_file(module: &Module, _interface: &TypeEnv) -> File {
+fn generate_file(module: &Module, _interface: &TypeEnv, strings: &Strings) -> File {
     let mut code = String::new();
 
-    generate_imports(&mut code, module);
+    generate_imports(&mut code, module, strings);
 
     code.push('\n');
 
-    generate_definitions(0, &mut code, true, &module.definitions);
+    generate_definitions(0, &mut code, true, &module.definitions, strings);
 
     File {
-        name: module.name.to_string(),
+        name: module.name.to_string(strings).to_owned(),
         contents: code,
     }
 }
 
-fn generate_imports(code: &mut String, module: &Module) {
+fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
     for import in &module.imports {
         let import = &import.value;
 
@@ -75,7 +80,7 @@ fn generate_imports(code: &mut String, module: &Module) {
                         .value
                         .identifiers()
                         .into_iter()
-                        .map(|i| i.value.name.as_str())
+                        .map(|i| i.value.to_string(strings))
                         .collect(),
                 );
             }
@@ -83,7 +88,7 @@ fn generate_imports(code: &mut String, module: &Module) {
                 code,
                 "import {{{}}} from \"{}\"",
                 identifiers.join(", "),
-                import.module_name.to_string(),
+                import.module_name.to_string(strings)
             )
             .unwrap();
         }
@@ -95,17 +100,18 @@ fn generate_definitions(
     code: &mut String,
     space_between: bool,
     definitions: &[Definition],
+    strings: &Strings,
 ) {
     for definition in definitions {
         match definition {
             Definition::Lambda(name, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
-                    generate_function(indent, code, &name.value.name, params, body)
+                    generate_function(indent, code, name.value.to_string(strings), params, body, strings)
                 }
                 _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
             },
             Definition::Pattern(pattern, expression) => {
-                generate_let(indent, code, pattern, expression)
+                generate_let(indent, code, pattern, expression, strings)
             }
         }
         if space_between {
@@ -120,6 +126,7 @@ fn generate_function(
     name: &str,
     params: &[Pattern],
     body: &Expression,
+    strings: &Strings,
 ) {
     code.push_str(&format!("function {}(", name));
 
@@ -127,33 +134,44 @@ fn generate_function(
         if i > 0 {
             code.push_str(", ");
         }
-        generate_pattern(code, pattern);
+        generate_pattern(code, pattern, strings);
     }
 
     line(code, indent, ") {");
 
-    let expr = generate_expression(add_indent(indent), code, body);
+    let expr = generate_expression(add_indent(indent), code, body, strings);
     line(code, add_indent(indent), &format!("return {}", expr));
 
     line(code, indent, "}");
 }
 
-fn generate_pattern(code: &mut String, pattern: &Pattern) {
+fn generate_pattern(code: &mut String, pattern: &Pattern, strings: &Strings) {
     match &pattern.value {
         P::Hole => code.push('_'),
-        P::Identifier(identifier) => code.push_str(&identifier.value.name),
+        P::Identifier(identifier) => code.push_str(&identifier.value.to_string(strings)),
     }
 }
 
-fn generate_let(indent: usize, code: &mut String, pattern: &Pattern, expression: &Expression) {
-    let expr = generate_expression(indent, code, expression);
+fn generate_let(
+    indent: usize,
+    code: &mut String,
+    pattern: &Pattern,
+    expression: &Expression,
+    strings: &Strings,
+) {
+    let expr = generate_expression(indent, code, expression, strings);
 
     indented(code, indent, "var ");
-    generate_pattern(code, pattern);
+    generate_pattern(code, pattern, strings);
     writeln!(code, " = {}", expr).unwrap();
 }
 
-fn generate_expression(indent: usize, code: &mut String, expression: &Expression) -> String {
+fn generate_expression(
+    indent: usize,
+    code: &mut String,
+    expression: &Expression,
+    strings: &Strings,
+) -> String {
     match &expression.value.expr {
         ET::Unit => "()".to_string(),
 
@@ -167,9 +185,9 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
 
         ET::Float(float) => float.to_string(),
 
-        ET::String_(string) => format!("\"{}\"", string),
+        ET::String_(string) => format!("\"{}\"", strings.resolve(*string)),
 
-        ET::Identifier(identifier) => identifier.value.name.to_string(),
+        ET::Identifier(identifier) => identifier.value.to_string(strings).to_owned(),
 
         ET::Record(fields) => {
             let mut record = String::new();
@@ -179,11 +197,11 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
                 let indent = add_indent(indent);
 
                 for (key, value) in fields {
-                    let value = generate_expression(indent, code, value);
+                    let value = generate_expression(indent, code, value, strings);
                     line(
                         &mut record,
                         indent,
-                        &format!("{}: {},", key.value.name, value),
+                        &format!("{}: {},", key.value.to_string(strings), value),
                     );
                 }
             }
@@ -200,15 +218,15 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             {
                 let indent = add_indent(indent);
 
-                let record_str = generate_expression(indent, code, record);
+                let record_str = generate_expression(indent, code, record, strings);
                 line(&mut record_update, indent, &format!("...{},", record_str));
 
                 for (key, value) in fields {
-                    let value = generate_expression(indent, code, value);
+                    let value = generate_expression(indent, code, value, strings);
                     line(
                         &mut record_update,
                         indent,
-                        &format!("{}: {},", key.value.name, value),
+                        &format!("{}: {},", key.value.to_string(strings), value),
                     );
                 }
             }
@@ -220,11 +238,11 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
 
         ET::PropAccess(expr, field) => format!(
             "{}.{}",
-            generate_expression(indent, code, expr),
-            field.value.name
+            generate_expression(indent, code, expr, strings),
+            field.value.to_string(strings)
         ),
 
-        ET::PropAccessLambda(field) => format!("(r => r.{})", field.value.name),
+        ET::PropAccessLambda(field) => format!("(r => r.{})", field.value.to_string(strings)),
 
         ET::Unary(unary, expression) => format!(
             "{}{}",
@@ -232,20 +250,24 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
                 U::Not => "!",
                 U::Minus => "-",
             },
-            generate_expression(indent, code, expression)
+            generate_expression(indent, code, expression, strings)
         ),
 
-        ET::Binary(binop_expression, _binop, arg_expressions) => {
-            generate_fn_call(indent, code, binop_expression, arg_expressions.iter())
-        }
+        ET::Binary(binop_expression, _binop, arg_expressions) => generate_fn_call(
+            indent,
+            code,
+            binop_expression,
+            arg_expressions.iter(),
+            strings,
+        ),
 
         ET::Lambda(patterns, body) => {
             let mut lambda = String::new();
-            generate_function(indent, &mut lambda, "", patterns, body);
+            generate_function(indent, &mut lambda, "", patterns, body, strings);
             lambda
         }
 
-        ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter()),
+        ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter(), strings),
 
         ET::Let(definitions, body) => {
             let mut let_ = String::new();
@@ -253,8 +275,8 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
 
             {
                 let indent = add_indent(indent);
-                generate_definitions(indent, &mut let_, false, definitions);
-                let ret = generate_expression(indent, &mut let_, body);
+                generate_definitions(indent, &mut let_, false, definitions, strings);
+                let ret = generate_expression(indent, &mut let_, body, strings);
                 line(&mut let_, indent, &format!("return {}", ret));
             }
 
@@ -269,17 +291,17 @@ fn generate_expression(indent: usize, code: &mut String, expression: &Expression
             {
                 let indent = add_indent(indent);
 
-                let condition = generate_expression(indent, &mut if_, condition);
+                let condition = generate_expression(indent, &mut if_, condition, strings);
                 line(&mut if_, indent, &format!("if ({}) {{", condition));
                 {
                     let indent = add_indent(indent);
-                    let then = generate_expression(indent, &mut if_, then);
+                    let then = generate_expression(indent, &mut if_, then, strings);
                     line(&mut if_, indent, &format!("return {}", then));
                 }
                 line(&mut if_, indent, "} else {");
                 {
                     let indent = add_indent(indent);
-                    let else_ = generate_expression(indent, &mut if_, else_);
+                    let else_ = generate_expression(indent, &mut if_, else_, strings);
                     line(&mut if_, indent, &format!("return {}", else_));
                 }
                 line(&mut if_, indent, "}");
@@ -297,15 +319,16 @@ fn generate_fn_call<'ast, Args>(
     code: &mut String,
     fun: &Expression,
     params: Args,
+    strings: &Strings,
 ) -> String
 where
     Args: Iterator<Item = &'ast Expression>,
 {
     let mut call = String::new();
-    let fun = generate_expression(indent, code, fun);
+    let fun = generate_expression(indent, code, fun, strings);
 
     let params = params
-        .map(|expression| generate_expression(indent, code, expression))
+        .map(|expression| generate_expression(indent, code, expression, strings))
         .collect::<Vec<String>>()
         .join(", ");
 

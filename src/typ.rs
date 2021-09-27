@@ -1,10 +1,9 @@
+use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
-use smol_str::SmolStr;
 use std::cell::RefCell;
 use std::char;
-use std::fmt;
 use std::rc::Rc;
 
 #[derive(Hash, PartialEq, Eq, Debug, Copy, Clone)]
@@ -25,7 +24,7 @@ pub enum Type {
     Unit,
 
     /* Named type (Int, Bool, List a, ...) */
-    Named(SmolStr, Vec<Rc<Type>>),
+    Named(StringSymbol, Vec<Rc<Type>>),
 
     /* 'a, 'b, etc.
      *
@@ -83,15 +82,14 @@ impl Type {
 
         parameters_rec(vec![], self)
     }
-}
 
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub fn to_string(&self, strings: &Strings) -> String {
         fn fields_to_string<'a>(
             fields: &'a TypeEnv,
             cur_type_var_name: &'a mut Vec<char>,
             type_var_names: &'a mut HashMap<u32, String>,
             s: &'a mut String,
+            strings: &Strings,
         ) {
             let mut keys: Vec<_> = fields.map().keys().collect();
             keys.sort();
@@ -103,9 +101,9 @@ impl fmt::Display for Type {
                 }
                 s.push(' ');
 
-                s.push_str(key);
+                s.push_str(strings.resolve(*key));
                 s.push_str(" : ");
-                to_string_rec(value, cur_type_var_name, type_var_names, s);
+                to_string_rec(value, cur_type_var_name, type_var_names, s, strings);
             }
         }
 
@@ -119,21 +117,24 @@ impl fmt::Display for Type {
             cur_type_var_name: &'a mut Vec<char>,
             type_var_names: &'a mut HashMap<u32, String>,
             s: &'a mut String,
+            strings: &Strings,
         ) {
             use Type::*;
             match t {
                 Unit => s.push_str("()"),
 
                 Named(name, params) => {
-                    s.push_str(name);
+                    s.push_str(strings.resolve(*name));
                     for param in params.iter() {
                         s.push(' ');
-                        to_string_rec(param, cur_type_var_name, type_var_names, s);
+                        to_string_rec(param, cur_type_var_name, type_var_names, s, strings);
                     }
                 }
 
                 Var(var) => match &*var.borrow() {
-                    TypeVar::Bound(t) => to_string_rec(t, cur_type_var_name, type_var_names, s),
+                    TypeVar::Bound(t) => {
+                        to_string_rec(t, cur_type_var_name, type_var_names, s, strings)
+                    }
 
                     TypeVar::Unbound(TypeVarId(n), _) => match type_var_names.get(n) {
                         Some(name) => s.push_str(name),
@@ -155,20 +156,20 @@ impl fmt::Display for Type {
                         s.push('(');
                     }
 
-                    to_string_rec(arg, cur_type_var_name, type_var_names, s);
+                    to_string_rec(arg, cur_type_var_name, type_var_names, s, strings);
 
                     if parens {
                         s.push(')');
                     }
                     s.push_str(" -> ");
 
-                    to_string_rec(body, cur_type_var_name, type_var_names, s);
+                    to_string_rec(body, cur_type_var_name, type_var_names, s, strings);
                 }
 
                 Record(fields) => {
                     s.push('{');
 
-                    fields_to_string(fields, cur_type_var_name, type_var_names, s);
+                    fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
 
                     if !fields.map().is_empty() {
                         s.push(' ');
@@ -179,13 +180,13 @@ impl fmt::Display for Type {
                 RecordExt(fields, var) => {
                     s.push_str("{ ");
 
-                    to_string_rec(var, cur_type_var_name, type_var_names, s);
+                    to_string_rec(var, cur_type_var_name, type_var_names, s, strings);
 
                     if !fields.map().is_empty() {
                         s.push_str(" |");
                     }
 
-                    fields_to_string(fields, cur_type_var_name, type_var_names, s);
+                    fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
 
                     s.push_str(" }");
                 }
@@ -204,22 +205,42 @@ impl fmt::Display for Type {
                                 cur_type_var_name,
                                 type_var_names,
                                 s,
+                                strings,
                             );
                         }
 
                         s.push_str(" . ");
                     }
 
-                    to_string_rec(t, cur_type_var_name, type_var_names, s);
+                    to_string_rec(t, cur_type_var_name, type_var_names, s, strings);
                 }
             }
         }
 
         let mut s = String::new();
-        to_string_rec(self, &mut vec!['a'], &mut HashMap::default(), &mut s);
-
-        write!(f, "{}", s)
+        to_string_rec(
+            self,
+            &mut vec!['a'],
+            &mut HashMap::default(),
+            &mut s,
+            strings,
+        );
+        s
     }
+
+    pub fn primitive_types(strings: &mut Strings) -> PrimitiveTypes {
+        PrimitiveTypes {
+            float: Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+            bool: Rc::new(Type::Named(strings.get_or_intern("Bool"), vec![])),
+            string: Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+        }
+    }
+}
+
+pub struct PrimitiveTypes {
+    pub float: Rc<Type>,
+    pub bool: Rc<Type>,
+    pub string: Rc<Type>,
 }
 
 /* Return the next unique lowercase-letter string after the given one, e.g:
@@ -239,28 +260,23 @@ fn next_letter(s: &mut Vec<char>) {
     }
 }
 
-// Primitive types
-
-thread_local! {
-    pub static FLOAT: Rc<Type> = Rc::new(Type::Named("Float".into(), vec![]));
-    pub static BOOL: Rc<Type> = Rc::new(Type::Named("Bool".into(), vec![]));
-    pub static STRING: Rc<Type> = Rc::new(Type::Named("String".into(), vec![]));
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::strings::Strings;
     use pretty_assertions::assert_eq;
     use std::iter::FromIterator;
 
     #[test]
     fn test_printing() {
+        let mut strings = Strings::new();
+
         let tests = vec![
             (Type::Unit, "()"),
-            (Type::Named("Float".into(), vec![]), "Float"),
+            (Type::Named(strings.get_or_intern("Float"), vec![]), "Float"),
             (
                 Type::Named(
-                    "Result".into(),
+                    strings.get_or_intern("Result"),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
@@ -276,7 +292,7 @@ mod test {
             ),
             (
                 Type::Named(
-                    "Result".into(),
+                    strings.get_or_intern("Result"),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
@@ -307,27 +323,27 @@ mod test {
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named("Float".into(), vec![])),
-                    Rc::new(Type::Named("String".into(), vec![])),
+                    Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                 ),
                 "Float -> String",
             ),
             (
                 Type::Fn(
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named("Float".into(), vec![])),
-                        Rc::new(Type::Named("String".into(), vec![])),
+                        Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                        Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                     )),
-                    Rc::new(Type::Named("String".into(), vec![])),
+                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                 ),
                 "(Float -> String) -> String",
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named("String".into(), vec![])),
+                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named("Float".into(), vec![])),
-                        Rc::new(Type::Named("String".into(), vec![])),
+                        Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                        Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                     )),
                 ),
                 "String -> Float -> String",
@@ -372,7 +388,10 @@ mod test {
             (
                 Type::Record({
                     let mut fields = TypeEnv::new();
-                    fields.insert("a".into(), Rc::new(Type::Named("Int".into(), vec![])));
+                    fields.insert(
+                        strings.get_or_intern("a"),
+                        Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                    );
                     fields
                 }),
                 "{ a : Int }",
@@ -380,9 +399,12 @@ mod test {
             (
                 Type::Record({
                     let mut fields = TypeEnv::new();
-                    fields.insert("age".into(), Rc::new(Type::Named("Int".into(), vec![])));
                     fields.insert(
-                        "extra".into(),
+                        strings.get_or_intern("age"),
+                        Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                    );
+                    fields.insert(
+                        strings.get_or_intern("extra"),
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
@@ -406,7 +428,10 @@ mod test {
                 Type::RecordExt(
                     {
                         let mut fields = TypeEnv::new();
-                        fields.insert("age".into(), Rc::new(Type::Named("Int".into(), vec![])));
+                        fields.insert(
+                            strings.get_or_intern("age"),
+                            Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                        );
                         fields
                     },
                     Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
@@ -420,9 +445,12 @@ mod test {
                 Type::RecordExt(
                     {
                         let mut fields = TypeEnv::new();
-                        fields.insert("age".into(), Rc::new(Type::Named("Int".into(), vec![])));
                         fields.insert(
-                            "extra".into(),
+                            strings.get_or_intern("age"),
+                            Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                        );
+                        fields.insert(
+                            strings.get_or_intern("extra"),
                             Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                                 TypeVarId(0),
                                 Level(0),
@@ -440,7 +468,7 @@ mod test {
         ];
 
         for (value, expected) in tests {
-            assert_eq!(format!("{}", value), expected, "\n\n{:#?}", value);
+            assert_eq!(value.to_string(&strings), expected, "\n\n{:#?}", value);
         }
     }
 }

@@ -4,6 +4,7 @@ use crate::ast::{
 };
 use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
+use crate::strings::Strings;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
@@ -57,7 +58,7 @@ pub enum Error<'ast> {
 }
 
 impl<'ast> Error<'ast> {
-    pub fn to_string(&self, source: &Source) -> String {
+    pub fn to_string(&self, source: &Source, strings: &Strings) -> String {
         use Error::*;
 
         let mut s = String::new();
@@ -83,7 +84,8 @@ impl<'ast> Error<'ast> {
             UndefinedIdentifier(identifier, _expr) => {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
-                    identifier.value.name, code
+                    identifier.value.to_string(strings),
+                    code
                 ));
             }
 
@@ -99,7 +101,9 @@ impl<'ast> Error<'ast> {
 in record
 
 {2}",
-                    identifier.value.name, code, record_code
+                    identifier.value.to_string(strings),
+                    code,
+                    record_code
                 ));
             }
 
@@ -122,7 +126,9 @@ to be
 but seems to be
 
 {0}",
-                    typ, typ2, code
+                    typ.to_string(strings),
+                    typ2.to_string(strings),
+                    code
                 ));
             }
 
@@ -149,21 +155,25 @@ to have the same type as
 with type
 
 {1}",
-                    typ, typ2, code, code2
+                    typ.to_string(strings),
+                    typ2.to_string(strings),
+                    code,
+                    code2
                 ));
             }
 
             UndefinedExport(export) => {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
-                    export.value.name, code
+                    export.value.to_string(strings),
+                    code
                 ));
             }
 
             UnknownImport(import) => {
                 s.push_str(&format!(
                     "Couldn't find module `{}`\n\n{}",
-                    import.value.module_name.to_string(),
+                    import.value.module_name.to_string(strings),
                     code
                 ));
             }
@@ -171,8 +181,8 @@ with type
             UnknownImportDefinition(export, import) => {
                 s.push_str(&format!(
                     "Module `{}` doesn't appear to expose `{}`\n\n{}",
-                    import.value.module_name.to_string(),
-                    export.value.name,
+                    import.value.module_name.to_string(strings),
+                    export.value.to_string(strings),
                     code
                 ));
             }
@@ -633,129 +643,134 @@ fn unify<'ast>(
     })
 }
 
-fn base_env(state: &mut State, env: &mut TypeEnv) {
+fn base_env(
+    state: &mut State,
+    env: &mut TypeEnv,
+    primitive_types: &PrimitiveTypes,
+    strings: &mut Strings,
+) {
     env.insert(
-        "__op__or".into(),
+        strings.get_or_intern("__op__or"),
         Rc::new(Type::Fn(
-            BOOL.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.bool),
             Rc::new(Type::Fn(
-                BOOL.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.bool),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
 
     env.insert(
-        "__op__or".into(),
+        strings.get_or_intern("__op__or"),
         Rc::new(Type::Fn(
-            BOOL.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.bool),
             Rc::new(Type::Fn(
-                BOOL.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.bool),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
     env.insert(
-        "__op__and".into(),
+        strings.get_or_intern("__op__and"),
         Rc::new(Type::Fn(
-            BOOL.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.bool),
             Rc::new(Type::Fn(
-                BOOL.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.bool),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
-    env.insert("__op__eq".into(), {
+    env.insert(strings.get_or_intern("__op__eq"), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
-            Rc::new(Type::Fn(Rc::clone(&a), BOOL.with(|t| Rc::clone(t)))),
+            Rc::new(Type::Fn(Rc::clone(&a), Rc::clone(&primitive_types.bool))),
         )))
     });
-    env.insert("__op__ne".into(), {
+    env.insert(strings.get_or_intern("__op__ne"), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
             Rc::clone(&a),
-            Rc::new(Type::Fn(Rc::clone(&a), BOOL.with(|t| Rc::clone(t)))),
+            Rc::new(Type::Fn(Rc::clone(&a), Rc::clone(&primitive_types.bool))),
         )))
     });
     env.insert(
-        "__op__gt".into(),
+        strings.get_or_intern("__op__gt"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
     env.insert(
-        "__op__ge".into(),
+        strings.get_or_intern("__op__ge"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
     env.insert(
-        "__op__lt".into(),
+        strings.get_or_intern("__op__lt"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
     env.insert(
-        "__op__le".into(),
+        strings.get_or_intern("__op__le"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                BOOL.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.bool),
             )),
         )),
     );
     env.insert(
-        "__op__add".into(),
+        strings.get_or_intern("__op__add"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                FLOAT.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
             )),
         )),
     );
     env.insert(
-        "__op__sub".into(),
+        strings.get_or_intern("__op__sub"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                FLOAT.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
             )),
         )),
     );
     env.insert(
-        "__op__mult".into(),
+        strings.get_or_intern("__op__mult"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                FLOAT.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
             )),
         )),
     );
     env.insert(
-        "__op__div".into(),
+        strings.get_or_intern("__op__div"),
         Rc::new(Type::Fn(
-            FLOAT.with(|t| Rc::clone(t)),
+            Rc::clone(&primitive_types.float),
             Rc::new(Type::Fn(
-                FLOAT.with(|t| Rc::clone(t)),
-                FLOAT.with(|t| Rc::clone(t)),
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
             )),
         )),
     );
@@ -765,10 +780,12 @@ fn base_env(state: &mut State, env: &mut TypeEnv) {
 pub fn infer<'interfaces, 'ast>(
     module_interfaces: &'interfaces ModuleInterfaces,
     module: &'ast Module,
+    primitive_types: &PrimitiveTypes,
+    strings: &mut Strings,
 ) -> Result<Rc<TypeEnv>, (Rc<TypeEnv>, Vec<Error<'ast>>)> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
-    base_env(&mut state, &mut env);
+    base_env(&mut state, &mut env, primitive_types, strings);
     let mut errors: Vec<Error> = vec![];
 
     let mut module_type = TypeEnv::new();
@@ -800,7 +817,13 @@ pub fn infer<'interfaces, 'ast>(
     }
 
     // Type check the definitions in the module
-    infer_definitions(&module.definitions, &mut state, &mut env, &mut errors);
+    infer_definitions(
+        &module.definitions,
+        &mut state,
+        &mut env,
+        &primitive_types,
+        &mut errors,
+    );
 
     // Check exports against this module type to see everything exists and is valid
     for export in &module.exports {
@@ -824,22 +847,23 @@ fn infer_rec<'ast>(
     ast: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
+    primitive_types: &PrimitiveTypes,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
     let typ = match &ast.value.expr {
         ET::Unit => Rc::new(Unit),
 
-        ET::Bool(_) => BOOL.with(|t| Rc::clone(t)),
+        ET::Bool(_) => Rc::clone(&primitive_types.bool),
 
-        ET::Float(_) => FLOAT.with(|t| Rc::clone(t)),
+        ET::Float(_) => Rc::clone(&primitive_types.float),
 
-        ET::String_(_) => STRING.with(|t| Rc::clone(t)),
+        ET::String_(_) => Rc::clone(&primitive_types.string),
 
         ET::Record(fields) => {
             let mut typed_fields = TypeEnv::new();
 
             for (name, value) in fields {
-                let t = infer_rec(value, state, env, errors);
+                let t = infer_rec(value, state, env, primitive_types, errors);
                 if typed_fields.map().contains_key(&name.value.name) {
                     errors.push(Error::DuplicateField(name, ast));
                 } else {
@@ -853,7 +877,7 @@ fn infer_rec<'ast>(
         ET::RecordUpdate(record, fields) => {
             let mut typed_fields = TypeEnv::new();
             for (name, value) in fields {
-                let t = infer_rec(value, state, env, errors);
+                let t = infer_rec(value, state, env, primitive_types, errors);
                 if typed_fields.map().contains_key(&name.value.name) {
                     errors.push(Error::DuplicateField(name, ast));
                 } else {
@@ -863,7 +887,7 @@ fn infer_rec<'ast>(
 
             let inferred_type = Rc::new(RecordExt(typed_fields, Rc::clone(&state.new_type_var())));
 
-            let record_type = infer_rec(record, state, env, errors);
+            let record_type = infer_rec(record, state, env, primitive_types, errors);
 
             // Unify the base record with the extensible record represented by this update
             add_error(
@@ -891,7 +915,7 @@ fn infer_rec<'ast>(
                 remaining_fields_type,
             ));
 
-            let expr_type = infer_rec(expr, state, env, errors);
+            let expr_type = infer_rec(expr, state, env, primitive_types, errors);
 
             add_error(unify(state, expr, &expr_type, None, &record_type), errors);
 
@@ -916,12 +940,12 @@ fn infer_rec<'ast>(
         }
 
         ET::Unary(op, e) => {
-            let t = infer_rec(e, state, env, errors);
+            let t = infer_rec(e, state, env, primitive_types, errors);
 
             add_error(
                 match op.value {
-                    U::Not => unify(state, e, &t, None, &BOOL.with(|t| Rc::clone(t))),
-                    U::Minus => unify(state, e, &t, None, &FLOAT.with(|t| Rc::clone(t))),
+                    U::Not => unify(state, e, &t, None, &primitive_types.bool),
+                    U::Minus => unify(state, e, &t, None, &primitive_types.float),
                 },
                 errors,
             );
@@ -931,7 +955,7 @@ fn infer_rec<'ast>(
 
         ET::Binary(fn_, _op, args) => {
             // Infer the binary op as a function call
-            infer_fn_call(fn_, args.iter(), ast, state, env, errors)
+            infer_fn_call(fn_, args.iter(), ast, state, env, primitive_types, errors)
         }
 
         /* If
@@ -943,14 +967,14 @@ fn infer_rec<'ast>(
          * infer env (if condition then else) = t2
          */
         ET::If(condition, then, else_) => {
-            let t = infer_rec(condition, state, env, errors);
+            let t = infer_rec(condition, state, env, primitive_types, errors);
             add_error(
-                unify(state, condition, &t, None, &BOOL.with(|t| Rc::clone(t))),
+                unify(state, condition, &t, None, &primitive_types.float),
                 errors,
             );
 
-            let t1 = infer_rec(then, state, env, errors);
-            let t2 = infer_rec(else_, state, env, errors);
+            let t1 = infer_rec(then, state, env, primitive_types, errors);
+            let t2 = infer_rec(else_, state, env, primitive_types, errors);
             add_error(unify(state, then, &t1, Some(else_), &t2), errors);
 
             t2
@@ -979,7 +1003,9 @@ fn infer_rec<'ast>(
          *   ---------------
          *   infer env (f x) = t'
          */
-        ET::FnCall(f, args) => infer_fn_call(f, args.iter(), ast, state, env, errors),
+        ET::FnCall(f, args) => {
+            infer_fn_call(f, args.iter(), ast, state, env, primitive_types, errors)
+        }
 
         /* Abs
          *   t = newVar ()
@@ -987,7 +1013,7 @@ fn infer_rec<'ast>(
          *   -------------
          *   infer env (fun x -> e) = t -> t'
          */
-        ET::Lambda(params, body) => infer_lambda(params, body, state, env, errors),
+        ET::Lambda(params, body) => infer_lambda(params, body, state, env, primitive_types, errors),
 
         /* Let
          *   infer env e0 = t
@@ -1003,9 +1029,9 @@ fn infer_rec<'ast>(
         ET::Let(bindings, e) => {
             let mut new_env = env.clone();
 
-            infer_definitions(bindings, state, &mut new_env, errors);
+            infer_definitions(bindings, state, &mut new_env, primitive_types, errors);
 
-            infer_rec(e, state, &mut new_env, errors)
+            infer_rec(e, state, &mut new_env, primitive_types, errors)
         }
     };
 
@@ -1018,6 +1044,7 @@ fn infer_definitions<'ast>(
     definitions: &'ast [Definition],
     state: &mut State,
     env: &mut TypeEnv,
+    primitive_types: &PrimitiveTypes,
     errors: &mut Vec<Error<'ast>>,
 ) {
     for definition in definitions {
@@ -1025,7 +1052,7 @@ fn infer_definitions<'ast>(
             Definition::Lambda(identifier, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
                     state.enter_level();
-                    let t = infer_lambda(params, body, state, env, errors);
+                    let t = infer_lambda(params, body, state, env, primitive_types, errors);
                     state.exit_level();
 
                     env.insert(identifier.value.name.clone(), state.generalize(&t));
@@ -1034,7 +1061,7 @@ fn infer_definitions<'ast>(
             },
             Definition::Pattern(pattern, value) => {
                 state.enter_level();
-                let t = infer_rec(value, state, env, errors);
+                let t = infer_rec(value, state, env, primitive_types, errors);
                 state.exit_level();
 
                 match &pattern.value {
@@ -1051,6 +1078,7 @@ fn infer_lambda<'ast>(
     body: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
+    primitive_types: &PrimitiveTypes,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
     let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> =
@@ -1066,7 +1094,7 @@ fn infer_lambda<'ast>(
             env
         });
 
-    let return_type = infer_rec(body, state, &mut env, errors);
+    let return_type = infer_rec(body, state, &mut env, primitive_types, errors);
 
     params_with_type
         .iter()
@@ -1082,17 +1110,18 @@ fn infer_fn_call<'ast, Args>(
     ast: &'ast Expression,
     state: &mut State,
     env: &mut TypeEnv,
+    primitive_types: &PrimitiveTypes,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type>
 where
     Args: Iterator<Item = &'ast Expression> + Clone,
 {
-    let fn_type = infer_rec(f, state, env, errors);
+    let fn_type = infer_rec(f, state, env, primitive_types, errors);
     let param_types = fn_type.parameters();
 
     let arg_types: Vec<Rc<Type>> = args
         .clone()
-        .map(|arg| infer_rec(arg, state, env, errors))
+        .map(|arg| infer_rec(arg, state, env, primitive_types, errors))
         .collect();
 
     let return_type = state.new_type_var();
@@ -1137,9 +1166,10 @@ mod tests {
         ast: &'ast Expression,
         state: &mut State,
         env: &mut TypeEnv,
+        primitive_types: &PrimitiveTypes,
     ) -> Result<Rc<Type>, Vec<Error<'ast>>> {
         let mut errors: Vec<Error<'ast>> = vec![];
-        let t = infer_rec(ast, state, env, &mut errors);
+        let t = infer_rec(ast, state, env, &primitive_types, &mut errors);
 
         if errors.is_empty() {
             Ok(t)
@@ -1283,6 +1313,7 @@ add 5"
         assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
 
         fn infer(code: &str) -> String {
+            let mut strings = Strings::new();
             let source = Source::new_orphan(code.to_string());
 
             let tokens = tokenizer::parse(&source)
@@ -1295,18 +1326,19 @@ add 5"
                 })
                 .unwrap();
 
-            let ast = parser::tests::parse_expression(&source, &tokens)
+            let ast = parser::tests::parse_expression(&source, &tokens, &mut strings)
                 .map_err(|error| error.to_string(&source))
                 .unwrap();
 
             let mut state = State::new();
             let mut env = TypeEnv::new();
-            base_env(&mut state, &mut env);
-            let s = match infer_expression(&ast, &mut state, &mut env) {
-                Ok(typ) => format!("{}", typ),
+            let primitive_types = Type::primitive_types(&mut strings);
+            base_env(&mut state, &mut env, &primitive_types, &mut strings);
+            let s = match infer_expression(&ast, &mut state, &mut env, &primitive_types) {
+                Ok(typ) => typ.to_string(&strings),
                 Err(errs) => errs
                     .iter()
-                    .map(|e| e.to_string(&source))
+                    .map(|e| e.to_string(&source, &strings))
                     .collect::<Vec<String>>()
                     .join("\n\n"),
             };
@@ -1457,15 +1489,24 @@ last _ y = y
         ));
 
         fn infer(code: &str) -> String {
+            let mut strings = Strings::new();
             let source = Source::new_orphan(code.to_string());
+
+            let primitive_types = Type::primitive_types(&mut strings);
 
             let (entry_sources, sources) = compiler::process_sources(vec![source]);
 
             let (entry_modules, module_sources, module_asts) =
-                compiler::parse_files(&entry_sources, &sources).unwrap();
+                compiler::parse_files(&entry_sources, &sources, &mut strings).unwrap();
 
-            let actual = match compiler::infer(entry_modules, &module_sources, &module_asts) {
-                Ok(module_interfaces) => module_interfaces.to_string(),
+            let actual = match compiler::infer(
+                entry_modules,
+                &module_sources,
+                &module_asts,
+                &primitive_types,
+                &mut strings,
+            ) {
+                Ok(module_interfaces) => module_interfaces.to_string(&strings),
                 Err(err) => err,
             };
 

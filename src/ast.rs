@@ -1,11 +1,10 @@
 use crate::source::Source;
+use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token::Token;
 use crate::typ::Type;
 use lazy_static::lazy_static;
 use regex::Regex;
-use smol_str::SmolStr;
 use std::cell::RefCell;
-use std::fmt;
 use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
@@ -46,7 +45,7 @@ pub enum ReplEntry {
     Expression(Expression),
 }
 
-pub type ModuleFullName = SmolStr;
+pub type ModuleFullName = StringSymbol;
 
 #[derive(Debug, PartialEq)]
 pub struct ModuleName {
@@ -55,15 +54,19 @@ pub struct ModuleName {
 }
 
 impl ModuleName {
-    pub fn new(parts: Vec<Identifier>) -> Result<Self, (usize, Vec<Identifier>)> {
+    pub fn new(
+        parts: Vec<Identifier>,
+        strings: &mut Strings,
+    ) -> Result<Self, (usize, Vec<Identifier>)> {
         let str_parts = parts
             .iter()
-            .map(|i| i.value.name.as_str())
+            .map(|i| i.value.to_string(strings))
             .collect::<Vec<_>>();
+        let full_name = str_parts.join(".");
 
         match ModuleName::valid_parts(&str_parts) {
             Ok(()) => {
-                let full_name = str_parts.join(".").into();
+                let full_name = strings.get_or_intern(full_name);
                 Ok(Self { parts, full_name })
             }
             Err(i) => Err((i, parts)),
@@ -87,14 +90,14 @@ impl ModuleName {
         Ok(())
     }
 
-    pub fn valid_top_level_in_file(&self, source: &Source) -> bool {
+    pub fn valid_top_level_in_file(&self, source: &Source, strings: &Strings) -> bool {
         if let Some(file_name) = source.file_stem() {
             let last_module_segment = self
                 .parts
                 .last()
                 .expect("Module name parts should never be empty");
 
-            last_module_segment.value.name == file_name
+            last_module_segment.value.to_string(strings) == file_name
         } else {
             true
         }
@@ -121,11 +124,9 @@ impl ModuleName {
             .expect("Module names should never be empty")
             .end
     }
-}
 
-impl fmt::Display for ModuleName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.full_name)
+    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+        strings.resolve(self.full_name)
     }
 }
 
@@ -204,7 +205,7 @@ pub enum ExpressionType {
     Unit,
     Bool(bool),
     Float(f64),
-    String_(SmolStr),
+    String_(StringSymbol),
     Identifier(Identifier),
     PropAccess(Box<Expression>, Identifier),
     PropAccessLambda(Identifier),
@@ -228,6 +229,7 @@ pub enum Unary_ {
 
 pub mod binop {
     use super::{Identifier_, Node};
+    use crate::strings::Strings;
 
     #[derive(PartialEq, Debug, Clone)]
     pub enum Type {
@@ -264,79 +266,114 @@ pub mod binop {
     use Associativity::*;
     use Type::*;
 
-    thread_local! {
-        pub static OR: Binop_ = Binop_ {
-            typ: Or,
-            precedence: 6,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__or"),
-        };
-        pub static AND: Binop_ = Binop_ {
-            typ: And,
-            precedence: 7,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__and"),
-        };
-        pub static EQUAL: Binop_ = Binop_ {
-            typ: Equal,
-            precedence: 11,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__eq"),
-        };
-        pub static NOT_EQUAL: Binop_ = Binop_ {
-            typ: NotEqual,
-            precedence: 11,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__ne"),
-        };
-        pub static GREATER_THAN: Binop_ = Binop_ {
-            typ: GreaterThan,
-            precedence: 12,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__gt"),
-        };
-        pub static GREATER_EQUAL_THAN: Binop_ = Binop_ {
-            typ: GreaterEqualThan,
-            precedence: 12,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__ge"),
-        };
-        pub static LESS_THAN: Binop_ = Binop_ {
-            typ: LessThan,
-            precedence: 12,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__lt"),
-        };
-        pub static LESS_EQUAL_THAN: Binop_ = Binop_ {
-            typ: LessEqualThan,
-            precedence: 12,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__le"),
-        };
-        pub static ADDITION: Binop_ = Binop_ {
-            typ: Addition,
-            precedence: 14,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__add"),
-        };
-        pub static SUBSTRACTION: Binop_ = Binop_ {
-            typ: Substraction,
-            precedence: 14,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__sub"),
-        };
-        pub static MULTIPLICATION: Binop_ = Binop_ {
-            typ: Multiplication,
-            precedence: 15,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__mult"),
-        };
-        pub static DIVISION: Binop_ = Binop_ {
-            typ: Division,
-            precedence: 15,
-            associativity: Ltr,
-            fn_: Identifier_::new("__op__div"),
-        };
+    impl Binop_ {
+        pub fn or(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: Or,
+                precedence: 6,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__or", strings),
+            }
+        }
+
+        pub fn and(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: And,
+                precedence: 7,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__and", strings),
+            }
+        }
+
+        pub fn equal(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: Equal,
+                precedence: 11,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__eq", strings),
+            }
+        }
+
+        pub fn notEqual(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: NotEqual,
+                precedence: 11,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__ne", strings),
+            }
+        }
+
+        pub fn greaterThan(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: GreaterThan,
+                precedence: 12,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__gt", strings),
+            }
+        }
+
+        pub fn greaterEqualThan(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: GreaterEqualThan,
+                precedence: 12,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__ge", strings),
+            }
+        }
+
+        pub fn lessThan(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: LessThan,
+                precedence: 12,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__lt", strings),
+            }
+        }
+
+        pub fn lessEqualThan(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: LessEqualThan,
+                precedence: 12,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__le", strings),
+            }
+        }
+
+        pub fn addition(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: Addition,
+                precedence: 14,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__add", strings),
+            }
+        }
+
+        pub fn substraction(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: Substraction,
+                precedence: 14,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__sub", strings),
+            }
+        }
+
+        pub fn multiplication(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: Multiplication,
+                precedence: 15,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__mult", strings),
+            }
+        }
+
+        pub fn division(strings: &mut Strings) -> Self {
+            Binop_ {
+                typ: Division,
+                precedence: 15,
+                associativity: Ltr,
+                fn_: Identifier_::new("__op__div", strings),
+            }
+        }
     }
 }
 use binop::Binop;
@@ -349,7 +386,7 @@ pub enum Pattern_ {
     Identifier(Identifier),
 }
 
-type IdentifierName = SmolStr;
+type IdentifierName = StringSymbol;
 
 pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
@@ -359,7 +396,7 @@ pub struct Identifier_ {
 }
 
 impl Identifier_ {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, strings: &mut Strings) -> Self {
         use IdentifierCase::*;
 
         let case = name
@@ -368,10 +405,16 @@ impl Identifier_ {
             .map(|c| if c.is_uppercase() { Pascal } else { Camel })
             .expect("Can't construct an empty identifier");
 
+        let name_sym = strings.get_or_intern(name);
+
         Self {
-            name: name.into(),
+            name: name_sym,
             case,
         }
+    }
+
+    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+        strings.resolve(self.name)
     }
 }
 
@@ -379,10 +422,4 @@ impl Identifier_ {
 pub enum IdentifierCase {
     Pascal,
     Camel,
-}
-
-impl fmt::Display for Identifier_ {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name)
-    }
 }
