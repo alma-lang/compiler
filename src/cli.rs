@@ -1,5 +1,6 @@
 use crate::ast;
 use crate::compiler;
+use crate::compiler::stages::process_sources;
 use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
 use rustyline::{error::ReadlineError, Editor};
@@ -75,23 +76,27 @@ pub fn compile_files(files: Vec<String>) {
         .into_iter()
         .map(|file| source_from_path(file))
         .collect();
+    let (entry_sources, sources) = process_sources(sources);
 
-    match compiler::compile(sources) {
+    match compiler::compile(&entry_sources, &sources) {
         Ok(out) => println!("{}", out),
-        Err(errs) => eprintln!("\n{}\n", errs),
+        Err(errs) => {
+            eprintln!("\n{}\n", errs);
+            process::exit(1);
+        }
     };
 }
 
-pub fn bench(_runs: u32, file_path: String) {
-    let sources = vec![source_from_path(file_path)];
+pub fn bench(runs: u32, file_path: String) {
+    let (entry_sources, sources) = process_sources(vec![source_from_path(file_path)]);
 
-    eprintln!("Benchmarking is broken right now. Only runs once.");
-
-    // for _ in 0..runs {
-    // TODO: fix ownership error maybe
-    match compiler::compile(sources) {
-        Ok(out) => println!("{}", out),
-        Err(errs) => eprintln!("{}", errs),
-    };
-    // }
+    for _ in 0..runs {
+        match compiler::compile(&entry_sources, &sources) {
+            Ok(out) => println!("{}", out),
+            Err(errs) => {
+                eprintln!("\n{}\n", errs);
+                process::exit(1);
+            }
+        };
+    }
 }

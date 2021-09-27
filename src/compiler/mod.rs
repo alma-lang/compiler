@@ -3,8 +3,8 @@ pub mod stages;
 pub mod types;
 
 use crate::ast::{self, Module, ReplEntry};
-use crate::compiler::stages::{check_cycles, infer, parse_files, process_sources};
-use crate::compiler::types::ModuleInterfaces;
+use crate::compiler::stages::{check_cycles, infer, parse_files};
+use crate::compiler::types::{ModuleInterfaces, Sources};
 use crate::infer;
 use crate::javascript;
 use crate::parser;
@@ -12,9 +12,7 @@ use crate::source::Source;
 use crate::tokenizer;
 use std::fmt::Write;
 
-pub fn compile(entry_sources: Vec<Source>) -> Result<String, String> {
-    let (entry_sources, sources) = process_sources(entry_sources);
-
+pub fn compile(entry_sources: &Vec<String>, sources: &Sources) -> Result<String, String> {
     let (entry_modules, module_sources, module_asts) = parse_files(&entry_sources, &sources)?;
 
     check_cycles(&entry_modules, &module_asts)?;
@@ -119,18 +117,20 @@ fn compile_repl_entry_helper<'ast>(
 
 #[cfg(test)]
 pub mod tests {
+    use crate::compiler::stages::process_sources;
     use crate::source::Source;
     use insta::assert_snapshot;
 
     #[test]
     pub fn test_compile() {
         fn compile(source_codes: &[&'static str]) -> String {
-            match super::compile(
+            let (entry_sources, sources) = process_sources(
                 source_codes
                     .iter()
                     .map(|s| Source::new_orphan(s.to_string()))
                     .collect(),
-            ) {
+            );
+            match super::compile(&entry_sources, &sources) {
                 Ok(s) => s,
                 Err(e) => e,
             }
