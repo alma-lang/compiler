@@ -19,12 +19,16 @@ Result:
                     line: 1,
                     column: 7,
                     value: Identifier_ {
-                        name: "Test",
+                        name: SymbolU32 {
+                            value: 1,
+                        },
                         case: Pascal,
                     },
                 },
             ],
-            full_name: "Test",
+            full_name: SymbolU32 {
+                value: 1,
+            },
         },
         exports: [],
         imports: [],

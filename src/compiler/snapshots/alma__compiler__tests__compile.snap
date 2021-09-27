@@ -19,6 +19,13 @@ weirdAdd : Float -> Float -> Float
 
 
 
+function Modules () {
+import {weirdAdd} from "Modules.WeirdMath"
+
+var main = weirdAdd
+
+}();
+
 function Modules.WeirdMath () {
 import {five} from "Modules.Constants"
 
@@ -32,13 +39,6 @@ var weirdAdd = function (x, y) {
 function Modules.Constants () {
 
 var five = 5
-
-}();
-
-function Modules () {
-import {weirdAdd} from "Modules.WeirdMath"
-
-var main = weirdAdd
 
 }();
 

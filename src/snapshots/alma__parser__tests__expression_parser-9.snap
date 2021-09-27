@@ -19,7 +19,9 @@ Node {
             value: None,
         },
         expr: String_(
-            "😄",
+            SymbolU32 {
+                value: 1,
+            },
         ),
     },
 }

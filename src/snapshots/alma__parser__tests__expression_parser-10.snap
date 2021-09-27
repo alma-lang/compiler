@@ -20,7 +20,9 @@ Node {
             value: None,
         },
         expr: String_(
-            "\n",
+            SymbolU32 {
+                value: 1,
+            },
         ),
     },
 }

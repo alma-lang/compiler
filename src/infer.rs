@@ -969,7 +969,7 @@ fn infer_rec<'ast>(
         ET::If(condition, then, else_) => {
             let t = infer_rec(condition, state, env, primitive_types, errors);
             add_error(
-                unify(state, condition, &t, None, &primitive_types.float),
+                unify(state, condition, &t, None, &primitive_types.bool),
                 errors,
             );
 

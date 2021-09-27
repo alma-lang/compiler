@@ -38,7 +38,9 @@ Node {
                             line: 2,
                             column: 0,
                             value: Identifier_ {
-                                name: "fun",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },
@@ -62,7 +64,9 @@ Node {
                                 line: 2,
                                 column: 4,
                                 value: Identifier_ {
-                                    name: "arg1",
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
                                     case: Camel,
                                 },
                             },
@@ -85,7 +89,9 @@ Node {
                                 line: 3,
                                 column: 2,
                                 value: Identifier_ {
-                                    name: "arg2",
+                                    name: SymbolU32 {
+                                        value: 3,
+                                    },
                                     case: Camel,
                                 },
                             },
@@ -108,7 +114,9 @@ Node {
                                 line: 3,
                                 column: 7,
                                 value: Identifier_ {
-                                    name: "arg3",
+                                    name: SymbolU32 {
+                                        value: 4,
+                                    },
                                     case: Camel,
                                 },
                             },
@@ -131,7 +139,9 @@ Node {
                                 line: 4,
                                 column: 2,
                                 value: Identifier_ {
-                                    name: "arg4",
+                                    name: SymbolU32 {
+                                        value: 5,
+                                    },
                                     case: Camel,
                                 },
                             },

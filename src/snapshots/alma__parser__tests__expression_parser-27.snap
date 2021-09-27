@@ -35,7 +35,9 @@ Node {
                             line: 1,
                             column: 2,
                             value: Identifier_ {
-                                name: "__op__sub",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },
@@ -52,7 +54,9 @@ Node {
                     precedence: 14,
                     associativity: Ltr,
                     fn_: Identifier_ {
-                        name: "__op__sub",
+                        name: SymbolU32 {
+                            value: 1,
+                        },
                         case: Camel,
                     },
                 },

@@ -31,7 +31,9 @@ Node {
                         line: 2,
                         column: 2,
                         value: Identifier_ {
-                            name: "incr",
+                            name: SymbolU32 {
+                                value: 1,
+                            },
                             case: Camel,
                         },
                     },
@@ -58,7 +60,9 @@ Node {
                                                 line: 2,
                                                 column: 7,
                                                 value: Identifier_ {
-                                                    name: "n",
+                                                    name: SymbolU32 {
+                                                        value: 2,
+                                                    },
                                                     case: Camel,
                                                 },
                                             },
@@ -91,7 +95,9 @@ Node {
                                                             line: 2,
                                                             column: 13,
                                                             value: Identifier_ {
-                                                                name: "__op__add",
+                                                                name: SymbolU32 {
+                                                                    value: 3,
+                                                                },
                                                                 case: Camel,
                                                             },
                                                         },
@@ -108,7 +114,9 @@ Node {
                                                     precedence: 14,
                                                     associativity: Ltr,
                                                     fn_: Identifier_ {
-                                                        name: "__op__add",
+                                                        name: SymbolU32 {
+                                                            value: 3,
+                                                        },
                                                         case: Camel,
                                                     },
                                                 },
@@ -130,7 +138,9 @@ Node {
                                                                 line: 2,
                                                                 column: 11,
                                                                 value: Identifier_ {
-                                                                    name: "n",
+                                                                    name: SymbolU32 {
+                                                                        value: 2,
+                                                                    },
                                                                     case: Camel,
                                                                 },
                                                             },
@@ -186,7 +196,9 @@ Node {
                                         line: 4,
                                         column: 0,
                                         value: Identifier_ {
-                                            name: "incr",
+                                            name: SymbolU32 {
+                                                value: 1,
+                                            },
                                             case: Camel,
                                         },
                                     },

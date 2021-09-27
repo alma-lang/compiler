@@ -35,7 +35,9 @@ Node {
                             line: 1,
                             column: 0,
                             value: Identifier_ {
-                                name: "incr",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },

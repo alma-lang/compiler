@@ -25,7 +25,9 @@ Node {
                 line: 1,
                 column: 0,
                 value: Identifier_ {
-                    name: "variable_one",
+                    name: SymbolU32 {
+                        value: 1,
+                    },
                     case: Camel,
                 },
             },

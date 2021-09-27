@@ -26,12 +26,16 @@ Result:
                     line: 1,
                     column: 7,
                     value: Identifier_ {
-                        name: "Test",
+                        name: SymbolU32 {
+                            value: 1,
+                        },
                         case: Pascal,
                     },
                 },
             ],
-            full_name: "Test",
+            full_name: SymbolU32 {
+                value: 1,
+            },
         },
         exports: [],
         imports: [
@@ -49,12 +53,16 @@ Result:
                                 line: 3,
                                 column: 7,
                                 value: Identifier_ {
-                                    name: "Banana",
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
                                     case: Pascal,
                                 },
                             },
                         ],
-                        full_name: "Banana",
+                        full_name: SymbolU32 {
+                            value: 2,
+                        },
                     },
                     alias: Some(
                         Node {
@@ -63,7 +71,9 @@ Result:
                             line: 3,
                             column: 17,
                             value: Identifier_ {
-                                name: "B",
+                                name: SymbolU32 {
+                                    value: 3,
+                                },
                                 case: Pascal,
                             },
                         },
@@ -85,12 +95,16 @@ Result:
                                 line: 5,
                                 column: 7,
                                 value: Identifier_ {
-                                    name: "Phone",
+                                    name: SymbolU32 {
+                                        value: 4,
+                                    },
                                     case: Pascal,
                                 },
                             },
                         ],
-                        full_name: "Phone",
+                        full_name: SymbolU32 {
+                            value: 4,
+                        },
                     },
                     alias: None,
                     exposing: [
@@ -106,7 +120,9 @@ Result:
                                     line: 5,
                                     column: 23,
                                     value: Identifier_ {
-                                        name: "raffi",
+                                        name: SymbolU32 {
+                                            value: 5,
+                                        },
                                         case: Camel,
                                     },
                                 },
@@ -129,12 +145,16 @@ Result:
                                 line: 7,
                                 column: 7,
                                 value: Identifier_ {
-                                    name: "Apple",
+                                    name: SymbolU32 {
+                                        value: 6,
+                                    },
                                     case: Pascal,
                                 },
                             },
                         ],
-                        full_name: "Apple",
+                        full_name: SymbolU32 {
+                            value: 6,
+                        },
                     },
                     alias: Some(
                         Node {
@@ -143,7 +163,9 @@ Result:
                             line: 7,
                             column: 16,
                             value: Identifier_ {
-                                name: "A",
+                                name: SymbolU32 {
+                                    value: 7,
+                                },
                                 case: Pascal,
                             },
                         },
@@ -161,7 +183,9 @@ Result:
                                     line: 7,
                                     column: 28,
                                     value: Identifier_ {
-                                        name: "orange",
+                                        name: SymbolU32 {
+                                            value: 8,
+                                        },
                                         case: Camel,
                                     },
                                 },

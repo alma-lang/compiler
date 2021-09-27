@@ -36,7 +36,9 @@ Node {
                             line: 1,
                             column: 0,
                             value: Identifier_ {
-                                name: "fun",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },
@@ -60,7 +62,9 @@ Node {
                                 line: 2,
                                 column: 1,
                                 value: Identifier_ {
-                                    name: "arg",
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
                                     case: Camel,
                                 },
                             },

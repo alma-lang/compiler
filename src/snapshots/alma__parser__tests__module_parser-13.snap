@@ -23,12 +23,16 @@ Result:
                     line: 1,
                     column: 7,
                     value: Identifier_ {
-                        name: "Test",
+                        name: SymbolU32 {
+                            value: 1,
+                        },
                         case: Pascal,
                     },
                 },
             ],
-            full_name: "Test",
+            full_name: SymbolU32 {
+                value: 1,
+            },
         },
         exports: [
             Node {
@@ -43,7 +47,9 @@ Result:
                         line: 1,
                         column: 22,
                         value: Identifier_ {
-                            name: "a",
+                            name: SymbolU32 {
+                                value: 2,
+                            },
                             case: Camel,
                         },
                     },
@@ -61,7 +67,9 @@ Result:
                         line: 1,
                         column: 25,
                         value: Identifier_ {
-                            name: "b",
+                            name: SymbolU32 {
+                                value: 3,
+                            },
                             case: Camel,
                         },
                     },
@@ -83,7 +91,9 @@ Result:
                             line: 3,
                             column: 0,
                             value: Identifier_ {
-                                name: "a",
+                                name: SymbolU32 {
+                                    value: 2,
+                                },
                                 case: Camel,
                             },
                         },
@@ -117,7 +127,9 @@ Result:
                             line: 5,
                             column: 0,
                             value: Identifier_ {
-                                name: "b",
+                                name: SymbolU32 {
+                                    value: 3,
+                                },
                                 case: Camel,
                             },
                         },

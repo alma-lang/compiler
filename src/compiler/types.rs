@@ -37,7 +37,7 @@ impl ModuleInterfaces {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
-        entries.sort_by_key(|(k, _)| *k);
+        entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
         let mut out = String::new();
         for (name, type_env) in entries {

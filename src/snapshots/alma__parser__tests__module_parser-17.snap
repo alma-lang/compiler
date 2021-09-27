@@ -21,12 +21,16 @@ Result:
                     line: 1,
                     column: 7,
                     value: Identifier_ {
-                        name: "Test",
+                        name: SymbolU32 {
+                            value: 1,
+                        },
                         case: Pascal,
                     },
                 },
             ],
-            full_name: "Test",
+            full_name: SymbolU32 {
+                value: 1,
+            },
         },
         exports: [],
         imports: [
@@ -44,12 +48,16 @@ Result:
                                 line: 3,
                                 column: 7,
                                 value: Identifier_ {
-                                    name: "Banana",
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
                                     case: Pascal,
                                 },
                             },
                         ],
-                        full_name: "Banana",
+                        full_name: SymbolU32 {
+                            value: 2,
+                        },
                     },
                     alias: None,
                     exposing: [],

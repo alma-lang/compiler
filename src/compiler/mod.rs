@@ -32,12 +32,12 @@ pub fn compile(entry_sources: &Vec<String>, sources: &Sources) -> Result<String,
         &mut strings,
     )?;
 
-    let javascript_files = javascript::generate(&module_asts, &module_interfaces, &strings);
-
     let mut out = String::new();
 
     // Print types
     write!(&mut out, "{}", &module_interfaces.to_string(&strings)).unwrap();
+
+    let javascript_files = javascript::generate(&module_asts, &module_interfaces, &strings);
 
     // Print code
     out.push_str(&javascript::files_to_bundle(&javascript_files));

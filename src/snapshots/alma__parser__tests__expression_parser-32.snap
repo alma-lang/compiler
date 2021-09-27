@@ -32,7 +32,9 @@ Node {
                             line: 1,
                             column: 1,
                             value: Identifier_ {
-                                name: "a",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },
@@ -50,7 +52,9 @@ Node {
                             line: 1,
                             column: 3,
                             value: Identifier_ {
-                                name: "b",
+                                name: SymbolU32 {
+                                    value: 2,
+                                },
                                 case: Camel,
                             },
                         },
@@ -73,7 +77,9 @@ Node {
                             line: 1,
                             column: 8,
                             value: Identifier_ {
-                                name: "a",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },

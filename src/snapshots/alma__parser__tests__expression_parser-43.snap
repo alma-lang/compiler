@@ -36,7 +36,9 @@ Node {
                                 line: 1,
                                 column: 4,
                                 value: Identifier_ {
-                                    name: "x",
+                                    name: SymbolU32 {
+                                        value: 1,
+                                    },
                                     case: Camel,
                                 },
                             },
@@ -68,7 +70,9 @@ Node {
                                                 line: 1,
                                                 column: 8,
                                                 value: Identifier_ {
-                                                    name: "a",
+                                                    name: SymbolU32 {
+                                                        value: 2,
+                                                    },
                                                     case: Camel,
                                                 },
                                             },
@@ -92,7 +96,9 @@ Node {
                                                     line: 2,
                                                     column: 2,
                                                     value: Identifier_ {
-                                                        name: "x",
+                                                        name: SymbolU32 {
+                                                            value: 1,
+                                                        },
                                                         case: Camel,
                                                     },
                                                 },
@@ -121,7 +127,9 @@ Node {
                             line: 4,
                             column: 0,
                             value: Identifier_ {
-                                name: "x",
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                                 case: Camel,
                             },
                         },
