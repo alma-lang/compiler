@@ -33,7 +33,7 @@ impl ModuleInterfaces {
         &self.0
     }
 
-    pub fn to_string<'strings>(&self, strings: &Strings) -> String {
+    pub fn to_string(&self, strings: &Strings) -> String {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests

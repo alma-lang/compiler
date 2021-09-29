@@ -14,11 +14,11 @@ use crate::tokenizer;
 use crate::typ::{PrimitiveTypes, Type};
 use std::fmt::Write;
 
-pub fn compile(entry_sources: &Vec<String>, sources: &Sources) -> Result<String, String> {
+pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, String> {
     let mut strings = Strings::new();
 
     let (entry_modules, module_sources, module_asts) =
-        parse_files(&entry_sources, &sources, &mut strings)?;
+        parse_files(entry_sources, sources, &mut strings)?;
 
     check_cycles(&entry_modules, &module_asts, &strings)?;
 
@@ -136,7 +136,7 @@ fn compile_repl_entry_helper<'ast>(
     let result = infer::infer(module_interfaces, module, primitive_types, strings);
     match result {
         Ok(typ) => {
-            module_interfaces.insert(module.name.full_name.clone(), typ);
+            module_interfaces.insert(module.name.full_name, typ);
         }
         Err((_, mut module_errors)) => {
             errors.append(&mut module_errors);

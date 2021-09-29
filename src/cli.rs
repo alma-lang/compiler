@@ -86,10 +86,7 @@ fn source_from_path(file_path: String) -> Source {
 }
 
 pub fn compile_files(files: Vec<String>) {
-    let sources: Vec<Source> = files
-        .into_iter()
-        .map(|file| source_from_path(file))
-        .collect();
+    let sources: Vec<Source> = files.into_iter().map(source_from_path).collect();
     let (entry_sources, sources) = process_sources(sources);
 
     match compiler::compile(&entry_sources, &sources) {

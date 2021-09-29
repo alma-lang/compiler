@@ -14,7 +14,7 @@ use pretty_assertions::assert_eq;
 pub enum Error {
     InvalidExtension(String),
     InvalidFileName(String),
-    IOError(io::Error),
+    IO(io::Error),
 }
 
 impl fmt::Display for Error {
@@ -31,7 +31,7 @@ impl fmt::Display for Error {
                 "Invalid file name '{}'. Alma file names must look like this 'MyFile.alma'",
                 name
             ),
-            IOError(err) => write!(f, "There was an error reading the file.\n\n{}", err),
+            IO(err) => write!(f, "There was an error reading the file.\n\n{}", err),
         }
     }
 }
@@ -85,7 +85,7 @@ impl Source {
     }
 
     fn read_file(file_path: &Path) -> Result<String, Error> {
-        fs::read_to_string(file_path).map_err(Error::IOError)
+        fs::read_to_string(file_path).map_err(Error::IO)
     }
 
     pub fn new_orphan(code: String) -> Self {

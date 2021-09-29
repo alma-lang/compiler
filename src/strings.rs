@@ -12,7 +12,7 @@ impl Strings {
         Strings(StringInterner::new())
     }
 
-    pub fn get<T>(&self, string: T) -> Option<Symbol>
+    pub fn _get<T>(&self, string: T) -> Option<Symbol>
     where
         T: AsRef<str>,
     {

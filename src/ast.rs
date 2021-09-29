@@ -81,7 +81,7 @@ impl ModuleName {
         MODULE_IDENTIFIER_RE.is_match(part)
     }
 
-    pub fn valid_parts(parts: &Vec<&str>) -> Result<(), usize> {
+    pub fn valid_parts(parts: &[&str]) -> Result<(), usize> {
         for (i, part) in parts.iter().enumerate() {
             if !ModuleName::valid_part(part) {
                 return Err(i);
@@ -294,7 +294,7 @@ pub mod binop {
             }
         }
 
-        pub fn notEqual(strings: &mut Strings) -> Self {
+        pub fn not_equal(strings: &mut Strings) -> Self {
             Binop_ {
                 typ: NotEqual,
                 precedence: 11,
@@ -303,7 +303,7 @@ pub mod binop {
             }
         }
 
-        pub fn greaterThan(strings: &mut Strings) -> Self {
+        pub fn greater_than(strings: &mut Strings) -> Self {
             Binop_ {
                 typ: GreaterThan,
                 precedence: 12,
@@ -312,7 +312,7 @@ pub mod binop {
             }
         }
 
-        pub fn greaterEqualThan(strings: &mut Strings) -> Self {
+        pub fn greater_equal_than(strings: &mut Strings) -> Self {
             Binop_ {
                 typ: GreaterEqualThan,
                 precedence: 12,
@@ -321,7 +321,7 @@ pub mod binop {
             }
         }
 
-        pub fn lessThan(strings: &mut Strings) -> Self {
+        pub fn less_than(strings: &mut Strings) -> Self {
             Binop_ {
                 typ: LessThan,
                 precedence: 12,
@@ -330,7 +330,7 @@ pub mod binop {
             }
         }
 
-        pub fn lessEqualThan(strings: &mut Strings) -> Self {
+        pub fn less_equal_than(strings: &mut Strings) -> Self {
             Binop_ {
                 typ: LessEqualThan,
                 precedence: 12,

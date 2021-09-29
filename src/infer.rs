@@ -238,7 +238,7 @@ impl State {
                 Unit => Rc::clone(t),
 
                 Named(name, args) => Rc::new(Named(
-                    name.clone(),
+                    *name,
                     args.iter()
                         .map(|arg| replace_type_vars(vars_to_replace, arg))
                         .collect(),
@@ -260,7 +260,7 @@ impl State {
                 Record(fields) => {
                     let mut new_fields = fields.clone();
                     for (key, value) in fields.map() {
-                        new_fields.insert(key.clone(), replace_type_vars(vars_to_replace, value));
+                        new_fields.insert(*key, replace_type_vars(vars_to_replace, value));
                     }
                     Rc::new(Record(new_fields))
                 }
@@ -268,7 +268,7 @@ impl State {
                 RecordExt(fields, ext) => {
                     let mut new_fields = fields.clone();
                     for (key, value) in fields.map() {
-                        new_fields.insert(key.clone(), replace_type_vars(vars_to_replace, value));
+                        new_fields.insert(*key, replace_type_vars(vars_to_replace, value));
                     }
                     Rc::new(RecordExt(
                         new_fields,
@@ -423,13 +423,13 @@ fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
             match &*typ {
                 Record(fields) => {
                     for (k, v) in fields.map() {
-                        all_fields.insert(k.clone(), Rc::clone(v));
+                        all_fields.insert(*k, Rc::clone(v));
                     }
                     return Some(Rc::new(Record(all_fields)));
                 }
                 RecordExt(fields, ext) => {
                     for (k, v) in fields.map() {
-                        all_fields.insert(k.clone(), Rc::clone(v));
+                        all_fields.insert(*k, Rc::clone(v));
                     }
                     typ = find(ext);
                 }
@@ -569,7 +569,7 @@ fn unify<'ast>(
                 let mut rem_fields = TypeEnv::new();
                 for (key, value) in fields.map() {
                     if !ext_fields.map().contains_key(key) {
-                        rem_fields.insert(key.clone(), Rc::clone(value));
+                        rem_fields.insert(*key, Rc::clone(value));
                     }
                 }
                 let rem_rec = Rc::new(Record(rem_fields));
@@ -601,7 +601,7 @@ fn unify<'ast>(
                     let mut rem_fields1 = TypeEnv::new();
                     for (key, value) in fields1.map() {
                         if !fields2.map().contains_key(key) {
-                            rem_fields1.insert(key.clone(), Rc::clone(value));
+                            rem_fields1.insert(*key, Rc::clone(value));
                         }
                     }
                     let rem_rec1 = Rc::new(RecordExt(rem_fields1, Rc::clone(&var)));
@@ -613,7 +613,7 @@ fn unify<'ast>(
                     let mut rem_fields2 = TypeEnv::new();
                     for (key, value) in fields2.map() {
                         if !fields1.map().contains_key(key) {
-                            rem_fields2.insert(key.clone(), Rc::clone(value));
+                            rem_fields2.insert(*key, Rc::clone(value));
                         }
                     }
                     let rem_rec2 = Rc::new(RecordExt(rem_fields2, Rc::clone(&var)));
@@ -797,16 +797,16 @@ pub fn infer<'interfaces, 'ast>(
         if let Some(alias) = &import.value.alias {
             names.push(&alias.value.name);
         }
-        // TODO: Insert or reference these in the type env to be able to access the module
-        // functions. Pending the . syntax
 
         match module_interfaces.get(module_name) {
             Some(imported) => {
+                // TODO: Insert or reference these in the type env to be able to access the module
+                // functions. Pending the . syntax
                 for exposed in &import.value.exposing {
                     for identifier in exposed.value.identifiers() {
                         let name = &identifier.value.name;
                         match imported.get(name) {
-                            Some(definition) => env.insert(name.clone(), Rc::clone(definition)),
+                            Some(definition) => env.insert(*name, Rc::clone(definition)),
                             None => errors.push(Error::UnknownImportDefinition(identifier, import)),
                         };
                     }
@@ -821,7 +821,7 @@ pub fn infer<'interfaces, 'ast>(
         &module.definitions,
         &mut state,
         &mut env,
-        &primitive_types,
+        primitive_types,
         &mut errors,
     );
 
@@ -830,7 +830,7 @@ pub fn infer<'interfaces, 'ast>(
         for identifier in export.value.identifiers() {
             let name = &identifier.value.name;
             match env.get(name) {
-                Some(typ) => module_type.insert(name.clone(), Rc::clone(typ)),
+                Some(typ) => module_type.insert(*name, Rc::clone(typ)),
                 None => errors.push(Error::UndefinedExport(identifier)),
             }
         }
@@ -867,7 +867,7 @@ fn infer_rec<'ast>(
                 if typed_fields.map().contains_key(&name.value.name) {
                     errors.push(Error::DuplicateField(name, ast));
                 } else {
-                    typed_fields.insert(name.value.name.clone(), t);
+                    typed_fields.insert(name.value.name, t);
                 }
             }
 
@@ -881,7 +881,7 @@ fn infer_rec<'ast>(
                 if typed_fields.map().contains_key(&name.value.name) {
                     errors.push(Error::DuplicateField(name, ast));
                 } else {
-                    typed_fields.insert(name.value.name.clone(), t);
+                    typed_fields.insert(name.value.name, t);
                 }
             }
 
@@ -909,7 +909,7 @@ fn infer_rec<'ast>(
             let record_type = Rc::new(RecordExt(
                 {
                     let mut fields = TypeEnv::new();
-                    fields.insert(field.value.name.clone(), Rc::clone(&field_type));
+                    fields.insert(field.value.name, Rc::clone(&field_type));
                     fields
                 },
                 remaining_fields_type,
@@ -930,7 +930,7 @@ fn infer_rec<'ast>(
                 Rc::new(RecordExt(
                     {
                         let mut fields = TypeEnv::new();
-                        fields.insert(field.value.name.clone(), Rc::clone(&field_type));
+                        fields.insert(field.value.name, Rc::clone(&field_type));
                         fields
                     },
                     remaining_fields_type,
@@ -1055,7 +1055,7 @@ fn infer_definitions<'ast>(
                     let t = infer_lambda(params, body, state, env, primitive_types, errors);
                     state.exit_level();
 
-                    env.insert(identifier.value.name.clone(), state.generalize(&t));
+                    env.insert(identifier.value.name, state.generalize(&t));
                 }
                 _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
             },
@@ -1066,7 +1066,7 @@ fn infer_definitions<'ast>(
 
                 match &pattern.value {
                     P::Hole => (),
-                    P::Identifier(x) => env.insert(x.value.name.clone(), state.generalize(&t)),
+                    P::Identifier(x) => env.insert(x.value.name, state.generalize(&t)),
                 };
             }
         };
@@ -1089,7 +1089,7 @@ fn infer_lambda<'ast>(
         .fold(env.clone(), |mut env, (param, param_type)| {
             match &(**param).value {
                 P::Hole => (),
-                P::Identifier(x) => env.insert(x.value.name.clone(), Rc::clone(param_type)),
+                P::Identifier(x) => env.insert(x.value.name, Rc::clone(param_type)),
             };
             env
         });

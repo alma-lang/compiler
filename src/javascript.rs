@@ -32,7 +32,7 @@ pub fn generate(
 ) -> Vec<File> {
     let mut files = vec![];
     for (name, module) in module_asts {
-        let file = generate_file(module, module_interfaces.get(&name).unwrap(), strings);
+        let file = generate_file(module, module_interfaces.get(name).unwrap(), strings);
         files.push(file);
     }
     files
@@ -152,7 +152,7 @@ fn generate_function(
 fn generate_pattern(code: &mut String, pattern: &Pattern, strings: &Strings) {
     match &pattern.value {
         P::Hole => code.push('_'),
-        P::Identifier(identifier) => code.push_str(&identifier.value.to_string(strings)),
+        P::Identifier(identifier) => code.push_str(identifier.value.to_string(strings)),
     }
 }
 
@@ -218,7 +218,7 @@ fn generate_expression(
 
                 indented(code, indent, "...");
                 generate_expression(indent, code, record, strings);
-                code.push_str("\n");
+                code.push('\n');
 
                 for (key, value) in fields {
                     indented(code, indent, key.value.to_string(strings));
@@ -233,7 +233,7 @@ fn generate_expression(
 
         ET::PropAccess(expr, field) => {
             generate_expression(indent, code, expr, strings);
-            code.push_str(".");
+            code.push('.');
             code.push_str(field.value.to_string(strings));
         }
 

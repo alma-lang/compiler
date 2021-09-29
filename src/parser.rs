@@ -155,11 +155,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         &mut self,
         parent_module: Option<&ModuleName>,
     ) -> ParseResult<'source, 'tokens, Option<Vec<Module>>> {
-        let top_level = if let Some(_) = parent_module {
-            false
-        } else {
-            true
-        };
+        let top_level = !matches!(parent_module, Some(_));
 
         let module_token = self.get_token();
         match module_token.kind {
@@ -851,12 +847,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 Star => Some(Binop_::multiplication(self.strings)),
                 Plus => Some(Binop_::addition(self.strings)),
                 TT::Minus => Some(Binop_::substraction(self.strings)),
-                BangEqual => Some(Binop_::notEqual(self.strings)),
+                BangEqual => Some(Binop_::not_equal(self.strings)),
                 EqualEqual => Some(Binop_::equal(self.strings)),
-                Greater => Some(Binop_::greaterThan(self.strings)),
-                GreaterEqual => Some(Binop_::greaterEqualThan(self.strings)),
-                Less => Some(Binop_::lessThan(self.strings)),
-                LessEqual => Some(Binop_::lessEqualThan(self.strings)),
+                Greater => Some(Binop_::greater_than(self.strings)),
+                GreaterEqual => Some(Binop_::greater_equal_than(self.strings)),
+                Less => Some(Binop_::less_than(self.strings)),
+                LessEqual => Some(Binop_::less_equal_than(self.strings)),
                 And => Some(Binop_::and(self.strings)),
                 Or => Some(Binop_::or(self.strings)),
                 _ => None,

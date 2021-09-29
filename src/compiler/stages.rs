@@ -21,7 +21,7 @@ pub fn process_sources(entry_sources: Vec<Source>) -> (Vec<String>, Sources) {
 }
 
 pub fn parse_files<'sources>(
-    entry_files: &Vec<String>,
+    entry_files: &[String],
     sources: &'sources Sources,
     strings: &mut Strings,
 ) -> Result<(Vec<ModuleFullName>, ModuleSources<'sources>, ModuleAsts), String> {
@@ -36,7 +36,7 @@ pub fn parse_files<'sources>(
         let mut parse_queue: Vec<ModuleFullName> = vec![];
 
         let parse_result = parse_file(
-            &source,
+            source,
             &mut parse_queue,
             &mut module_asts,
             &mut module_sources,
@@ -96,49 +96,49 @@ fn parse_file<'source>(
 
     for module in submodules {
         // Add all submodules to queue
-        parse_queue.push(module.name.full_name.clone());
-        module_names.push(module.name.full_name.clone());
-        module_sources.insert(module.name.full_name.clone(), source);
+        parse_queue.push(module.name.full_name);
+        module_names.push(module.name.full_name);
+        module_sources.insert(module.name.full_name, source);
 
         // Queue dependencies
         let dependencies = module.dependencies();
         for dependency in dependencies {
             let name = &dependency.full_name;
             if !module_asts.contains_key(name) {
-                parse_queue.push(name.clone());
+                parse_queue.push(*name);
             }
         }
 
-        module_asts.insert(module.name.full_name.clone(), module);
+        module_asts.insert(module.name.full_name, module);
     }
     // And put the top level one last to start with it
-    parse_queue.push(module.name.full_name.clone());
-    module_names.push(module.name.full_name.clone());
-    module_sources.insert(module.name.full_name.clone(), source);
+    parse_queue.push(module.name.full_name);
+    module_names.push(module.name.full_name);
+    module_sources.insert(module.name.full_name, source);
     // Queue dependencies
     let dependencies = module.dependencies();
     for dependency in dependencies {
         let name = &dependency.full_name;
         if !module_asts.contains_key(name) {
-            parse_queue.push(name.clone());
+            parse_queue.push(*name);
         }
     }
-    module_asts.insert(module.name.full_name.clone(), module);
+    module_asts.insert(module.name.full_name, module);
 
     Ok(module_names)
 }
 
 pub fn check_cycles(
-    entry_modules: &Vec<ModuleFullName>,
+    entry_modules: &[ModuleFullName],
     module_asts: &ModuleAsts,
     strings: &Strings,
 ) -> Result<(), String> {
     let mut errors: Vec<String> = vec![];
     let mut visited_modules: HashSet<ModuleFullName> = HashSet::default();
     let mut cycle_queue: Vec<Vec<ModuleFullName>> = vec![];
-    cycle_queue.extend(entry_modules.iter().map(|m| vec![m.clone()]));
+    cycle_queue.extend(entry_modules.iter().map(|m| vec![*m]));
 
-    fn last_visited_is(name: &ModuleFullName, visited_path: &Vec<ModuleFullName>) -> bool {
+    fn last_visited_is(name: &ModuleFullName, visited_path: &[ModuleFullName]) -> bool {
         visited_path.last().map(|m| m == name).unwrap_or(false)
     }
 
@@ -161,9 +161,9 @@ pub fn check_cycles(
                             // path, and add its dependencies to check after it to the modules
                             // queue
                             let module = module_asts.get(&module_name).unwrap();
-                            modules.push(module_name.clone());
-                            visited_modules.insert(module_name.clone());
-                            visited_path.push(module_name.clone());
+                            modules.push(module_name);
+                            visited_modules.insert(module_name);
+                            visited_path.push(module_name);
 
                             if !module.imports.is_empty() {
                                 for module in module.dependencies() {
@@ -173,7 +173,7 @@ pub fn check_cycles(
                                     // name. Instead report the error here if it exists and bail
                                     // out.
                                     if module.full_name != module_name {
-                                        modules.push(module.full_name.clone());
+                                        modules.push(module.full_name);
                                     } else {
                                         let name = strings.resolve(module_name);
                                         errors.push(cycle_error(&[name, name]));
@@ -295,13 +295,13 @@ pub fn infer(
                         if !module_interfaces.map().contains_key(name)
                             && module_asts.contains_key(name)
                         {
-                            if skip == false {
+                            if !skip {
                                 // At least one dependency to be proccessed first,
                                 // put this module first in the queue and then the deps
                                 skip = true;
-                                infer_queue.push(module_name.clone());
+                                infer_queue.push(module_name);
                             }
-                            infer_queue.push(name.clone());
+                            infer_queue.push(*name);
                         }
                     }
                     if skip {
@@ -325,7 +325,7 @@ pub fn infer(
                     }
                 };
 
-                module_interfaces.insert(module_name.clone(), typ);
+                module_interfaces.insert(module_name, typ);
             }
         };
     }

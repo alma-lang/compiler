@@ -354,7 +354,7 @@ impl<'source> State<'source> {
     }
 }
 
-pub fn parse<'source>(source: &'source Source) -> Result<Vec<Token<'source>>, Vec<Error>> {
+pub fn parse(source: &Source) -> Result<Vec<Token<'_>>, Vec<Error>> {
     let mut tokenizer = State::new(source);
 
     tokenizer.parse();
