@@ -9,6 +9,7 @@ use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::min;
 use std::rc::Rc;
@@ -244,7 +245,7 @@ impl State {
                         .collect(),
                 )),
 
-                Var(var) => match &*var.borrow() {
+                Var(var) => match &*((**var).borrow()) {
                     Bound(t) => replace_type_vars(vars_to_replace, t),
                     Unbound(n, _level) => match vars_to_replace.get(n) {
                         Some(t_) => Rc::clone(t_),
@@ -316,7 +317,7 @@ impl State {
                     }
                 }
 
-                Var(var) => match &*var.borrow() {
+                Var(var) => match &*((**var).borrow()) {
                     Bound(t) => find_all_tvs(current_level, vars, t),
                     Unbound(n, level) => {
                         if level > current_level {
@@ -373,7 +374,7 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
         Named(..) => false,
 
         Var(var) => {
-            let var_read = var.borrow();
+            let var_read = (**var).borrow();
             match &*var_read {
                 Bound(t) => occurs(a_id, a_level, t),
 
@@ -434,7 +435,7 @@ fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
                     typ = find(ext);
                 }
                 Var(var) => {
-                    let var_read = var.borrow();
+                    let var_read = (**var).borrow();
                     match &*var_read {
                         Unbound(_, _) => {
                             return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
@@ -453,7 +454,7 @@ fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
 fn find(typ: &Rc<Type>) -> Rc<Type> {
     match &**typ {
         Var(var) => {
-            let var_read = var.borrow();
+            let var_read = (**var).borrow();
             match &*var_read {
                 Bound(t) => find(t),
                 Unbound(_, _) => Rc::clone(typ),
@@ -476,7 +477,7 @@ fn unify<'ast>(
         var: &Rc<RefCell<TypeVar>>,
         other_type: &Rc<Type>,
     ) -> Result<(), UnificationError> {
-        let var_read = var.borrow();
+        let var_read = (**var).borrow();
         match &*var_read {
             // The 'find' in the union-find algorithm
             Bound(dest_var) => unify_rec(state, dest_var, other_type),
@@ -792,16 +793,15 @@ pub fn infer<'interfaces, 'ast>(
 
     // Check imports and add them to the env to type check this module
     for import in &module.imports {
-        let module_name = &import.value.module_name.full_name;
-        let mut names = vec![module_name];
-        if let Some(alias) = &import.value.alias {
-            names.push(&alias.value.name);
-        }
-
-        match module_interfaces.get(module_name) {
+        let module_full_name = &import.value.module_name.full_name;
+        match module_interfaces.get(module_full_name) {
             Some(imported) => {
-                // TODO: Insert or reference these in the type env to be able to access the module
-                // functions. Pending the . syntax
+                if let Some(alias) = &import.value.alias {
+                    insert_module_type_in_env(&[alias], imported, &mut env);
+                } else {
+                    insert_module_type_in_env(&import.value.module_name.parts, imported, &mut env);
+                };
+
                 for exposed in &import.value.exposing {
                     for identifier in exposed.value.identifiers() {
                         let name = &identifier.value.name;
@@ -840,6 +840,32 @@ pub fn infer<'interfaces, 'ast>(
         Ok(Rc::new(module_type))
     } else {
         Err((Rc::new(module_type), errors))
+    }
+}
+
+fn insert_module_type_in_env<T: Borrow<Identifier>>(
+    names: &[T],
+    typ: &Rc<TypeEnv>,
+    env: &mut TypeEnv,
+) {
+    match names {
+        [] => (),
+        [name, names @ ..] => {
+            let name = name.borrow().value.name;
+            if names.is_empty() {
+                env.insert(name, Rc::new(Record((**typ).clone())));
+            } else {
+                let mut module = match env.get(&name) {
+                    Some(typ) => match &**typ {
+                        Record(record) => record.clone(),
+                        _ => TypeEnv::new(),
+                    },
+                    None => TypeEnv::new(),
+                };
+                insert_module_type_in_env(names, typ, &mut module);
+                env.insert(name, Rc::new(Record(module)));
+            }
+        }
     }
 }
 
@@ -1485,6 +1511,88 @@ main = add 5
             "module Test exposing (last)
 
 last _ y = y
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (id, new)
+
+import User.Id
+
+id = User.Id
+
+new = { id = User.Id.new }
+
+module User.Id exposing (new)
+    new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (new)
+
+import User.Id
+
+new = { id = User.Id.new }
+
+module User.Id exposing (new)
+    new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (new)
+
+import User.Id as UserId
+
+new = { id = UserId.new }
+
+module User.Id exposing (new)
+    new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (new)
+
+import User.Id as UserId
+
+new = { id = User.Id.new }
+
+module User.Id exposing (new)
+    new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (new)
+
+import User.Attributes
+import User.Attributes.Id
+
+new = { id = User.Attributes.Id.new }
+
+module User.Attributes
+    module User.Attributes.Id exposing (new)
+        new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (new)
+
+import User.Id
+
+new = User.Id.wat
+
+module User.Id exposing (new)
+    new = 42
 "
         ));
 

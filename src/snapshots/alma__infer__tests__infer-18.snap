@@ -1,0 +1,40 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule User exposing (new)\n\nimport User.Id\n\nnew = User.Id.wat\n\nmodule User.Id exposing (new)\n    new = 42\n\")"
+
+---
+Input:
+
+module User exposing (new)
+
+import User.Id
+
+new = User.Id.wat
+
+module User.Id exposing (new)
+    new = 42
+
+
+---
+Output:
+
+[5:6]
+
+Type mismatch:  { new : Float }  ≠  { a | wat : b }
+
+Expected
+
+  3│  import User.Id
+  4│  
+  5│  new = User.Id.wat
+   │        ↑↑↑↑↑↑↑
+  6│  
+  7│  module User.Id exposing (new)
+
+to be
+
+{ a | wat : b }
+
+but seems to be
+
+{ new : Float }

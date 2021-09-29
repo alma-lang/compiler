@@ -12,6 +12,7 @@ pub type ModuleSources<'source> = HashMap<StringSymbol, &'source Source>;
 
 pub type ModuleAsts = HashMap<StringSymbol, Module>;
 
+#[derive(Debug)]
 pub struct ModuleInterfaces(HashMap<StringSymbol, Rc<TypeEnv>>);
 
 impl ModuleInterfaces {

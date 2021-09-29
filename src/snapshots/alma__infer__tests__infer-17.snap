@@ -1,0 +1,36 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule User exposing (new)\n\nimport User.Attributes\nimport User.Attributes.Id\n\nnew = { id = User.Attributes.Id.new }\n\nmodule User.Attributes\n    module User.Attributes.Id exposing (new)\n        new = 42\n\")"
+
+---
+Input:
+
+module User exposing (new)
+
+import User.Attributes
+import User.Attributes.Id
+
+new = { id = User.Attributes.Id.new }
+
+module User.Attributes
+    module User.Attributes.Id exposing (new)
+        new = 42
+
+
+---
+Output:
+
+module User
+
+new : { id : Float }
+
+
+module User.Attributes
+
+
+module User.Attributes.Id
+
+new : Float
+
+
+

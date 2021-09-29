@@ -1,0 +1,35 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule User exposing (id, new)\n\nimport User.Id\n\nid = User.Id\n\nnew = { id = User.Id.new }\n\nmodule User.Id exposing (new)\n    new = 42\n\")"
+
+---
+Input:
+
+module User exposing (id, new)
+
+import User.Id
+
+id = User.Id
+
+new = { id = User.Id.new }
+
+module User.Id exposing (new)
+    new = 42
+
+
+---
+Output:
+
+module User
+
+id : { new : Float }
+
+new : { id : Float }
+
+
+module User.Id
+
+new : Float
+
+
+

@@ -49,7 +49,7 @@ pub type ModuleFullName = StringSymbol;
 
 #[derive(Debug, PartialEq)]
 pub struct ModuleName {
-    parts: Vec<Identifier>,
+    pub parts: Vec<Identifier>,
     pub full_name: ModuleFullName,
 }
 
