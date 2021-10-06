@@ -2,7 +2,7 @@ use crate::ast::{
     binop::*,
     Expression,
     ExpressionType::{self as ET, Float, If, Let, String_, *},
-    Expression_ as E, Identifier, Import, Module, Node, Pattern, Pattern_,
+    Expression_ as E, Identifier, Import, Module, ModuleIdentifier, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
     *,
 };
@@ -15,7 +15,8 @@ use crate::token::{
 
 /* Grammar draft (●○):
     ● file           → module EOF
-    ● module         → "module" IDENTIFIER exposing? imports? definitions?
+    ● module         → "module" module_name exposing? imports? definitions?
+    ● module_name    → MODULE_IDENTIFIER ("." MODULE_IDENTIFIER)*
     ● exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
     ● imports        → import ( import )*
     ● import         → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
@@ -37,6 +38,7 @@ use crate::token::{
     ● primary        → NUMBER | STRING | "false" | "true"
                      | IDENTIFIER
                      | "." IDENTIFIER
+                     | module_name
                      | record
                      | "(" expression? ")"
     ● record         → "{" ( expression "|" )? ( field ("," field)* )? "}"
@@ -162,7 +164,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Module => {
                 self.advance();
 
-                match self.module_identifier()? {
+                match self.module_name()? {
                     Some(name) => {
                         if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                             return Err(Error::new(
@@ -292,7 +294,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn export(&mut self) -> ParseResult<'source, 'tokens, Export> {
-        match self.binding_identifier()? {
+        match self.identifier() {
             Some(export) => {
                 // Make intermediate node to please borrow checker
                 let node = Node::copy_with_value((), &export);
@@ -323,13 +325,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Import => {
                 self.advance();
 
-                match self.module_identifier()? {
+                match self.module_name()? {
                     Some(module_name) => {
                         let alias = match self.get_token().kind {
                             TT::As => {
                                 self.advance();
 
-                                match self.module_identifier_part()? {
+                                match self.module_identifier() {
                                     Some(alias) => Ok(Some(alias)),
                                     _ => Err(Error::expected_but_found(
                                         self.source,
@@ -551,7 +553,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     Err(Error::expected_but_found(
                         self.source,
-                        let_token,
+                        self.get_token(),
                         None,
                         "Expected a pattern for the left side of the let expression",
                     ))
@@ -810,7 +812,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self.advance();
                 Ok(Some(Node::new(Pattern_::Hole, token, token)))
             }
-            TT::Identifier => match self.binding_identifier()? {
+            TT::Identifier => match self.identifier() {
                 Some(identifier) => Ok(Some(Node::new(
                     Pattern_::Identifier(identifier),
                     token,
@@ -1091,16 +1093,31 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Identifier => {
                 self.advance();
 
+                let identifier =
+                    Node::new(Identifier_::new(token.lexeme, self.strings), token, token);
+
                 Ok(Some(Node::new(
-                    E::untyped(ET::Identifier(Node::new(
-                        Identifier_::new(token.lexeme, self.strings),
-                        token,
-                        token,
-                    ))),
+                    E::untyped(ET::Identifier(identifier)),
                     token,
                     token,
                 )))
             }
+
+            TT::ModuleIdentifier => self.module_name().map(|maybe_name| {
+                maybe_name.map(|name| {
+                    let line = token.line;
+                    let column = token.column;
+                    let start = token.position;
+                    let end = name.end();
+                    Node {
+                        value: E::untyped(ET::ModuleAccess(name)),
+                        start,
+                        end,
+                        line,
+                        column,
+                    }
+                })
+            }),
 
             TT::String_ => {
                 self.advance();
@@ -1301,7 +1318,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Expression)> {
-        match self.binding_identifier()? {
+        match self.identifier() {
             Some(identifier) => match self.get_token().kind {
                 Colon | Equal => {
                     self.advance();
@@ -1331,49 +1348,43 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn module_identifier_part(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
-        self.identifier(
-            IdentifierCase::Pascal,
-            "Expected a `PascalCase` module name",
-        )
-    }
-
-    fn module_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
+    fn module_name(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
         let first_token = self.get_token();
-        match self.module_identifier_part()? {
+        match self.module_identifier() {
             Some(name) => self
-                .module_identifier_rest(vec![first_token], vec![name])
+                .module_name_rest(vec![first_token], vec![name])
                 .map(Some),
             None => Ok(None),
         }
     }
-    fn module_identifier_rest(
+    fn module_name_rest(
         &mut self,
         mut tokens: Vec<&'tokens Token<'source>>,
-        mut names: Vec<Identifier>,
+        mut names: Vec<ModuleIdentifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         let dot_token = self.get_token();
-        match dot_token.kind {
-            TT::Dot => {
+        let possibly_module_identifier = self.peek_next_token();
+        match (dot_token.kind, possibly_module_identifier.kind) {
+            (TT::Dot, TT::ModuleIdentifier) => {
                 self.advance();
 
                 let token = self.get_token();
-                match self.module_identifier_part()? {
+                match self.module_identifier() {
                     Some(name) => {
                         names.push(name);
                         tokens.push(token);
-                        self.module_identifier_rest(tokens, names)
+                        self.module_name_rest(tokens, names)
                     }
-                    None => self.module_name(tokens, names),
+                    None => self.build_module_name(tokens, names),
                 }
             }
-            _ => self.module_name(tokens, names),
+            _ => self.build_module_name(tokens, names),
         }
     }
-    fn module_name(
+    fn build_module_name(
         &mut self,
         tokens: Vec<&'tokens Token<'source>>,
-        names: Vec<Identifier>,
+        names: Vec<ModuleIdentifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
             Error::new(
@@ -1392,34 +1403,29 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         })
     }
 
-    fn binding_identifier(&mut self) -> ParseResult<'source, 'tokens, Option<Identifier>> {
-        self.identifier(IdentifierCase::Camel, "Expected a `camelCase` identifier")
-    }
-
-    fn identifier(
-        &mut self,
-        expect_case: IdentifierCase,
-        invalid_case_err: &'static str,
-    ) -> ParseResult<'source, 'tokens, Option<Identifier>> {
+    fn identifier(&mut self) -> Option<Identifier> {
         let identifier_token = self.get_token();
         match identifier_token.kind {
             TT::Identifier => {
                 self.advance();
-
                 let name_identifier = Identifier_::new(identifier_token.lexeme, self.strings);
-                if name_identifier.case == expect_case {
-                    let name = Node::new(name_identifier, identifier_token, identifier_token);
-                    Ok(Some(name))
-                } else {
-                    Err(Error::expected_but_found(
-                        self.source,
-                        identifier_token,
-                        None,
-                        invalid_case_err,
-                    ))
-                }
+                let name = Node::new(name_identifier, identifier_token, identifier_token);
+                Some(name)
             }
-            _ => Ok(None),
+            _ => None,
+        }
+    }
+
+    fn module_identifier(&mut self) -> Option<ModuleIdentifier> {
+        let identifier_token = self.get_token();
+        match identifier_token.kind {
+            TT::ModuleIdentifier => {
+                self.advance();
+                let name_identifier = ModuleIdentifier_::new(identifier_token.lexeme, self.strings);
+                let name = Node::new(name_identifier, identifier_token, identifier_token);
+                Some(name)
+            }
+            _ => None,
         }
     }
 
@@ -1779,6 +1785,18 @@ add 5"
         assert_snapshot!(parse("{ 5 | x = 1, y = 3 }"));
 
         assert_snapshot!(parse("{ if True then {} else {} | x = 1, y = 3 }"));
+
+        assert_snapshot!(parse("A"));
+
+        assert_snapshot!(parse("A.B"));
+
+        assert_snapshot!(parse("A.B.C"));
+
+        assert_snapshot!(parse("A.b.c"));
+
+        assert_snapshot!(parse("A.B.c"));
+
+        assert_snapshot!(parse("A.B.C.d"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());

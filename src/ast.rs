@@ -49,15 +49,15 @@ pub type ModuleFullName = StringSymbol;
 
 #[derive(Debug, PartialEq)]
 pub struct ModuleName {
-    pub parts: Vec<Identifier>,
+    pub parts: Vec<ModuleIdentifier>,
     pub full_name: ModuleFullName,
 }
 
 impl ModuleName {
     pub fn new(
-        parts: Vec<Identifier>,
+        parts: Vec<ModuleIdentifier>,
         strings: &mut Strings,
-    ) -> Result<Self, (usize, Vec<Identifier>)> {
+    ) -> Result<Self, (usize, Vec<ModuleIdentifier>)> {
         let str_parts = parts
             .iter()
             .map(|i| i.value.to_string(strings))
@@ -152,7 +152,7 @@ pub type Import = Node<Import_>;
 #[derive(Debug, PartialEq)]
 pub struct Import_ {
     pub module_name: ModuleName,
-    pub alias: Option<Identifier>,
+    pub alias: Option<ModuleIdentifier>,
     pub exposing: Vec<Export>,
 }
 
@@ -207,6 +207,7 @@ pub enum ExpressionType {
     Float(f64),
     String_(StringSymbol),
     Identifier(Identifier),
+    ModuleAccess(ModuleName),
     PropAccess(Box<Expression>, Identifier),
     PropAccessLambda(Identifier),
     Record(Vec<(Identifier, Expression)>),
@@ -388,29 +389,15 @@ pub enum Pattern_ {
 
 type IdentifierName = StringSymbol;
 
-pub type Identifier = Node<Identifier_>;
+pub type ModuleIdentifier = Node<ModuleIdentifier_>;
 #[derive(PartialEq, Debug, Clone)]
-pub struct Identifier_ {
+pub struct ModuleIdentifier_ {
     pub name: IdentifierName,
-    pub case: IdentifierCase,
 }
-
-impl Identifier_ {
+impl ModuleIdentifier_ {
     pub fn new(name: &str, strings: &mut Strings) -> Self {
-        use IdentifierCase::*;
-
-        let case = name
-            .chars()
-            .next()
-            .map(|c| if c.is_uppercase() { Pascal } else { Camel })
-            .expect("Can't construct an empty identifier");
-
         let name_sym = strings.get_or_intern(name);
-
-        Self {
-            name: name_sym,
-            case,
-        }
+        Self { name: name_sym }
     }
 
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
@@ -418,8 +405,19 @@ impl Identifier_ {
     }
 }
 
+pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
-pub enum IdentifierCase {
-    Pascal,
-    Camel,
+pub struct Identifier_ {
+    pub name: IdentifierName,
+}
+
+impl Identifier_ {
+    pub fn new(name: &str, strings: &mut Strings) -> Self {
+        let name_sym = strings.get_or_intern(name);
+        Self { name: name_sym }
+    }
+
+    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+        strings.resolve(self.name)
+    }
 }

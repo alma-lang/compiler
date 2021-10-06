@@ -132,11 +132,12 @@ pub fn check_cycles(
     entry_modules: &[ModuleFullName],
     module_asts: &ModuleAsts,
     strings: &Strings,
-) -> Result<(), String> {
+) -> Result<Vec<ModuleFullName>, String> {
+    let mut sorted_modules = vec![];
     let mut errors: Vec<String> = vec![];
     let mut visited_modules: HashSet<ModuleFullName> = HashSet::default();
-    let mut cycle_queue: Vec<Vec<ModuleFullName>> = vec![];
-    cycle_queue.extend(entry_modules.iter().map(|m| vec![*m]));
+    let mut entry_points_queue: Vec<Vec<ModuleFullName>> = vec![];
+    entry_points_queue.extend(entry_modules.iter().map(|m| vec![*m]));
 
     fn last_visited_is(name: &ModuleFullName, visited_path: &[ModuleFullName]) -> bool {
         visited_path.last().map(|m| m == name).unwrap_or(false)
@@ -146,11 +147,11 @@ pub fn check_cycles(
     'check_from_module: loop {
         let mut visited_path: Vec<ModuleFullName> = Vec::new();
 
-        match cycle_queue.pop() {
+        match entry_points_queue.pop() {
             None => break,
-            Some(mut modules) => loop {
+            Some(mut modules_queue) => loop {
                 // Check the modules to visit queue
-                match modules.pop() {
+                match modules_queue.pop() {
                     None => break,
                     Some(module_name) => {
                         let already_visited = visited_modules.contains(&module_name);
@@ -161,9 +162,10 @@ pub fn check_cycles(
                             // path, and add its dependencies to check after it to the modules
                             // queue
                             let module = module_asts.get(&module_name).unwrap();
-                            modules.push(module_name);
+                            modules_queue.push(module_name);
                             visited_modules.insert(module_name);
                             visited_path.push(module_name);
+                            sorted_modules.push(module_name);
 
                             if !module.imports.is_empty() {
                                 for module in module.dependencies() {
@@ -173,7 +175,7 @@ pub fn check_cycles(
                                     // name. Instead report the error here if it exists and bail
                                     // out.
                                     if module.full_name != module_name {
-                                        modules.push(module.full_name);
+                                        modules_queue.push(module.full_name);
                                     } else {
                                         let name = strings.resolve(module_name);
                                         errors.push(cycle_error(&[name, name]));
@@ -213,7 +215,7 @@ pub fn check_cycles(
     }
 
     if errors.is_empty() {
-        Ok(())
+        Ok(sorted_modules)
     } else {
         Err(errors::to_string(errors))
     }

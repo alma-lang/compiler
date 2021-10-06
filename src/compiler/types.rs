@@ -41,11 +41,14 @@ impl ModuleInterfaces {
         entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
         let mut out = String::new();
-        for (name, type_env) in entries {
+        for (i, (name, type_env)) in entries.iter().enumerate() {
+            if i > 0 {
+                out.push_str("\n\n\n");
+            }
             write!(
                 out,
-                "module {}\n\n{}\n",
-                strings.resolve(*name),
+                "module {}\n\n{}",
+                strings.resolve(**name),
                 type_env.to_string(strings)
             )
             .unwrap();

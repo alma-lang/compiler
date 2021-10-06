@@ -13,7 +13,7 @@ IAmNotCamelCase
 
 Result:
 
-2:2: Expected a `camelCase` identifier, but instead found: 'IAmNotCamelCase'
+2:2: Expected a pattern for the left side of the let expression, but instead found: 'IAmNotCamelCase'
 
   1│  let
   2│    IAmNotCamelCase = 1
@@ -22,9 +22,9 @@ Result:
   4│  IAmNotCamelCase
 
 Error {
-    message: "2:2: Expected a `camelCase` identifier, but instead found: 'IAmNotCamelCase'\n\n  1│  let\n  2│    IAmNotCamelCase = 1\n   │    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  3│  in\n  4│  IAmNotCamelCase",
+    message: "2:2: Expected a pattern for the left side of the let expression, but instead found: 'IAmNotCamelCase'\n\n  1│  let\n  2│    IAmNotCamelCase = 1\n   │    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  3│  in\n  4│  IAmNotCamelCase",
     token: Token {
-        kind: Identifier,
+        kind: ModuleIdentifier,
         position: 6,
         end_position: 21,
         lexeme: "IAmNotCamelCase",

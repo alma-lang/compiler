@@ -36,11 +36,14 @@ impl TypeEnv {
         entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
         let mut out = String::new();
-        for (name, typ) in entries {
+        for (i, (name, typ)) in entries.iter().enumerate() {
+            if i > 0 {
+                out.push_str("\n\n");
+            }
             write!(
                 out,
-                "{} : {}\n\n",
-                strings.resolve(*name),
+                "{} : {}",
+                strings.resolve(**name),
                 typ.to_string(strings)
             )
             .unwrap();

@@ -37,7 +37,6 @@ Node {
                                     name: SymbolU32 {
                                         value: 1,
                                     },
-                                    case: Camel,
                                 },
                             },
                         ),
@@ -77,7 +76,6 @@ Node {
                                 name: SymbolU32 {
                                     value: 1,
                                 },
-                                case: Camel,
                             },
                         },
                     ),

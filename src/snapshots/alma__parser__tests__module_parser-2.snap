@@ -18,11 +18,10 @@ Result:
                     end: 11,
                     line: 1,
                     column: 7,
-                    value: Identifier_ {
+                    value: ModuleIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
                         },
-                        case: Pascal,
                     },
                 },
             ],

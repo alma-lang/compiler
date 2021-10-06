@@ -28,9 +28,8 @@ new : { id : Float }
 module User.Attributes
 
 
+
+
 module User.Attributes.Id
 
 new : Float
-
-
-

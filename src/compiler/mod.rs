@@ -12,7 +12,6 @@ use crate::source::Source;
 use crate::strings::Strings;
 use crate::tokenizer;
 use crate::typ::{PrimitiveTypes, Type};
-use std::fmt::Write;
 
 pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, String> {
     let mut strings = Strings::new();
@@ -20,7 +19,8 @@ pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, St
     let (entry_modules, module_sources, module_asts) =
         parse_files(entry_sources, sources, &mut strings)?;
 
-    check_cycles(&entry_modules, &module_asts, &strings)?;
+    let mut sorted_modules = check_cycles(&entry_modules, &module_asts, &strings)?;
+    sorted_modules.reverse();
 
     let primitive_types = Type::primitive_types(&mut strings);
 
@@ -32,17 +32,12 @@ pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, St
         &mut strings,
     )?;
 
-    let mut out = String::new();
-
-    // Print types
-    write!(&mut out, "{}", &module_interfaces.to_string(&strings)).unwrap();
-
-    let javascript_files = javascript::generate(&module_asts, &module_interfaces, &strings);
-
-    // Print code
-    out.push_str(&javascript::files_to_bundle(&javascript_files));
-
-    Ok(out)
+    Ok(javascript::generate(
+        &sorted_modules,
+        &module_asts,
+        &module_interfaces,
+        &strings,
+    ))
 }
 
 pub fn compile_repl_entry(

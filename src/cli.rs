@@ -14,7 +14,7 @@ pub fn repl() {
 
     let module_name = ast::ModuleName::new(
         vec![ast::Node {
-            value: ast::Identifier_::new("Repl", &mut strings),
+            value: ast::ModuleIdentifier_::new("Repl", &mut strings),
             start: 0,
             end: 0,
             line: 1,

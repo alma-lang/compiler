@@ -9,20 +9,20 @@ Input:
 
 Result:
 
-1:2: Expected a `camelCase` identifier, but instead found: 'Sneaky'
+1:9: Expected '|' between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: ':'
 
   1│  { Sneaky : 5 }
-   │    ↑↑↑↑↑↑
+   │           ↑
 
 Error {
-    message: "1:2: Expected a `camelCase` identifier, but instead found: 'Sneaky'\n\n  1│  { Sneaky : 5 }\n   │    ↑↑↑↑↑↑",
+    message: "1:9: Expected '|' between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: ':'\n\n  1│  { Sneaky : 5 }\n   │           ↑",
     token: Token {
-        kind: Identifier,
-        position: 2,
-        end_position: 8,
-        lexeme: "Sneaky",
+        kind: Colon,
+        position: 9,
+        end_position: 10,
+        lexeme: ":",
         line: 1,
-        column: 2,
+        column: 9,
         indent: 0,
     },
 }

@@ -23,9 +23,8 @@ Output:
 module Parent
 
 
+
+
 module Parent.Test
 
 test : Float
-
-
-

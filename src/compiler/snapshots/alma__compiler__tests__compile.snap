@@ -3,6 +3,8 @@ source: src/compiler/mod.rs
 expression: "compile(&[r\"\nmodule Modules exposing (main)\n\nimport Modules.WeirdMath exposing (weirdAdd)\n\nmain = weirdAdd\n\n\n\nmodule Modules.Constants exposing (five)\n\n    five = 5\n\n\n\nmodule Modules.WeirdMath exposing (weirdAdd)\n\n    import Modules.Constants exposing (five)\n\n    weirdAdd = \\x y -> x * y + five\n        \"])"
 
 ---
+/*
+
 module Modules
 
 main : Float -> Float -> Float
@@ -17,28 +19,53 @@ module Modules.WeirdMath
 
 weirdAdd : Float -> Float -> Float
 
+*/
 
 
-function Modules () {
-import {weirdAdd} from "Modules.WeirdMath"
+globalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {
 
-var main = weirdAdd
 
-}();
+let Modules__Constants = function () {
 
-function Modules.WeirdMath () {
-import {five} from "Modules.Constants"
+    let five = 5
 
-var weirdAdd = function (x, y) {
-    return __op__add(__op__mult(x, y), five)
-}
-
+    return {
+        five,
+    };
 
 }();
 
-function Modules.Constants () {
+let Modules__WeirdMath = function () {
 
-var five = 5
+    let { five } = Modules__Constants
+
+    let weirdAdd = function (x, y    ) {
+        return __op__add(__op__mult(x, y), five)
+    }
+
+    return {
+        weirdAdd,
+    };
 
 }();
+
+let Modules = function () {
+
+    let { weirdAdd } = Modules__WeirdMath
+
+    let main = weirdAdd
+
+    return {
+        main,
+    };
+
+}();
+
+return {
+    Modules,
+    Modules__WeirdMath,
+    Modules__Constants,
+};
+
+}());
 

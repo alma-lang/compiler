@@ -22,11 +22,10 @@ Result:
                     end: 13,
                     line: 1,
                     column: 7,
-                    value: Identifier_ {
+                    value: ModuleIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
                         },
-                        case: Pascal,
                     },
                 },
             ],
@@ -47,11 +46,10 @@ Result:
                         end: 28,
                         line: 3,
                         column: 7,
-                        value: Identifier_ {
+                        value: ModuleIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
                             },
-                            case: Pascal,
                         },
                     },
                     Node {
@@ -59,11 +57,10 @@ Result:
                         end: 33,
                         line: 3,
                         column: 14,
-                        value: Identifier_ {
+                        value: ModuleIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
                             },
-                            case: Pascal,
                         },
                     },
                 ],
@@ -90,7 +87,6 @@ Result:
                                     name: SymbolU32 {
                                         value: 4,
                                     },
-                                    case: Camel,
                                 },
                             },
                         ),

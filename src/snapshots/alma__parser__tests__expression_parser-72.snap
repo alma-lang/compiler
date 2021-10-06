@@ -1,0 +1,42 @@
+---
+source: src/parser.rs
+expression: "parse(\"A\")"
+
+---
+Input:
+
+A
+
+Result:
+
+Node {
+    start: 0,
+    end: 1,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: ModuleAccess(
+            ModuleName {
+                parts: [
+                    Node {
+                        start: 0,
+                        end: 1,
+                        line: 1,
+                        column: 0,
+                        value: ModuleIdentifier_ {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                        },
+                    },
+                ],
+                full_name: SymbolU32 {
+                    value: 1,
+                },
+            },
+        ),
+    },
+}

@@ -20,11 +20,10 @@ Result:
                     end: 11,
                     line: 1,
                     column: 7,
-                    value: Identifier_ {
+                    value: ModuleIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
                         },
-                        case: Pascal,
                     },
                 },
             ],
@@ -47,11 +46,10 @@ Result:
                                 end: 26,
                                 line: 3,
                                 column: 7,
-                                value: Identifier_ {
+                                value: ModuleIdentifier_ {
                                     name: SymbolU32 {
                                         value: 2,
                                     },
-                                    case: Pascal,
                                 },
                             },
                         ],
@@ -65,11 +63,10 @@ Result:
                             end: 31,
                             line: 3,
                             column: 17,
-                            value: Identifier_ {
+                            value: ModuleIdentifier_ {
                                 name: SymbolU32 {
                                     value: 3,
                                 },
-                                case: Pascal,
                             },
                         },
                     ),

@@ -1,76 +1,129 @@
 use crate::ast::{
-    Definition, Expression, ExpressionType as ET, Module, Pattern, Pattern_ as P, Unary_ as U,
+    Definition, Export_, Expression, ExpressionType as ET, Module, ModuleFullName, ModuleName,
+    Pattern, Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::{ModuleAsts, ModuleInterfaces};
 use crate::strings::Strings;
 use crate::type_env::TypeEnv;
 use std::fmt::Write;
 
-pub struct File {
-    pub name: String,
-    pub contents: String,
-}
-
 const INDENT: usize = 4;
 
-pub fn files_to_bundle(files: &[File]) -> String {
-    let mut out = String::new();
-
-    for file in files {
-        writeln!(out, "\nfunction {} () {{", &file.name).unwrap();
-        out.push_str(&file.contents);
-        out.push_str("}();\n");
+fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
+    for (i, module) in name.parts.iter().enumerate() {
+        if i > 0 {
+            out.push_str("__");
+        }
+        write!(out, "{}", module.value.to_string(strings)).unwrap();
     }
-
-    out
 }
 
 pub fn generate(
+    sorted_modules: &[ModuleFullName],
     module_asts: &ModuleAsts,
     module_interfaces: &ModuleInterfaces,
     strings: &Strings,
-) -> Vec<File> {
-    let mut files = vec![];
-    for (name, module) in module_asts {
-        let file = generate_file(module, module_interfaces.get(name).unwrap(), strings);
-        files.push(file);
-    }
-    files
-}
-
-fn generate_file(module: &Module, _interface: &TypeEnv, strings: &Strings) -> File {
+) -> String {
     let mut code = String::new();
 
-    generate_imports(&mut code, module, strings);
+    // Print types
+    write!(
+        &mut code,
+        "/*\n\n{}\n\n*/\n\n",
+        &module_interfaces.to_string(&strings)
+    )
+    .unwrap();
+
+    code.push_str("\nglobalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {\n\n");
+
+    // for module_name in sorted_modules.iter().rev() {
+    //     let name = strings.resolve(*module_name);
+    //     writeln!(code, "let {} = ", alias.value.to_string(strings),).unwrap();
+    // }
+
+    for module_name in sorted_modules {
+        let module = module_asts
+            .get(module_name)
+            .unwrap_or_else(|| panic!("Couldn't get module {}", strings.resolve(*module_name)));
+
+        code.push_str("\nlet ");
+        module_full_name(&mut code, &module.name, strings);
+        code.push_str(" = function () {\n");
+
+        generate_file(
+            &mut code,
+            module,
+            module_interfaces.get(&module_name).unwrap(),
+            strings,
+        );
+
+        code.push_str("\n}();\n");
+    }
+
+    code.push_str("\nreturn {\n");
+    for (_, module) in module_asts {
+        indented(&mut code, add_indent(0), "");
+        module_full_name(&mut code, &module.name, strings);
+        code.push_str(",\n");
+    }
+    code.push_str("};\n");
+
+    code.push_str("\n}());\n");
+
+    code
+}
+
+fn generate_file(code: &mut String, module: &Module, _interface: &TypeEnv, strings: &Strings) {
+    if !module.imports.is_empty() {
+        code.push('\n');
+        generate_imports(code, module, strings);
+    }
 
     code.push('\n');
+    generate_definitions(add_indent(0), code, true, &module.definitions, strings);
 
-    generate_definitions(0, &mut code, true, &module.definitions, strings);
-
-    File {
-        name: module.name.to_string(strings).to_owned(),
-        contents: code,
+    if !module.exports.is_empty() {
+        code.push('\n');
+        generate_exports(code, module, strings);
     }
 }
 
 fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
+    let indent = add_indent(0);
+
     for import in &module.imports {
         let import = &import.value;
 
-        // TODO: import the alias or full name module in to the JS
-        // let alias = &import
-        //     .alias
-        //     .as_ref()
-        //     .unwrap_or(&import.module_name)
-        //     .value
-        //     .name;
-        // write!(
-        //     code,
-        //     "import * as {} from \"{}\"\n",
-        //     alias,
-        //     import.module_name.value.name, // TODO: Wrong path
-        // )
-        // .unwrap();
+        match &import.alias {
+            Some(alias) => {
+                indented(code, indent, "");
+                write!(code, "let {} = ", alias.value.to_string(strings),).unwrap();
+                module_full_name(code, &import.module_name, strings);
+                code.push('\n');
+            }
+            None => {
+                // TODO: This is wrong, and code will be accessing this via normal prop access so
+                // here we need to do something like:
+                //     let Modules;
+                //     (Constants = (Modules = Modules ?? {}).Constants ?? {});
+                //
+                // write!(
+                //     code,
+                //     "let {0} = {0}\n",
+                //     import
+                //         .module_name
+                //         .parts
+                //         .get(0)
+                //         .unwrap_or_else(|| panic!(
+                //             "A module name should never be empty. {}",
+                //             import.module_name.to_string(strings)
+                //         ))
+                //         .value
+                //         .to_string(strings)
+                // )
+                // .unwrap();
+            }
+        }
 
         if !import.exposing.is_empty() {
             let mut identifiers = vec![];
@@ -84,13 +137,10 @@ fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
                         .collect(),
                 );
             }
-            writeln!(
-                code,
-                "import {{{}}} from \"{}\"",
-                identifiers.join(", "),
-                import.module_name.to_string(strings)
-            )
-            .unwrap();
+            indented(code, indent, "");
+            write!(code, "let {{ {} }} = ", identifiers.join(", "),).unwrap();
+            module_full_name(code, &import.module_name, strings);
+            code.push('\n');
         }
     }
 }
@@ -102,7 +152,10 @@ fn generate_definitions(
     definitions: &[Definition],
     strings: &Strings,
 ) {
-    for definition in definitions {
+    for (i, definition) in definitions.iter().enumerate() {
+        if i > 0 && space_between {
+            code.push('\n')
+        }
         match definition {
             Definition::Lambda(name, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
@@ -114,10 +167,23 @@ fn generate_definitions(
                 generate_let(indent, code, pattern, expression, strings)
             }
         }
-        if space_between {
-            code.push('\n')
+    }
+}
+
+fn generate_exports(code: &mut String, module: &Module, strings: &Strings) {
+    let indent = add_indent(0);
+    line(code, indent, "return {");
+
+    for export in &module.exports {
+        match &export.value {
+            Export_::Identifier(ident) => {
+                indented(code, add_indent(indent), "");
+                writeln!(code, "{},", ident.value.to_string(strings)).unwrap();
+            }
         }
     }
+
+    line(code, indent, "};");
 }
 
 fn generate_function(
@@ -146,7 +212,7 @@ fn generate_function(
         code.push('\n');
     }
 
-    line(code, indent, "}");
+    indented(code, indent, "}");
 }
 
 fn generate_pattern(code: &mut String, pattern: &Pattern, strings: &Strings) {
@@ -163,7 +229,7 @@ fn generate_let(
     expression: &Expression,
     strings: &Strings,
 ) {
-    indented(code, indent, "var ");
+    indented(code, indent, "let ");
     generate_pattern(code, pattern, strings);
     code.push_str(" = ");
     generate_expression(indent, code, expression, strings);
@@ -230,6 +296,8 @@ fn generate_expression(
 
             indented(code, indent, "}");
         }
+
+        ET::ModuleAccess(module_name) => module_full_name(code, module_name, strings),
 
         ET::PropAccess(expr, field) => {
             generate_expression(indent, code, expr, strings);

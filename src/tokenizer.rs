@@ -35,7 +35,7 @@ enum Status {
     WhitespaceToken(bool),
     StringToken(bool),
     NumberToken(bool),
-    IdentifierToken(bool),
+    IdentifierToken(bool, bool),
 }
 
 struct State<'source> {
@@ -205,7 +205,7 @@ impl<'source> State<'source> {
                     }
 
                     ch if ch.is_alphabetic() => {
-                        self.status = Status::IdentifierToken(true);
+                        self.status = Status::IdentifierToken(true, ch.is_uppercase());
                         self.parse_token(Some(ch));
                     }
 
@@ -284,10 +284,10 @@ impl<'source> State<'source> {
                 _ => panic!("Got to the number tokenizer without a valid number digit."),
             },
 
-            Status::IdentifierToken(is_start) => match ch {
+            Status::IdentifierToken(is_start, is_module) => match ch {
                 Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => {
                     let is_start = false;
-                    self.status = Status::IdentifierToken(is_start);
+                    self.status = Status::IdentifierToken(is_start, is_module);
 
                     match self.peek() {
                         Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => (),
@@ -309,7 +309,13 @@ impl<'source> State<'source> {
                                 "as" => As,
                                 "exposing" => Exposing,
                                 "module" => Module,
-                                _ => Identifier,
+                                _ => {
+                                    if is_module {
+                                        ModuleIdentifier
+                                    } else {
+                                        Identifier
+                                    }
+                                }
                             },
                         ),
                     }

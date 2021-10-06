@@ -41,6 +41,7 @@ pub enum Type {
 
     // Literals.
     Identifier,
+    ModuleIdentifier,
     String_,
     Float,
 

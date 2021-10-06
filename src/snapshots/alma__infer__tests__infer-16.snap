@@ -20,11 +20,11 @@ Output:
 
 [5:13]
 
-Undefined identifier `User`
+Undefined module `User.Id`. Did you forget to import it?
 
   3│  import User.Id as UserId
   4│  
   5│  new = { id = User.Id.new }
-   │               ↑↑↑↑
+   │               ↑↑↑↑↑↑↑
   6│  
   7│  module User.Id exposing (new)

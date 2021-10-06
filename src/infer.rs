@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, Expression, ExpressionType as ET, Identifier, Import, Module, Pattern_ as P,
-    Unary_ as U,
+    self, Definition, Expression, ExpressionType as ET, Identifier, Import, Module, ModuleName,
+    Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
@@ -9,7 +9,6 @@ use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
-use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::min;
 use std::rc::Rc;
@@ -45,6 +44,7 @@ enum UnificationError {
 #[derive(Debug)]
 pub enum Error<'ast> {
     UndefinedIdentifier(&'ast Identifier, &'ast Expression),
+    UndefinedModule(&'ast ModuleName, &'ast Expression),
     DuplicateField(&'ast Identifier, &'ast Expression),
     TypeMismatch(
         &'ast Expression,
@@ -66,6 +66,7 @@ impl<'ast> Error<'ast> {
 
         let (position, line_number, column, end) = match self {
             UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
+            UndefinedModule(_, node) => (node.start, node.line, node.column, node.end),
             DuplicateField(node, _) => (node.start, node.line, node.column, node.end),
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
@@ -86,6 +87,14 @@ impl<'ast> Error<'ast> {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
                     identifier.value.to_string(strings),
+                    code
+                ));
+            }
+
+            UndefinedModule(module_name, _expr) => {
+                s.push_str(&format!(
+                    "Undefined module `{}`. Did you forget to import it?\n\n{}",
+                    module_name.to_string(strings),
                     code
                 ));
             }
@@ -797,9 +806,12 @@ pub fn infer<'interfaces, 'ast>(
         match module_interfaces.get(module_full_name) {
             Some(imported) => {
                 if let Some(alias) = &import.value.alias {
-                    insert_module_type_in_env(&[alias], imported, &mut env);
+                    env.insert(alias.value.name, Rc::new(Record((**imported).clone())));
                 } else {
-                    insert_module_type_in_env(&import.value.module_name.parts, imported, &mut env);
+                    env.insert(
+                        import.value.module_name.full_name,
+                        Rc::new(Record((**imported).clone())),
+                    );
                 };
 
                 for exposed in &import.value.exposing {
@@ -843,32 +855,6 @@ pub fn infer<'interfaces, 'ast>(
     }
 }
 
-fn insert_module_type_in_env<T: Borrow<Identifier>>(
-    names: &[T],
-    typ: &Rc<TypeEnv>,
-    env: &mut TypeEnv,
-) {
-    match names {
-        [] => (),
-        [name, names @ ..] => {
-            let name = name.borrow().value.name;
-            if names.is_empty() {
-                env.insert(name, Rc::new(Record((**typ).clone())));
-            } else {
-                let mut module = match env.get(&name) {
-                    Some(typ) => match &**typ {
-                        Record(record) => record.clone(),
-                        _ => TypeEnv::new(),
-                    },
-                    None => TypeEnv::new(),
-                };
-                insert_module_type_in_env(names, typ, &mut module);
-                env.insert(name, Rc::new(Record(module)));
-            }
-        }
-    }
-}
-
 fn infer_rec<'ast>(
     ast: &'ast Expression,
     state: &mut State,
@@ -884,6 +870,14 @@ fn infer_rec<'ast>(
         ET::Float(_) => Rc::clone(&primitive_types.float),
 
         ET::String_(_) => Rc::clone(&primitive_types.string),
+
+        ET::ModuleAccess(module_name) => match env.get(&module_name.full_name) {
+            Some(s) => Rc::clone(s),
+            None => {
+                add_error(Err(Error::UndefinedModule(module_name, ast)), errors);
+                state.new_type_var()
+            }
+        },
 
         ET::Record(fields) => {
             let mut typed_fields = TypeEnv::new();
@@ -1590,6 +1584,19 @@ module User exposing (new)
 import User.Id
 
 new = User.Id.wat
+
+module User.Id exposing (new)
+    new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module User exposing (new)
+
+import User.Id
+
+new = User.Id
 
 module User.Id exposing (new)
     new = 42
