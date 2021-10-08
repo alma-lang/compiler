@@ -1,11 +1,13 @@
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token::Token;
-use crate::typ::Type;
+use crate::typ;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+// AST Node
 
 #[derive(PartialEq, Debug)]
 pub struct Node<V> {
@@ -38,6 +40,8 @@ impl<V> Node<V> {
     }
 }
 
+// Repl
+
 #[derive(Debug)]
 pub enum ReplEntry {
     Import(Import),
@@ -45,19 +49,21 @@ pub enum ReplEntry {
     Expression(Expression),
 }
 
+// Modules
+
 pub type ModuleFullName = StringSymbol;
 
 #[derive(Debug, PartialEq)]
 pub struct ModuleName {
-    pub parts: Vec<ModuleIdentifier>,
+    pub parts: Vec<CapitalizedIdentifier>,
     pub full_name: ModuleFullName,
 }
 
 impl ModuleName {
     pub fn new(
-        parts: Vec<ModuleIdentifier>,
+        parts: Vec<CapitalizedIdentifier>,
         strings: &mut Strings,
-    ) -> Result<Self, (usize, Vec<ModuleIdentifier>)> {
+    ) -> Result<Self, (usize, Vec<CapitalizedIdentifier>)> {
         let str_parts = parts
             .iter()
             .map(|i| i.value.to_string(strings))
@@ -130,12 +136,13 @@ impl ModuleName {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Module {
     pub name: ModuleName,
     pub exports: Vec<Export>,
     pub imports: Vec<Import>,
     pub definitions: Vec<Definition>,
+    pub type_definitions: Vec<types::TypeDefinition>,
 }
 
 impl Module {
@@ -152,7 +159,7 @@ pub type Import = Node<Import_>;
 #[derive(Debug, PartialEq)]
 pub struct Import_ {
     pub module_name: ModuleName,
-    pub alias: Option<ModuleIdentifier>,
+    pub alias: Option<CapitalizedIdentifier>,
     pub exposing: Vec<Export>,
 }
 
@@ -179,11 +186,91 @@ pub enum Definition {
     Pattern(Pattern, Expression),
 }
 
+// Types
+
+pub mod types {
+    use super::*;
+
+    pub type TypeDefinition = Node<TypeDefinition_>;
+
+    #[derive(Debug)]
+    pub struct TypeDefinition_ {
+        name: CapitalizedIdentifier,
+        vars: Vec<Identifier>,
+        typ: TypeDefinitionType,
+    }
+    impl TypeDefinition_ {
+        pub fn new(
+            name: CapitalizedIdentifier,
+            vars: Vec<Identifier>,
+            typ: TypeDefinitionType,
+        ) -> Self {
+            Self { name, vars, typ }
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum TypeDefinitionType {
+        Union(Vec<Constructor>),
+        Record(RecordType),
+    }
+
+    pub type Constructor = Node<Constructor_>;
+    #[derive(Debug)]
+    pub struct Constructor_ {
+        name: CapitalizedIdentifier,
+        params: Vec<Type>,
+    }
+    impl Constructor_ {
+        pub fn new(name: CapitalizedIdentifier, params: Vec<Type>) -> Self {
+            Constructor_ { name, params }
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum Type {
+        TypeApp(Constructor),
+        Var(Identifier),
+        Record(RecordType),
+    }
+
+    #[derive(Debug)]
+    pub enum RecordType {
+        Record(Record),
+        RecordExt(RecordExt),
+    }
+
+    pub type Record = Node<Record_>;
+    #[derive(Debug)]
+    pub struct Record_ {
+        fields: Vec<(Identifier, Type)>,
+    }
+    impl Record_ {
+        pub fn new(fields: Vec<(Identifier, Type)>) -> Self {
+            Self { fields }
+        }
+    }
+
+    pub type RecordExt = Node<RecordExt_>;
+    #[derive(Debug)]
+    pub struct RecordExt_ {
+        extension: Identifier,
+        fields: Vec<(Identifier, Type)>,
+    }
+    impl RecordExt_ {
+        pub fn new(extension: Identifier, fields: Vec<(Identifier, Type)>) -> Self {
+            Self { extension, fields }
+        }
+    }
+}
+
+// Expressions
+
 pub type Expression = Node<Expression_>;
 
 #[derive(PartialEq, Debug)]
 pub struct Expression_ {
-    pub typ: RefCell<Option<Rc<Type>>>,
+    pub typ: RefCell<Option<Rc<typ::Type>>>,
     pub expr: ExpressionType,
 }
 
@@ -195,7 +282,7 @@ impl Expression_ {
         }
     }
 
-    pub fn set_type(&self, typ: Rc<Type>) {
+    pub fn set_type(&self, typ: Rc<typ::Type>) {
         *self.typ.borrow_mut() = Some(typ);
     }
 }
@@ -219,6 +306,8 @@ pub enum ExpressionType {
     Let(Vec<Definition>, Box<Expression>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
 }
+
+// Operators
 
 type Unary = Node<Unary_>;
 
@@ -379,6 +468,8 @@ pub mod binop {
 }
 use binop::Binop;
 
+// Patterns
+
 pub type Pattern = Node<Pattern_>;
 
 #[derive(PartialEq, Debug)]
@@ -387,14 +478,16 @@ pub enum Pattern_ {
     Identifier(Identifier),
 }
 
+// Identifiers
+
 type IdentifierName = StringSymbol;
 
-pub type ModuleIdentifier = Node<ModuleIdentifier_>;
+pub type CapitalizedIdentifier = Node<CapitalizedIdentifier_>;
 #[derive(PartialEq, Debug, Clone)]
-pub struct ModuleIdentifier_ {
+pub struct CapitalizedIdentifier_ {
     pub name: IdentifierName,
 }
-impl ModuleIdentifier_ {
+impl CapitalizedIdentifier_ {
     pub fn new(name: &str, strings: &mut Strings) -> Self {
         let name_sym = strings.get_or_intern(name);
         Self { name: name_sym }

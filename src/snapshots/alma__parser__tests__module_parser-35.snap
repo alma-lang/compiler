@@ -1,0 +1,101 @@
+---
+source: src/parser.rs
+expression: "parse(\"\nmodule Test\n\ntype Fruit = Banana a\n\")"
+
+---
+Input:
+
+
+module Test
+
+type Fruit = Banana a
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 8,
+                    end: 12,
+                    line: 2,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+        type_definitions: [
+            Node {
+                start: 14,
+                end: 35,
+                line: 4,
+                column: 0,
+                value: TypeDefinition_ {
+                    name: Node {
+                        start: 19,
+                        end: 24,
+                        line: 4,
+                        column: 5,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    vars: [],
+                    typ: Union(
+                        [
+                            Node {
+                                start: 27,
+                                end: 35,
+                                line: 4,
+                                column: 13,
+                                value: Constructor_ {
+                                    name: Node {
+                                        start: 27,
+                                        end: 33,
+                                        line: 4,
+                                        column: 13,
+                                        value: CapitalizedIdentifier_ {
+                                            name: SymbolU32 {
+                                                value: 3,
+                                            },
+                                        },
+                                    },
+                                    params: [
+                                        Var(
+                                            Node {
+                                                start: 34,
+                                                end: 35,
+                                                line: 4,
+                                                column: 20,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 4,
+                                                    },
+                                                },
+                                            },
+                                        ),
+                                    ],
+                                },
+                            },
+                        ],
+                    ),
+                },
+            },
+        ],
+    },
+    [],
+)

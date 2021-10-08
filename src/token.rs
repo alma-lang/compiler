@@ -41,7 +41,7 @@ pub enum Type {
 
     // Literals.
     Identifier,
-    ModuleIdentifier,
+    CapitalizedIdentifier,
     String_,
     Float,
 
@@ -60,6 +60,7 @@ pub enum Type {
     Exposing,
     Module,
     Import,
+    Type,
 
     Comment,
     Eof,

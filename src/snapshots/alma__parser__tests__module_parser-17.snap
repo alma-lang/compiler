@@ -20,7 +20,7 @@ Result:
                     end: 11,
                     line: 1,
                     column: 7,
-                    value: ModuleIdentifier_ {
+                    value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
                         },
@@ -46,7 +46,7 @@ Result:
                                 end: 26,
                                 line: 3,
                                 column: 7,
-                                value: ModuleIdentifier_ {
+                                value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 2,
                                     },
@@ -63,6 +63,7 @@ Result:
             },
         ],
         definitions: [],
+        type_definitions: [],
     },
     [],
 )

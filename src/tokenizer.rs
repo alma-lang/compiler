@@ -309,9 +309,10 @@ impl<'source> State<'source> {
                                 "as" => As,
                                 "exposing" => Exposing,
                                 "module" => Module,
+                                "type" => Type,
                                 _ => {
                                     if is_module {
-                                        ModuleIdentifier
+                                        CapitalizedIdentifier
                                     } else {
                                         Identifier
                                     }

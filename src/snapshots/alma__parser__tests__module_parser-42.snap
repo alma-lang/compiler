@@ -1,0 +1,34 @@
+---
+source: src/parser.rs
+expression: "parse(\"\nmodule Test\n\ntype Fruit = { name }\n\")"
+
+---
+Input:
+
+
+module Test
+
+type Fruit = { name }
+
+
+Result:
+
+4:20: Expected '|' between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: '}'
+
+  2│  module Test
+  3│  
+  4│  type Fruit = { name }
+   │                      ↑
+
+Error {
+    message: "4:20: Expected '|' between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: '}'\n\n  2│  module Test\n  3│  \n  4│  type Fruit = { name }\n   │                      ↑",
+    token: Token {
+        kind: RightBrace,
+        position: 34,
+        end_position: 35,
+        lexeme: "}",
+        line: 4,
+        column: 20,
+        indent: 0,
+    },
+}

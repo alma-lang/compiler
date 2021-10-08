@@ -1,5 +1,5 @@
 use crate::ast::ModuleName;
-use std::cmp::max;
+use std::cmp::{max, min};
 use std::fmt;
 use std::fs;
 use std::io;
@@ -7,9 +7,6 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::slice::SliceIndex;
 use std::str::CharIndices;
-
-#[cfg(test)]
-use pretty_assertions::assert_eq;
 
 pub enum Error {
     InvalidExtension(String),
@@ -195,11 +192,17 @@ impl Source {
 
                 if show_pointer {
                     let num_pointers = max(1, end_position.unwrap_or(position) - position);
+
                     let num_spaces = if point_to_end_of_input {
                         column_number + 1
                     } else {
                         column_number
                     };
+                    // In the case input ends with \n and we point to it, num_spaces here will end
+                    // up being off the line by 1 position. Instead of checking somehow if it ended
+                    // in \n, and it was point_to_end_of_input, just cap the pointer to point to
+                    // the end of line at the furthest.
+                    let num_spaces = min(line.len(), num_spaces);
 
                     message.push_str(&format!(
                         "  {0:1$}│  {2}{3}",
@@ -257,31 +260,30 @@ impl Source {
     }
 }
 
-/*
+#[cfg(test)]
 mod tests {
     use super::*;
+    use insta::assert_snapshot;
 
     #[test]
     fn test_lines_report_at_position_with_pointer() {
-        use insta::assert_debug_snapshot_matches;
-
-        let strings = vec![
-            "",
-            "1 + 2 + 3",
-            "fn test () {\n    1 + 2\n}",
-            "module Test {\n    fn test () {\n        1 + 2\n    }\n\n    fn test2 () {\n        1 + 2\n    }\n}",
-        ];
-        for code in strings {
-            let file = SourceFile::new_orphan(&code);
-            assert_debug_snapshot_matches!(file.lines_around_position(0, 2));
-            assert_debug_snapshot_matches!(file.lines_around_position(code.len() / 2, 2));
-            assert_debug_snapshot_matches!(
-                file.lines_around_position(if code.len() > 0 { code.len() - 1 } else { 0 }, 2)
-            );
+        fn report(code: &str, position: usize, end_position: Option<usize>, lines: u32) -> String {
+            let source = Source::new_orphan(code.to_string());
+            let result =
+                source.lines_report_at_position_with_pointer(position, end_position, lines);
+            format!(
+                "Input:\n\n{}\n\nResult:\n\n{}",
+                code,
+                match &result {
+                    Some(res) => res,
+                    None => "None",
+                }
+            )
         }
+
+        assert_snapshot!(report("type Banana\n", 12, None, 1));
     }
 }
-*/
 
 fn line_at(code: &str, position: usize) -> Option<Range<usize>> {
     if position >= code.len() {

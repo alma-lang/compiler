@@ -46,7 +46,7 @@ Node {
                                                 end: 1,
                                                 line: 1,
                                                 column: 0,
-                                                value: ModuleIdentifier_ {
+                                                value: CapitalizedIdentifier_ {
                                                     name: SymbolU32 {
                                                         value: 1,
                                                     },

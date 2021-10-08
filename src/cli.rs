@@ -14,7 +14,7 @@ pub fn repl() {
 
     let module_name = ast::ModuleName::new(
         vec![ast::Node {
-            value: ast::ModuleIdentifier_::new("Repl", &mut strings),
+            value: ast::CapitalizedIdentifier_::new("Repl", &mut strings),
             start: 0,
             end: 0,
             line: 1,
@@ -29,6 +29,7 @@ pub fn repl() {
         exports: vec![],
         imports: vec![],
         definitions: vec![],
+        type_definitions: vec![],
     };
     let mut module_interfaces = ModuleInterfaces::new();
 

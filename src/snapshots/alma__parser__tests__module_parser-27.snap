@@ -19,7 +19,7 @@ Module names have to be `PascalCase` and also not have extraneous characters, be
 Error {
     message: "1:12: Invalid module name 'Te_st'.\n\nModule names have to be `PascalCase` and also not have extraneous characters, because they need to match the file name in the file system.\n\n  1│  module Test.Te_st\n   │              ↑↑↑↑↑",
     token: Token {
-        kind: ModuleIdentifier,
+        kind: CapitalizedIdentifier,
         position: 12,
         end_position: 17,
         lexeme: "Te_st",

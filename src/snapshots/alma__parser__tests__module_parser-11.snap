@@ -28,7 +28,7 @@ Result:
                     end: 13,
                     line: 1,
                     column: 7,
-                    value: ModuleIdentifier_ {
+                    value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
                         },
@@ -42,6 +42,7 @@ Result:
         exports: [],
         imports: [],
         definitions: [],
+        type_definitions: [],
     },
     [
         Module {
@@ -52,7 +53,7 @@ Result:
                         end: 59,
                         line: 6,
                         column: 9,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
                             },
@@ -63,7 +64,7 @@ Result:
                         end: 65,
                         line: 6,
                         column: 16,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
                             },
@@ -74,7 +75,7 @@ Result:
                         end: 75,
                         line: 6,
                         column: 22,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 5,
                             },
@@ -124,6 +125,7 @@ Result:
                     },
                 ),
             ],
+            type_definitions: [],
         },
         Module {
             name: ModuleName {
@@ -133,7 +135,7 @@ Result:
                         end: 28,
                         line: 3,
                         column: 7,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
                             },
@@ -144,7 +146,7 @@ Result:
                         end: 34,
                         line: 3,
                         column: 14,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
                             },
@@ -194,6 +196,7 @@ Result:
                     },
                 ),
             ],
+            type_definitions: [],
         },
         Module {
             name: ModuleName {
@@ -203,7 +206,7 @@ Result:
                         end: 100,
                         line: 9,
                         column: 7,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
                             },
@@ -214,7 +217,7 @@ Result:
                         end: 106,
                         line: 9,
                         column: 14,
-                        value: ModuleIdentifier_ {
+                        value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 8,
                             },
@@ -264,6 +267,7 @@ Result:
                     },
                 ),
             ],
+            type_definitions: [],
         },
     ],
 )

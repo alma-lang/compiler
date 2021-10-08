@@ -1,0 +1,14 @@
+---
+source: src/source.rs
+expression: "report(\"type Banana\\n\", 12, None, 1)"
+
+---
+Input:
+
+type Banana
+
+
+Result:
+
+  1│  type Banana
+   │             ↑

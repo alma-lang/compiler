@@ -1,8 +1,9 @@
 use crate::ast::{
     binop::*,
-    Expression,
+    types::{self, Type, TypeDefinition},
+    CapitalizedIdentifier, Expression,
     ExpressionType::{self as ET, Float, If, Let, String_, *},
-    Expression_ as E, Identifier, Import, Module, ModuleIdentifier, Node, Pattern, Pattern_,
+    Expression_ as E, Identifier, Import, Module, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
     *,
 };
@@ -14,35 +15,46 @@ use crate::token::{
 };
 
 /* Grammar draft (●○):
-    ● file           → module EOF
-    ● module         → "module" module_name exposing? imports? definitions?
-    ● module_name    → MODULE_IDENTIFIER ("." MODULE_IDENTIFIER)*
-    ● exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
-    ● imports        → import ( import )*
-    ● import         → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
-    ● definitions    → ( module | binding )+
-    ● expression     → let | lambda | if | binary
-    ● let            → "let" MAYBE_INDENT binding+ MAYBE_INDENT "in"? expression
-    ● binding        → ( identifier params? | pattern ) "=" expression
-    ● lambda         → "\" params? "->" expression
-    ● params         → pattern ( pattern )*
-    ● pattern        → parsed from Ast.Pattern
-    ● if             → "if" binary "then" expression "else" expression
-    // Operators
-    ● binary         → unary ( binop unary )*
-    ● binop          → // parsed from Ast.Binop operator list
-    ● unary          → ( "not" | "-" )? call
-    // Other primitives
-    ● call           → prop_access ( prop_access )*
-    ● prop_access    → primary ( "." IDENTIFIER )*
-    ● primary        → NUMBER | STRING | "false" | "true"
-                     | IDENTIFIER
-                     | "." IDENTIFIER
-                     | module_name
-                     | record
-                     | "(" expression? ")"
-    ● record         → "{" ( expression "|" )? ( field ("," field)* )? "}"
-    ● field          → IDENTIFIER ":" expression
+    ● file                 → module EOF
+    ● module               → "module" module_name exposing? imports? definitions?
+    ● module_name          → CAPITALIZED_IDENTIFIER ("." CAPITALIZED_IDENTIFIER)*
+    ● exposing             → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
+    ● imports              → import ( import )*
+    ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
+    ● definitions          → ( type_def | module | binding )+
+
+    ● type_identifier      → CAPITALIZED_IDENTIFIER
+    ● type_var             → IDENTIFIER
+    ● type_def             → "type" type_identifier ( type_var )* "=" type_record | type_union_branches
+    ● type_union_branches  → type_constructor ( "|" type_constructor )*
+    ● type_constructor     → type_identifier ( type_param )*
+    ● type_param           → "(" type_constructor ")" | type_identifier | type_var | type_record
+    ● type                 → type_constructor | type_var | type_record
+    ● type_record          → "{" ( type_var "|" )? ( type_record_field ( "," type_record_field )* )? "}"
+    ● type_record_field    → IDENTIFIER ":" type
+
+    // Expressions
+    ● let                  → "let" MAYBE_INDENT ( binding )+ MAYBE_INDENT ( "in" )? expression
+    ● binding              → ( identifier ( params )? | pattern ) "=" expression
+    ● lambda               → "\" params "->" expression
+    ● params               → pattern ( pattern )*
+    ● pattern              → parsed from Ast.Pattern
+    ● if                   → "if" binary "then" expression "else" expression
+    //   Operators
+    ● binary               → unary ( binop unary )*
+    ● binop                → // parsed from Ast.Binop operator list
+    ● unary                → ( "not" | "-" )? call
+    //   Other primitives
+    ● call                 → prop_access ( prop_access )*
+    ● prop_access          → primary ( "." IDENTIFIER )*
+    ● primary              → NUMBER | STRING | "false" | "true"
+                           | IDENTIFIER
+                           | "." IDENTIFIER
+                           | module_name
+                           | record
+                           | "(" ( expression )? ")"
+    ● record               → "{" ( expression "|" )? ( field ( "," field )* )? "}"
+    ● field                → IDENTIFIER ":" expression
 */
 
 #[derive(PartialEq, Debug)]
@@ -203,19 +215,22 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                         let imports = self.imports()?;
 
-                        let (mut modules, definitions) = self.module_definitions(
-                            top_level,
-                            &name,
-                            module_token,
-                            vec![],
-                            vec![],
-                        )?;
+                        let (mut modules, definitions, type_definitions) = self
+                            .module_definitions(
+                                top_level,
+                                &name,
+                                module_token,
+                                vec![],
+                                vec![],
+                                vec![],
+                            )?;
 
                         modules.push(Module {
                             name,
                             exports,
                             imports,
                             definitions,
+                            type_definitions,
                         });
 
                         Ok(Some(modules))
@@ -331,7 +346,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             TT::As => {
                                 self.advance();
 
-                                match self.module_identifier() {
+                                match self.capitalized_identifier() {
                                     Some(alias) => Ok(Some(alias)),
                                     _ => Err(Error::expected_but_found(
                                         self.source,
@@ -380,6 +395,371 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
+    pub fn type_def(&mut self) -> ParseResult<'source, 'tokens, Option<TypeDefinition>> {
+        let token = self.get_token();
+        if matches!(token.kind, TT::Type) {
+            self.advance();
+
+            if let Some(name) = self.capitalized_identifier() {
+                let mut vars = vec![];
+                loop {
+                    match self.identifier() {
+                        Some(variable) => vars.push(variable),
+                        None => {
+                            let token = self.get_token();
+                            if matches!(token.kind, Equal) {
+                                self.advance();
+                                break;
+                            } else {
+                                return Err(Error::expected_but_found(
+                                    self.source,
+                                    token,
+                                    None,
+                                    "Expected type variable names or a '=' sign \
+                                    between the name and the type definition",
+                                ));
+                            }
+                        }
+                    }
+                }
+
+                let (type_definition, end) = if let Some((record, end)) = self.type_record()? {
+                    (types::TypeDefinitionType::Record(record), end)
+                } else {
+                    let (branches, end) = self.type_union_branches()?;
+                    (types::TypeDefinitionType::Union(branches), end)
+                };
+
+                let line = token.line;
+                let column = token.column;
+                let start = token.position;
+                Ok(Some(Node {
+                    value: types::TypeDefinition_::new(name, vars, type_definition),
+                    start,
+                    end,
+                    line,
+                    column,
+                }))
+            } else {
+                Err(Error::expected_but_found(
+                    self.source,
+                    token,
+                    None,
+                    "Expected a 'PascalCase' name for the type",
+                ))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn type_union_branches(
+        &mut self,
+    ) -> ParseResult<'source, 'tokens, (Vec<types::Constructor>, usize)> {
+        let mut branches = vec![];
+
+        if let TT::Pipe = self.get_token().kind {
+            self.advance();
+        }
+
+        let branch = self.type_constructor()?;
+        if let Some(branch) = branch {
+            branches.push(branch);
+
+            loop {
+                let pipe_token = self.get_token();
+                if let TT::Pipe = pipe_token.kind {
+                    self.advance();
+
+                    let branch = self.type_constructor()?;
+                    if let Some(branch) = branch {
+                        branches.push(branch);
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            let end = branches.last().unwrap().end;
+            Ok((branches, end))
+        } else {
+            Err(Error::expected_but_found(
+                self.source,
+                self.get_token(),
+                None,
+                "Expected at least one constructor \
+                for the type like `type User = User Int`",
+            ))
+        }
+    }
+
+    pub fn type_constructor(
+        &mut self,
+    ) -> ParseResult<'source, 'tokens, Option<types::Constructor>> {
+        if let Some(name) = self.capitalized_identifier() {
+            let mut params = vec![];
+            let mut end = None;
+
+            loop {
+                match self.type_param()? {
+                    Some((param, p_end)) => {
+                        params.push(param);
+                        end = Some(p_end);
+                    }
+                    None => break,
+                }
+            }
+
+            let line = name.line;
+            let column = name.column;
+            let start = name.start;
+            let end = end.unwrap_or_else(|| name.end);
+
+            Ok(Some(Node {
+                value: types::Constructor_::new(name, params),
+                line,
+                column,
+                start,
+                end,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn type_record(
+        &mut self,
+    ) -> ParseResult<'source, 'tokens, Option<(types::RecordType, usize)>> {
+        let token = self.get_token();
+        if matches!(token.kind, LeftBrace) {
+            self.advance();
+
+            let next_token = self.get_token();
+            let second_next_token = self.peek_next_token();
+
+            match (next_token.kind, second_next_token.kind) {
+                // Unit record
+                (RightBrace, _) => {
+                    self.advance();
+                    Ok(Some((
+                        types::RecordType::Record(Node::new(
+                            types::Record_::new(vec![]),
+                            token,
+                            next_token,
+                        )),
+                        next_token.end_position,
+                    )))
+                }
+
+                // Record literal
+                (TT::Identifier, Colon) => {
+                    let fields = self.type_record_fields()?;
+                    let last_token = self.get_token();
+
+                    match last_token.kind {
+                        RightBrace => {
+                            self.advance();
+
+                            Ok(Some((
+                                types::RecordType::Record(Node::new(
+                                    types::Record_::new(fields),
+                                    token,
+                                    last_token,
+                                )),
+                                last_token.end_position,
+                            )))
+                        }
+                        _ => Err(Error::expected_but_found(
+                            self.source,
+                            last_token,
+                            Some(token),
+                            "Expected '}' to close a record literal",
+                        )),
+                    }
+                }
+
+                _ => {
+                    let extension = if let Some(identifier) = self.identifier() {
+                        identifier
+                    } else {
+                        return Err(Error::expected_but_found(
+                            self.source,
+                            self.get_token(),
+                            None,
+                            "Expected a record literal `{ x : Int, y : Int }`\
+                            or an extensible record `{ a | x : Int, y : Int }`",
+                        ));
+                    };
+
+                    let pipe_token = self.get_token();
+                    match pipe_token.kind {
+                        Pipe => {
+                            self.advance();
+
+                            let fields = self.type_record_fields()?;
+                            let last_token = self.get_token();
+
+                            match last_token.kind {
+                                RightBrace => {
+                                    self.advance();
+
+                                    Ok(Some((
+                                        types::RecordType::RecordExt(Node::new(
+                                            types::RecordExt_::new(extension, fields),
+                                            token,
+                                            last_token,
+                                        )),
+                                        last_token.end_position,
+                                    )))
+                                }
+                                _ => Err(Error::expected_but_found(
+                                    self.source,
+                                    last_token,
+                                    Some(token),
+                                    "Expected '}' to close a record type",
+                                )),
+                            }
+                        }
+
+                        _ => Err(Error::expected_but_found(
+                            self.source,
+                            pipe_token,
+                            None,
+                            "Expected '|' between the type variable and \
+                            the fields of the record (like this \
+                            `{ a | field : Type }`)",
+                        )),
+                    }
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn type_record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Type)>> {
+        let mut fields = vec![];
+
+        loop {
+            let field = self.type_record_field()?;
+            fields.push(field);
+
+            let comma_token = self.get_token();
+            if let TT::Comma = comma_token.kind {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        Ok(fields)
+    }
+
+    pub fn type_record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Type)> {
+        if let Some(identifier) = self.identifier() {
+            let colon_token = self.get_token();
+            if matches!(colon_token.kind, TT::Colon) {
+                self.advance();
+
+                if let Some((typ, _)) = self.type_()? {
+                    Ok((identifier, typ))
+                } else {
+                    Err(Error::expected_but_found(
+                        self.source,
+                        self.get_token(),
+                        None,
+                        "Expected a type for the field in the record",
+                    ))
+                }
+            } else {
+                Err(Error::expected_but_found(
+                    self.source,
+                    colon_token,
+                    None,
+                    "Expected a ':' between the field name and its type",
+                ))
+            }
+        } else {
+            Err(Error::expected_but_found(
+                self.source,
+                self.get_token(),
+                None,
+                "Expected a camelCase identifier for \
+                the field name in the record",
+            ))
+        }
+    }
+
+    pub fn type_param(&mut self) -> ParseResult<'source, 'tokens, Option<(Type, usize)>> {
+        let token = self.get_token();
+
+        if let Some(ident) = self.capitalized_identifier() {
+            let line = ident.line;
+            let column = ident.column;
+            let start = ident.start;
+            let end = ident.end;
+            Ok(Some((
+                Type::TypeApp(Node {
+                    value: types::Constructor_::new(ident, vec![]),
+                    line,
+                    column,
+                    start,
+                    end,
+                }),
+                end,
+            )))
+        } else if let Some(ident) = self.identifier() {
+            let end = ident.end;
+            Ok(Some((Type::Var(ident), end)))
+        } else if let TT::LeftParen = token.kind {
+            self.advance();
+
+            if let Some(type_) = self.type_constructor()? {
+                let end = type_.end;
+
+                if let TT::RightParen = self.get_token().kind {
+                    self.advance();
+
+                    Ok(Some((Type::TypeApp(type_), end)))
+                } else {
+                    Err(Error::expected_but_found(
+                        self.source,
+                        self.get_token(),
+                        Some(token),
+                        "Expected ')' after parenthesized type",
+                    ))
+                }
+            } else {
+                Err(Error::expected_but_found(
+                    self.source,
+                    self.get_token(),
+                    None,
+                    "Expected a type inside the parenthesis",
+                ))
+            }
+        } else if let Some((record, end)) = self.type_record()? {
+            Ok(Some((Type::Record(record), end)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn type_(&mut self) -> ParseResult<'source, 'tokens, Option<(Type, usize)>> {
+        if let Some(ident) = self.identifier() {
+            let end = ident.end;
+            Ok(Some((Type::Var(ident), end)))
+        } else if let Some(type_) = self.type_constructor()? {
+            let end = type_.end;
+            Ok(Some((Type::TypeApp(type_), end)))
+        } else if let Some((record, end)) = self.type_record()? {
+            Ok(Some((Type::Record(record), end)))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn module_definitions(
         &mut self,
         top_level: bool,
@@ -387,7 +767,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         module_token: &Token,
         mut modules: Vec<Module>,
         mut definitions: Vec<Definition>,
-    ) -> ParseResult<'source, 'tokens, (Vec<Module>, Vec<Definition>)> {
+        mut type_definitions: Vec<TypeDefinition>,
+    ) -> ParseResult<'source, 'tokens, (Vec<Module>, Vec<Definition>, Vec<TypeDefinition>)> {
         let current_token_has_valid_indent =
             self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
@@ -401,6 +782,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         module_token,
                         modules,
                         definitions,
+                        type_definitions,
                     )
                 }
 
@@ -413,37 +795,52 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             module_token,
                             modules,
                             definitions,
+                            type_definitions,
                         )
                     }
+                    None => match self.type_def()? {
+                        Some(type_def) => {
+                            type_definitions.push(type_def);
+                            self.module_definitions(
+                                top_level,
+                                module_name,
+                                module_token,
+                                modules,
+                                definitions,
+                                type_definitions,
+                            )
+                        }
 
-                    None => match self.get_token().kind {
-                        TT::Eof => Ok((modules, definitions)),
-                        _ => Err(Error::expected_but_found(
-                            self.source,
-                            self.get_token(),
-                            None,
-                            "Expected the left side of a definition like `n = 5` \
-                             or `add x y = x + y`",
-                        )),
+                        None => match self.get_token().kind {
+                            TT::Eof => Ok((modules, definitions, type_definitions)),
+                            _ => Err(Error::expected_but_found(
+                                self.source,
+                                self.get_token(),
+                                None,
+                                "Expected the left side of a definition like `n = 5` \
+                                or `add x y = x + y` or a type definition like \
+                                `type User = LoggedIn | Anon`",
+                            )),
+                        },
                     },
                 },
             }
         } else {
             match self.get_token().kind {
-                TT::Eof => Ok((modules, definitions)),
+                TT::Eof => Ok((modules, definitions, type_definitions)),
                 _ => {
                     if self.current_token_outside_indent_for_module_definitions(
                         top_level,
                         module_token,
                     ) {
-                        Ok((modules, definitions))
+                        Ok((modules, definitions, type_definitions))
                     } else {
                         Err(Error::expected_but_found(
                             self.source,
                             self.get_token(),
                             None,
                             "Expected a definition like `n = 5` \
-                                        or `add x y = x + y`",
+                            or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`",
                         ))
                     }
                 }
@@ -1103,7 +1500,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 )))
             }
 
-            TT::ModuleIdentifier => self.module_name().map(|maybe_name| {
+            TT::CapitalizedIdentifier => self.module_name().map(|maybe_name| {
                 maybe_name.map(|name| {
                     let line = token.line;
                     let column = token.column;
@@ -1350,7 +1747,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn module_name(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
         let first_token = self.get_token();
-        match self.module_identifier() {
+        match self.capitalized_identifier() {
             Some(name) => self
                 .module_name_rest(vec![first_token], vec![name])
                 .map(Some),
@@ -1360,16 +1757,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn module_name_rest(
         &mut self,
         mut tokens: Vec<&'tokens Token<'source>>,
-        mut names: Vec<ModuleIdentifier>,
+        mut names: Vec<CapitalizedIdentifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         let dot_token = self.get_token();
         let possibly_module_identifier = self.peek_next_token();
         match (dot_token.kind, possibly_module_identifier.kind) {
-            (TT::Dot, TT::ModuleIdentifier) => {
+            (TT::Dot, TT::CapitalizedIdentifier) => {
                 self.advance();
 
                 let token = self.get_token();
-                match self.module_identifier() {
+                match self.capitalized_identifier() {
                     Some(name) => {
                         names.push(name);
                         tokens.push(token);
@@ -1384,7 +1781,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn build_module_name(
         &mut self,
         tokens: Vec<&'tokens Token<'source>>,
-        names: Vec<ModuleIdentifier>,
+        names: Vec<CapitalizedIdentifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
             Error::new(
@@ -1416,12 +1813,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn module_identifier(&mut self) -> Option<ModuleIdentifier> {
+    fn capitalized_identifier(&mut self) -> Option<CapitalizedIdentifier> {
         let identifier_token = self.get_token();
         match identifier_token.kind {
-            TT::ModuleIdentifier => {
+            TT::CapitalizedIdentifier => {
                 self.advance();
-                let name_identifier = ModuleIdentifier_::new(identifier_token.lexeme, self.strings);
+                let name_identifier =
+                    CapitalizedIdentifier_::new(identifier_token.lexeme, self.strings);
                 let name = Node::new(name_identifier, identifier_token, identifier_token);
                 Some(name)
             }
@@ -1960,6 +2358,170 @@ incr n = n + 1
 module Test.Something
 
 module Test.Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Banana : asdf
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = Banana | Apple
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = Banana / Apple
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = Banana a
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = Banana a
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = Banana a | Phone
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a
+    = Banana a
+    | Phone
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a =
+    | Banana a
+    | Phone
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = {}
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = {
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = { name }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = { name : String }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit = { name : String , banana: Phone }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = { a | name : String , banana: Phone }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = Banana a Phone a
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = Banana a (Phone a)
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = { test : Banana a (Phone a) }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "
+module Test
+
+type Fruit a = { test : (Banana a (Phone a)) }
 "
         ));
 
