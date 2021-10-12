@@ -12,4 +12,21 @@ add 5
 ---
 Output:
 
-Float -> Float
+[3:0]
+
+Type mismatch:  Float -> a  ≠  Float -> Float -> Float
+
+Expected
+
+  1│  let add x y = x + y
+  2│  
+  3│  add 5
+   │  ↑↑↑↑↑
+
+to be
+
+Float -> Float -> Float
+
+but seems to be
+
+Float -> a

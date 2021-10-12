@@ -262,8 +262,14 @@ impl State {
                     },
                 },
 
-                Fn(a, b) => Rc::new(Fn(
-                    replace_type_vars(vars_to_replace, a),
+                Fn(args, b) => Rc::new(Fn(
+                    {
+                        let mut new_args = vec![];
+                        for arg in args {
+                            new_args.push(replace_type_vars(vars_to_replace, arg));
+                        }
+                        new_args
+                    },
                     replace_type_vars(vars_to_replace, b),
                 )),
 
@@ -335,8 +341,10 @@ impl State {
                     }
                 },
 
-                Fn(a, b) => {
-                    find_all_tvs(current_level, vars, a);
+                Fn(args, b) => {
+                    for arg in args {
+                        find_all_tvs(current_level, vars, arg);
+                    }
                     find_all_tvs(current_level, vars, b);
                 }
 
@@ -401,7 +409,9 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
             }
         }
 
-        Fn(b, c) => occurs(a_id, a_level, b) || occurs(a_id, a_level, c),
+        Fn(args, ret) => {
+            args.iter().any(|arg| occurs(a_id, a_level, arg)) || occurs(a_id, a_level, ret)
+        }
 
         Record(fields) => fields.map().values().any(|tv| occurs(a_id, a_level, tv)),
 
@@ -535,9 +545,15 @@ fn unify<'ast>(
 
             (_, Var(var)) => unify_var(state, t2, var, t1),
 
-            (Fn(arg, body), Fn(arg2, body2)) => {
-                unify_rec(state, arg, arg2)?;
-                unify_rec(state, body, body2)
+            (Fn(args, body), Fn(args2, body2)) => {
+                if args.len() != args2.len() {
+                    Err(TypeMismatch)
+                } else {
+                    for (a1, a2) in args.iter().zip(args2.iter()) {
+                        unify_rec(state, a1, a2)?;
+                    }
+                    unify_rec(state, body, body2)
+                }
             }
 
             (Record(fields1), Record(fields2)) => {
@@ -662,126 +678,126 @@ fn base_env(
     env.insert(
         strings.get_or_intern("__op__or"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.bool),
+                Rc::clone(&primitive_types.bool),
+            ],
             Rc::clone(&primitive_types.bool),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.bool),
-                Rc::clone(&primitive_types.bool),
-            )),
         )),
     );
 
     env.insert(
         strings.get_or_intern("__op__or"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.bool),
+                Rc::clone(&primitive_types.bool),
+            ],
             Rc::clone(&primitive_types.bool),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.bool),
-                Rc::clone(&primitive_types.bool),
-            )),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__and"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.bool),
+                Rc::clone(&primitive_types.bool),
+            ],
             Rc::clone(&primitive_types.bool),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.bool),
-                Rc::clone(&primitive_types.bool),
-            )),
         )),
     );
     env.insert(strings.get_or_intern("__op__eq"), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
-            Rc::clone(&a),
-            Rc::new(Type::Fn(Rc::clone(&a), Rc::clone(&primitive_types.bool))),
+            vec![Rc::clone(&a), Rc::clone(&a)],
+            Rc::clone(&primitive_types.bool),
         )))
     });
     env.insert(strings.get_or_intern("__op__ne"), {
         let a = state.new_type_var();
         state.generalize(&Rc::new(Type::Fn(
-            Rc::clone(&a),
-            Rc::new(Type::Fn(Rc::clone(&a), Rc::clone(&primitive_types.bool))),
+            vec![Rc::clone(&a), Rc::clone(&a)],
+            Rc::clone(&primitive_types.bool),
         )))
     });
     env.insert(
         strings.get_or_intern("__op__gt"),
         Rc::new(Type::Fn(
-            Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
+            vec![
                 Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.bool),
-            )),
+                Rc::clone(&primitive_types.float),
+            ],
+            Rc::clone(&primitive_types.bool),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__ge"),
         Rc::new(Type::Fn(
-            Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
+            vec![
                 Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.bool),
-            )),
+                Rc::clone(&primitive_types.float),
+            ],
+            Rc::clone(&primitive_types.bool),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__lt"),
         Rc::new(Type::Fn(
-            Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
+            vec![
                 Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.bool),
-            )),
+                Rc::clone(&primitive_types.float),
+            ],
+            Rc::clone(&primitive_types.bool),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__le"),
         Rc::new(Type::Fn(
-            Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
+            vec![
                 Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.bool),
-            )),
+                Rc::clone(&primitive_types.float),
+            ],
+            Rc::clone(&primitive_types.bool),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__add"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
+            ],
             Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.float),
-            )),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__sub"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
+            ],
             Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.float),
-            )),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__mult"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
+            ],
             Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.float),
-            )),
         )),
     );
     env.insert(
         strings.get_or_intern("__op__div"),
         Rc::new(Type::Fn(
+            vec![
+                Rc::clone(&primitive_types.float),
+                Rc::clone(&primitive_types.float),
+            ],
             Rc::clone(&primitive_types.float),
-            Rc::new(Type::Fn(
-                Rc::clone(&primitive_types.float),
-                Rc::clone(&primitive_types.float),
-            )),
         )),
     );
 }
@@ -947,14 +963,14 @@ fn infer_rec<'ast>(
             let remaining_fields_type = state.new_type_var();
 
             Rc::new(Fn(
-                Rc::new(RecordExt(
+                vec![Rc::new(RecordExt(
                     {
                         let mut fields = TypeEnv::new();
                         fields.insert(field.value.name, Rc::clone(&field_type));
                         fields
                     },
                     remaining_fields_type,
-                )),
+                ))],
                 field_type,
             ))
         }
@@ -1116,12 +1132,13 @@ fn infer_lambda<'ast>(
 
     let return_type = infer_rec(body, state, &mut env, primitive_types, errors);
 
-    params_with_type
-        .iter()
-        .rev()
-        .fold(return_type, |return_type, (_, param_type)| {
-            Rc::new(Fn(Rc::clone(param_type), return_type))
-        })
+    Rc::new(Fn(
+        params_with_type
+            .into_iter()
+            .map(|(_, param_type)| param_type)
+            .collect(),
+        return_type,
+    ))
 }
 
 fn infer_fn_call<'ast, Args>(
@@ -1146,12 +1163,7 @@ where
 
     let return_type = state.new_type_var();
 
-    let call_type: Rc<Type> = arg_types
-        .iter()
-        .rev()
-        .fold(Rc::clone(&return_type), |ret, typ| {
-            Rc::new(Fn(Rc::clone(typ), ret))
-        });
+    let call_type: Rc<Type> = Rc::new(Fn(arg_types.clone(), Rc::clone(&return_type)));
 
     // Unify the arguments separately for nicer error messages
     let res = arg_types

@@ -41,7 +41,7 @@ pub enum Type {
      * e.g. \a b c -> c  is automatically translated to \a -> \b -> \c -> c
      * Currying is also automatic
      */
-    Fn(Rc<Type>, Rc<Type>),
+    Fn(Vec<Rc<Type>>, Rc<Type>),
 
     Record(TypeEnv),
     RecordExt(TypeEnv, Rc<Type>),
@@ -72,8 +72,10 @@ impl Type {
     pub fn parameters(&self) -> Vec<&Rc<Type>> {
         fn parameters_rec<'a>(mut params: Vec<&'a Rc<Type>>, t: &'a Type) -> Vec<&'a Rc<Type>> {
             match t {
-                Type::Fn(arg, body) => {
-                    params.push(arg);
+                Type::Fn(args, body) => {
+                    for arg in args {
+                        params.push(arg);
+                    }
                     parameters_rec(params, body)
                 }
                 _ => params,
@@ -149,17 +151,23 @@ impl Type {
                     },
                 },
 
-                Fn(arg, body) => {
-                    let parens = arg.should_parenthesize();
+                Fn(args, body) => {
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            s.push_str(" -> ");
+                        }
 
-                    if parens {
-                        s.push('(');
-                    }
+                        let parens = arg.should_parenthesize();
 
-                    to_string_rec(arg, cur_type_var_name, type_var_names, s, strings);
+                        if parens {
+                            s.push('(');
+                        }
 
-                    if parens {
-                        s.push(')');
+                        to_string_rec(arg, cur_type_var_name, type_var_names, s, strings);
+
+                        if parens {
+                            s.push(')');
+                        }
                     }
                     s.push_str(" -> ");
 
@@ -323,28 +331,41 @@ mod test {
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                    vec![Rc::new(Type::Named(strings.get_or_intern("Float"), vec![]))],
                     Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                 ),
                 "Float -> String",
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Fn(
-                        Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                    vec![Rc::new(Type::Fn(
+                        vec![Rc::new(Type::Named(strings.get_or_intern("Float"), vec![]))],
                         Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
-                    )),
+                    ))],
                     Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                 ),
                 "(Float -> String) -> String",
             ),
             (
                 Type::Fn(
-                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                    vec![Rc::new(Type::Named(
+                        strings.get_or_intern("String"),
+                        vec![],
+                    ))],
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                        vec![Rc::new(Type::Named(strings.get_or_intern("Float"), vec![]))],
                         Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                     )),
+                ),
+                "String -> Float -> String",
+            ),
+            (
+                Type::Fn(
+                    vec![
+                        Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                        Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                    ],
+                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
                 ),
                 "String -> Float -> String",
             ),
@@ -372,10 +393,10 @@ mod test {
                 Type::Poly(
                     IndexSet::from_iter(vec![TypeVarId(0)]),
                     Rc::new(Type::Fn(
-                        Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        vec![Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
-                        ))))),
+                        )))))],
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),

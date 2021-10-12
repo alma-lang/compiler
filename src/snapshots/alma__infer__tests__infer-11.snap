@@ -15,11 +15,21 @@ main = add 5
 ---
 Output:
 
-module Test
+[5:7]
 
-add : Float -> Float -> Float
+Type mismatch:  Float -> a  ≠  Float -> Float -> Float
 
-main : Float -> Float
+Expected
 
+  3│  add x y = x + y
+  4│  
+  5│  main = add 5
+   │         ↑↑↑↑↑
 
+to be
 
+Float -> Float -> Float
+
+but seems to be
+
+Float -> a
