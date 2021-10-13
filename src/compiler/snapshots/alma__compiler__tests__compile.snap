@@ -39,7 +39,7 @@ let Modules__WeirdMath = function () {
 
     let { five } = Modules__Constants
 
-    let weirdAdd = function (x, y    ) {
+    let weirdAdd = function (x, y) {
         return __op__add(__op__mult(x, y), five)
     }
 

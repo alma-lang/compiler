@@ -159,6 +159,7 @@ fn generate_definitions(
         match definition {
             Definition::Lambda(name, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
+                    indented(code, indent, "");
                     generate_function(indent, code, name.value.to_string(strings), params, body, strings)
                 }
                 _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
@@ -203,7 +204,7 @@ fn generate_function(
         generate_pattern(code, pattern, strings);
     }
 
-    line(code, indent, ") {");
+    code.push_str(") {\n");
 
     {
         let indent = add_indent(indent);
@@ -338,7 +339,7 @@ fn generate_expression(
                 let indent = add_indent(indent);
                 generate_definitions(indent, code, false, definitions, strings);
 
-                code.push_str("return ");
+                indented(code, indent, "return ");
                 generate_expression(indent, code, body, strings);
                 code.push('\n');
             }
