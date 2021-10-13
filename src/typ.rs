@@ -1,3 +1,4 @@
+use crate::ast::ModuleFullName;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
@@ -24,7 +25,7 @@ pub enum Type {
     Unit,
 
     /* Named type (Int, Bool, List a, ...) */
-    Named(StringSymbol, Vec<Rc<Type>>),
+    Named(ModuleFullName, StringSymbol, Vec<Rc<Type>>),
 
     /* 'a, 'b, etc.
      *
@@ -125,7 +126,7 @@ impl Type {
             match t {
                 Unit => s.push_str("()"),
 
-                Named(name, params) => {
+                Named(_module, name, params) => {
                     s.push_str(strings.resolve(*name));
                     for param in params.iter() {
                         s.push(' ');
@@ -237,10 +238,11 @@ impl Type {
     }
 
     pub fn primitive_types(strings: &mut Strings) -> PrimitiveTypes {
+        let module = strings.get_or_intern("Core");
         PrimitiveTypes {
-            float: Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
-            bool: Rc::new(Type::Named(strings.get_or_intern("Bool"), vec![])),
-            string: Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+            float: Rc::new(Type::Named(module, strings.get_or_intern("Float"), vec![])),
+            bool: Rc::new(Type::Named(module, strings.get_or_intern("Bool"), vec![])),
+            string: Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
         }
     }
 }
@@ -279,11 +281,17 @@ mod test {
     fn test_printing() {
         let mut strings = Strings::new();
 
+        let module = strings.get_or_intern("Test");
+
         let tests = vec![
             (Type::Unit, "()"),
-            (Type::Named(strings.get_or_intern("Float"), vec![]), "Float"),
+            (
+                Type::Named(module, strings.get_or_intern("Float"), vec![]),
+                "Float",
+            ),
             (
                 Type::Named(
+                    module,
                     strings.get_or_intern("Result"),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
@@ -300,6 +308,7 @@ mod test {
             ),
             (
                 Type::Named(
+                    module,
                     strings.get_or_intern("Result"),
                     vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
@@ -331,30 +340,43 @@ mod test {
             ),
             (
                 Type::Fn(
-                    vec![Rc::new(Type::Named(strings.get_or_intern("Float"), vec![]))],
-                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                    vec![Rc::new(Type::Named(
+                        module,
+                        strings.get_or_intern("Float"),
+                        vec![],
+                    ))],
+                    Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
                 ),
                 "Float -> String",
             ),
             (
                 Type::Fn(
                     vec![Rc::new(Type::Fn(
-                        vec![Rc::new(Type::Named(strings.get_or_intern("Float"), vec![]))],
-                        Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                        vec![Rc::new(Type::Named(
+                            module,
+                            strings.get_or_intern("Float"),
+                            vec![],
+                        ))],
+                        Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
                     ))],
-                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                    Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
                 ),
                 "(Float -> String) -> String",
             ),
             (
                 Type::Fn(
                     vec![Rc::new(Type::Named(
+                        module,
                         strings.get_or_intern("String"),
                         vec![],
                     ))],
                     Rc::new(Type::Fn(
-                        vec![Rc::new(Type::Named(strings.get_or_intern("Float"), vec![]))],
-                        Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                        vec![Rc::new(Type::Named(
+                            module,
+                            strings.get_or_intern("Float"),
+                            vec![],
+                        ))],
+                        Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
                     )),
                 ),
                 "String -> Float -> String",
@@ -362,10 +384,10 @@ mod test {
             (
                 Type::Fn(
                     vec![
-                        Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
-                        Rc::new(Type::Named(strings.get_or_intern("Float"), vec![])),
+                        Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
+                        Rc::new(Type::Named(module, strings.get_or_intern("Float"), vec![])),
                     ],
-                    Rc::new(Type::Named(strings.get_or_intern("String"), vec![])),
+                    Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
                 ),
                 "String -> Float -> String",
             ),
@@ -411,7 +433,7 @@ mod test {
                     let mut fields = TypeEnv::new();
                     fields.insert(
                         strings.get_or_intern("a"),
-                        Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                        Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
                     );
                     fields
                 }),
@@ -422,7 +444,7 @@ mod test {
                     let mut fields = TypeEnv::new();
                     fields.insert(
                         strings.get_or_intern("age"),
-                        Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                        Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
                     );
                     fields.insert(
                         strings.get_or_intern("extra"),
@@ -451,7 +473,7 @@ mod test {
                         let mut fields = TypeEnv::new();
                         fields.insert(
                             strings.get_or_intern("age"),
-                            Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                            Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
                         );
                         fields
                     },
@@ -468,7 +490,7 @@ mod test {
                         let mut fields = TypeEnv::new();
                         fields.insert(
                             strings.get_or_intern("age"),
-                            Rc::new(Type::Named(strings.get_or_intern("Int"), vec![])),
+                            Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
                         );
                         fields.insert(
                             strings.get_or_intern("extra"),

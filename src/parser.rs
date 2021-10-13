@@ -46,7 +46,7 @@ use crate::token::{
     ● binop                → // parsed from Ast.Binop operator list
     ● unary                → ( "not" | "-" )? call
     //   Other primitives
-    ● call                 → prop_access ( prop_access )*
+    ● call                 → prop_access ( "_" | prop_access )*
     ● prop_access          → primary ( "." IDENTIFIER )*
     ● primary              → NUMBER | STRING | "false" | "true"
                            | IDENTIFIER

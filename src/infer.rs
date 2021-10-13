@@ -247,7 +247,8 @@ impl State {
             match &**t {
                 Unit => Rc::clone(t),
 
-                Named(name, args) => Rc::new(Named(
+                Named(module, name, args) => Rc::new(Named(
+                    *module,
                     *name,
                     args.iter()
                         .map(|arg| replace_type_vars(vars_to_replace, arg))
@@ -326,7 +327,7 @@ impl State {
             match &**t {
                 Unit => (),
 
-                Named(_, args) => {
+                Named(_, _, args) => {
                     for arg in args.iter() {
                         find_all_tvs(current_level, vars, arg);
                     }
@@ -530,8 +531,8 @@ fn unify<'ast>(
         match (&**t1, &**t2) {
             (Unit, Unit) => Ok(()),
 
-            (Named(name, args), Named(name2, args2)) => {
-                if name != name2 || args.len() != args2.len() {
+            (Named(module, name, args), Named(module2, name2, args2)) => {
+                if module != module2 || name != name2 || args.len() != args2.len() {
                     Err(TypeMismatch)
                 } else {
                     for (a1, a2) in args.iter().zip(args2.iter()) {
