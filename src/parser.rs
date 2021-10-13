@@ -1374,17 +1374,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         mut args: Vec<Expression>,
     ) -> ParseResult<'source, 'tokens, Vec<Expression>> {
         if self.is_token_in_same_line_or_nested_indent_from(first_token) {
-            self.primary().and_then(|arg| {
-                match arg {
-                    // We tried to get an argument, but there was no match, or it was not well indented
-                    None => Ok(args),
+            let arg = self.prop_access()?;
+            match arg {
+                // We tried to get an argument, but there was no match, or it was not well indented
+                None => Ok(args),
 
-                    Some(arg) => {
-                        args.push(arg);
-                        self.arguments(first_token, args)
-                    }
+                Some(arg) => {
+                    args.push(arg);
+                    self.arguments(first_token, args)
                 }
-            })
+            }
         } else {
             Ok(args)
         }
@@ -2201,6 +2200,8 @@ add 5"
         assert_snapshot!(parse("A.B.c"));
 
         assert_snapshot!(parse("A.B.C.d"));
+
+        assert_snapshot!(parse("function record.access"));
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
