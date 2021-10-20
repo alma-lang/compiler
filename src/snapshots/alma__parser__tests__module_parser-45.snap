@@ -99,7 +99,7 @@ Result:
                                                     },
                                                 },
                                             },
-                                            TypeApp(
+                                            App(
                                                 Node {
                                                     start: 42,
                                                     end: 48,
@@ -134,7 +134,7 @@ Result:
                                                     },
                                                 },
                                             },
-                                            TypeApp(
+                                            App(
                                                 Node {
                                                     start: 59,
                                                     end: 64,

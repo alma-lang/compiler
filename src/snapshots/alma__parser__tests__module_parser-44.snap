@@ -76,7 +76,7 @@ Result:
                                                     },
                                                 },
                                             },
-                                            TypeApp(
+                                            App(
                                                 Node {
                                                     start: 36,
                                                     end: 42,
@@ -111,7 +111,7 @@ Result:
                                                     },
                                                 },
                                             },
-                                            TypeApp(
+                                            App(
                                                 Node {
                                                     start: 53,
                                                     end: 58,

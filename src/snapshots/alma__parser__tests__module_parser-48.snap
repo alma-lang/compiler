@@ -88,7 +88,7 @@ Result:
                                                     },
                                                 },
                                             },
-                                            TypeApp(
+                                            App(
                                                 Node {
                                                     start: 38,
                                                     end: 55,
@@ -120,7 +120,7 @@ Result:
                                                                     },
                                                                 },
                                                             ),
-                                                            TypeApp(
+                                                            App(
                                                                 Node {
                                                                     start: 48,
                                                                     end: 55,

@@ -30,7 +30,7 @@ pub fn generate(
     write!(
         &mut code,
         "/*\n\n{}\n\n*/\n\n",
-        &module_interfaces.to_string(&strings)
+        &module_interfaces.to_string(strings)
     )
     .unwrap();
 
@@ -53,7 +53,7 @@ pub fn generate(
         generate_file(
             &mut code,
             module,
-            module_interfaces.get(&module_name).unwrap(),
+            module_interfaces.get(module_name).unwrap(),
             strings,
         );
 
@@ -61,7 +61,7 @@ pub fn generate(
     }
 
     code.push_str("\nreturn {\n");
-    for (_, module) in module_asts {
+    for module in module_asts.values() {
         indented(&mut code, add_indent(0), "");
         module_full_name(&mut code, &module.name, strings);
         code.push_str(",\n");

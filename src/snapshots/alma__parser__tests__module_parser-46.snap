@@ -100,7 +100,7 @@ Result:
                                                 },
                                             },
                                         ),
-                                        TypeApp(
+                                        App(
                                             Node {
                                                 start: 38,
                                                 end: 43,

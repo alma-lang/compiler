@@ -501,20 +501,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let mut params = vec![];
             let mut end = None;
 
-            loop {
-                match self.type_param()? {
-                    Some((param, p_end)) => {
-                        params.push(param);
-                        end = Some(p_end);
-                    }
-                    None => break,
-                }
+            while let Some((param, p_end)) = self.type_param()? {
+                params.push(param);
+                end = Some(p_end);
             }
 
             let line = name.line;
             let column = name.column;
             let start = name.start;
-            let end = end.unwrap_or_else(|| name.end);
+            let end = end.unwrap_or(name.end);
 
             Ok(Some(Node {
                 value: types::Constructor_::new(name, params),
@@ -700,7 +695,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let start = ident.start;
             let end = ident.end;
             Ok(Some((
-                Type::TypeApp(Node {
+                Type::App(Node {
                     value: types::Constructor_::new(ident, vec![]),
                     line,
                     column,
@@ -730,7 +725,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 if let TT::RightParen = self.get_token().kind {
                     self.advance();
 
-                    Ok(Some((Type::TypeApp(type_), end)))
+                    Ok(Some((Type::App(type_), end)))
                 } else {
                     Err(Error::expected_but_found(
                         self.source,
@@ -758,7 +753,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Ok(Some((Type::Var(ident), end)))
         } else if let Some(type_) = self.type_constructor()? {
             let end = type_.end;
-            Ok(Some((Type::TypeApp(type_), end)))
+            Ok(Some((Type::App(type_), end)))
         } else if let Some((record, end)) = self.type_record()? {
             Ok(Some((Type::Record(record), end)))
         } else {
@@ -1398,24 +1393,20 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
     fn properties(&mut self, expr: Expression) -> ParseResult<'source, 'tokens, Expression> {
         let mut expr = expr;
-        loop {
-            if let Some(identifier) = self.property(expr.end)? {
-                expr = {
-                    let start = expr.start;
-                    let end = identifier.end;
-                    let line = expr.line;
-                    let column = expr.column;
-                    Node {
-                        value: E::untyped(PropAccess(Box::new(expr), identifier)),
-                        start,
-                        end,
-                        line,
-                        column,
-                    }
-                };
-            } else {
-                break;
-            }
+        while let Some(identifier) = self.property(expr.end)? {
+            expr = {
+                let start = expr.start;
+                let end = identifier.end;
+                let line = expr.line;
+                let column = expr.column;
+                Node {
+                    value: E::untyped(PropAccess(Box::new(expr), identifier)),
+                    start,
+                    end,
+                    line,
+                    column,
+                }
+            };
         }
 
         Ok(expr)

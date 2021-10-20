@@ -229,7 +229,7 @@ pub mod types {
 
     #[derive(Debug)]
     pub enum Type {
-        TypeApp(Constructor),
+        App(Constructor),
         Var(Identifier),
         Record(RecordType),
     }
