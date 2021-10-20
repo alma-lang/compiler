@@ -54,17 +54,20 @@ Node {
                             value: None,
                         },
                         expr: Identifier(
-                            Node {
-                                start: 3,
-                                end: 4,
-                                line: 1,
-                                column: 3,
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 2,
+                            None,
+                            Identifier(
+                                Node {
+                                    start: 3,
+                                    end: 4,
+                                    line: 1,
+                                    column: 3,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 2,
+                                        },
                                     },
                                 },
-                            },
+                            ),
                         ),
                     },
                 },

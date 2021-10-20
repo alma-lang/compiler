@@ -258,7 +258,14 @@ fn generate_expression(
 
         ET::String_(string) => write!(code, "\"{}\"", strings.resolve(*string)).unwrap(),
 
-        ET::Identifier(identifier) => code.push_str(identifier.value.to_string(strings)),
+        ET::Identifier(module, identifier) => {
+            if let Some(module) = module {
+                module_full_name(code, module, strings);
+                code.push('.');
+            }
+
+            code.push_str(identifier.to_string(strings));
+        }
 
         ET::Record(fields) => {
             code.push_str("{\n");
@@ -297,8 +304,6 @@ fn generate_expression(
 
             indented(code, indent, "}");
         }
-
-        ET::ModuleAccess(module_name) => module_full_name(code, module_name, strings),
 
         ET::PropAccess(expr, field) => {
             generate_expression(indent, code, expr, strings);

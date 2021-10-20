@@ -180,7 +180,7 @@ impl Export_ {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub enum Definition {
     Lambda(Identifier, Expression /* ExpressionType::Lambda */),
     Pattern(Pattern, Expression),
@@ -268,7 +268,7 @@ pub mod types {
 
 pub type Expression = Node<Expression_>;
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub struct Expression_ {
     pub typ: RefCell<Option<Rc<typ::Type>>>,
     pub expr: ExpressionType,
@@ -287,14 +287,13 @@ impl Expression_ {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub enum ExpressionType {
     Unit,
     Bool(bool),
     Float(f64),
     String_(StringSymbol),
-    Identifier(Identifier),
-    ModuleAccess(ModuleName),
+    Identifier(Option<ModuleName>, AnyIdentifier),
     PropAccess(Box<Expression>, Identifier),
     PropAccessLambda(Identifier),
     Record(Vec<(Identifier, Expression)>),
@@ -512,5 +511,36 @@ impl Identifier_ {
 
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
         strings.resolve(self.name)
+    }
+}
+
+#[derive(Debug)]
+pub enum AnyIdentifier {
+    Identifier(Identifier),
+    CapitalizedIdentifier(CapitalizedIdentifier),
+}
+impl AnyIdentifier {
+    pub fn name(&self) -> IdentifierName {
+        use AnyIdentifier::*;
+        match self {
+            Identifier(i) => i.value.name,
+            CapitalizedIdentifier(i) => i.value.name,
+        }
+    }
+
+    pub fn node(&self) -> Node<()> {
+        use AnyIdentifier::*;
+        match self {
+            Identifier(i) => Node::copy_with_value((), i),
+            CapitalizedIdentifier(i) => Node::copy_with_value((), i),
+        }
+    }
+
+    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+        use AnyIdentifier::*;
+        match self {
+            Identifier(i) => i.value.to_string(strings),
+            CapitalizedIdentifier(i) => i.value.to_string(strings),
+        }
     }
 }

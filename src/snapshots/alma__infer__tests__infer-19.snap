@@ -18,11 +18,13 @@ module User.Id exposing (new)
 ---
 Output:
 
-module User
+[5:6]
 
-new : { new : Float }
+Undefined module `User`. Did you forget to import it?
 
-
-module User.Id
-
-new : Float
+  3│  import User.Id
+  4│  
+  5│  new = User.Id
+   │        ↑↑↑↑↑↑↑
+  6│  
+  7│  module User.Id exposing (new)

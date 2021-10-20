@@ -1,6 +1,6 @@
 use crate::ast::{
-    self, Definition, Expression, ExpressionType as ET, Identifier, Import, Module, ModuleName,
-    Pattern_ as P, Unary_ as U,
+    self, AnyIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import, Module,
+    ModuleName, Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::ModuleInterfaces;
 use crate::source::Source;
@@ -43,7 +43,7 @@ enum UnificationError {
 
 #[derive(Debug)]
 pub enum Error<'ast> {
-    UndefinedIdentifier(&'ast Identifier, &'ast Expression),
+    UndefinedIdentifier(&'ast AnyIdentifier, &'ast Expression),
     UndefinedModule(&'ast ModuleName, &'ast Expression),
     DuplicateField(&'ast Identifier, &'ast Expression),
     TypeMismatch(
@@ -86,7 +86,7 @@ impl<'ast> Error<'ast> {
             UndefinedIdentifier(identifier, _expr) => {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
-                    identifier.value.to_string(strings),
+                    identifier.to_string(strings),
                     code
                 ));
             }
@@ -888,14 +888,6 @@ fn infer_rec<'ast>(
 
         ET::String_(_) => Rc::clone(&primitive_types.string),
 
-        ET::ModuleAccess(module_name) => match env.get(&module_name.full_name) {
-            Some(s) => Rc::clone(s),
-            None => {
-                add_error(Err(Error::UndefinedModule(module_name, ast)), errors);
-                state.new_type_var()
-            }
-        },
-
         ET::Record(fields) => {
             let mut typed_fields = TypeEnv::new();
 
@@ -1024,13 +1016,30 @@ fn infer_rec<'ast>(
          *   -----------
          *   infer env x = t
          */
-        ET::Identifier(x) => match env.get(&x.value.name) {
-            Some(s) => state.instantiate(s),
-            None => {
-                add_error(Err(Error::UndefinedIdentifier(x, ast)), errors);
-                state.new_type_var()
+        ET::Identifier(module, x) => {
+            let env = if let Some(module) = module {
+                match env.get(&module.full_name) {
+                    Some(module_env) => match &**module_env {
+                        Record(module_env) => module_env,
+                        _ => panic!("Found module with type that wasn't a record with a type env"),
+                    },
+                    None => {
+                        add_error(Err(Error::UndefinedModule(module, ast)), errors);
+                        return state.new_type_var();
+                    }
+                }
+            } else {
+                &env
+            };
+
+            match env.get(&x.name()) {
+                Some(s) => state.instantiate(s),
+                None => {
+                    add_error(Err(Error::UndefinedIdentifier(x, ast)), errors);
+                    state.new_type_var()
+                }
             }
-        },
+        }
 
         /* App
          *   infer env f = t0

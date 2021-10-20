@@ -30,17 +30,20 @@ Node {
                         value: None,
                     },
                     expr: Identifier(
-                        Node {
-                            start: 0,
-                            end: 3,
-                            line: 1,
-                            column: 0,
-                            value: Identifier_ {
-                                name: SymbolU32 {
-                                    value: 1,
+                        None,
+                        Identifier(
+                            Node {
+                                start: 0,
+                                end: 3,
+                                line: 1,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 1,
+                                    },
                                 },
                             },
-                        },
+                        ),
                     ),
                 },
             },
@@ -55,17 +58,20 @@ Node {
                             value: None,
                         },
                         expr: Identifier(
-                            Node {
-                                start: 5,
-                                end: 8,
-                                line: 2,
-                                column: 1,
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 2,
+                            None,
+                            Identifier(
+                                Node {
+                                    start: 5,
+                                    end: 8,
+                                    line: 2,
+                                    column: 1,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 2,
+                                        },
                                     },
                                 },
-                            },
+                            ),
                         ),
                     },
                 },

@@ -47,11 +47,11 @@ use crate::token::{
     ● unary                → ( "not" | "-" )? call
     //   Other primitives
     ● call                 → prop_access ( "_" | prop_access )*
-    ● prop_access          → primary ( "." IDENTIFIER )*
+    ● prop_access          → primary properties
+    ● properties           → ( "." ( IDENTIFIER ) )*
     ● primary              → NUMBER | STRING | "false" | "true"
-                           | IDENTIFIER
+                           | ( module_name "." )? ( IDENTIFIER | CAPITALIZED_IDENTIFIER )
                            | "." IDENTIFIER
-                           | module_name
                            | record
                            | "(" ( expression )? ")"
     ● record               → "{" ( expression "|" )? ( field ( "," field )* )? "}"
@@ -1390,77 +1390,81 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn prop_access(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        self.primary().and_then(|expr| match expr {
-            Some(expr) => {
-                let mut expr = expr;
-
-                loop {
-                    let dot_token = self.get_token();
-                    match dot_token.kind {
-                        // Dot token without whitespace between the prev token is a record access
-                        Dot if dot_token.position == expr.end => {
-                            self.advance();
-
-                            let identifier_token = self.get_token();
-                            match identifier_token.kind {
-                                // Dot token without whitespace between it and the identifier is a prop access
-                                TT::Identifier
-                                    if identifier_token.position == dot_token.end_position =>
-                                {
-                                    self.advance();
-
-                                    let name_identifier = Node::new(
-                                        Identifier_::new(identifier_token.lexeme, self.strings),
-                                        identifier_token,
-                                        identifier_token,
-                                    );
-                                    expr = {
-                                        let start = expr.start;
-                                        let end = name_identifier.end;
-                                        let line = expr.line;
-                                        let column = expr.column;
-                                        Node {
-                                            value: E::untyped(PropAccess(
-                                                Box::new(expr),
-                                                name_identifier,
-                                            )),
-                                            start,
-                                            end,
-                                            line,
-                                            column,
-                                        }
-                                    };
-                                }
-
-                                TT::Identifier => {
-                                    return Err(Error::new(
-                                        self.source,
-                                        dot_token,
-                                        None,
-                                        "A property access must have the dot \
-                                        and identifier together, \
-                                        like this `a.b.c`",
-                                    ));
-                                }
-                                _ => {
-                                    return Err(Error::new(
-                                        self.source,
-                                        dot_token,
-                                        None,
-                                        "Expected an identifier after a \
-                                        dot for the property access",
-                                    ));
-                                }
-                            }
-                        }
-                        _ => break,
+        if let Some(expr) = self.primary()? {
+            self.properties(expr).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+    fn properties(&mut self, expr: Expression) -> ParseResult<'source, 'tokens, Expression> {
+        let mut expr = expr;
+        loop {
+            if let Some(identifier) = self.property(expr.end)? {
+                expr = {
+                    let start = expr.start;
+                    let end = identifier.end;
+                    let line = expr.line;
+                    let column = expr.column;
+                    Node {
+                        value: E::untyped(PropAccess(Box::new(expr), identifier)),
+                        start,
+                        end,
+                        line,
+                        column,
                     }
-                }
-
-                Ok(Some(expr))
+                };
+            } else {
+                break;
             }
-            None => Ok(None),
-        })
+        }
+
+        Ok(expr)
+    }
+    fn property(&mut self, prev_end: usize) -> ParseResult<'source, 'tokens, Option<Identifier>> {
+        let dot_token = self.get_token();
+        match dot_token.kind {
+            // Dot token without whitespace between the prev token is a record access
+            Dot if dot_token.position == prev_end => {
+                self.advance();
+
+                let identifier_token = self.get_token();
+                let ident = match identifier_token.kind {
+                    // Dot token without whitespace between it and the identifier is a prop access
+                    TT::Identifier if identifier_token.position == dot_token.end_position => {
+                        self.advance();
+
+                        Node::new(
+                            Identifier_::new(identifier_token.lexeme, self.strings),
+                            identifier_token,
+                            identifier_token,
+                        )
+                    }
+
+                    TT::Identifier => {
+                        return Err(Error::new(
+                            self.source,
+                            dot_token,
+                            None,
+                            "A property access must have the dot \
+                            and identifier together, \
+                            like this `a.b.c`",
+                        ));
+                    }
+                    _ => {
+                        return Err(Error::new(
+                            self.source,
+                            dot_token,
+                            None,
+                            "Expected an identifier after a \
+                            dot for the property access",
+                        ));
+                    }
+                };
+
+                Ok(Some(ident))
+            }
+            _ => Ok(None),
+        }
     }
 
     fn primary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
@@ -1499,27 +1503,45 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     Node::new(Identifier_::new(token.lexeme, self.strings), token, token);
 
                 Ok(Some(Node::new(
-                    E::untyped(ET::Identifier(identifier)),
+                    E::untyped(ET::Identifier(None, AnyIdentifier::Identifier(identifier))),
                     token,
                     token,
                 )))
             }
 
-            TT::CapitalizedIdentifier => self.module_name().map(|maybe_name| {
-                maybe_name.map(|name| {
-                    let line = token.line;
-                    let column = token.column;
-                    let start = token.position;
-                    let end = name.end();
-                    Node {
-                        value: E::untyped(ET::ModuleAccess(name)),
-                        start,
-                        end,
-                        line,
-                        column,
+            TT::CapitalizedIdentifier => {
+                let mut module = self.module_name()?.expect("Just saw a capitalized identifier, how is this not a module name with parts.len() == 1?");
+
+                let (module, identifier) = if module.parts.len() == 1 {
+                    let first = module.parts.swap_remove(0);
+                    (None, AnyIdentifier::CapitalizedIdentifier(first))
+                } else {
+                    // Is there a normal identifier afterwards? If so the whole module is fine, if
+                    // not, the module's last part is a capitalized identifier.
+                    if let Some(ident) = self.property(module.end())? {
+                        (Some(module), AnyIdentifier::Identifier(ident))
+                    } else {
+                        let ident = module.parts.pop().unwrap();
+                        let module = ModuleName::new(module.parts, self.strings).expect("Module should be valid as it is being built from a previously built module");
+                        (Some(module), AnyIdentifier::CapitalizedIdentifier(ident))
                     }
-                })
-            }),
+                };
+
+                let (line, column, start, end) = if let Some(module) = &module {
+                    let first = &module.parts[0];
+                    (first.line, first.column, first.start, identifier.node().end)
+                } else {
+                    let node = identifier.node();
+                    (node.line, node.column, node.start, node.end)
+                };
+                Ok(Some(Node {
+                    value: E::untyped(ET::Identifier(module, identifier)),
+                    start,
+                    end,
+                    line,
+                    column,
+                }))
+            }
 
             TT::String_ => {
                 self.advance();
@@ -1934,10 +1956,13 @@ fn organize_binops(
                     left = Node {
                         value: E::untyped(Binary(
                             Box::new(Node::copy_with_value(
-                                E::untyped(ET::Identifier(Node::copy_with_value(
-                                    op.value.fn_.clone(),
-                                    &op,
-                                ))),
+                                E::untyped(ET::Identifier(
+                                    None,
+                                    AnyIdentifier::Identifier(Node::copy_with_value(
+                                        op.value.fn_.clone(),
+                                        &op,
+                                    )),
+                                )),
                                 &op,
                             )),
                             op,
