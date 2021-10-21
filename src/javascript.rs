@@ -1,9 +1,11 @@
 use crate::ast::{
+    types::{self, TypeDefinition},
     Definition, Export_, Expression, ExpressionType as ET, Module, ModuleFullName, ModuleName,
     Pattern, Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::{ModuleAsts, ModuleInterface, ModuleInterfaces};
 use crate::strings::Strings;
+use std::cmp::min;
 use std::fmt::Write;
 
 const INDENT: usize = 4;
@@ -78,23 +80,29 @@ fn generate_file(
     _interface: &ModuleInterface,
     strings: &Strings,
 ) {
+    let indent = add_indent(0);
     if !module.imports.is_empty() {
         code.push('\n');
-        generate_imports(code, module, strings);
+        generate_imports(indent, code, module, strings);
     }
 
-    code.push('\n');
-    generate_definitions(add_indent(0), code, true, &module.definitions, strings);
+    if !module.type_definitions.is_empty() {
+        code.push('\n');
+        generate_types(indent, code, &module.type_definitions, strings);
+    }
+
+    if !module.definitions.is_empty() {
+        code.push('\n');
+        generate_definitions(indent, code, true, &module.definitions, strings);
+    }
 
     if !module.exports.is_empty() {
         code.push('\n');
-        generate_exports(code, module, strings);
+        generate_exports(indent, code, module, strings);
     }
 }
 
-fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
-    let indent = add_indent(0);
-
+fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: &Strings) {
     for import in &module.imports {
         let import = &import.value;
 
@@ -106,27 +114,8 @@ fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
                 code.push('\n');
             }
             None => {
-                // TODO: This is wrong, and code will be accessing this via normal prop access so
-                // here we need to do something like:
-                //     let Modules;
-                //     (Constants = (Modules = Modules ?? {}).Constants ?? {});
-                //
-                // write!(
-                //     code,
-                //     "let {0} = {0}\n",
-                //     import
-                //         .module_name
-                //         .parts
-                //         .get(0)
-                //         .unwrap_or_else(|| panic!(
-                //             "A module name should never be empty. {}",
-                //             import.module_name.to_string(strings)
-                //         ))
-                //         .value
-                //         .to_string(strings)
-                // )
-                // .unwrap();
-                // todo!()
+                // Modules are already in scope, no need to print anything
+                ()
             }
         }
 
@@ -147,7 +136,89 @@ fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
             indented(code, indent, "");
             write!(code, "let {{ {} }} = ", identifiers.join(", "),).unwrap();
             module_full_name(code, &import.module_name, strings);
-            code.push('\n');
+            code.push('\n')
+        }
+    }
+}
+
+fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], strings: &Strings) {
+    for (i, type_def) in types.iter().enumerate() {
+        let type_def = &type_def.value;
+        if i > 0 {
+            code.push('\n')
+        }
+        match &type_def.typ {
+            types::TypeDefinitionType::Union(constructors) => {
+                let type_name = type_def.name.value.to_string(strings);
+                indented(code, indent, "");
+                writeln!(code, "// type {}\n", type_name).unwrap();
+
+                let max_params = constructors
+                    .iter()
+                    .map(|c| c.value.params.len())
+                    .max()
+                    .unwrap_or(0);
+
+                for (i, constructor) in constructors.iter().enumerate() {
+                    if i > 0 {
+                        code.push('\n')
+                    }
+                    let constructor = &constructor.value;
+                    let constructor_name = constructor.name.value.to_string(strings);
+                    let num_params = constructor.params.len();
+
+                    if num_params > 0 {
+                        indented(code, indent, "function ");
+                        code.push_str(constructor_name);
+                        code.push('(');
+                        for i in 0..min(num_params, max_params) {
+                            if i > 0 {
+                                code.push_str(", ");
+                            }
+                            write!(code, "_{}", i).unwrap();
+                        }
+                        code.push_str(") {\n");
+
+                        {
+                            let indent = add_indent(indent);
+                            line(code, indent, "return {");
+                            {
+                                let indent = add_indent(indent);
+                                indented(code, indent, "");
+                                writeln!(code, "tag: \"{}\",", constructor_name).unwrap();
+
+                                for i in 0..max_params {
+                                    indented(code, indent, "");
+                                    if i < num_params {
+                                        writeln!(code, "_{},", i).unwrap();
+                                    } else {
+                                        writeln!(code, "_{}: null,", i).unwrap();
+                                    }
+                                }
+                            }
+                            line(code, indent, "}");
+                        }
+
+                        line(code, indent, "}");
+                    } else {
+                        indented(code, indent, "let ");
+                        code.push_str(constructor_name);
+                        code.push_str(" = {\n");
+                        {
+                            let indent = add_indent(indent);
+                            indented(code, indent, "");
+                            writeln!(code, "tag: \"{}\",", constructor_name).unwrap();
+
+                            for i in 0..max_params {
+                                indented(code, indent, "");
+                                writeln!(code, "_{}: null,", i).unwrap();
+                            }
+                        }
+                        line(code, indent, "}");
+                    }
+                }
+            }
+            types::TypeDefinitionType::Record(_) => (),
         }
     }
 }
@@ -167,7 +238,8 @@ fn generate_definitions(
             Definition::Lambda(name, expression) => match &expression.value.expr {
                 ET::Lambda(params, body) => {
                     indented(code, indent, "");
-                    generate_function(indent, code, name.value.to_string(strings), params, body, strings)
+                    generate_function(indent, code, name.value.to_string(strings), params, body, strings);
+                    code.push('\n');
                 }
                 _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
             },
@@ -178,8 +250,7 @@ fn generate_definitions(
     }
 }
 
-fn generate_exports(code: &mut String, module: &Module, strings: &Strings) {
-    let indent = add_indent(0);
+fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: &Strings) {
     line(code, indent, "return {");
 
     for export in &module.exports {
@@ -188,10 +259,11 @@ fn generate_exports(code: &mut String, module: &Module, strings: &Strings) {
                 indented(code, add_indent(indent), "");
                 writeln!(code, "{},", ident.value.to_string(strings)).unwrap();
             }
-            Export_::Type(_, _) =>
-            // TODO: Generate type constructors
-            {
-                ()
+            Export_::Type(_, constructors) => {
+                for constructor in constructors {
+                    indented(code, add_indent(indent), "");
+                    writeln!(code, "{},", constructor.value.to_string(strings)).unwrap();
+                }
             }
         }
     }
