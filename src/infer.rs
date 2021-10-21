@@ -1,13 +1,12 @@
 use crate::ast::{
-    self, AnyIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import, Module,
-    ModuleName, Pattern_ as P, Unary_ as U,
+    self, AnyIdentifier, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET,
+    Identifier, Import, Module, ModuleName, Pattern_ as P, Unary_ as U,
 };
-use crate::compiler::types::ModuleInterfaces;
+use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::TypeEnv;
-use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::cmp::min;
@@ -54,8 +53,12 @@ pub enum Error<'ast> {
     ),
     InfiniteType(&'ast Expression, Rc<Type>),
     UndefinedExport(&'ast Identifier),
+    UndefinedExportConstructor(&'ast CapitalizedIdentifier),
     UnknownImport(&'ast Import),
     UnknownImportDefinition(&'ast Identifier, &'ast Import),
+    UnknownImportConstructor(&'ast CapitalizedIdentifier, &'ast Import),
+    UnknownType(&'ast CapitalizedIdentifier),
+    UnknownTypeVar(&'ast Identifier),
 }
 
 impl<'ast> Error<'ast> {
@@ -71,8 +74,12 @@ impl<'ast> Error<'ast> {
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
             UndefinedExport(node) => (node.start, node.line, node.column, node.end),
+            UndefinedExportConstructor(node) => (node.start, node.line, node.column, node.end),
             UnknownImport(node) => (node.start, node.line, node.column, node.end),
             UnknownImportDefinition(node, _) => (node.start, node.line, node.column, node.end),
+            UnknownImportConstructor(node, _) => (node.start, node.line, node.column, node.end),
+            UnknownType(node) => (node.start, node.line, node.column, node.end),
+            UnknownTypeVar(node) => (node.start, node.line, node.column, node.end),
         };
 
         s.push_str(&source.to_string_with_line_and_col(line_number, column));
@@ -180,6 +187,14 @@ with type
                 ));
             }
 
+            UndefinedExportConstructor(export) => {
+                s.push_str(&format!(
+                    "Undefined identifier `{}`\n\n{}",
+                    export.value.to_string(strings),
+                    code
+                ));
+            }
+
             UnknownImport(import) => {
                 s.push_str(&format!(
                     "Couldn't find module `{}`\n\n{}",
@@ -193,6 +208,31 @@ with type
                     "Module `{}` doesn't appear to expose `{}`\n\n{}",
                     import.value.module_name.to_string(strings),
                     export.value.to_string(strings),
+                    code
+                ));
+            }
+
+            UnknownImportConstructor(export, import) => {
+                s.push_str(&format!(
+                    "Module `{}` doesn't appear to expose `{}`\n\n{}",
+                    import.value.module_name.to_string(strings),
+                    export.value.to_string(strings),
+                    code
+                ));
+            }
+
+            UnknownType(name) => {
+                s.push_str(&format!(
+                    "Couldn't find type `{}`\n\n{}",
+                    name.value.to_string(strings),
+                    code
+                ));
+            }
+
+            UnknownTypeVar(name) => {
+                s.push_str(&format!(
+                    "Type variable `{}` has not been declared\n\n{}",
+                    name.value.to_string(strings),
                     code
                 ));
             }
@@ -809,39 +849,126 @@ pub fn infer<'interfaces, 'ast>(
     module: &'ast Module,
     primitive_types: &PrimitiveTypes,
     strings: &mut Strings,
-) -> Result<Rc<TypeEnv>, (Rc<TypeEnv>, Vec<Error<'ast>>)> {
+) -> Result<ModuleInterface, (ModuleInterface, Vec<Error<'ast>>)> {
     let mut state = State::new();
     let mut env = TypeEnv::new();
+    let mut types_env = TypeEnv::new();
     base_env(&mut state, &mut env, primitive_types, strings);
     let mut errors: Vec<Error> = vec![];
 
-    let mut module_type = TypeEnv::new();
+    let mut module_definitions = TypeEnv::new();
+    let mut module_types = TypeEnv::new();
+    let mut module_type_constructors = HashMap::default();
 
     // Check imports and add them to the env to type check this module
     for import in &module.imports {
         let module_full_name = &import.value.module_name.full_name;
         match module_interfaces.get(module_full_name) {
             Some(imported) => {
-                if let Some(alias) = &import.value.alias {
-                    env.insert(alias.value.name, Rc::new(Record((**imported).clone())));
+                let module_ident = if let Some(alias) = &import.value.alias {
+                    alias.value.name
                 } else {
-                    env.insert(
-                        import.value.module_name.full_name,
-                        Rc::new(Record((**imported).clone())),
-                    );
+                    import.value.module_name.full_name
                 };
+                env.insert(
+                    module_ident,
+                    Rc::new(Record((*imported.definitions).clone())),
+                );
+                types_env.insert(module_ident, Rc::new(Record((*imported.types).clone())));
 
                 for exposed in &import.value.exposing {
-                    for identifier in exposed.value.identifiers() {
-                        let name = &identifier.value.name;
-                        match imported.get(name) {
-                            Some(definition) => env.insert(*name, Rc::clone(definition)),
-                            None => errors.push(Error::UnknownImportDefinition(identifier, import)),
-                        };
+                    match &exposed.value {
+                        ast::Export_::Identifier(identifier) => {
+                            let name = &identifier.value.name;
+                            match imported.definitions.get(name) {
+                                Some(definition) => env.insert(*name, Rc::clone(definition)),
+                                None => {
+                                    errors.push(Error::UnknownImportDefinition(identifier, import))
+                                }
+                            };
+                        }
+                        ast::Export_::Type(type_ast, constructors) => {
+                            let name = &type_ast.value.name;
+                            match imported.types.get(name) {
+                                Some(typ) => {
+                                    types_env.insert(*name, Rc::clone(&typ));
+
+                                    let constructor_types =
+                                        imported.type_constructors.get(name).unwrap();
+                                    for constructor in constructors {
+                                        let name = &constructor.value.name;
+                                        match constructor_types.get(name) {
+                                            Some(definition) => {
+                                                env.insert(*name, Rc::clone(definition))
+                                            }
+                                            None => errors.push(Error::UnknownImportConstructor(
+                                                constructor,
+                                                import,
+                                            )),
+                                        };
+                                    }
+                                }
+                                None => errors.push(Error::UnknownType(type_ast)),
+                            }
+                        }
                     }
                 }
             }
             None => errors.push(Error::UnknownImport(import)),
+        }
+    }
+
+    // Add local module types to environment
+    for type_def in &module.type_definitions {
+        let mut type_vars = TypeEnv::new();
+        for var in &type_def.value.vars {
+            type_vars.insert(var.value.name, state.new_type_var());
+        }
+        let name = type_def.value.name.value.name;
+
+        match &type_def.value.typ {
+            ast::types::TypeDefinitionType::Union(constructors) => {
+                let type_def_type = Rc::new(Type::Named(
+                    module.name.full_name,
+                    name,
+                    type_vars.map().values().map(|t| Rc::clone(t)).collect(),
+                ));
+                types_env.insert(name, Rc::clone(&type_def_type));
+
+                for constructor in constructors {
+                    let constructor = &constructor.value;
+                    let name = &constructor.name.value.name;
+                    let mut param_types = vec![];
+                    for param in &constructor.params {
+                        let typ = ast_type_to_type(
+                            &param,
+                            &type_vars,
+                            &mut errors,
+                            &mut state,
+                            &types_env,
+                        );
+                        param_types.push(typ);
+                    }
+
+                    let typ = if param_types.is_empty() {
+                        Rc::clone(&type_def_type)
+                    } else {
+                        Rc::new(Type::Fn(param_types, Rc::clone(&type_def_type)))
+                    };
+
+                    env.insert(*name, typ);
+                }
+            }
+            ast::types::TypeDefinitionType::Record(record_type) => {
+                let typ = ast_record_type_to_type(
+                    record_type,
+                    &type_vars,
+                    &mut errors,
+                    &mut state,
+                    &types_env,
+                );
+                types_env.insert(name, typ);
+            }
         }
     }
 
@@ -856,19 +983,110 @@ pub fn infer<'interfaces, 'ast>(
 
     // Check exports against this module type to see everything exists and is valid
     for export in &module.exports {
-        for identifier in export.value.identifiers() {
-            let name = &identifier.value.name;
-            match env.get(name) {
-                Some(typ) => module_type.insert(*name, Rc::clone(typ)),
-                None => errors.push(Error::UndefinedExport(identifier)),
+        match &export.value {
+            ast::Export_::Identifier(identifier) => {
+                let name = &identifier.value.name;
+                match env.get(name) {
+                    Some(typ) => module_definitions.insert(*name, Rc::clone(typ)),
+                    None => errors.push(Error::UndefinedExport(identifier)),
+                }
+            }
+            ast::Export_::Type(type_name, constructors) => {
+                let name = &type_name.value.name;
+                if let Some(typ) = types_env.get(name) {
+                    module_types.insert(*name, Rc::clone(typ));
+
+                    let mut constructor_types = TypeEnv::new();
+                    for constructor in constructors {
+                        let name = &constructor.value.name;
+                        match env.get(name) {
+                            Some(typ) => {
+                                constructor_types.insert(*name, Rc::clone(typ));
+                            }
+                            None => errors.push(Error::UndefinedExportConstructor(&constructor)),
+                        }
+                    }
+                    module_type_constructors.insert(*name, Rc::new(constructor_types));
+                } else {
+                    errors.push(Error::UnknownType(type_name));
+                }
             }
         }
     }
 
+    let module_interface = ModuleInterface {
+        types: Rc::new(module_types),
+        type_constructors: module_type_constructors,
+        definitions: Rc::new(module_definitions),
+    };
     if errors.is_empty() {
-        Ok(Rc::new(module_type))
+        Ok(module_interface)
     } else {
-        Err((Rc::new(module_type), errors))
+        Err((module_interface, errors))
+    }
+}
+
+fn ast_type_to_type<'ast>(
+    ast_type: &'ast ast::types::Type,
+    type_vars: &TypeEnv,
+    errors: &mut Vec<Error<'ast>>,
+    state: &mut State,
+    types_env: &TypeEnv,
+) -> Rc<Type> {
+    match ast_type {
+        ast::types::Type::App(typ) => match types_env.get(&typ.value.name.value.name) {
+            Some(t) => Rc::clone(t),
+            None => {
+                errors.push(Error::UnknownType(&typ.value.name));
+                state.new_type_var()
+            }
+        },
+
+        ast::types::Type::Var(identifier) => match type_vars.get(&identifier.value.name) {
+            Some(t) => Rc::clone(t),
+            None => {
+                errors.push(Error::UnknownTypeVar(&identifier));
+                state.new_type_var()
+            }
+        },
+
+        ast::types::Type::Record(record_type) => {
+            ast_record_type_to_type(record_type, type_vars, errors, state, types_env)
+        }
+    }
+}
+fn ast_record_type_to_type<'ast>(
+    record_type: &'ast ast::types::RecordType,
+    type_vars: &TypeEnv,
+    errors: &mut Vec<Error<'ast>>,
+    state: &mut State,
+    types_env: &TypeEnv,
+) -> Rc<Type> {
+    match record_type {
+        ast::types::RecordType::Record(record) => {
+            let mut fields = TypeEnv::new();
+            for (name, ast_type) in &record.value.fields {
+                let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env);
+                fields.insert(name.value.name, typ);
+            }
+            Rc::new(Record(fields))
+        }
+        ast::types::RecordType::RecordExt(record_ext) => {
+            let ext_type = match type_vars.get(&record_ext.value.extension.value.name) {
+                Some(t) => Rc::clone(t),
+                None => {
+                    errors.push(Error::UnknownTypeVar(&record_ext.value.extension));
+                    return state.new_type_var();
+                }
+            };
+
+            let mut fields = TypeEnv::new();
+            for (name, ast_type) in &record_ext.value.fields {
+                let typ = ast_type_to_type(&ast_type, type_vars, errors, state, types_env);
+                fields.insert(name.value.name, typ);
+            }
+            Rc::new(RecordExt(fields, ext_type))
+        }
     }
 }
 
@@ -1622,6 +1840,114 @@ new = User.Id
 
 module User.Id exposing (new)
     new = 42
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (Fruit)
+
+type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (Fruit)
+
+type Fruit = Banana a
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (Fruita)
+
+type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (Fruit)
+
+type Fruit a = Banana a
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (Fruit)
+
+type Fruit a b = Banana a
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Fruit = Banana
+
+main = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Banana = Banana
+
+type Fruit a = Fruit a
+
+main = Fruit
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Banana = Banana
+
+type Fruit a = Fruit a
+
+main = Fruit Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (Banana)
+
+type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Fruit(Banana))
+
+main = Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Banana)
+
+main = Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
 "
         ));
 

@@ -1,0 +1,23 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit = Banana a\n\")"
+
+---
+Input:
+
+module Test exposing (Fruit)
+
+type Fruit = Banana a
+
+
+---
+Output:
+
+[3:20]
+
+Type variable `a` has not been declared
+
+  1│  module Test exposing (Fruit)
+  2│  
+  3│  type Fruit = Banana a
+   │                      ↑

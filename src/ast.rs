@@ -29,13 +29,13 @@ impl<V> Node<V> {
         }
     }
 
-    pub fn copy_with_value<T>(value: V, node: &Node<T>) -> Self {
+    pub fn with_value<T>(&self, value: T) -> Node<T> {
         Node {
             value,
-            start: node.start,
-            end: node.end,
-            line: node.line,
-            column: node.column,
+            start: self.start,
+            end: self.end,
+            line: self.line,
+            column: self.column,
         }
     }
 }
@@ -166,18 +166,8 @@ pub struct Import_ {
 pub type Export = Node<Export_>;
 #[derive(Debug, PartialEq)]
 pub enum Export_ {
-    // Enum because there may be sub-exports like `exposing (Maybe(Just))` in the future
     Identifier(Identifier),
-}
-
-impl Export_ {
-    pub fn identifiers(&self) -> Vec<&Identifier> {
-        let mut identifiers = vec![];
-        match self {
-            Self::Identifier(identifier) => identifiers.push(identifier),
-        }
-        identifiers
-    }
+    Type(CapitalizedIdentifier, Vec<CapitalizedIdentifier>),
 }
 
 #[derive(Debug)]
@@ -195,9 +185,9 @@ pub mod types {
 
     #[derive(Debug)]
     pub struct TypeDefinition_ {
-        name: CapitalizedIdentifier,
-        vars: Vec<Identifier>,
-        typ: TypeDefinitionType,
+        pub name: CapitalizedIdentifier,
+        pub vars: Vec<Identifier>,
+        pub typ: TypeDefinitionType,
     }
     impl TypeDefinition_ {
         pub fn new(
@@ -218,8 +208,8 @@ pub mod types {
     pub type Constructor = Node<Constructor_>;
     #[derive(Debug)]
     pub struct Constructor_ {
-        name: CapitalizedIdentifier,
-        params: Vec<Type>,
+        pub name: CapitalizedIdentifier,
+        pub params: Vec<Type>,
     }
     impl Constructor_ {
         pub fn new(name: CapitalizedIdentifier, params: Vec<Type>) -> Self {
@@ -243,7 +233,7 @@ pub mod types {
     pub type Record = Node<Record_>;
     #[derive(Debug)]
     pub struct Record_ {
-        fields: Vec<(Identifier, Type)>,
+        pub fields: Vec<(Identifier, Type)>,
     }
     impl Record_ {
         pub fn new(fields: Vec<(Identifier, Type)>) -> Self {
@@ -254,8 +244,8 @@ pub mod types {
     pub type RecordExt = Node<RecordExt_>;
     #[derive(Debug)]
     pub struct RecordExt_ {
-        extension: Identifier,
-        fields: Vec<(Identifier, Type)>,
+        pub extension: Identifier,
+        pub fields: Vec<(Identifier, Type)>,
     }
     impl RecordExt_ {
         pub fn new(extension: Identifier, fields: Vec<(Identifier, Type)>) -> Self {
@@ -531,8 +521,8 @@ impl AnyIdentifier {
     pub fn node(&self) -> Node<()> {
         use AnyIdentifier::*;
         match self {
-            Identifier(i) => Node::copy_with_value((), i),
-            CapitalizedIdentifier(i) => Node::copy_with_value((), i),
+            Identifier(i) => i.with_value(()),
+            CapitalizedIdentifier(i) => i.with_value(()),
         }
     }
 

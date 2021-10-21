@@ -1,0 +1,22 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\ntype Banana = Banana\n\ntype Fruit a = Fruit a\n\nmain = Fruit Banana\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+type Banana = Banana
+
+type Fruit a = Fruit a
+
+main = Fruit Banana
+
+
+---
+Output:
+
+module Test
+
+main : Fruit Banana

@@ -18,7 +18,9 @@ use crate::token::{
     ● file                 → module EOF
     ● module               → "module" module_name exposing? imports? definitions?
     ● module_name          → CAPITALIZED_IDENTIFIER ("." CAPITALIZED_IDENTIFIER)*
-    ● exposing             → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
+    ● exposing             → "exposing" "(" export ( "," export )* ")"
+    ● export               → IDENTIFIER
+                           | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
     ● imports              → import ( import )*
     ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
     ● definitions          → ( type_def | module | binding )+
@@ -251,7 +253,6 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn exposing(&mut self) -> ParseResult<'source, 'tokens, (usize, Vec<Export>)> {
-        // ○ exposing       → "exposing" "(" IDENTIFIER ( "," IDENTIFIER )* ")"
         match self.get_token().kind {
             TT::Exposing => {
                 self.advance();
@@ -310,18 +311,68 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn export(&mut self) -> ParseResult<'source, 'tokens, Export> {
-        match self.identifier() {
-            Some(export) => {
-                // Make intermediate node to please borrow checker
-                let node = Node::copy_with_value((), &export);
-                Ok(Node::copy_with_value(Export_::Identifier(export), &node))
+        if let Some(export) = self.identifier() {
+            // Make intermediate node to please borrow checker
+            let node = &export.with_value(());
+            Ok(node.with_value(Export_::Identifier(export)))
+        } else if let Some(export) = self.capitalized_identifier() {
+            let mut end = export.end;
+            let mut constructors = vec![];
+
+            if matches!(self.get_token().kind, TT::LeftParen) {
+                self.advance();
+
+                loop {
+                    if let Some(export) = self.capitalized_identifier() {
+                        match self.get_token().kind {
+                            TT::RightParen => {
+                                end = self.get_token().end_position;
+                                self.advance();
+                                constructors.push(export);
+                                break;
+                            }
+                            TT::Comma => {
+                                self.advance();
+                                constructors.push(export);
+                            }
+                            _ => {
+                                return Err(Error::expected_but_found(
+                                    self.source,
+                                    self.get_token(),
+                                    None,
+                                    "Parsing the type constructors expected a comma \
+                                        separated list of constructors inside parenthesis",
+                                ))
+                            }
+                        }
+                    } else {
+                        return Err(Error::expected_but_found(
+                            self.source,
+                            self.get_token(),
+                            None,
+                            "Expected a type constructor name",
+                        ));
+                    }
+                }
             }
-            _ => Err(Error::expected_but_found(
+
+            let line = export.line;
+            let column = export.column;
+            let start = export.start;
+            Ok(Node {
+                value: Export_::Type(export, constructors),
+                start,
+                end,
+                line,
+                column,
+            })
+        } else {
+            Err(Error::expected_but_found(
                 self.source,
                 self.get_token(),
                 None,
                 "Expected an identifier from the module to expose",
-            )),
+            ))
         }
     }
 
@@ -497,13 +548,21 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_constructor(&mut self) -> ParseResult<'source, 'tokens, Option<types::Constructor>> {
+        let constructor_token = self.get_token();
         if let Some(name) = self.capitalized_identifier() {
             let mut params = vec![];
             let mut end = None;
 
-            while let Some((param, p_end)) = self.type_param()? {
-                params.push(param);
-                end = Some(p_end);
+            loop {
+                if !self.is_token_in_same_line_or_nested_indent_from(constructor_token) {
+                    break;
+                }
+                if let Some((param, p_end)) = self.type_param()? {
+                    params.push(param);
+                    end = Some(p_end);
+                } else {
+                    break;
+                }
             }
 
             let line = name.line;
@@ -1946,16 +2005,10 @@ fn organize_binops(
 
                     left = Node {
                         value: E::untyped(Binary(
-                            Box::new(Node::copy_with_value(
-                                E::untyped(ET::Identifier(
-                                    None,
-                                    AnyIdentifier::Identifier(Node::copy_with_value(
-                                        op.value.fn_.clone(),
-                                        &op,
-                                    )),
-                                )),
-                                &op,
-                            )),
+                            Box::new(op.with_value(E::untyped(ET::Identifier(
+                                None,
+                                AnyIdentifier::Identifier(op.with_value(op.value.fn_.clone())),
+                            )))),
                             op,
                             Box::new([left, right]),
                         )),
@@ -2545,6 +2598,37 @@ type Fruit a = { test : Banana a (Phone a) }
 module Test
 
 type Fruit a = { test : (Banana a (Phone a)) }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+type Fruit = Banana
+
+main = Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (Fruit(Banana))
+
+type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Fruit(Banana))
+
+main = 1
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
 "
         ));
 

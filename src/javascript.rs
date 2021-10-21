@@ -2,9 +2,8 @@ use crate::ast::{
     Definition, Export_, Expression, ExpressionType as ET, Module, ModuleFullName, ModuleName,
     Pattern, Pattern_ as P, Unary_ as U,
 };
-use crate::compiler::types::{ModuleAsts, ModuleInterfaces};
+use crate::compiler::types::{ModuleAsts, ModuleInterface, ModuleInterfaces};
 use crate::strings::Strings;
-use crate::type_env::TypeEnv;
 use std::fmt::Write;
 
 const INDENT: usize = 4;
@@ -73,7 +72,12 @@ pub fn generate(
     code
 }
 
-fn generate_file(code: &mut String, module: &Module, _interface: &TypeEnv, strings: &Strings) {
+fn generate_file(
+    code: &mut String,
+    module: &Module,
+    _interface: &ModuleInterface,
+    strings: &Strings,
+) {
     if !module.imports.is_empty() {
         code.push('\n');
         generate_imports(code, module, strings);
@@ -122,20 +126,23 @@ fn generate_imports(code: &mut String, module: &Module, strings: &Strings) {
                 //         .to_string(strings)
                 // )
                 // .unwrap();
+                // todo!()
             }
         }
 
         if !import.exposing.is_empty() {
             let mut identifiers = vec![];
             for exposing in &import.exposing {
-                identifiers.append(
-                    &mut exposing
-                        .value
-                        .identifiers()
-                        .into_iter()
-                        .map(|i| i.value.to_string(strings))
-                        .collect(),
-                );
+                match &exposing.value {
+                    Export_::Identifier(identifier) => {
+                        identifiers.push(identifier.value.to_string(strings));
+                    }
+                    Export_::Type(_typ, constructors) => {
+                        for constructor in constructors {
+                            identifiers.push(constructor.value.to_string(strings));
+                        }
+                    }
+                }
             }
             indented(code, indent, "");
             write!(code, "let {{ {} }} = ", identifiers.join(", "),).unwrap();
@@ -180,6 +187,11 @@ fn generate_exports(code: &mut String, module: &Module, strings: &Strings) {
             Export_::Identifier(ident) => {
                 indented(code, add_indent(indent), "");
                 writeln!(code, "{},", ident.value.to_string(strings)).unwrap();
+            }
+            Export_::Type(_, _) =>
+            // TODO: Generate type constructors
+            {
+                ()
             }
         }
     }

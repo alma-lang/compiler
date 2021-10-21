@@ -1,0 +1,23 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (Banana)\n\ntype Fruit = Banana\n\")"
+
+---
+Input:
+
+module Test exposing (Banana)
+
+type Fruit = Banana
+
+
+---
+Output:
+
+[1:22]
+
+Couldn't find type `Banana`
+
+  1│  module Test exposing (Banana)
+   │                        ↑↑↑↑↑↑
+  2│  
+  3│  type Fruit = Banana

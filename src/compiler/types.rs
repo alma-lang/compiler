@@ -2,9 +2,11 @@ use crate::ast::Module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::type_env::TypeEnv;
-use fnv::FnvHashMap as HashMap;
+use fnv::FnvHashMap;
 use std::fmt::Write;
 use std::rc::Rc;
+
+pub type HashMap<K, V> = FnvHashMap<K, V>;
 
 pub type Sources = HashMap<String, Source>;
 
@@ -13,7 +15,14 @@ pub type ModuleSources<'source> = HashMap<StringSymbol, &'source Source>;
 pub type ModuleAsts = HashMap<StringSymbol, Module>;
 
 #[derive(Debug)]
-pub struct ModuleInterfaces(HashMap<StringSymbol, Rc<TypeEnv>>);
+pub struct ModuleInterface {
+    pub types: Rc<TypeEnv>,
+    pub type_constructors: HashMap<StringSymbol, Rc<TypeEnv>>,
+    pub definitions: Rc<TypeEnv>,
+}
+
+#[derive(Debug)]
+pub struct ModuleInterfaces(HashMap<StringSymbol, ModuleInterface>);
 
 impl ModuleInterfaces {
     pub fn new() -> Self {
@@ -22,15 +31,15 @@ impl ModuleInterfaces {
         Self(env)
     }
 
-    pub fn get(&self, key: &StringSymbol) -> Option<&Rc<TypeEnv>> {
+    pub fn get(&self, key: &StringSymbol) -> Option<&ModuleInterface> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: StringSymbol, value: Rc<TypeEnv>) {
+    pub fn insert(&mut self, key: StringSymbol, value: ModuleInterface) {
         self.0.insert(key, value);
     }
 
-    pub fn map(&self) -> &HashMap<StringSymbol, Rc<TypeEnv>> {
+    pub fn map(&self) -> &HashMap<StringSymbol, ModuleInterface> {
         &self.0
     }
 
@@ -41,7 +50,7 @@ impl ModuleInterfaces {
         entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
         let mut out = String::new();
-        for (i, (name, type_env)) in entries.iter().enumerate() {
+        for (i, (name, interface)) in entries.iter().enumerate() {
             if i > 0 {
                 out.push_str("\n\n\n");
             }
@@ -49,7 +58,7 @@ impl ModuleInterfaces {
                 out,
                 "module {}\n\n{}",
                 strings.resolve(**name),
-                type_env.to_string(strings)
+                interface.definitions.to_string(strings)
             )
             .unwrap();
         }
