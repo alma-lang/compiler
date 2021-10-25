@@ -870,11 +870,15 @@ pub fn infer<'interfaces, 'ast>(
                 } else {
                     import.value.module_name.full_name
                 };
-                env.insert(
-                    module_ident,
-                    Rc::new(Record((*imported.definitions).clone())),
-                );
                 types_env.insert(module_ident, Rc::new(Record((*imported.types).clone())));
+
+                let mut imported_env = (*imported.definitions).clone();
+                for (_type_name, constructors) in &imported.type_constructors {
+                    for (constructor_name, constructor_type) in constructors.map() {
+                        imported_env.insert(*constructor_name, Rc::clone(constructor_type));
+                    }
+                }
+                env.insert(module_ident, Rc::new(Record(imported_env)));
 
                 for exposed in &import.value.exposing {
                     match &exposed.value {
@@ -1945,6 +1949,47 @@ module Test exposing (main)
 import Test.Fruits exposing (Banana)
 
 main = Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Fruit)
+
+main = Test.Fruits.Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Fruits
+
+main = Test.Fruits.test
+
+module Test.Fruits exposing (test, Fruit(Banana))
+    type Fruit = Banana
+
+    test = 1
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Fruits as Fruits
+
+main = Fruits.Banana
 
 module Test.Fruits exposing (Fruit(Banana))
     type Fruit = Banana

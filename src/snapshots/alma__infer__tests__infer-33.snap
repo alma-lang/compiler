@@ -1,0 +1,28 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\nimport Test.Fruits as Fruits\n\nmain = Fruits.Banana\n\nmodule Test.Fruits exposing (Fruit(Banana))\n    type Fruit = Banana\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+import Test.Fruits as Fruits
+
+main = Fruits.Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+
+
+---
+Output:
+
+module Test
+
+main : Fruit
+
+
+module Test.Fruits
+
+
