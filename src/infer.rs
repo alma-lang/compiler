@@ -1996,6 +1996,19 @@ module Test.Fruits exposing (Fruit(Banana))
 "
         ));
 
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Fruits as Fruits
+
+main = Fruits.Banana
+
+module Test.Fruits exposing (Fruit)
+    type Fruit = Banana
+"
+        ));
+
         fn infer(code: &str) -> String {
             let mut strings = Strings::new();
             let source = Source::new_orphan(code.to_string());
