@@ -1,0 +1,45 @@
+---
+source: src/tokenizer.rs
+expression: "tokenize(\"123\\n--Banana\\n321\")"
+
+---
+Ok(
+    [
+        Token {
+            kind: Float,
+            position: 0,
+            end_position: 3,
+            lexeme: "123",
+            line: 1,
+            column: 0,
+            indent: 0,
+        },
+        Token {
+            kind: Comment,
+            position: 4,
+            end_position: 12,
+            lexeme: "--Banana",
+            line: 2,
+            column: 0,
+            indent: 0,
+        },
+        Token {
+            kind: Float,
+            position: 13,
+            end_position: 16,
+            lexeme: "321",
+            line: 3,
+            column: 0,
+            indent: 0,
+        },
+        Token {
+            kind: Eof,
+            position: 16,
+            end_position: 16,
+            lexeme: "[End of file]",
+            line: 3,
+            column: 3,
+            indent: 0,
+        },
+    ],
+)

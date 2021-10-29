@@ -138,6 +138,12 @@ impl<'source> State<'source> {
         self.status = Status::Reset;
     }
 
+    fn new_line(&mut self) {
+        self.line += 1;
+        self.indent = 0;
+        self.line_start_position = self.current + 1;
+    }
+
     fn push_token(&mut self, token: Token<'source>) {
         self.tokens.push(token);
     }
@@ -215,8 +221,8 @@ impl<'source> State<'source> {
 
             Status::DoubleToken(token_type) => self.add_token(token_type),
 
-            Status::LineCommentToken => match ch {
-                Some('\n') | None => self.add_token(Comment),
+            Status::LineCommentToken => match self.peek() {
+                None | Some('\n') => self.add_token(Comment),
                 _ => (),
             },
 
@@ -231,9 +237,7 @@ impl<'source> State<'source> {
 
                     Some('\n') => {
                         self.status = Status::WhitespaceToken(true);
-                        self.line += 1;
-                        self.indent = 0;
-                        self.line_start_position = self.current + 1;
+                        self.new_line();
                     }
 
                     _ => panic!(
@@ -403,5 +407,7 @@ mod tests {
         assert_snapshot!(tokenize("123\n or &\"abc\""));
 
         assert_snapshot!(tokenize(r#""asdf\"asdf""#));
+
+        assert_snapshot!(tokenize("123\n--Banana\n321"));
     }
 }

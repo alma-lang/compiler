@@ -1907,28 +1907,49 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     // Utilities
 
     fn get_token(&self) -> &'tokens Token<'source> {
-        self.tokens
-            .get(self.current)
-            .expect("Out of bounds access to tokens array")
+        let (_, token) = self.next_non_comment_token(self.current);
+        token
     }
 
     fn peek_next_token(&self) -> &'tokens Token<'source> {
-        let token = self.get_token();
+        let (first, token) = self.next_non_comment_token(self.current);
         match token.kind {
             Eof => token,
-            _ => self
-                .tokens
-                .get(self.current + 1)
-                .expect("Out of bounds access to tokens array"),
+            _ => {
+                let (_, token) = self.next_non_comment_token(first + 1);
+                token
+            }
         }
     }
 
     fn advance(&mut self) {
-        let token = self.get_token();
+        let (i, token) = self.next_non_comment_token(self.current);
         match token.kind {
             Eof => (),
-            _ => self.current += 1,
+            _ => self.current = i + 1,
         };
+    }
+
+    fn next_non_comment_token(&self, start: usize) -> (usize, &'tokens Token<'source>) {
+        let mut i = start;
+        let mut token;
+        loop {
+            token = self
+                .tokens
+                .get(i)
+                .expect("Out of bounds access to tokens array");
+            match token.kind {
+                Eof => break,
+                Comment => {
+                    i += 1;
+                    continue;
+                }
+                _ => {
+                    break;
+                }
+            };
+        }
+        (i, token)
     }
 
     fn is_token_in_same_indent_and_column_as(&self, parent_token: &Token) -> bool {
@@ -2629,6 +2650,34 @@ main = 1
 
 module Test.Fruits exposing (Fruit(Banana))
     type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+-- Comment
+module Test
+    -- Comment
+    exposing (
+    -- Comment
+    main)
+
+-- Comment
+import Test.Fruits exposing (Fruit(Banana))
+
+-- Comment
+main =
+-- Comment
+    1
+
+-- Comment
+module Test.Fruits
+    -- Comment
+    exposing (Fruit(Banana))
+    -- Comment
+    type Fruit =
+        -- Comment
+        Banana
 "
         ));
 
