@@ -21,7 +21,7 @@ use crate::token::{
     ● exposing             → "exposing" "(" export ( "," export )* ")"
     ● export               → IDENTIFIER
                            | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
-    ● imports              → import ( import )*
+    ● imports              → ( import )*
     ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
     ● definitions          → ( type_def | module | binding )+
 
