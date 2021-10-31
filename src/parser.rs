@@ -10,14 +10,14 @@ use crate::ast::{
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
-    Token,
+    self, Token,
     Type::{self as TT, *},
 };
 
 /* Grammar draft (●○):
     ● file                 → module EOF
     ● module               → "module" module_name exposing? imports? definitions?
-    ● module_name          → CAPITALIZED_IDENTIFIER ("." CAPITALIZED_IDENTIFIER)*
+    ● module_name          → CAPITALIZED_IDENTIFIER ( "." CAPITALIZED_IDENTIFIER )*
     ● exposing             → "exposing" "(" export ( "," export )* ")"
     ● export               → IDENTIFIER
                            | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
@@ -213,9 +213,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             ));
                         }
 
-                        let (_, exports) = self.exposing()?;
+                        let exports = self.exposing()?;
 
-                        let imports = self.imports()?;
+                        let imports = self.many(Self::import)?;
 
                         let (mut modules, definitions, type_definitions) = self
                             .module_definitions(
@@ -251,61 +251,47 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn exposing(&mut self) -> ParseResult<'source, 'tokens, (usize, Vec<Export>)> {
+    fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Export>> {
         match self.get_token().kind {
             TT::Exposing => {
                 self.advance();
 
-                match self.get_token().kind {
-                    TT::LeftParen => {
-                        self.advance();
+                let exports = self.one_or_many_delimited(
+                    TT::Comma,
+                    (TT::LeftParen, TT::RightParen),
+                    Self::export,
+                    |s: &mut Self| {
+                        Error::expected_but_found(
+                            s.source,
+                            s.get_token(),
+                            None,
+                            "Parsing the module exports expected at least \
+                            one definition or type to export",
+                        )
+                    },
+                    |s: &mut Self| {
+                        Error::expected_but_found(
+                            s.source,
+                            s.get_token(),
+                            None,
+                            "Parsing the module exports expected a comma \
+                            separated list of exports inside parenthesis",
+                        )
+                    },
+                    |s: &mut Self| {
+                        Error::expected_but_found(
+                            s.source,
+                            s.get_token(),
+                            None,
+                            "Parsing the module exports expected a comma \
+                            separated list of exports inside parenthesis",
+                        )
+                    },
+                )?;
 
-                        let export = self.export()?;
-
-                        let exports = self.exposing_rest(vec![export])?;
-
-                        match self.get_token().kind {
-                            TT::RightParen => {
-                                let end = self.get_token().end_position;
-                                self.advance();
-
-                                Ok((end, exports))
-                            }
-                            _ => Err(Error::expected_but_found(
-                                self.source,
-                                self.get_token(),
-                                None,
-                                "Parsing the module exports expected a comma \
-                                separated list of exports inside parenthesis",
-                            )),
-                        }
-                    }
-                    _ => Err(Error::expected_but_found(
-                        self.source,
-                        self.get_token(),
-                        None,
-                        "Parsing the module exports expected a comma \
-                        separated list of exports inside parenthesis",
-                    )),
-                }
+                Ok(exports)
             }
-            _ => Ok((self.get_token().end_position, vec![])),
-        }
-    }
-    fn exposing_rest(
-        &mut self,
-        mut exports: Vec<Export>,
-    ) -> ParseResult<'source, 'tokens, Vec<Export>> {
-        match self.get_token().kind {
-            TT::Comma => {
-                self.advance();
-
-                let export = self.export()?;
-                exports.push(export);
-
-                self.exposing_rest(exports)
-            }
-            _ => Ok(exports),
+            _ => Ok(vec![]),
         }
     }
 
@@ -375,16 +361,6 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn imports(&mut self) -> ParseResult<'source, 'tokens, Vec<Import>> {
-        let mut imports = vec![];
-
-        while let Some(import) = self.import()? {
-            imports.push(import);
-        }
-
-        Ok(imports)
-    }
-
     fn import(&mut self) -> ParseResult<'source, 'tokens, Option<Import>> {
         let import_token = self.get_token();
         match import_token.kind {
@@ -411,10 +387,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             _ => Ok(None),
                         }?;
 
-                        let (exposing_end, exposing) = self.exposing()?;
+                        let exposing = self.exposing()?;
 
                         let end = if !exposing.is_empty() {
-                            exposing_end
+                            self.prev_token().end_position
                         } else if let Some(alias) = &alias {
                             alias.end
                         } else {
@@ -1885,6 +1861,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     // Utilities
 
+    fn prev_token(&self) -> &'tokens Token<'source> {
+        let (_, token) = self.prev_non_comment_token(self.current);
+        token
+    }
+
     fn get_token(&self) -> &'tokens Token<'source> {
         let (_, token) = self.next_non_comment_token(self.current);
         token
@@ -1931,6 +1912,28 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         (i, token)
     }
 
+    fn prev_non_comment_token(&self, start: usize) -> (usize, &'tokens Token<'source>) {
+        let mut i = start - 1;
+        let mut token;
+        loop {
+            token = self
+                .tokens
+                .get(i)
+                .expect("Out of bounds access to tokens array");
+            match token.kind {
+                Eof => break,
+                Comment => {
+                    i -= 1;
+                    continue;
+                }
+                _ => {
+                    break;
+                }
+            };
+        }
+        (i, token)
+    }
+
     fn is_token_in_same_indent_and_column_as(&self, parent_token: &Token) -> bool {
         let token = self.get_token();
         parent_token.line < token.line
@@ -1964,6 +1967,58 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         parent_token.line < token.line && token.indent <= parent_token.indent
     }
 
+    fn one_or_many_delimited<F, E1, E2, E3, R>(
+        &mut self,
+        separator: token::Type,
+        delimiter: (token::Type, token::Type),
+        parse: F,
+        on_first_not_found: E1,
+        on_missing_first_delimiter: E2,
+        on_missing_separator_or_last_delimiter: E3,
+    ) -> ParseResult<'source, 'tokens, Vec<R>>
+    where
+        F: Fn(&mut Self) -> ParseResult<'source, 'tokens, R>,
+        E1: Fn(&mut Self) -> Error<'source, 'tokens>,
+        E2: Fn(&mut Self) -> Error<'source, 'tokens>,
+        E3: Fn(&mut Self) -> Error<'source, 'tokens>,
+    {
+        let (first_delimiter, last_delimiter) = delimiter;
+
+        if self.get_token().kind != first_delimiter {
+            return Err(on_missing_first_delimiter(self));
+        }
+        self.advance();
+
+        let mut items = vec![];
+        let mut i = 0;
+
+        loop {
+            let token = self.get_token();
+            if token.kind == last_delimiter {
+                if i == 0 {
+                    return Err(on_first_not_found(self));
+                } else {
+                    self.advance();
+                    break;
+                }
+            }
+
+            if i > 0 {
+                if token.kind == separator {
+                    self.advance();
+                } else {
+                    return Err(on_missing_separator_or_last_delimiter(self));
+                }
+            }
+
+            let item = parse(self)?;
+            items.push(item);
+            i += 1;
+        }
+
+        Ok(items)
+    }
+
     fn one_or_many<F, E, R>(
         &mut self,
         parse: F,
@@ -1985,11 +2040,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     where
         F: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<R>>,
     {
-        let mut params = vec![];
+        let mut items = vec![];
         while let Some(item) = parse(self)? {
-            params.push(item);
+            items.push(item);
         }
-        Ok(params)
+        Ok(items)
     }
 }
 
