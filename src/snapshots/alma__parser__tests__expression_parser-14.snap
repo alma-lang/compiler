@@ -9,13 +9,13 @@ Input:
 
 Result:
 
-1:6: Expected ')' after parenthesized expression, but instead found: '[End of file]'
+1:6: Expected `)` after parenthesized expression, but instead found: `[End of file]`
 
   1│  (((1))
    │  ↑
 
 Error {
-    message: "1:6: Expected ')' after parenthesized expression, but instead found: '[End of file]'\n\n  1│  (((1))\n   │  ↑",
+    message: "1:6: Expected `)` after parenthesized expression, but instead found: `[End of file]`\n\n  1│  (((1))\n   │  ↑",
     token: Token {
         kind: Eof,
         position: 6,

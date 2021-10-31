@@ -13,7 +13,7 @@ type Fruit = {
 
 Result:
 
-5:0: Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x : Int, y : Int }`, but instead found: '[End of file]'
+5:0: Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x : Int, y : Int }`, but instead found: `[End of file]`
 
   3│  module Test
   4│  
@@ -21,7 +21,7 @@ Result:
    │                ↑
 
 Error {
-    message: "5:0: Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x : Int, y : Int }`, but instead found: '[End of file]'\n\n  3│  module Test\n  4│  \n  5│  type Fruit = {\n   │                ↑",
+    message: "5:0: Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x : Int, y : Int }`, but instead found: `[End of file]`\n\n  3│  module Test\n  4│  \n  5│  type Fruit = {\n   │                ↑",
     token: Token {
         kind: Eof,
         position: 29,

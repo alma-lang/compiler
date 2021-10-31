@@ -100,7 +100,7 @@ impl<'source, 'tokens> Error<'source, 'tokens> {
             source,
             token,
             point_at_token,
-            &format!("{}, but instead found: '{}'", message, token.lexeme),
+            &format!("{}, but instead found: `{}`", message, token.lexeme),
         )
     }
 
@@ -496,7 +496,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self.source,
                     token,
                     None,
-                    "Expected a 'PascalCase' name for the type",
+                    "Expected a `PascalCase` name for the type",
                 ))
             }
         } else {
@@ -625,7 +625,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             self.source,
                             last_token,
                             Some(token),
-                            "Expected '}' to close a record literal",
+                            "Expected `}` to close a record literal",
                         )),
                     }
                 }
@@ -668,7 +668,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                     self.source,
                                     last_token,
                                     Some(token),
-                                    "Expected '}' to close a record type",
+                                    "Expected `}` to close a record type",
                                 )),
                             }
                         }
@@ -730,7 +730,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self.source,
                     colon_token,
                     None,
-                    "Expected a ':' between the field name and its type",
+                    "Expected a `:` between the field name and its type",
                 ))
             }
         } else {
@@ -789,7 +789,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         self.source,
                         self.get_token(),
                         Some(token),
-                        "Expected ')' after parenthesized type",
+                        "Expected `)` after parenthesized type",
                     ))
                 }
             } else {
@@ -1311,7 +1311,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 self.get_token(),
                                 None,
                                 &format!(
-                                    "Expected an expression after the binary operator '{}'",
+                                    "Expected an expression after the binary operator `{}`",
                                     &token.lexeme
                                 ),
                             ));
@@ -1359,7 +1359,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             (None, Some(expr)) => Ok(Some(expr)),
             (Some(_), None) => {
                 let msg = format!(
-                    "Expected an expression after the unary operator '{}'",
+                    "Expected an expression after the unary operator `{}`",
                     &token.lexeme
                 );
                 Err(Error::expected_but_found(
@@ -1516,7 +1516,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         self.source,
                         token,
                         None,
-                        &format!("Failed to parse number token '{}'", lexeme),
+                        &format!("Failed to parse number token `{}`", lexeme),
                     )
                 })?;
 
@@ -1619,7 +1619,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 self.source,
                                 last_token,
                                 Some(token),
-                                "Expected '}' to close a record literal",
+                                "Expected `}` to close a record literal",
                             )),
                         }
                     }
@@ -1652,7 +1652,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                         self.source,
                                         last_token,
                                         Some(token),
-                                        "Expected '}' to close a record update expression",
+                                        "Expected `}` to close a record update expression",
                                     )),
                                 }
                             }

@@ -10,14 +10,14 @@ arg
 
 Result:
 
-2:0: Expected the end of input, but instead found: 'arg'
+2:0: Expected the end of input, but instead found: `arg`
 
   1│  fun
   2│  arg
    │  ↑↑↑
 
 Error {
-    message: "2:0: Expected the end of input, but instead found: 'arg'\n\n  1│  fun\n  2│  arg\n   │  ↑↑↑",
+    message: "2:0: Expected the end of input, but instead found: `arg`\n\n  1│  fun\n  2│  arg\n   │  ↑↑↑",
     token: Token {
         kind: Identifier,
         position: 4,

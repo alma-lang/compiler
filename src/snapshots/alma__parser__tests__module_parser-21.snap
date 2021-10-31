@@ -9,13 +9,13 @@ module i_am_not_PascalCase
 
 Result:
 
-1:7: Expected the module name, but instead found: 'i_am_not_PascalCase'
+1:7: Expected the module name, but instead found: `i_am_not_PascalCase`
 
   1│  module i_am_not_PascalCase
    │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 
 Error {
-    message: "1:7: Expected the module name, but instead found: 'i_am_not_PascalCase'\n\n  1│  module i_am_not_PascalCase\n   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
+    message: "1:7: Expected the module name, but instead found: `i_am_not_PascalCase`\n\n  1│  module i_am_not_PascalCase\n   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
     token: Token {
         kind: Identifier,
         position: 7,

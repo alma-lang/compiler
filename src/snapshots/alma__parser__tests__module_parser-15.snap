@@ -13,7 +13,7 @@ b = True
 
 Result:
 
-1:24: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: 'b'
+1:24: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `b`
 
   1│  module Test exposing (a b)
    │                          ↑
@@ -21,7 +21,7 @@ Result:
   3│  a = 1
 
 Error {
-    message: "1:24: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: 'b'\n\n  1│  module Test exposing (a b)\n   │                          ↑\n  2│  \n  3│  a = 1",
+    message: "1:24: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `b`\n\n  1│  module Test exposing (a b)\n   │                          ↑\n  2│  \n  3│  a = 1",
     token: Token {
         kind: Identifier,
         position: 24,

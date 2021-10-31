@@ -12,7 +12,7 @@ IAmNotCamelCase = 1
 
 Result:
 
-3:0: Expected the left side of a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: 'IAmNotCamelCase'
+3:0: Expected the left side of a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `IAmNotCamelCase`
 
   1│  module Test
   2│  
@@ -20,7 +20,7 @@ Result:
    │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 
 Error {
-    message: "3:0: Expected the left side of a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: 'IAmNotCamelCase'\n\n  1│  module Test\n  2│  \n  3│  IAmNotCamelCase = 1\n   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
+    message: "3:0: Expected the left side of a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `IAmNotCamelCase`\n\n  1│  module Test\n  2│  \n  3│  IAmNotCamelCase = 1\n   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
     token: Token {
         kind: CapitalizedIdentifier,
         position: 13,

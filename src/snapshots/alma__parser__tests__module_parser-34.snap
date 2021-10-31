@@ -13,7 +13,7 @@ type Fruit = Banana / Apple
 
 Result:
 
-4:20: Expected a definition like `n = 5` or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`, but instead found: '/'
+4:20: Expected a definition like `n = 5` or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`, but instead found: `/`
 
   2│  module Test
   3│  
@@ -21,7 +21,7 @@ Result:
    │                      ↑
 
 Error {
-    message: "4:20: Expected a definition like `n = 5` or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`, but instead found: '/'\n\n  2│  module Test\n  3│  \n  4│  type Fruit = Banana / Apple\n   │                      ↑",
+    message: "4:20: Expected a definition like `n = 5` or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`, but instead found: `/`\n\n  2│  module Test\n  3│  \n  4│  type Fruit = Banana / Apple\n   │                      ↑",
     token: Token {
         kind: Slash,
         position: 34,

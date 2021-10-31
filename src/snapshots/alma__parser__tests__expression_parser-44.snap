@@ -13,7 +13,7 @@ x
 
 Result:
 
-4:0: Expected an `=` sign or list of parameters for the definition of `x`, but instead found: 'in'
+4:0: Expected an `=` sign or list of parameters for the definition of `x`, but instead found: `in`
 
   2│    x = a
   3│    x
@@ -22,7 +22,7 @@ Result:
   5│  x
 
 Error {
-    message: "4:0: Expected an `=` sign or list of parameters for the definition of `x`, but instead found: 'in'\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x",
+    message: "4:0: Expected an `=` sign or list of parameters for the definition of `x`, but instead found: `in`\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x",
     token: Token {
         kind: In,
         position: 16,
