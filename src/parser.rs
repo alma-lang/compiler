@@ -40,7 +40,6 @@ use crate::token::{
     ● let                  → "let" MAYBE_INDENT ( binding )+ MAYBE_INDENT ( "in" )? expression
     ● binding              → ( identifier ( params )? | pattern ) "=" expression
     ● lambda               → "\" params "->" expression
-    ● params               → pattern ( pattern )*
     ● pattern              → parsed from Ast.Pattern
     ● if                   → "if" binary "then" expression "else" expression
     //   Operators
@@ -1060,7 +1059,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
                     // Otherwise this is a lambda lhs, identifier + params
                     _ => {
-                        let params = self.params()?;
+                        let params = self.one_or_many(Self::pattern, |s| {
+                            Err(Error::expected_but_found(
+                                s.source,
+                                s.get_token(),
+                                None,
+                                &format!("Expected an `=` sign or list of parameters for the definition of `{}`", identifier.value.to_string(s.strings)),
+                            ))
+                        })?;
                         let expr = self.binding_rhs()?;
                         let line = token.line;
                         let column = token.column;
@@ -1192,72 +1198,45 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Backslash => {
                 self.advance();
 
-                let params = self.params()?;
-                if params.is_empty() {
+                let params = self.one_or_many(Self::pattern, |s| {
                     Err(Error::expected_but_found(
-                        self.source,
-                        self.get_token(),
+                        s.source,
+                        s.get_token(),
                         None,
                         "Expected a list of parameters",
                     ))
-                } else {
-                    let arrow = self.get_token();
-                    match arrow.kind {
-                        Arrow => {
-                            self.advance();
+                })?;
+                let arrow = self.get_token();
+                match arrow.kind {
+                    Arrow => {
+                        self.advance();
 
-                            let body = self.required_expression(Some(
-                                "Expected an expression for the body of the function",
-                            ))?;
-                            let line = token.line;
-                            let column = token.column;
-                            let start = token.position;
-                            let end = body.end;
+                        let body = self.required_expression(Some(
+                            "Expected an expression for the body of the function",
+                        ))?;
+                        let line = token.line;
+                        let column = token.column;
+                        let start = token.position;
+                        let end = body.end;
 
-                            Ok(Some(Node {
-                                value: E::untyped(Lambda(params, Box::new(body))),
-                                line,
-                                column,
-                                start,
-                                end,
-                            }))
-                        }
-
-                        _ => Err(Error::expected_but_found(
-                            self.source,
-                            token,
-                            Some(arrow),
-                            "Expected a -> after the list of parameters for the function",
-                        )),
+                        Ok(Some(Node {
+                            value: E::untyped(Lambda(params, Box::new(body))),
+                            line,
+                            column,
+                            start,
+                            end,
+                        }))
                     }
+
+                    _ => Err(Error::expected_but_found(
+                        self.source,
+                        token,
+                        Some(arrow),
+                        "Expected a -> after the list of parameters for the function",
+                    )),
                 }
             }
             _ => Ok(None),
-        }
-    }
-
-    fn params(&mut self) -> ParseResult<'source, 'tokens, Vec<Pattern>> {
-        let pattern = self.pattern()?;
-
-        match pattern {
-            Some(pattern) => {
-                let mut params = vec![pattern];
-
-                loop {
-                    let pattern = self.pattern()?;
-
-                    match pattern {
-                        Some(pattern) => {
-                            params.push(pattern);
-                        }
-                        None => break,
-                    }
-                }
-
-                Ok(params)
-            }
-
-            None => Ok(vec![]),
         }
     }
 
@@ -1715,7 +1694,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 self.source,
                                 last_token,
                                 Some(token),
-                                "Expected ')' after parenthesized expression",
+                                "Expected `)` after parenthesized expression",
                             )),
                         }
                     }
@@ -1983,6 +1962,34 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn is_token_equal_or_less_indented_than(&self, parent_token: &Token) -> bool {
         let token = self.get_token();
         parent_token.line < token.line && token.indent <= parent_token.indent
+    }
+
+    fn one_or_many<F, E, R>(
+        &mut self,
+        parse: F,
+        on_first_not_found: E,
+    ) -> ParseResult<'source, 'tokens, Vec<R>>
+    where
+        F: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<R>>,
+        E: Fn(&mut Self) -> ParseResult<'source, 'tokens, Vec<R>>,
+    {
+        let items = self.many(parse)?;
+        if items.is_empty() {
+            on_first_not_found(self)
+        } else {
+            Ok(items)
+        }
+    }
+
+    fn many<F, R>(&mut self, parse: F) -> ParseResult<'source, 'tokens, Vec<R>>
+    where
+        F: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<R>>,
+    {
+        let mut params = vec![];
+        while let Some(item) = parse(self)? {
+            params.push(item);
+        }
+        Ok(params)
     }
 }
 
