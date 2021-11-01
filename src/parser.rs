@@ -260,7 +260,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     TT::Comma,
                     (TT::LeftParen, TT::RightParen),
                     Self::export,
-                    |s: &mut Self| {
+                    |s| {
                         Error::expected_but_found(
                             s.source,
                             s.get_token(),
@@ -269,16 +269,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             one definition or type to export",
                         )
                     },
-                    |s: &mut Self| {
-                        Error::expected_but_found(
-                            s.source,
-                            s.get_token(),
-                            None,
-                            "Parsing the module exports expected a comma \
-                            separated list of exports inside parenthesis",
-                        )
-                    },
-                    |s: &mut Self| {
+                    |s| {
                         Error::expected_but_found(
                             s.source,
                             s.get_token(),
@@ -289,7 +280,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     },
                 )?;
 
-                Ok(exports)
+                if exports.is_empty() {
+                    Err(Error::expected_but_found(
+                        self.source,
+                        self.get_token(),
+                        None,
+                        "Parsing the module exports expected a comma \
+                        separated list of exports inside parenthesis",
+                    ))
+                } else {
+                    Ok(exports)
+                }
             }
             _ => Ok(vec![]),
         }
@@ -301,49 +302,46 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let node = &export.with_value(());
             Ok(node.with_value(Export_::Identifier(export)))
         } else if let Some(export) = self.capitalized_identifier() {
-            let mut end = export.end;
-            let mut constructors = vec![];
-
-            if matches!(self.get_token().kind, TT::LeftParen) {
-                self.advance();
-
-                loop {
-                    if let Some(export) = self.capitalized_identifier() {
-                        match self.get_token().kind {
-                            TT::RightParen => {
-                                end = self.get_token().end_position;
-                                self.advance();
-                                constructors.push(export);
-                                break;
-                            }
-                            TT::Comma => {
-                                self.advance();
-                                constructors.push(export);
-                            }
-                            _ => {
-                                return Err(Error::expected_but_found(
-                                    self.source,
-                                    self.get_token(),
-                                    None,
-                                    "Parsing the type constructors expected a comma \
-                                        separated list of constructors inside parenthesis",
-                                ))
-                            }
-                        }
-                    } else {
-                        return Err(Error::expected_but_found(
-                            self.source,
-                            self.get_token(),
-                            None,
-                            "Expected a type constructor name",
-                        ));
-                    }
-                }
-            }
+            let constructors = self.one_or_many_delimited(
+                TT::Comma,
+                (TT::LeftParen, TT::RightParen),
+                |s| {
+                    s.required(
+                        |s| Ok(s.capitalized_identifier()),
+                        |s| {
+                            Error::expected_but_found(
+                                s.source,
+                                s.get_token(),
+                                None,
+                                "Expected a `PascalCase` name for a constructor",
+                            )
+                        },
+                    )
+                },
+                |s: &mut Self| {
+                    Error::expected_but_found(
+                        s.source,
+                        s.get_token(),
+                        None,
+                        "Parsing the type constructors expected at least \
+                        one inside the parens",
+                    )
+                },
+                |s: &mut Self| {
+                    Error::expected_but_found(
+                        s.source,
+                        s.get_token(),
+                        None,
+                        "Parsing the type constructors expected a comma \
+                        separated list of constructor names inside parenthesis",
+                    )
+                },
+            )?;
 
             let line = export.line;
             let column = export.column;
             let start = export.start;
+            let end = self.prev_token().end_position;
             Ok(Node {
                 value: Export_::Type(export, constructors),
                 start,
@@ -356,7 +354,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self.source,
                 self.get_token(),
                 None,
-                "Expected an identifier from the module to expose",
+                "Expected a function or type name from the module",
             ))
         }
     }
@@ -1837,10 +1835,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 None,
                 &format!(
                     "Invalid module name '{}'.\n\n\
-                Module names have to be `PascalCase` \
-                and also not have extraneous characters, \
-                because they need to match the file name \
-                in the file system.",
+                    Module names have to be `PascalCase` \
+                    and also not have extraneous characters, \
+                    because they need to match the file name \
+                    in the file system.",
                     name_str
                 ),
             )
@@ -1982,25 +1980,23 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         parent_token.line < token.line && token.indent <= parent_token.indent
     }
 
-    fn one_or_many_delimited<Parser, ParserResult, E1, E2, E3>(
+    fn one_or_many_delimited<Parser, ParserResult, E1, E2>(
         &mut self,
         separator: token::Type,
         delimiter: (token::Type, token::Type),
         parse: Parser,
         on_first_not_found: E1,
-        on_missing_first_delimiter: E2,
-        on_missing_separator_or_last_delimiter: E3,
+        on_missing_separator_or_last_delimiter: E2,
     ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
     where
         Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
         E1: Fn(&mut Self) -> Error<'source, 'tokens>,
         E2: Fn(&mut Self) -> Error<'source, 'tokens>,
-        E3: Fn(&mut Self) -> Error<'source, 'tokens>,
     {
         let (first_delimiter, last_delimiter) = delimiter;
 
         if self.get_token().kind != first_delimiter {
-            return Err(on_missing_first_delimiter(self));
+            return Ok(vec![]);
         }
         self.advance();
 
