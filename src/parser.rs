@@ -478,43 +478,43 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn type_union_branches(
         &mut self,
     ) -> ParseResult<'source, 'tokens, (Vec<types::Constructor>, usize)> {
-        let mut branches = vec![];
-
+        // Optionally eat a first pipe for multiline branches
         if let TT::Pipe = self.get_token().kind {
             self.advance();
         }
 
-        let branch = self.type_constructor()?;
-        if let Some(branch) = branch {
-            branches.push(branch);
-
-            loop {
-                let pipe_token = self.get_token();
-                if let TT::Pipe = pipe_token.kind {
-                    self.advance();
-
-                    let branch = self.type_constructor()?;
-                    if let Some(branch) = branch {
-                        branches.push(branch);
-                    } else {
-                        break;
-                    }
+        let branches = self.one_or_many_sep(
+            |s| {
+                if s.get_token().kind == TT::Pipe {
+                    s.advance();
+                    Ok(Some(()))
                 } else {
-                    break;
+                    Ok(None)
                 }
-            }
+            },
+            |s| {
+                s.required(Self::type_constructor, |s| {
+                    Error::expected_but_found(
+                        s.source,
+                        s.get_token(),
+                        None,
+                        "Expected a constructor for the type like `type User = User Int`",
+                    )
+                })
+            },
+            |s| {
+                Error::expected_but_found(
+                    s.source,
+                    s.get_token(),
+                    None,
+                    "Expected at least one constructor \
+                    for the type like `type User = User Int`",
+                )
+            },
+        )?;
 
-            let end = branches.last().unwrap().end;
-            Ok((branches, end))
-        } else {
-            Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
-                "Expected at least one constructor \
-                for the type like `type User = User Int`",
-            ))
-        }
+        let end = branches.last().unwrap().end;
+        Ok((branches, end))
     }
 
     fn type_constructor(&mut self) -> ParseResult<'source, 'tokens, Option<types::Constructor>> {
