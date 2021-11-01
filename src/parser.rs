@@ -260,19 +260,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     TT::Comma,
                     (TT::LeftParen, TT::RightParen),
                     Self::export,
-                    |s| {
+                    |self_| {
                         Error::expected_but_found(
-                            s.source,
-                            s.get_token(),
+                            self_.source,
+                            self_.get_token(),
                             None,
                             "Parsing the module exports expected at least \
                             one definition or type to export",
                         )
                     },
-                    |s| {
+                    |self_| {
                         Error::expected_but_found(
-                            s.source,
-                            s.get_token(),
+                            self_.source,
+                            self_.get_token(),
                             None,
                             "Parsing the module exports expected a comma \
                             separated list of exports inside parenthesis",
@@ -305,32 +305,32 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let constructors = self.one_or_many_delimited(
                 TT::Comma,
                 (TT::LeftParen, TT::RightParen),
-                |s| {
-                    s.required(
-                        |s| Ok(s.capitalized_identifier()),
-                        |s| {
+                |self_| {
+                    self_.required(
+                        |self_| Ok(self_.capitalized_identifier()),
+                        |self_| {
                             Error::expected_but_found(
-                                s.source,
-                                s.get_token(),
+                                self_.source,
+                                self_.get_token(),
                                 None,
                                 "Expected a `PascalCase` name for a constructor",
                             )
                         },
                     )
                 },
-                |s: &mut Self| {
+                |self_: &mut Self| {
                     Error::expected_but_found(
-                        s.source,
-                        s.get_token(),
+                        self_.source,
+                        self_.get_token(),
                         None,
                         "Parsing the type constructors expected at least \
                         one inside the parens",
                     )
                 },
-                |s: &mut Self| {
+                |self_: &mut Self| {
                     Error::expected_but_found(
-                        s.source,
-                        s.get_token(),
+                        self_.source,
+                        self_.get_token(),
                         None,
                         "Parsing the type constructors expected a comma \
                         separated list of constructor names inside parenthesis",
@@ -426,16 +426,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             self.advance();
 
             if let Some(name) = self.capitalized_identifier() {
-                let vars = self.many(|s| match s.identifier() {
+                let vars = self.many(|self_| match self_.identifier() {
                     Some(variable) => Ok(Some(variable)),
                     None => {
-                        let token = s.get_token();
+                        let token = self_.get_token();
                         if matches!(token.kind, Equal) {
-                            s.advance();
+                            self_.advance();
                             Ok(None)
                         } else {
                             Err(Error::expected_but_found(
-                                s.source,
+                                self_.source,
                                 token,
                                 None,
                                 "Expected type variable names like `a` or a `=` sign \
@@ -484,28 +484,28 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let branches = self.one_or_many_sep(
-            |s| {
-                if s.get_token().kind == TT::Pipe {
-                    s.advance();
+            |self_| {
+                if self_.get_token().kind == TT::Pipe {
+                    self_.advance();
                     Ok(Some(()))
                 } else {
                     Ok(None)
                 }
             },
-            |s| {
-                s.required(Self::type_constructor, |s| {
+            |self_| {
+                self_.required(Self::type_constructor, |self_| {
                     Error::expected_but_found(
-                        s.source,
-                        s.get_token(),
+                        self_.source,
+                        self_.get_token(),
                         None,
                         "Expected a constructor for the type like `type User = User Int`",
                     )
                 })
             },
-            |s| {
+            |self_| {
                 Error::expected_but_found(
-                    s.source,
-                    s.get_token(),
+                    self_.source,
+                    self_.get_token(),
                     None,
                     "Expected at least one constructor \
                     for the type like `type User = User Int`",
@@ -1030,12 +1030,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
                     // Otherwise this is a lambda lhs, identifier + params
                     _ => {
-                        let params = self.one_or_many(Self::pattern, |s| {
+                        let params = self.one_or_many(Self::pattern, |self_| {
                             Error::expected_but_found(
-                                s.source,
-                                s.get_token(),
+                                self_.source,
+                                self_.get_token(),
                                 None,
-                                &format!("Expected an `=` sign or list of parameters for the definition of `{}`", identifier.value.to_string(s.strings)),
+                                &format!("Expected an `=` sign or list of parameters for the definition of `{}`", identifier.value.to_string(self_.strings)),
                             )
                         })?;
                         let expr = self.binding_rhs()?;
@@ -1169,10 +1169,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Backslash => {
                 self.advance();
 
-                let params = self.one_or_many(Self::pattern, |s| {
+                let params = self.one_or_many(Self::pattern, |self_| {
                     Error::expected_but_found(
-                        s.source,
-                        s.get_token(),
+                        self_.source,
+                        self_.get_token(),
                         None,
                         "Expected a list of parameters",
                     )
@@ -1775,34 +1775,34 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn module_name(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
         let start = self.current;
         let identifiers = self.one_or_many_sep(
-            |s| {
-                let dot_token = s.get_token();
-                let possibly_module_identifier = s.peek_next_token();
+            |self_| {
+                let dot_token = self_.get_token();
+                let possibly_module_identifier = self_.peek_next_token();
                 match (dot_token.kind, possibly_module_identifier.kind) {
                     (TT::Dot, TT::CapitalizedIdentifier) => {
-                        s.advance();
+                        self_.advance();
                         Ok(Some(dot_token))
                     }
                     _ => Ok(None),
                 }
             },
-            |s| {
-                s.required(
-                    |s| Ok(s.capitalized_identifier()),
-                    |s| {
+            |self_| {
+                self_.required(
+                    |self_| Ok(self_.capitalized_identifier()),
+                    |self_| {
                         Error::expected_but_found(
-                            s.source,
-                            s.get_token(),
+                            self_.source,
+                            self_.get_token(),
                             None,
                             "Expected a `PascalCase` name for the module",
                         )
                     },
                 )
             },
-            |s| {
+            |self_| {
                 Error::expected_but_found(
-                    s.source,
-                    s.get_token(),
+                    self_.source,
+                    self_.get_token(),
                     None,
                     "Expected a `PascalCase` identifier for the module name",
                 )
