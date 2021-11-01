@@ -9,13 +9,13 @@ Input:
 
 Result:
 
-1:9: Expected '|' between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`
+1:9: Expected `|` between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`
 
   1│  { Sneaky : 5 }
    │           ↑
 
 Error {
-    message: "1:9: Expected '|' between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`\n\n  1│  { Sneaky : 5 }\n   │           ↑",
+    message: "1:9: Expected `|` between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`\n\n  1│  { Sneaky : 5 }\n   │           ↑",
     token: Token {
         kind: Colon,
         position: 9,

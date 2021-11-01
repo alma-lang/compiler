@@ -13,7 +13,7 @@ type Banana
 
 Result:
 
-5:0: Expected type variable names or a '=' sign between the name and the type definition, but instead found: `[End of file]`
+5:0: Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `[End of file]`
 
   3│  module Test
   4│  
@@ -21,7 +21,7 @@ Result:
    │             ↑
 
 Error {
-    message: "5:0: Expected type variable names or a '=' sign between the name and the type definition, but instead found: `[End of file]`\n\n  3│  module Test\n  4│  \n  5│  type Banana\n   │             ↑",
+    message: "5:0: Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `[End of file]`\n\n  3│  module Test\n  4│  \n  5│  type Banana\n   │             ↑",
     token: Token {
         kind: Eof,
         position: 26,

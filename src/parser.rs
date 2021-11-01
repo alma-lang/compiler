@@ -426,27 +426,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             self.advance();
 
             if let Some(name) = self.capitalized_identifier() {
-                let mut vars = vec![];
-                loop {
-                    match self.identifier() {
-                        Some(variable) => vars.push(variable),
-                        None => {
-                            let token = self.get_token();
-                            if matches!(token.kind, Equal) {
-                                self.advance();
-                                break;
-                            } else {
-                                return Err(Error::expected_but_found(
-                                    self.source,
-                                    token,
-                                    None,
-                                    "Expected type variable names or a '=' sign \
-                                    between the name and the type definition",
-                                ));
-                            }
+                let vars = self.many(|s| match s.identifier() {
+                    Some(variable) => Ok(Some(variable)),
+                    None => {
+                        let token = s.get_token();
+                        if matches!(token.kind, Equal) {
+                            s.advance();
+                            Ok(None)
+                        } else {
+                            Err(Error::expected_but_found(
+                                s.source,
+                                token,
+                                None,
+                                "Expected type variable names like `a` or a `=` sign \
+                                between the name and the type definition",
+                            ))
                         }
                     }
-                }
+                })?;
 
                 let (type_definition, end) = if let Some((record, end)) = self.type_record()? {
                     (types::TypeDefinitionType::Record(record), end)
@@ -651,7 +648,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             self.source,
                             pipe_token,
                             None,
-                            "Expected '|' between the type variable and \
+                            "Expected `|` between the type variable and \
                             the fields of the record (like this \
                             `{ a | field : Type }`)",
                         )),
@@ -1634,7 +1631,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 self.source,
                                 pipe_token,
                                 None,
-                                "Expected '|' between the record and \
+                                "Expected `|` between the record and \
                                 the fields to update (like this \
                                 `{ record | field = 5 }`)",
                             )),
@@ -1762,7 +1759,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self.source,
                     self.get_token(),
                     None,
-                    "Expected a ':' separating the name of \
+                    "Expected a `:` separating the name of \
                     the field and the value in the record",
                 )),
             },

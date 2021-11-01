@@ -13,7 +13,7 @@ type Banana : asdf
 
 Result:
 
-4:12: Expected type variable names or a '=' sign between the name and the type definition, but instead found: `:`
+4:12: Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `:`
 
   2│  module Test
   3│  
@@ -21,7 +21,7 @@ Result:
    │              ↑
 
 Error {
-    message: "4:12: Expected type variable names or a '=' sign between the name and the type definition, but instead found: `:`\n\n  2│  module Test\n  3│  \n  4│  type Banana : asdf\n   │              ↑",
+    message: "4:12: Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `:`\n\n  2│  module Test\n  3│  \n  4│  type Banana : asdf\n   │              ↑",
     token: Token {
         kind: Colon,
         position: 26,
