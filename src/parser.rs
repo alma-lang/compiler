@@ -1036,12 +1036,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     // Otherwise this is a lambda lhs, identifier + params
                     _ => {
                         let params = self.one_or_many(Self::pattern, |s| {
-                            Err(Error::expected_but_found(
+                            Error::expected_but_found(
                                 s.source,
                                 s.get_token(),
                                 None,
                                 &format!("Expected an `=` sign or list of parameters for the definition of `{}`", identifier.value.to_string(s.strings)),
-                            ))
+                            )
                         })?;
                         let expr = self.binding_rhs()?;
                         let line = token.line;
@@ -1175,12 +1175,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self.advance();
 
                 let params = self.one_or_many(Self::pattern, |s| {
-                    Err(Error::expected_but_found(
+                    Error::expected_but_found(
                         s.source,
                         s.get_token(),
                         None,
                         "Expected a list of parameters",
-                    ))
+                    )
                 })?;
                 let arrow = self.get_token();
                 match arrow.kind {
@@ -1778,47 +1778,62 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn module_name(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
-        let first_token = self.get_token();
-        match self.capitalized_identifier() {
-            Some(name) => self
-                .module_name_rest(vec![first_token], vec![name])
-                .map(Some),
-            None => Ok(None),
-        }
-    }
-    fn module_name_rest(
-        &mut self,
-        mut tokens: Vec<&'tokens Token<'source>>,
-        mut names: Vec<CapitalizedIdentifier>,
-    ) -> ParseResult<'source, 'tokens, ModuleName> {
-        let dot_token = self.get_token();
-        let possibly_module_identifier = self.peek_next_token();
-        match (dot_token.kind, possibly_module_identifier.kind) {
-            (TT::Dot, TT::CapitalizedIdentifier) => {
-                self.advance();
-
-                let token = self.get_token();
-                match self.capitalized_identifier() {
-                    Some(name) => {
-                        names.push(name);
-                        tokens.push(token);
-                        self.module_name_rest(tokens, names)
+        let start = self.current;
+        let identifiers = self.one_or_many_sep(
+            |s| {
+                let dot_token = s.get_token();
+                let possibly_module_identifier = s.peek_next_token();
+                match (dot_token.kind, possibly_module_identifier.kind) {
+                    (TT::Dot, TT::CapitalizedIdentifier) => {
+                        s.advance();
+                        Ok(Some(dot_token))
                     }
-                    None => self.build_module_name(tokens, names),
+                    _ => Ok(None),
                 }
-            }
-            _ => self.build_module_name(tokens, names),
+            },
+            |s| {
+                s.required(
+                    |s| Ok(s.capitalized_identifier()),
+                    |s| {
+                        Error::expected_but_found(
+                            s.source,
+                            s.get_token(),
+                            None,
+                            "Expected a `PascalCase` name for the module",
+                        )
+                    },
+                )
+            },
+            |s| {
+                Error::expected_but_found(
+                    s.source,
+                    s.get_token(),
+                    None,
+                    "Expected a `PascalCase` identifier for the module name",
+                )
+            },
+        )?;
+
+        if identifiers.is_empty() {
+            Ok(None)
+        } else {
+            let end = self.current;
+            self.build_module_name(&self.tokens[start..end], identifiers)
+                .map(Some)
         }
     }
     fn build_module_name(
         &mut self,
-        tokens: Vec<&'tokens Token<'source>>,
+        tokens: &'tokens [Token<'source>],
         names: Vec<CapitalizedIdentifier>,
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
+            let name = &names[i];
+            let name_str = name.value.to_string(self.strings);
+            let token = tokens.iter().find(|t| t.position == name.start).unwrap();
             Error::new(
                 self.source,
-                tokens[i],
+                &token,
                 None,
                 &format!(
                     "Invalid module name '{}'.\n\n\
@@ -1826,7 +1841,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 and also not have extraneous characters, \
                 because they need to match the file name \
                 in the file system.",
-                    names[i].value.to_string(self.strings)
+                    name_str
                 ),
             )
         })
@@ -1967,17 +1982,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         parent_token.line < token.line && token.indent <= parent_token.indent
     }
 
-    fn one_or_many_delimited<F, E1, E2, E3, R>(
+    fn one_or_many_delimited<Parser, ParserResult, E1, E2, E3>(
         &mut self,
         separator: token::Type,
         delimiter: (token::Type, token::Type),
-        parse: F,
+        parse: Parser,
         on_first_not_found: E1,
         on_missing_first_delimiter: E2,
         on_missing_separator_or_last_delimiter: E3,
-    ) -> ParseResult<'source, 'tokens, Vec<R>>
+    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
     where
-        F: Fn(&mut Self) -> ParseResult<'source, 'tokens, R>,
+        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
         E1: Fn(&mut Self) -> Error<'source, 'tokens>,
         E2: Fn(&mut Self) -> Error<'source, 'tokens>,
         E3: Fn(&mut Self) -> Error<'source, 'tokens>,
@@ -2019,32 +2034,95 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         Ok(items)
     }
 
-    fn one_or_many<F, E, R>(
+    fn one_or_many<Parser, ParserResult, E>(
         &mut self,
-        parse: F,
+        parse: Parser,
         on_first_not_found: E,
-    ) -> ParseResult<'source, 'tokens, Vec<R>>
+    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
     where
-        F: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<R>>,
-        E: Fn(&mut Self) -> ParseResult<'source, 'tokens, Vec<R>>,
+        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<ParserResult>>,
+        E: Fn(&mut Self) -> Error<'source, 'tokens>,
     {
         let items = self.many(parse)?;
         if items.is_empty() {
-            on_first_not_found(self)
+            Err(on_first_not_found(self))
         } else {
             Ok(items)
         }
     }
 
-    fn many<F, R>(&mut self, parse: F) -> ParseResult<'source, 'tokens, Vec<R>>
+    fn one_or_many_sep<Parser, ParserResult, Delimiter, DelimiterParser, E>(
+        &mut self,
+        delimiter: DelimiterParser,
+        parse: Parser,
+        on_first_not_found: E,
+    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
     where
-        F: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<R>>,
+        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
+        DelimiterParser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<Delimiter>>,
+        E: Fn(&mut Self) -> Error<'source, 'tokens>,
+    {
+        let items = self.many_sep(delimiter, parse)?;
+        if items.is_empty() {
+            Err(on_first_not_found(self))
+        } else {
+            Ok(items)
+        }
+    }
+
+    fn many_sep<Parser, ParserResult, Delimiter, DelimiterParser>(
+        &mut self,
+        delimiter: DelimiterParser,
+        parse: Parser,
+    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
+    where
+        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
+        DelimiterParser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<Delimiter>>,
+    {
+        let mut i = 0;
+        let mut items = vec![];
+        loop {
+            if i > 0 {
+                let del = delimiter(self)?;
+                if del.is_none() {
+                    break;
+                }
+            }
+            let item = parse(self)?;
+            items.push(item);
+            i += 1;
+        }
+        Ok(items)
+    }
+
+    fn many<Parser, ParserResult>(
+        &mut self,
+        parse: Parser,
+    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
+    where
+        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<ParserResult>>,
     {
         let mut items = vec![];
         while let Some(item) = parse(self)? {
             items.push(item);
         }
         Ok(items)
+    }
+
+    fn required<Parser, E, ParserResult>(
+        &mut self,
+        parse: Parser,
+        on_none: E,
+    ) -> ParseResult<'source, 'tokens, ParserResult>
+    where
+        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<ParserResult>>,
+        E: Fn(&mut Self) -> Error<'source, 'tokens>,
+    {
+        if let Some(result) = parse(self)? {
+            Ok(result)
+        } else {
+            Err(on_none(self))
+        }
     }
 }
 

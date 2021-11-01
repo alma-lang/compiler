@@ -15,7 +15,7 @@ module Test.Test2
 
 Result:
 
-5:11: Expected the module name, but instead found: `i_am_not_PascalCase`
+5:11: Expected a `PascalCase` name for the module, but instead found: `i_am_not_PascalCase`
 
   3│  module Test.Test2
   4│  
@@ -24,7 +24,7 @@ Result:
   6│          test = 1
 
 Error {
-    message: "5:11: Expected the module name, but instead found: `i_am_not_PascalCase`\n\n  3│  module Test.Test2\n  4│  \n  5│      module i_am_not_PascalCase\n   │             ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  6│          test = 1",
+    message: "5:11: Expected a `PascalCase` name for the module, but instead found: `i_am_not_PascalCase`\n\n  3│  module Test.Test2\n  4│  \n  5│      module i_am_not_PascalCase\n   │             ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  6│          test = 1",
     token: Token {
         kind: Identifier,
         position: 43,
