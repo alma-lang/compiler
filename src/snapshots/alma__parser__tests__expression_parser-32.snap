@@ -19,63 +19,19 @@ Node {
             value: None,
         },
         expr: Lambda(
-            [
-                Node {
-                    start: 1,
-                    end: 2,
-                    line: 1,
-                    column: 1,
-                    value: Identifier(
-                        Node {
-                            start: 1,
-                            end: 2,
-                            line: 1,
-                            column: 1,
-                            value: Identifier_ {
-                                name: SymbolU32 {
-                                    value: 1,
-                                },
-                            },
-                        },
-                    ),
-                },
-                Node {
-                    start: 3,
-                    end: 4,
-                    line: 1,
-                    column: 3,
-                    value: Identifier(
-                        Node {
-                            start: 3,
-                            end: 4,
-                            line: 1,
-                            column: 3,
-                            value: Identifier_ {
-                                name: SymbolU32 {
-                                    value: 2,
-                                },
-                            },
-                        },
-                    ),
-                },
-            ],
-            Node {
-                start: 8,
-                end: 9,
-                line: 1,
-                column: 8,
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Identifier(
-                        None,
-                        Identifier(
+            Lambda {
+                parameters: [
+                    Node {
+                        start: 1,
+                        end: 2,
+                        line: 1,
+                        column: 1,
+                        value: Identifier(
                             Node {
-                                start: 8,
-                                end: 9,
+                                start: 1,
+                                end: 2,
                                 line: 1,
-                                column: 8,
+                                column: 1,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 1,
@@ -83,7 +39,53 @@ Node {
                                 },
                             },
                         ),
-                    ),
+                    },
+                    Node {
+                        start: 3,
+                        end: 4,
+                        line: 1,
+                        column: 3,
+                        value: Identifier(
+                            Node {
+                                start: 3,
+                                end: 4,
+                                line: 1,
+                                column: 3,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            },
+                        ),
+                    },
+                ],
+                body: Node {
+                    start: 8,
+                    end: 9,
+                    line: 1,
+                    column: 8,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Identifier(
+                            None,
+                            Identifier(
+                                Node {
+                                    start: 8,
+                                    end: 9,
+                                    line: 1,
+                                    column: 8,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 1,
+                                        },
+                                    },
+                                },
+                            ),
+                        ),
+                    },
                 },
             },
         ),

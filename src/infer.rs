@@ -1,6 +1,6 @@
 use crate::ast::{
     self, AnyIdentifier, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET,
-    Identifier, Import, Module, ModuleName, Pattern_ as P, Unary_ as U,
+    Identifier, Import, Lambda, Module, ModuleName, Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
 use crate::source::Source;
@@ -1281,7 +1281,7 @@ fn infer_rec<'ast>(
          *   -------------
          *   infer env (fun x -> e) = t -> t'
          */
-        ET::Lambda(params, body) => infer_lambda(params, body, state, env, primitive_types, errors),
+        ET::Lambda(lambda) => infer_lambda(lambda, state, env, primitive_types, errors),
 
         /* Let
          *   infer env e0 = t
@@ -1317,16 +1317,13 @@ fn infer_definitions<'ast>(
 ) {
     for definition in definitions {
         match &definition {
-            Definition::Lambda(identifier, expression) => match &expression.value.expr {
-                ET::Lambda(params, body) => {
-                    state.enter_level();
-                    let t = infer_lambda(params, body, state, env, primitive_types, errors);
-                    state.exit_level();
+            Definition::Lambda(identifier, lambda) => {
+                state.enter_level();
+                let t = infer_lambda(lambda, state, env, primitive_types, errors);
+                state.exit_level();
 
-                    env.insert(identifier.value.name, state.generalize(&t));
-                }
-                _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
-            },
+                env.insert(identifier.value.name, state.generalize(&t));
+            }
             Definition::Pattern(pattern, value) => {
                 state.enter_level();
                 let t = infer_rec(value, state, env, primitive_types, errors);
@@ -1342,15 +1339,17 @@ fn infer_definitions<'ast>(
 }
 
 fn infer_lambda<'ast>(
-    params: &'ast [ast::Pattern],
-    body: &'ast Expression,
+    lambda: &'ast Lambda,
     state: &mut State,
     env: &mut TypeEnv,
     primitive_types: &PrimitiveTypes,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
-    let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> =
-        params.iter().map(|p| (p, state.new_type_var())).collect();
+    let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> = lambda
+        .parameters
+        .iter()
+        .map(|p| (p, state.new_type_var()))
+        .collect();
 
     let mut env = params_with_type
         .iter()
@@ -1362,7 +1361,7 @@ fn infer_lambda<'ast>(
             env
         });
 
-    let return_type = infer_rec(body, state, &mut env, primitive_types, errors);
+    let return_type = infer_rec(&lambda.body, state, &mut env, primitive_types, errors);
 
     Rc::new(Fn(
         params_with_type

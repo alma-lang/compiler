@@ -3,7 +3,7 @@ use crate::ast::{
     types::{self, Type, TypeDefinition},
     CapitalizedIdentifier, Expression,
     ExpressionType::{self as ET, Float, If, Let, String_, *},
-    Expression_ as E, Identifier, Import, Module, Node, Pattern, Pattern_,
+    Expression_ as E, Identifier, Import, Lambda, Module, Node, Pattern, Pattern_,
     Unary_::{Minus, Not},
     *,
 };
@@ -814,18 +814,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                     let expr = self.binding_rhs()?;
 
-                    let line = token.line;
-                    let column = token.column;
-                    let start = token.position;
-                    let end = expr.end;
                     Some(Definition::Lambda(
                         identifier,
-                        Node {
-                            value: E::untyped(ET::Lambda(params, Box::new(expr))),
-                            line,
-                            column,
-                            start,
-                            end,
+                        Lambda {
+                            parameters: params,
+                            body: Box::new(expr),
                         },
                     ))
                 }
@@ -933,7 +926,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let end = body.end;
 
         Ok(Some(Node {
-            value: E::untyped(Lambda(params, Box::new(body))),
+            value: E::untyped(ET::Lambda(Lambda {
+                parameters: params,
+                body: Box::new(body),
+            })),
             line,
             column,
             start,

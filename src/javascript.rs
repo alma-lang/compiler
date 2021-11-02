@@ -1,7 +1,7 @@
 use crate::ast::{
     types::{self, TypeDefinition},
-    Definition, Export_, Expression, ExpressionType as ET, Module, ModuleFullName, ModuleName,
-    Pattern, Pattern_ as P, Unary_ as U,
+    Definition, Export_, Expression, ExpressionType as ET, Lambda, Module, ModuleFullName,
+    ModuleName, Pattern, Pattern_ as P, Unary_ as U,
 };
 use crate::compiler::types::{ModuleAsts, ModuleInterface, ModuleInterfaces};
 use crate::strings::Strings;
@@ -235,14 +235,11 @@ fn generate_definitions(
             code.push('\n')
         }
         match definition {
-            Definition::Lambda(name, expression) => match &expression.value.expr {
-                ET::Lambda(params, body) => {
-                    indented(code, indent, "");
-                    generate_function(indent, code, name.value.to_string(strings), params, body, strings);
-                    code.push('\n');
-                }
-                _ => panic!("Top level definitions classified as Lambda should always have a Lambda expression on the right hand side. This is a compiler bug. Please report it!"),
-            },
+            Definition::Lambda(name, lambda) => {
+                indented(code, indent, "");
+                generate_function(indent, code, name.value.to_string(strings), lambda, strings);
+                code.push('\n');
+            }
             Definition::Pattern(pattern, expression) => {
                 generate_let(indent, code, pattern, expression, strings)
             }
@@ -275,13 +272,12 @@ fn generate_function(
     indent: usize,
     code: &mut String,
     name: &str,
-    params: &[Pattern],
-    body: &Expression,
+    lambda: &Lambda,
     strings: &Strings,
 ) {
     write!(code, "function {}(", name).unwrap();
 
-    for (i, pattern) in params.iter().enumerate() {
+    for (i, pattern) in lambda.parameters.iter().enumerate() {
         if i > 0 {
             code.push_str(", ");
         }
@@ -293,7 +289,7 @@ fn generate_function(
     {
         let indent = add_indent(indent);
         indented(code, indent, "return ");
-        generate_expression(indent, code, body, strings);
+        generate_expression(indent, code, &lambda.body, strings);
         code.push('\n');
     }
 
@@ -415,8 +411,8 @@ fn generate_expression(
             strings,
         ),
 
-        ET::Lambda(patterns, body) => {
-            generate_function(indent, code, "", patterns, body, strings);
+        ET::Lambda(lambda) => {
+            generate_function(indent, code, "", lambda, strings);
         }
 
         ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter(), strings),

@@ -172,7 +172,7 @@ pub enum Export_ {
 
 #[derive(Debug)]
 pub enum Definition {
-    Lambda(Identifier, Expression /* ExpressionType::Lambda */),
+    Lambda(Identifier, Lambda),
     Pattern(Pattern, Expression),
 }
 
@@ -290,10 +290,16 @@ pub enum ExpressionType {
     RecordUpdate(Box<Expression>, Vec<(Identifier, Expression)>),
     Unary(Unary, Box<Expression>),
     Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
-    Lambda(Vec<Pattern>, Box<Expression>),
+    Lambda(Lambda),
     FnCall(Box<Expression>, Vec<Expression>),
     Let(Vec<Definition>, Box<Expression>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
+}
+
+#[derive(Debug)]
+pub struct Lambda {
+    pub parameters: Vec<Pattern>,
+    pub body: Box<Expression>,
 }
 
 // Operators
