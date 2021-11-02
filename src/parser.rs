@@ -922,70 +922,60 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Let => {
                 self.advance();
 
-                let bindings = self.let_bindings(let_token, vec![])?;
-
-                if !bindings.is_empty() {
-                    let is_in_keyword = if let TT::In = self.get_token().kind {
-                        self.advance();
-                        true
-                    } else {
-                        false
-                    };
-                    if is_in_keyword || self.is_token_after_line_and_same_indent_as(let_token) {
-                        let body = self.required_expression(Some(
-                            "Expected an expression for the body of the let bindings",
-                        ))?;
-
-                        let line = let_token.line;
-                        let column = let_token.column;
-                        let start = let_token.position;
-                        let end = body.end;
-                        Ok(Some(Node {
-                            value: E::untyped(Let(bindings, Box::new(body))),
-                            line,
-                            column,
-                            start,
-                            end,
-                        }))
-                    } else {
-                        Err(Error::expected_but_found(
-                            self.source,
-                            self.get_token(),
+                let bindings = self.one_or_many(
+                    |self_| {
+                        if self_.is_token_in_same_line_or_nested_indent_from(let_token) {
+                            self_.binding()
+                        } else {
+                            Ok(None)
+                        }
+                    },
+                    |self_| {
+                        Error::expected_but_found(
+                            self_.source,
+                            self_.get_token(),
                             None,
-                            "Expected the let definition \
-                                to be followed by another \
-                                expression in the next line \
-                                and same indentation",
-                        ))
-                    }
+                            "Expected a pattern for the left side of the let expression",
+                        )
+                    },
+                )?;
+
+                let is_in_keyword = if let TT::In = self.get_token().kind {
+                    self.advance();
+                    true
+                } else {
+                    false
+                };
+                if is_in_keyword || self.is_token_after_line_and_same_indent_as(let_token) {
+                    let body = self.required_expression(Some(
+                        "Expected an expression for the body of the let bindings",
+                    ))?;
+
+                    let line = let_token.line;
+                    let column = let_token.column;
+                    let start = let_token.position;
+                    let end = body.end;
+                    Ok(Some(Node {
+                        value: E::untyped(Let(bindings, Box::new(body))),
+                        line,
+                        column,
+                        start,
+                        end,
+                    }))
                 } else {
                     Err(Error::expected_but_found(
                         self.source,
                         self.get_token(),
                         None,
-                        "Expected a pattern for the left side of the let expression",
+                        "Expected the let definition \
+                        to be followed by another \
+                        expression in the next line \
+                        and same indentation",
                     ))
                 }
             }
 
             _ => Ok(None),
-        }
-    }
-    fn let_bindings(
-        &mut self,
-        let_token: &Token,
-        mut bindings: Vec<Definition>,
-    ) -> ParseResult<'source, 'tokens, Vec<Definition>> {
-        if self.is_token_in_same_line_or_nested_indent_from(let_token) {
-            match self.binding()? {
-                Some(binding) => {
-                    bindings.push(binding);
-                    self.let_bindings(let_token, bindings)
-                }
-                None => Ok(bindings),
-            }
-        } else {
-            Ok(bindings)
         }
     }
 
