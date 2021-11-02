@@ -483,14 +483,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let branches = self.one_or_many_sep(
-            |self_| {
-                if self_.get_token().kind == TT::Pipe {
-                    self_.advance();
-                    Ok(Some(()))
-                } else {
-                    Ok(None)
-                }
-            },
+            |self_| self_.match_token(TT::Pipe),
             |self_| {
                 self_.required(Self::type_constructor, |self_| {
                     Error::expected_but_found(
@@ -646,14 +639,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn type_record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Type)>> {
         self.one_or_many_sep(
-            |self_| {
-                if self_.get_token().kind == TT::Comma {
-                    self_.advance();
-                    Ok(Some(()))
-                } else {
-                    Ok(None)
-                }
-            },
+            |self_| self_.match_token(TT::Comma),
             Self::type_record_field,
             |self_| {
                 Error::expected_but_found(
@@ -1407,6 +1393,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             like this `a.b.c`",
                         ));
                     }
+
                     _ => {
                         return Err(Error::new(
                             self.source,
@@ -1681,21 +1668,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Expression)>> {
-        let mut fields = vec![];
-
-        loop {
-            let field = self.record_field()?;
-            fields.push(field);
-
-            let comma_token = self.get_token();
-            if let TT::Comma = comma_token.kind {
-                self.advance();
-            } else {
-                break;
-            }
-        }
-
-        Ok(fields)
+        self.one_or_many_sep(
+            |self_| self_.match_token(TT::Comma),
+            Self::record_field,
+            |self_| {
+                Error::expected_but_found(
+                    self_.source,
+                    self_.get_token(),
+                    None,
+                    "Expected a record field (like this `{ field = 5 }`)",
+                )
+            },
+        )
     }
 
     fn record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Expression)> {
@@ -2072,6 +2056,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Ok(result)
         } else {
             Err(on_none(self))
+        }
+    }
+
+    fn match_token(
+        &mut self,
+        typ: token::Type,
+    ) -> ParseResult<'source, 'tokens, Option<&'tokens Token<'source>>> {
+        let token = self.get_token();
+        if self.get_token().kind == typ {
+            self.advance();
+            Ok(Some(token))
+        } else {
+            Ok(None)
         }
     }
 }
