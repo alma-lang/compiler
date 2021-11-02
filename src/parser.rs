@@ -37,7 +37,7 @@ use crate::token::{
     ● type_record_field    → IDENTIFIER ":" type_parens | type
 
     // Expressions
-    ● let                  → "let" MAYBE_INDENT ( binding )+ MAYBE_INDENT ( "in" )? expression
+    ● let                  → "let" ( binding )+ ( "in" )? expression
     ● binding              → ( identifier ( params )? | pattern ) "=" expression
     ● lambda               → "\" params "->" expression
     ● pattern              → parsed from Ast.Pattern
@@ -1148,6 +1148,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         "Expected a list of parameters",
                     )
                 })?;
+
                 let arrow = self.get_token();
                 match arrow.kind {
                     Arrow => {
@@ -1205,7 +1206,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn binary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
         match self.unary()? {
             Some(expr) => {
-                self.binary_step().map(|mut binops| {
+                self.many(Self::binary_step).map(|mut binops| {
                     // Make the binops options to be able to take them later
                     let mut binops: Vec<Option<(Binop, Expression)>> =
                         binops.drain(..).map(Some).collect();
@@ -1216,56 +1217,46 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             None => Ok(None),
         }
     }
-    fn binary_step(&mut self) -> ParseResult<'source, 'tokens, Vec<(Binop, Expression)>> {
-        let mut binops = vec![];
+    fn binary_step(&mut self) -> ParseResult<'source, 'tokens, Option<(Binop, Expression)>> {
+        let token = self.get_token();
 
-        loop {
-            let token = self.get_token();
+        let op = match token.kind {
+            Slash => Some(Binop_::division(self.strings)),
+            Star => Some(Binop_::multiplication(self.strings)),
+            Plus => Some(Binop_::addition(self.strings)),
+            TT::Minus => Some(Binop_::substraction(self.strings)),
+            BangEqual => Some(Binop_::not_equal(self.strings)),
+            EqualEqual => Some(Binop_::equal(self.strings)),
+            Greater => Some(Binop_::greater_than(self.strings)),
+            GreaterEqual => Some(Binop_::greater_equal_than(self.strings)),
+            Less => Some(Binop_::less_than(self.strings)),
+            LessEqual => Some(Binop_::less_equal_than(self.strings)),
+            And => Some(Binop_::and(self.strings)),
+            Or => Some(Binop_::or(self.strings)),
+            _ => None,
+        };
 
-            let op = match token.kind {
-                Slash => Some(Binop_::division(self.strings)),
-                Star => Some(Binop_::multiplication(self.strings)),
-                Plus => Some(Binop_::addition(self.strings)),
-                TT::Minus => Some(Binop_::substraction(self.strings)),
-                BangEqual => Some(Binop_::not_equal(self.strings)),
-                EqualEqual => Some(Binop_::equal(self.strings)),
-                Greater => Some(Binop_::greater_than(self.strings)),
-                GreaterEqual => Some(Binop_::greater_equal_than(self.strings)),
-                Less => Some(Binop_::less_than(self.strings)),
-                LessEqual => Some(Binop_::less_equal_than(self.strings)),
-                And => Some(Binop_::and(self.strings)),
-                Or => Some(Binop_::or(self.strings)),
-                _ => None,
-            };
+        match op {
+            Some(op) => {
+                self.advance();
 
-            match op {
-                Some(op) => {
-                    self.advance();
-
-                    let op_node = Node::new(op, token, token);
-                    match self.unary()? {
-                        Some(right) => {
-                            binops.push((op_node, right));
-                        }
-                        None => {
-                            return Err(Error::expected_but_found(
-                                self.source,
-                                self.get_token(),
-                                None,
-                                &format!(
-                                    "Expected an expression after the binary operator `{}`",
-                                    &token.lexeme
-                                ),
-                            ));
-                        }
-                    }
+                let op_node = Node::new(op, token, token);
+                match self.unary()? {
+                    Some(right) => Ok(Some((op_node, right))),
+                    None => Err(Error::expected_but_found(
+                        self.source,
+                        self.get_token(),
+                        None,
+                        &format!(
+                            "Expected an expression after the binary operator `{}`",
+                            &token.lexeme
+                        ),
+                    )),
                 }
+            }
 
-                None => break,
-            };
+            None => Ok(None),
         }
-
-        Ok(binops)
     }
 
     fn unary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
