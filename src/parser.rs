@@ -645,21 +645,25 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Type)>> {
-        let mut fields = vec![];
-
-        loop {
-            let field = self.type_record_field()?;
-            fields.push(field);
-
-            let comma_token = self.get_token();
-            if let TT::Comma = comma_token.kind {
-                self.advance();
-            } else {
-                break;
-            }
-        }
-
-        Ok(fields)
+        self.one_or_many_sep(
+            |self_| {
+                if self_.get_token().kind == TT::Comma {
+                    self_.advance();
+                    Ok(Some(()))
+                } else {
+                    Ok(None)
+                }
+            },
+            Self::type_record_field,
+            |self_| {
+                Error::expected_but_found(
+                    self_.source,
+                    self_.get_token(),
+                    None,
+                    "Expected a record field (like this `{ field : Type }`)",
+                )
+            },
+        )
     }
 
     fn type_record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Type)> {
