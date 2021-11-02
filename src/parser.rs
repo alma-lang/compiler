@@ -47,7 +47,7 @@ use crate::token::{
     ● binop                → // parsed from Ast.Binop operator list
     ● unary                → ( "not" | "-" )? call
     //   Other primitives
-    ● call                 → prop_access ( "_" | prop_access )*
+    ● call                 → prop_access ( prop_access )*
     ● prop_access          → primary properties
     ● properties           → ( "." ( IDENTIFIER ) )*
     ● primary              → NUMBER | STRING | "false" | "true"
@@ -1311,7 +1311,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         match self.prop_access()? {
             Some(expr) => {
-                let args = self.arguments(token, vec![])?;
+                let args = self.many(|self_| self_.argument(token))?;
+
                 if args.is_empty() {
                     Ok(Some(expr))
                 } else {
@@ -1334,24 +1335,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn arguments(
+    fn argument(
         &mut self,
         first_token: &Token,
-        mut args: Vec<Expression>,
-    ) -> ParseResult<'source, 'tokens, Vec<Expression>> {
+    ) -> ParseResult<'source, 'tokens, Option<Expression>> {
         if self.is_token_in_same_line_or_nested_indent_from(first_token) {
-            let arg = self.prop_access()?;
-            match arg {
+            match self.prop_access()? {
                 // We tried to get an argument, but there was no match, or it was not well indented
-                None => Ok(args),
-
-                Some(arg) => {
-                    args.push(arg);
-                    self.arguments(first_token, args)
-                }
+                None => Ok(None),
+                Some(arg) => Ok(Some(arg)),
             }
         } else {
-            Ok(args)
+            Ok(None)
         }
     }
 
