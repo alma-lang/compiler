@@ -23,7 +23,7 @@ use crate::token::{
                            | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
     ● imports              → ( import )*
     ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
-    ● definitions          → ( type_def | module | binding )+
+    ● module_definitions   → ( type_def | module | binding )+
 
     ● type_identifier      → CAPITALIZED_IDENTIFIER
     ● type_var             → IDENTIFIER
@@ -445,16 +445,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
                 })?;
 
-                let (type_definition, end) = if let Some((record, end)) = self.type_record()? {
-                    (types::TypeDefinitionType::Record(record), end)
+                let type_definition = if let Some(record) = self.type_record()? {
+                    types::TypeDefinitionType::Record(record)
                 } else {
-                    let (branches, end) = self.type_union_branches()?;
-                    (types::TypeDefinitionType::Union(branches), end)
+                    let branches = self.type_union_branches()?;
+                    types::TypeDefinitionType::Union(branches)
                 };
 
                 let line = token.line;
                 let column = token.column;
                 let start = token.position;
+                let end = self.prev_token().end_position;
                 Ok(Some(Node {
                     value: types::TypeDefinition_::new(name, vars, type_definition),
                     start,
@@ -475,9 +476,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_union_branches(
-        &mut self,
-    ) -> ParseResult<'source, 'tokens, (Vec<types::Constructor>, usize)> {
+    fn type_union_branches(&mut self) -> ParseResult<'source, 'tokens, Vec<types::Constructor>> {
         // Optionally eat a first pipe for multiline branches
         if let TT::Pipe = self.get_token().kind {
             self.advance();
@@ -513,32 +512,26 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             },
         )?;
 
-        let end = branches.last().unwrap().end;
-        Ok((branches, end))
+        Ok(branches)
     }
 
     fn type_constructor(&mut self) -> ParseResult<'source, 'tokens, Option<types::Constructor>> {
         let constructor_token = self.get_token();
         if let Some(name) = self.capitalized_identifier() {
-            let mut params = vec![];
-            let mut end = None;
-
-            loop {
-                if !self.is_token_in_same_line_or_nested_indent_from(constructor_token) {
-                    break;
-                }
-                if let Some((param, p_end)) = self.type_param()? {
-                    params.push(param);
-                    end = Some(p_end);
+            let params = self.many(|self_| {
+                if !self_.is_token_in_same_line_or_nested_indent_from(constructor_token) {
+                    Ok(None)
+                } else if let Some(param) = self_.type_param()? {
+                    Ok(Some(param))
                 } else {
-                    break;
+                    Ok(None)
                 }
-            }
+            })?;
 
             let line = name.line;
             let column = name.column;
             let start = name.start;
-            let end = end.unwrap_or(name.end);
+            let end = self.prev_token().end_position;
 
             Ok(Some(Node {
                 value: types::Constructor_::new(name, params),
@@ -552,7 +545,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_record(&mut self) -> ParseResult<'source, 'tokens, Option<(types::RecordType, usize)>> {
+    fn type_record(&mut self) -> ParseResult<'source, 'tokens, Option<types::RecordType>> {
         let token = self.get_token();
         if matches!(token.kind, LeftBrace) {
             self.advance();
@@ -564,14 +557,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 // Unit record
                 (RightBrace, _) => {
                     self.advance();
-                    Ok(Some((
-                        types::RecordType::Record(Node::new(
-                            types::Record_::new(vec![]),
-                            token,
-                            next_token,
-                        )),
-                        next_token.end_position,
-                    )))
+                    Ok(Some(types::RecordType::Record(Node::new(
+                        types::Record_::new(vec![]),
+                        token,
+                        next_token,
+                    ))))
                 }
 
                 // Record literal
@@ -583,14 +573,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         RightBrace => {
                             self.advance();
 
-                            Ok(Some((
-                                types::RecordType::Record(Node::new(
-                                    types::Record_::new(fields),
-                                    token,
-                                    last_token,
-                                )),
-                                last_token.end_position,
-                            )))
+                            Ok(Some(types::RecordType::Record(Node::new(
+                                types::Record_::new(fields),
+                                token,
+                                last_token,
+                            ))))
                         }
                         _ => Err(Error::expected_but_found(
                             self.source,
@@ -626,14 +613,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 RightBrace => {
                                     self.advance();
 
-                                    Ok(Some((
-                                        types::RecordType::RecordExt(Node::new(
-                                            types::RecordExt_::new(extension, fields),
-                                            token,
-                                            last_token,
-                                        )),
-                                        last_token.end_position,
-                                    )))
+                                    Ok(Some(types::RecordType::RecordExt(Node::new(
+                                        types::RecordExt_::new(extension, fields),
+                                        token,
+                                        last_token,
+                                    ))))
                                 }
                                 _ => Err(Error::expected_but_found(
                                     self.source,
@@ -684,9 +668,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             if matches!(colon_token.kind, TT::Colon) {
                 self.advance();
 
-                if let Some((typ, _)) = self.type_parens()? {
+                if let Some(typ) = self.type_parens()? {
                     Ok((identifier, typ))
-                } else if let Some((typ, _)) = self.type_()? {
+                } else if let Some(typ) = self.type_()? {
                     Ok((identifier, typ))
                 } else {
                     Err(Error::expected_but_found(
@@ -715,7 +699,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_param(&mut self) -> ParseResult<'source, 'tokens, Option<(Type, usize)>> {
+    fn type_param(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
         if let Some(type_) = self.type_parens()? {
             Ok(Some(type_))
         } else if let Some(ident) = self.capitalized_identifier() {
@@ -723,38 +707,32 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let column = ident.column;
             let start = ident.start;
             let end = ident.end;
-            Ok(Some((
-                Type::App(Node {
-                    value: types::Constructor_::new(ident, vec![]),
-                    line,
-                    column,
-                    start,
-                    end,
-                }),
+            Ok(Some(Type::App(Node {
+                value: types::Constructor_::new(ident, vec![]),
+                line,
+                column,
+                start,
                 end,
-            )))
+            })))
         } else if let Some(ident) = self.identifier() {
-            let end = ident.end;
-            Ok(Some((Type::Var(ident), end)))
-        } else if let Some((record, end)) = self.type_record()? {
-            Ok(Some((Type::Record(record), end)))
+            Ok(Some(Type::Var(ident)))
+        } else if let Some(record) = self.type_record()? {
+            Ok(Some(Type::Record(record)))
         } else {
             Ok(None)
         }
     }
 
-    fn type_parens(&mut self) -> ParseResult<'source, 'tokens, Option<(Type, usize)>> {
+    fn type_parens(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
         let token = self.get_token();
         if let TT::LeftParen = token.kind {
             self.advance();
 
             if let Some(type_) = self.type_constructor()? {
-                let end = type_.end;
-
                 if let TT::RightParen = self.get_token().kind {
                     self.advance();
 
-                    Ok(Some((Type::App(type_), end)))
+                    Ok(Some(Type::App(type_)))
                 } else {
                     Err(Error::expected_but_found(
                         self.source,
@@ -776,15 +754,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_(&mut self) -> ParseResult<'source, 'tokens, Option<(Type, usize)>> {
+    fn type_(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
         if let Some(ident) = self.identifier() {
-            let end = ident.end;
-            Ok(Some((Type::Var(ident), end)))
+            Ok(Some(Type::Var(ident)))
         } else if let Some(type_) = self.type_constructor()? {
-            let end = type_.end;
-            Ok(Some((Type::App(type_), end)))
-        } else if let Some((record, end)) = self.type_record()? {
-            Ok(Some((Type::Record(record), end)))
+            Ok(Some(Type::App(type_)))
+        } else if let Some(record) = self.type_record()? {
+            Ok(Some(Type::Record(record)))
         } else {
             Ok(None)
         }
@@ -870,7 +846,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             self.get_token(),
                             None,
                             "Expected a definition like `n = 5` \
-                            or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`",
+                            or `add x y = x + y` or a type definition like \
+                            `type User = LoggedIn | Anon`",
                         ))
                     }
                 }

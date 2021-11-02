@@ -14,7 +14,7 @@ b = * add
 
 Result:
 
-3:9: Expected a definition like `n = 5` or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`, but instead found: `)`
+3:9: Expected a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `)`
 
   1│  module Test
   2│  
@@ -24,7 +24,7 @@ Result:
   5│  b = * add
 
 Error {
-    message: "3:9: Expected a definition like `n = 5` or `add x y = x + y`, or a type definition like `type User = LoggedIn | Anon`, but instead found: `)`\n\n  1│  module Test\n  2│  \n  3│  a = 1 + 2) + 3\n   │           ↑\n  4│  \n  5│  b = * add",
+    message: "3:9: Expected a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `)`\n\n  1│  module Test\n  2│  \n  3│  a = 1 + 2) + 3\n   │           ↑\n  4│  \n  5│  b = * add",
     token: Token {
         kind: RightParen,
         position: 22,

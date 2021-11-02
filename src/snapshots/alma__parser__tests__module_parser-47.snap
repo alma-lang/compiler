@@ -39,7 +39,7 @@ Result:
         type_definitions: [
             Node {
                 start: 14,
-                end: 46,
+                end: 47,
                 line: 4,
                 column: 0,
                 value: TypeDefinition_ {
@@ -71,7 +71,7 @@ Result:
                         [
                             Node {
                                 start: 29,
-                                end: 46,
+                                end: 47,
                                 line: 4,
                                 column: 15,
                                 value: Constructor_ {
