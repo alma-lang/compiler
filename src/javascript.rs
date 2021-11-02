@@ -336,8 +336,12 @@ fn generate_expression(
 
         ET::Float(float) => write!(code, "{}", float).unwrap(),
 
-        ET::String_(string) => write!(code, "\"{}\"", strings.resolve(*string)).unwrap(),
-
+        ET::String_(string) => write!(
+            code,
+            "\"{}\"",
+            strings.resolve(*string).replace("\n", "\\n")
+        )
+        .unwrap(),
         ET::Identifier(module, identifier) => {
             if let Some(module) = module {
                 module_full_name(code, module, strings);
