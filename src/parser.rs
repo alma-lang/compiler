@@ -130,12 +130,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let module = self.module(None)?;
         match module {
             Some(mut modules) => self.eof((modules.pop().unwrap(), modules)),
-            None => Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
-                "Expected `module FileName` at the start of the file",
-            )),
+            None => Err(self
+                .expected_but_found_error("Expected `module FileName` at the start of the file")),
         }
     }
 
@@ -145,10 +141,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             None => match self.binding()? {
                 Some(definition) => ReplEntry::Definition(definition),
                 None => ReplEntry::Expression(self.required(Self::expression, |self_| {
-                    Error::expected_but_found(
-                        self_.source,
-                        self_.get_token(),
-                        None,
+                    self_.expected_but_found_error(
                         "Expected an import, a top level definition, \
                         or an expression",
                     )
@@ -163,12 +156,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let eof_token = self.get_token();
         match eof_token.kind {
             TT::Eof => Ok(result),
-            _ => Err(Error::expected_but_found(
-                self.source,
-                eof_token,
-                None,
-                "Expected the end of input",
-            )),
+            _ => Err(self.expected_but_found_error("Expected the end of input")),
         }
     }
 
@@ -180,12 +168,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         if let Some(module_token) = self.match_token(TT::Module) {
             let name = self.required(Self::module_name, |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
-                    "Expected the module name",
-                )
+                self_.expected_but_found_error("Expected the module name")
             })?;
 
             if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
@@ -252,32 +235,23 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             (TT::LeftParen, TT::RightParen),
             Self::export,
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Parsing the module exports expected at least \
-                            one definition or type to export",
+                    one definition or type to export",
                 )
             },
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Parsing the module exports expected a comma \
-                            separated list of exports inside parenthesis",
+                    separated list of exports inside parenthesis",
                 )
             },
         )?;
 
         if exports.is_empty() {
-            Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            Err(self.expected_but_found_error(
                 "Parsing the module exports expected a comma \
-                        separated list of exports inside parenthesis",
+                separated list of exports inside parenthesis",
             ))
         } else {
             Ok(exports)
@@ -292,12 +266,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         } else if let Some(export) = self.export_type()? {
             Ok(export)
         } else {
-            Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
-                "Expected a function or type name from the module",
-            ))
+            Err(self.expected_but_found_error("Expected a function or type name from the module"))
         }
     }
     fn export_type(&mut self) -> ParseResult<'source, 'tokens, Option<Export>> {
@@ -309,29 +278,20 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self_.required(
                         |self_| Ok(self_.capitalized_identifier()),
                         |self_| {
-                            Error::expected_but_found(
-                                self_.source,
-                                self_.get_token(),
-                                None,
+                            self_.expected_but_found_error(
                                 "Expected a `PascalCase` name for a constructor",
                             )
                         },
                     )
                 },
                 |self_: &mut Self| {
-                    Error::expected_but_found(
-                        self_.source,
-                        self_.get_token(),
-                        None,
+                    self_.expected_but_found_error(
                         "Parsing the type constructors expected at least \
                         one inside the parens",
                     )
                 },
                 |self_: &mut Self| {
-                    Error::expected_but_found(
-                        self_.source,
-                        self_.get_token(),
-                        None,
+                    self_.expected_but_found_error(
                         "Parsing the type constructors expected a comma \
                         separated list of constructor names inside parenthesis",
                     )
@@ -357,22 +317,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn import(&mut self) -> ParseResult<'source, 'tokens, Option<Import>> {
         if let Some(import_token) = self.match_token(TT::Import) {
             let module_name = self.required(Self::module_name, |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
-                    "Expected an identifier of the module to import",
-                )
+                self_.expected_but_found_error("Expected an identifier of the module to import")
             })?;
 
             let alias = if let Some(_) = self.match_token(TT::As) {
                 Some(self.required(
                     |self_| Ok(self_.capitalized_identifier()),
                     |self_| {
-                        Error::expected_but_found(
-                            self_.source,
-                            self_.get_token(),
-                            None,
+                        self_.expected_but_found_error(
                             "Expected an identifier for the alias of the module",
                         )
                     },
@@ -416,14 +368,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let name = self.required(
             |self_| Ok(self_.capitalized_identifier()),
-            |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
-                    "Expected a `PascalCase` name for the type",
-                )
-            },
+            |self_| self_.expected_but_found_error("Expected a `PascalCase` name for the type"),
         )?;
 
         let vars = self.many(|self_| match self_.identifier() {
@@ -434,10 +379,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self_.advance();
                     Ok(None)
                 } else {
-                    Err(Error::expected_but_found(
-                        self_.source,
-                        token,
-                        None,
+                    Err(self_.expected_but_found_error(
                         "Expected type variable names like `a` or a `=` sign \
                         between the name and the type definition",
                     ))
@@ -473,19 +415,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Pipe)),
             |self_| {
                 self_.required(Self::type_constructor, |self_| {
-                    Error::expected_but_found(
-                        self_.source,
-                        self_.get_token(),
-                        None,
+                    self_.expected_but_found_error(
                         "Expected a constructor for the type like `type User = User Int`",
                     )
                 })
             },
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Expected at least one constructor \
                     for the type like `type User = User Int`",
                 )
@@ -569,23 +505,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let extension = if let Some(identifier) = self.identifier() {
                     identifier
                 } else {
-                    return Err(Error::expected_but_found(
-                        self.source,
-                        self.get_token(),
-                        None,
+                    return Err(self.expected_but_found_error(
                         "Expected a record literal `{ x : Int, y : Int }`\
-                            or an extensible record `{ a | x : Int, y : Int }`",
+                        or an extensible record `{ a | x : Int, y : Int }`",
                     ));
                 };
 
                 if let None = self.match_token(TT::Pipe) {
-                    return Err(Error::expected_but_found(
-                        self.source,
-                        self.get_token(),
-                        None,
+                    return Err(self.expected_but_found_error(
                         "Expected `|` between the type variable and \
-                            the fields of the record (like this \
-                            `{ a | field : Type }`)",
+                        the fields of the record (like this \
+                        `{ a | field : Type }`)",
                     ));
                 }
 
@@ -615,10 +545,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::type_record_field,
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Expected a record field (like this `{ field : Type }`)",
                 )
             },
@@ -629,24 +556,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Expected a camelCase identifier for \
                     the field name in the record",
                 )
             },
         )?;
 
-        let colon_token = self.get_token();
         if let None = self.match_token(TT::Colon) {
-            return Err(Error::expected_but_found(
-                self.source,
-                colon_token,
-                None,
-                "Expected a `:` between the field name and its type",
-            ));
+            return Err(
+                self.expected_but_found_error("Expected a `:` between the field name and its type")
+            );
         }
 
         if let Some(typ) = self.type_parens()? {
@@ -654,12 +574,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         } else if let Some(typ) = self.type_()? {
             Ok((identifier, typ))
         } else {
-            Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
-                "Expected a type for the field in the record",
-            ))
+            Err(self.expected_but_found_error("Expected a type for the field in the record"))
         }
     }
 
@@ -694,12 +609,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let type_ = self.required(Self::type_constructor, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
-                "Expected a type inside the parenthesis",
-            )
+            self_.expected_but_found_error("Expected a type inside the parenthesis")
         })?;
 
         if let Some(_) = self.match_token(RightParen) {
@@ -772,10 +682,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else if let Some(_) = self.match_token(TT::Eof) {
                 Ok((modules, definitions, type_definitions))
             } else {
-                Err(Error::expected_but_found(
-                    self.source,
-                    self.get_token(),
-                    None,
+                Err(self.expected_but_found_error(
                     "Expected the left side of a definition like `n = 5` \
                     or `add x y = x + y` or a type definition like \
                     `type User = LoggedIn | Anon`",
@@ -787,10 +694,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         {
             Ok((modules, definitions, type_definitions))
         } else {
-            Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            Err(self.expected_but_found_error(
                 "Expected a definition like `n = 5` \
                 or `add x y = x + y` or a type definition like \
                 `type User = LoggedIn | Anon`",
@@ -849,10 +753,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }
             },
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Expected a pattern for the left side of the let expression",
                 )
             },
@@ -861,22 +762,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if !self.match_token(TT::In).is_some()
             && !self.is_token_after_line_and_same_indent_as(let_token)
         {
-            return Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            return Err(self.expected_but_found_error(
                 "Expected the let definition to be followed by another \
                 expression in the next line and same indentation",
             ));
         }
 
         let body = self.required(Self::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
-                "Expected an expression for the body of the let bindings",
-            )
+            self_
+                .expected_but_found_error("Expected an expression for the body of the let bindings")
         })?;
 
         let line = let_token.line;
@@ -912,13 +806,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
-                            Error::expected_but_found(
-                                self_.source,
-                                self_.get_token(),
-                                None,
-                                &format!("Expected an `=` sign or list of parameters for the definition of `{}`", identifier.value.to_string(self_.strings)),
-                            )
-                        })?;
+                        self_.expected_but_found_error(&format!(
+                            "Expected an `=` sign or list of parameters for the definition of `{}`",
+                            identifier.value.to_string(self_.strings)
+                        ))
+                    })?;
 
                     let expr = self.binding_rhs()?;
 
@@ -946,20 +838,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
     fn binding_rhs(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         if let None = self.match_token(TT::Equal) {
-            return Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            return Err(self.expected_but_found_error(
                 "Expected an = and an expression \
                 for the right side of the definition",
             ));
         }
 
         self.required(Self::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
+            self_.expected_but_found_error(
                 "Expected an expression for the right side of the definition",
             )
         })
@@ -973,49 +859,34 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let condition = self.required(Self::binary, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
+            self_.expected_but_found_error(
                 "Expected an expression for the condition \
                 in the if expression (eg: if True then 1 else 2)",
             )
         })?;
 
         if let None = self.match_token(TT::Then) {
-            return Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            return Err(self.expected_but_found_error(
                 "Expected the keyword `then` and \
                 an expression to parse the if expression",
             ));
         }
 
         let then = self.required(Self::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
+            self_.expected_but_found_error(
                 "Expected an expression for the first\
                 branch of the if (eg: if True then \"Hi\" else \"Ho\")",
             )
         })?;
 
         if let None = self.match_token(TT::Else) {
-            return Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
-                "Expected the `else` branch of the if expression",
-            ));
+            return Err(
+                self.expected_but_found_error("Expected the `else` branch of the if expression")
+            );
         }
 
         let else_ = self.required(Self::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
+            self_.expected_but_found_error(
                 "Expected an expression for the else\
                 branch of the if (eg: if True then \"Hi\" else \"Ho\")",
             )
@@ -1043,30 +914,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let params = self.one_or_many(Self::pattern, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
-                "Expected a list of parameters",
-            )
+            self_.expected_but_found_error("Expected a list of parameters")
         })?;
 
         if let None = self.match_token(Arrow) {
-            return Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            return Err(self.expected_but_found_error(
                 "Expected a `->` arrow after the list of parameters for the function",
             ));
         }
 
         let body = self.required(Self::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
-                "Expected an expression for the body of the function",
-            )
+            self_.expected_but_found_error("Expected an expression for the body of the function")
         })?;
 
         let line = token.line;
@@ -1137,15 +995,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let op_node = Node::new(op, token, token);
 
             let right = self.required(Self::unary, |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
-                    &format!(
-                        "Expected an expression after the binary operator `{}`",
-                        &token.lexeme
-                    ),
-                )
+                self_.expected_but_found_error(&format!(
+                    "Expected an expression after the binary operator `{}`",
+                    &token.lexeme
+                ))
             })?;
 
             Ok(Some((op_node, right)))
@@ -1185,15 +1038,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }))
             }
             (None, Some(expr)) => Ok(Some(expr)),
-            (Some(_), None) => Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
-                &format!(
-                    "Expected an expression after the unary operator `{}`",
-                    &token.lexeme
-                ),
-            )),
+            (Some(_), None) => Err(self.expected_but_found_error(&format!(
+                "Expected an expression after the unary operator `{}`",
+                &token.lexeme
+            ))),
             (None, None) => Ok(None),
         }
     }
@@ -1438,21 +1286,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     // Record update
                     _ => {
                         let record = self.required(Self::expression, |self_| {
-                            Error::expected_but_found(
-                                self_.source,
-                                self_.get_token(),
-                                None,
+                            self_.expected_but_found_error(
                                 "Expected a record literal `{ x = 1, y = 2 }`\
                                 or a record update `{ record | x = 5, y = 4 }`",
                             )
                         })?;
 
-                        let pipe_token = self.get_token();
                         if let None = self.match_token(Pipe) {
-                            return Err(Error::expected_but_found(
-                                self.source,
-                                pipe_token,
-                                None,
+                            return Err(self.expected_but_found_error(
                                 "Expected `|` between the record and \
                                 the fields to update (like this \
                                 `{ record | field = 5 }`)",
@@ -1489,12 +1330,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 // Parenthesized expression
                 let expr = self.required(Self::expression, |self_| {
-                    Error::expected_but_found(
-                        self_.source,
-                        self_.get_token(),
-                        None,
-                        "Expected an expression inside the parenthesis",
-                    )
+                    self_.expected_but_found_error("Expected an expression inside the parenthesis")
                 })?;
 
                 if let Some(_) = self.match_token(RightParen) {
@@ -1559,12 +1395,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::record_field,
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
-                    "Expected a record field (like this `{ field = 5 }`)",
-                )
+                self_
+                    .expected_but_found_error("Expected a record field (like this `{ field = 5 }`)")
             },
         )
     }
@@ -1573,20 +1405,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Expected an identifier for the name of the field in the record",
                 )
             },
         )?;
 
         if !matches!(self.get_token().kind, Colon | Equal) {
-            return Err(Error::expected_but_found(
-                self.source,
-                self.get_token(),
-                None,
+            return Err(self.expected_but_found_error(
                 "Expected a `:` separating the name of \
                 the field and the value in the record",
             ));
@@ -1594,10 +1420,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         self.advance();
 
         let expr = self.required(Self::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
+            self_.expected_but_found_error(
                 "Expected an expression for the value \
                     of the field in the record",
             )
@@ -1624,20 +1447,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self_.required(
                     |self_| Ok(self_.capitalized_identifier()),
                     |self_| {
-                        Error::expected_but_found(
-                            self_.source,
-                            self_.get_token(),
-                            None,
-                            "Expected a `PascalCase` name for the module",
-                        )
+                        self_
+                            .expected_but_found_error("Expected a `PascalCase` name for the module")
                     },
                 )
             },
             |self_| {
-                Error::expected_but_found(
-                    self_.source,
-                    self_.get_token(),
-                    None,
+                self_.expected_but_found_error(
                     "Expected a `PascalCase` identifier for the module name",
                 )
             },
@@ -1950,6 +1766,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             None
         }
     }
+
+    fn expected_but_found_error(&self, msg: &str) -> Error<'source, 'tokens> {
+        Error::expected_but_found(self.source, self.get_token(), None, msg)
+    }
 }
 
 fn organize_binops(
@@ -2064,12 +1884,7 @@ pub mod tests {
         };
 
         let result = parser.required(State::expression, |self_| {
-            Error::expected_but_found(
-                self_.source,
-                self_.get_token(),
-                None,
-                "Expected an expression",
-            )
+            self_.expected_but_found_error("Expected an expression")
         })?;
         parser.eof(Box::new(result))
     }
