@@ -1,0 +1,20 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\ntype Fruit a = Banana (a -> a -> a)\n\nmain = Banana (\\\\x y -> x + y)\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+type Fruit a = Banana (a -> a -> a)
+
+main = Banana (\x y -> x + y)
+
+
+---
+Output:
+
+module Test
+
+main : Fruit Float

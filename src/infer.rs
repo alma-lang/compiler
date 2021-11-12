@@ -1038,6 +1038,15 @@ fn ast_type_to_type<'ast>(
     types_env: &TypeEnv,
 ) -> Rc<Type> {
     match ast_type {
+        ast::types::Type::Fun(params, ret) => {
+            let params_types = params
+                .iter()
+                .map(|param| ast_type_to_type(param, type_vars, errors, state, types_env))
+                .collect();
+            let ret_type = ast_type_to_type(&ret, type_vars, errors, state, types_env);
+            Rc::new(Fn(params_types, ret_type))
+        }
+
         ast::types::Type::App(typ) => match types_env.get(&typ.value.name.value.name) {
             Some(t) => Rc::clone(t),
             None => {
@@ -2005,6 +2014,56 @@ main = Fruits.Banana
 
 module Test.Fruits exposing (Fruit)
     type Fruit = Banana
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Fruit a = Banana (a -> a -> a)
+
+main = Banana 1
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Fruit a = Banana (a -> a -> a)
+
+main = Banana (\\x y -> x + y)
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Math num =
+    { add : num -> num -> num
+    , sub : num -> num -> num
+    }
+
+type M num = M (Math num)
+
+main = M { add: \\x y -> x + y, sub: \\x y -> x - y }
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type Math num =
+    { add : num -> num -> num
+    , sub : num -> num -> num
+    }
+
+type M num = M (Math num)
+
+main = M { add: \\x y -> x + y, sub: \\x -> x }
 "
         ));
 

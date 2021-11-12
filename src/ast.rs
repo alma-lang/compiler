@@ -219,6 +219,7 @@ pub mod types {
 
     #[derive(Debug)]
     pub enum Type {
+        Fun(Vec<Type>, Box<Type>),
         App(Constructor),
         Var(Identifier),
         Record(RecordType),

@@ -1,0 +1,35 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\ntype Fruit a = Banana (a -> a -> a)\n\nmain = Banana 1\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+type Fruit a = Banana (a -> a -> a)
+
+main = Banana 1
+
+
+---
+Output:
+
+[5:14]
+
+Type mismatch:  Float  ≠  a -> a -> a
+
+Expected
+
+  3│  type Fruit a = Banana (a -> a -> a)
+  4│  
+  5│  main = Banana 1
+   │                ↑
+
+to be
+
+a -> a -> a
+
+but seems to be
+
+Float

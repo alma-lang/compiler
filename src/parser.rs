@@ -31,10 +31,11 @@ use crate::token::{
     ● type_union_branches  → type_constructor ( "|" type_constructor )*
     ● type_constructor     → type_identifier ( type_param )*
     ● type_param           → type_parens | type_identifier | type_var | type_record
-    ● type_parens          → "(" type ")"
-    ● type                 → type_constructor | type_var | type_record
+    ● type_parens          → "(" type_function ")"
     ● type_record          → "{" ( type_var "|" )? ( type_record_field ( "," type_record_field )* )? "}"
-    ● type_record_field    → IDENTIFIER ":" type_parens | type
+    ● type_record_field    → IDENTIFIER ":" type_function
+    ● type_function        → type ( ( "->" type )* "->" type )?
+    ● type                 → type_constructor | type_var | type_record | type_parens
 
     // Expressions
     ● let                  → "let" ( binding )+ ( "in" )? expression
@@ -569,13 +570,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             );
         }
 
-        if let Some(typ) = self.type_parens()? {
-            Ok((identifier, typ))
-        } else if let Some(typ) = self.type_()? {
-            Ok((identifier, typ))
-        } else {
-            Err(self.expected_but_found_error("Expected a type for the field in the record"))
-        }
+        let typ = self.type_function("Expected a type for the field in the record")?;
+        Ok((identifier, typ))
     }
 
     fn type_param(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
@@ -608,12 +604,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             return Ok(None);
         }
 
-        let type_ = self.required(Self::type_constructor, |self_| {
-            self_.expected_but_found_error("Expected a type inside the parenthesis")
-        })?;
+        let type_ = self.type_function("Expected a type inside the parenthesis")?;
 
         if let Some(_) = self.match_token(RightParen) {
-            Ok(Some(Type::App(type_)))
+            Ok(Some(type_))
         } else {
             Err(Error::expected_but_found(
                 self.source,
@@ -624,6 +618,31 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
+    fn type_function(&mut self, expected_type_error: &str) -> ParseResult<'source, 'tokens, Type> {
+        let mut params = self.one_or_many_sep(
+            // Using a comma for the parameters can be an issue because function types can be used
+            // in other comma separated elements like record fields, so this type_function would
+            // eat the comma that was intended for the record field.
+            // type Test = { a : x, y -> z }
+            // type Test = { a : x, y : z }
+            // type Test = { a : (x, y -> z) }
+            |self_| Ok(self_.match_token(TT::Arrow)),
+            |self_| {
+                self_.required(Self::type_, |self_| {
+                    self_.expected_but_found_error("Expected a type")
+                })
+            },
+            |self_| self_.expected_but_found_error(expected_type_error),
+        )?;
+
+        if params.len() == 1 {
+            Ok(params.swap_remove(0))
+        } else {
+            let ret = params.pop().unwrap();
+            Ok(Type::Fun(params, Box::new(ret)))
+        }
+    }
+
     fn type_(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
         if let Some(ident) = self.identifier() {
             Ok(Some(Type::Var(ident)))
@@ -631,6 +650,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Ok(Some(Type::App(type_)))
         } else if let Some(record) = self.type_record()? {
             Ok(Some(Type::Record(record)))
+        } else if let Some(typ) = self.type_parens()? {
+            Ok(Some(typ))
         } else {
             Ok(None)
         }
@@ -1690,23 +1711,6 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         DelimiterParser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<Delimiter>>,
         E: Fn(&mut Self) -> Error<'source, 'tokens>,
     {
-        let items = self.many_sep(delimiter, parse)?;
-        if items.is_empty() {
-            Err(on_first_not_found(self))
-        } else {
-            Ok(items)
-        }
-    }
-
-    fn many_sep<Parser, ParserResult, Delimiter, DelimiterParser>(
-        &mut self,
-        delimiter: DelimiterParser,
-        parse: Parser,
-    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
-    where
-        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
-        DelimiterParser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<Delimiter>>,
-    {
         let mut i = 0;
         let mut items = vec![];
         loop {
@@ -1720,7 +1724,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             items.push(item);
             i += 1;
         }
-        Ok(items)
+
+        if items.is_empty() {
+            Err(on_first_not_found(self))
+        } else {
+            Ok(items)
+        }
     }
 
     fn many<Parser, ParserResult>(
@@ -2462,6 +2471,38 @@ module Test.Fruits
     type Fruit =
         -- Comment
         Banana
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (Fruit)
+
+type Fruit a b = Fruit (a -> b)
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (Fruit)
+
+type Fruit a b = { f : a -> b }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (Fruit)
+
+type Fruit a b = { f : (a -> b) }
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (Fruit)
+
+type Fruit a b = Fruit (a -> b -> c)
 "
         ));
 
