@@ -16,15 +16,17 @@ use crate::token::{
 
 /* Grammar draft (●○):
     ● file                 → module EOF
-    ● module               → "module" module_name exposing? imports? definitions?
+    ● module               → "module" module_name exposing? imports? module_definitions?
     ● module_name          → CAPITALIZED_IDENTIFIER ( "." CAPITALIZED_IDENTIFIER )*
     ● exposing             → "exposing" "(" export ( "," export )* ")"
     ● export               → IDENTIFIER
                            | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
     ● imports              → ( import )*
     ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
-    ● module_definitions   → ( type_def | module | binding )+
 
+    ● module_definitions   → ( type_def | module | typed_binding )+
+
+    // Type definitions
     ● type_identifier      → CAPITALIZED_IDENTIFIER
     ● type_var             → IDENTIFIER
     ● type_def             → "type" type_identifier ( type_var )* "=" type_record | type_union_branches
@@ -37,17 +39,21 @@ use crate::token::{
     ● type_function        → type ( ( "->" type )* "->" type )?
     ● type                 → type_constructor | type_var | type_record | type_parens
 
+    ● type_signature       → identifier ":" type_function
+
     // Expressions
-    ● let                  → "let" ( binding )+ ( "in" )? expression
+    ● let                  → "let" ( typed_binding )+ ( "in" )? expression
+    ● typed_binding        → type_signature binding
+                           | binding
     ● binding              → ( identifier ( params )? | pattern ) "=" expression
     ● lambda               → "\" params "->" expression
     ● pattern              → parsed from Ast.Pattern
     ● if                   → "if" binary "then" expression "else" expression
-    //   Operators
+    // Operators
     ● binary               → unary ( binop unary )*
     ● binop                → // parsed from Ast.Binop operator list
     ● unary                → ( "not" | "-" )? call
-    //   Other primitives
+    // Other primitives
     ● call                 → prop_access ( prop_access )*
     ● prop_access          → primary properties
     ● properties           → ( "." ( IDENTIFIER ) )*
@@ -56,6 +62,8 @@ use crate::token::{
                            | "." IDENTIFIER
                            | record
                            | "(" ( expression )? ")"
+
+    // Records
     ● record               → "{" ( expression "|" )? ( field ( "," field )* )? "}"
     ● field                → IDENTIFIER ":" expression
 */
@@ -663,9 +671,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         module_name: &ModuleName,
         module_token: &Token,
         mut modules: Vec<Module>,
-        mut definitions: Vec<Definition>,
+        mut definitions: Vec<TypedDefinition>,
         mut type_definitions: Vec<TypeDefinition>,
-    ) -> ParseResult<'source, 'tokens, (Vec<Module>, Vec<Definition>, Vec<TypeDefinition>)> {
+    ) -> ParseResult<'source, 'tokens, (Vec<Module>, Vec<TypedDefinition>, Vec<TypeDefinition>)>
+    {
         let current_token_has_valid_indent =
             self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
@@ -680,7 +689,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     definitions,
                     type_definitions,
                 )
-            } else if let Some(definition) = self.binding()? {
+            } else if let Some(definition) = self.typed_binding()? {
                 definitions.push(definition);
                 self.module_definitions(
                     top_level,
@@ -768,7 +777,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let bindings = self.one_or_many(
             |self_| {
                 if self_.is_token_in_same_line_or_nested_indent_from(let_token) {
-                    self_.binding()
+                    self_.typed_binding()
                 } else {
                     Ok(None)
                 }
@@ -805,6 +814,50 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             start,
             end,
         }))
+    }
+
+    fn typed_binding(&mut self) -> ParseResult<'source, 'tokens, Option<TypedDefinition>> {
+        let name_token = self.get_token();
+        match (name_token.kind, self.peek_next_token().kind) {
+            (TT::Identifier, TT::Colon) => {
+                let name = self.identifier().unwrap();
+
+                // Skip over the colon
+                self.advance();
+
+                let typ = self.type_function("Expected a type for the type signature")?;
+                let signature = TypeSignature { name, typ };
+
+                // If the definition is not directly next to the signature, bail out to avoid
+                // swallowing an unrelated definition
+                let next_name_token = self.get_token();
+                if !matches!(next_name_token.kind, TT::Identifier) || next_name_token.lexeme != name_token.lexeme {
+                    return Ok(Some(TypedDefinition::TypeSignature(signature)))
+                }
+
+                match self.binding()? {
+                    Some(binding) => {
+                        let valid_name = match &binding {
+                            Definition::Pattern(Node {
+                                value: Pattern_::Identifier(identifier),
+                                ..
+                            }, _) | 
+                            Definition::Lambda(identifier, _) if &identifier.value == &signature.name.value => {
+                                true
+                            }
+                            _ => false
+                        };
+                        if valid_name {
+                            Ok(Some(TypedDefinition::Typed(signature, binding)))
+                        } else {
+                            panic!("Internal parser error: Should not have gotten into a binding if the name is different from the one in a type definition");
+                        }
+                    }
+                    None => Ok(None)
+                }
+            }
+            _ => Ok(self.binding()?.map(|b| TypedDefinition::Untyped(b))),
+        }
     }
 
     fn binding(&mut self) -> ParseResult<'source, 'tokens, Option<Definition>> {
@@ -1217,7 +1270,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             }
 
             TT::CapitalizedIdentifier => {
-                let mut module = self.module_name()?.expect("Just saw a capitalized identifier, how is this not a module name with parts.len() == 1?");
+                let mut module = self.module_name()?.expect("Internal parser error: Just saw a capitalized identifier, how is this not a module name with parts.len() == 1?");
 
                 let (module, identifier) = if module.parts.len() == 1 {
                     let first = module.parts.swap_remove(0);
@@ -1229,7 +1282,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         (Some(module), AnyIdentifier::Identifier(ident))
                     } else {
                         let ident = module.parts.pop().unwrap();
-                        let module = ModuleName::new(module.parts, self.strings).expect("Module should be valid as it is being built from a previously built module");
+                        let module = ModuleName::new(module.parts, self.strings).expect("Internal parser error: Module should be valid as it is being built from a previously built module");
                         (Some(module), AnyIdentifier::CapitalizedIdentifier(ident))
                     }
                 };
@@ -1563,7 +1616,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             token = self
                 .tokens
                 .get(i)
-                .expect("Out of bounds access to tokens array");
+                .expect("Internal parser error: Out of bounds access to tokens array");
             match token.kind {
                 Eof => break,
                 Comment => {
@@ -1585,7 +1638,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             token = self
                 .tokens
                 .get(i)
-                .expect("Out of bounds access to tokens array");
+                .expect("Internal parser error: Out of bounds access to tokens array");
             match token.kind {
                 Eof => break,
                 Comment => {
@@ -2505,6 +2558,101 @@ module Test exposing (Fruit)
 type Fruit a b = Fruit (a -> b -> c)
 "
         ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit
+
+test = 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit
+main = Fruit
+
+test = 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit
+
+signature : Fruit
+
+test = 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit a b
+
+signature : Fruit b
+
+test = 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit -> Fruit
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit -> Fruit a
+
+test = 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit a b -> Fruit a b
+main = Fruit
+
+test = 5
+"
+        ));
+
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main : Fruit a -> Fruit b -> Fruit c
+
+signature : Fruit d -> Fruit e -> Fruit f
+
+test = 5
+"
+        ));
+
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());

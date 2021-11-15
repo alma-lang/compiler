@@ -1,6 +1,6 @@
 use crate::ast::{
     self, AnyIdentifier, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET,
-    Identifier, Import, Lambda, Module, ModuleName, Pattern_ as P, Unary_ as U,
+    Identifier, Import, Lambda, Module, ModuleName, Pattern_ as P, TypedDefinition, Unary_ as U,
 };
 use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
 use crate::source::Source;
@@ -1318,22 +1318,22 @@ fn infer_rec<'ast>(
 }
 
 fn infer_definitions<'ast>(
-    definitions: &'ast [Definition],
+    definitions: &'ast [TypedDefinition],
     state: &mut State,
     env: &mut TypeEnv,
     primitive_types: &PrimitiveTypes,
     errors: &mut Vec<Error<'ast>>,
 ) {
     for definition in definitions {
-        match &definition {
-            Definition::Lambda(identifier, lambda) => {
+        match &definition.definition() {
+            Some(Definition::Lambda(identifier, lambda)) => {
                 state.enter_level();
                 let t = infer_lambda(lambda, state, env, primitive_types, errors);
                 state.exit_level();
 
                 env.insert(identifier.value.name, state.generalize(&t));
             }
-            Definition::Pattern(pattern, value) => {
+            Some(Definition::Pattern(pattern, value)) => {
                 state.enter_level();
                 let t = infer_rec(value, state, env, primitive_types, errors);
                 state.exit_level();
@@ -1343,6 +1343,7 @@ fn infer_definitions<'ast>(
                     P::Identifier(x) => env.insert(x.value.name, state.generalize(&t)),
                 };
             }
+            None => (),
         };
     }
 }

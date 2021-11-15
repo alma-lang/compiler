@@ -1,0 +1,267 @@
+---
+source: src/parser.rs
+expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit a b -> Fruit a b\nmain = Fruit\n\ntest = 5\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+main : Fruit a b -> Fruit a b
+main = Fruit
+
+test = 5
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [
+            Node {
+                start: 22,
+                end: 26,
+                line: 1,
+                column: 22,
+                value: Identifier(
+                    Node {
+                        start: 22,
+                        end: 26,
+                        line: 1,
+                        column: 22,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                ),
+            },
+        ],
+        imports: [],
+        definitions: [
+            Typed(
+                TypeSignature {
+                    name: Node {
+                        start: 29,
+                        end: 33,
+                        line: 3,
+                        column: 0,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    typ: Fun(
+                        [
+                            App(
+                                Node {
+                                    start: 36,
+                                    end: 45,
+                                    line: 3,
+                                    column: 7,
+                                    value: Constructor_ {
+                                        name: Node {
+                                            start: 36,
+                                            end: 41,
+                                            line: 3,
+                                            column: 7,
+                                            value: CapitalizedIdentifier_ {
+                                                name: SymbolU32 {
+                                                    value: 3,
+                                                },
+                                            },
+                                        },
+                                        params: [
+                                            Var(
+                                                Node {
+                                                    start: 42,
+                                                    end: 43,
+                                                    line: 3,
+                                                    column: 13,
+                                                    value: Identifier_ {
+                                                        name: SymbolU32 {
+                                                            value: 4,
+                                                        },
+                                                    },
+                                                },
+                                            ),
+                                            Var(
+                                                Node {
+                                                    start: 44,
+                                                    end: 45,
+                                                    line: 3,
+                                                    column: 15,
+                                                    value: Identifier_ {
+                                                        name: SymbolU32 {
+                                                            value: 5,
+                                                        },
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                        ],
+                        App(
+                            Node {
+                                start: 49,
+                                end: 58,
+                                line: 3,
+                                column: 20,
+                                value: Constructor_ {
+                                    name: Node {
+                                        start: 49,
+                                        end: 54,
+                                        line: 3,
+                                        column: 20,
+                                        value: CapitalizedIdentifier_ {
+                                            name: SymbolU32 {
+                                                value: 3,
+                                            },
+                                        },
+                                    },
+                                    params: [
+                                        Var(
+                                            Node {
+                                                start: 55,
+                                                end: 56,
+                                                line: 3,
+                                                column: 26,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 4,
+                                                    },
+                                                },
+                                            },
+                                        ),
+                                        Var(
+                                            Node {
+                                                start: 57,
+                                                end: 58,
+                                                line: 3,
+                                                column: 28,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 5,
+                                                    },
+                                                },
+                                            },
+                                        ),
+                                    ],
+                                },
+                            },
+                        ),
+                    ),
+                },
+                Pattern(
+                    Node {
+                        start: 59,
+                        end: 63,
+                        line: 4,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 59,
+                                end: 63,
+                                line: 4,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 66,
+                        end: 71,
+                        line: 4,
+                        column: 7,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Identifier(
+                                None,
+                                CapitalizedIdentifier(
+                                    Node {
+                                        start: 66,
+                                        end: 71,
+                                        line: 4,
+                                        column: 7,
+                                        value: CapitalizedIdentifier_ {
+                                            name: SymbolU32 {
+                                                value: 3,
+                                            },
+                                        },
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                ),
+            ),
+            Untyped(
+                Pattern(
+                    Node {
+                        start: 73,
+                        end: 77,
+                        line: 6,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 73,
+                                end: 77,
+                                line: 6,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 6,
+                                    },
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 80,
+                        end: 81,
+                        line: 6,
+                        column: 7,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                5.0,
+                            ),
+                        },
+                    },
+                ),
+            ),
+        ],
+        type_definitions: [],
+    },
+    [],
+)

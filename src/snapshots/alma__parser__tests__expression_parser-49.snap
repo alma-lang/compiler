@@ -24,99 +24,56 @@ Node {
         },
         expr: Let(
             [
-                Lambda(
-                    Node {
-                        start: 6,
-                        end: 10,
-                        line: 2,
-                        column: 2,
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 1,
+                Untyped(
+                    Lambda(
+                        Node {
+                            start: 6,
+                            end: 10,
+                            line: 2,
+                            column: 2,
+                            value: Identifier_ {
+                                name: SymbolU32 {
+                                    value: 1,
+                                },
                             },
                         },
-                    },
-                    Lambda {
-                        parameters: [
-                            Node {
-                                start: 11,
-                                end: 12,
-                                line: 2,
-                                column: 7,
-                                value: Identifier(
-                                    Node {
-                                        start: 11,
-                                        end: 12,
-                                        line: 2,
-                                        column: 7,
-                                        value: Identifier_ {
-                                            name: SymbolU32 {
-                                                value: 2,
-                                            },
-                                        },
-                                    },
-                                ),
-                            },
-                        ],
-                        body: Node {
-                            start: 15,
-                            end: 20,
-                            line: 2,
-                            column: 11,
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Binary(
-                                    Node {
-                                        start: 17,
-                                        end: 18,
-                                        line: 2,
-                                        column: 13,
-                                        value: Expression_ {
-                                            typ: RefCell {
-                                                value: None,
-                                            },
-                                            expr: Identifier(
-                                                None,
-                                                Identifier(
-                                                    Node {
-                                                        start: 17,
-                                                        end: 18,
-                                                        line: 2,
-                                                        column: 13,
-                                                        value: Identifier_ {
-                                                            name: SymbolU32 {
-                                                                value: 3,
-                                                            },
-                                                        },
-                                                    },
-                                                ),
-                                            ),
-                                        },
-                                    },
-                                    Node {
-                                        start: 17,
-                                        end: 18,
-                                        line: 2,
-                                        column: 13,
-                                        value: Binop_ {
-                                            typ: Addition,
-                                            precedence: 14,
-                                            associativity: Ltr,
-                                            fn_: Identifier_ {
+                        Lambda {
+                            parameters: [
+                                Node {
+                                    start: 11,
+                                    end: 12,
+                                    line: 2,
+                                    column: 7,
+                                    value: Identifier(
+                                        Node {
+                                            start: 11,
+                                            end: 12,
+                                            line: 2,
+                                            column: 7,
+                                            value: Identifier_ {
                                                 name: SymbolU32 {
-                                                    value: 3,
+                                                    value: 2,
                                                 },
                                             },
                                         },
+                                    ),
+                                },
+                            ],
+                            body: Node {
+                                start: 15,
+                                end: 20,
+                                line: 2,
+                                column: 11,
+                                value: Expression_ {
+                                    typ: RefCell {
+                                        value: None,
                                     },
-                                    [
+                                    expr: Binary(
                                         Node {
-                                            start: 15,
-                                            end: 16,
+                                            start: 17,
+                                            end: 18,
                                             line: 2,
-                                            column: 11,
+                                            column: 13,
                                             value: Expression_ {
                                                 typ: RefCell {
                                                     value: None,
@@ -125,13 +82,13 @@ Node {
                                                     None,
                                                     Identifier(
                                                         Node {
-                                                            start: 15,
-                                                            end: 16,
+                                                            start: 17,
+                                                            end: 18,
                                                             line: 2,
-                                                            column: 11,
+                                                            column: 13,
                                                             value: Identifier_ {
                                                                 name: SymbolU32 {
-                                                                    value: 2,
+                                                                    value: 3,
                                                                 },
                                                             },
                                                         },
@@ -140,24 +97,69 @@ Node {
                                             },
                                         },
                                         Node {
-                                            start: 19,
-                                            end: 20,
+                                            start: 17,
+                                            end: 18,
                                             line: 2,
-                                            column: 15,
-                                            value: Expression_ {
-                                                typ: RefCell {
-                                                    value: None,
+                                            column: 13,
+                                            value: Binop_ {
+                                                typ: Addition,
+                                                precedence: 14,
+                                                associativity: Ltr,
+                                                fn_: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 3,
+                                                    },
                                                 },
-                                                expr: Float(
-                                                    1.0,
-                                                ),
                                             },
                                         },
-                                    ],
-                                ),
+                                        [
+                                            Node {
+                                                start: 15,
+                                                end: 16,
+                                                line: 2,
+                                                column: 11,
+                                                value: Expression_ {
+                                                    typ: RefCell {
+                                                        value: None,
+                                                    },
+                                                    expr: Identifier(
+                                                        None,
+                                                        Identifier(
+                                                            Node {
+                                                                start: 15,
+                                                                end: 16,
+                                                                line: 2,
+                                                                column: 11,
+                                                                value: Identifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 2,
+                                                                    },
+                                                                },
+                                                            },
+                                                        ),
+                                                    ),
+                                                },
+                                            },
+                                            Node {
+                                                start: 19,
+                                                end: 20,
+                                                line: 2,
+                                                column: 15,
+                                                value: Expression_ {
+                                                    typ: RefCell {
+                                                        value: None,
+                                                    },
+                                                    expr: Float(
+                                                        1.0,
+                                                    ),
+                                                },
+                                            },
+                                        ],
+                                    ),
+                                },
                             },
                         },
-                    },
+                    ),
                 ),
             ],
             Node {

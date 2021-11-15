@@ -1,0 +1,125 @@
+---
+source: src/parser.rs
+expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit -> Fruit\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+main : Fruit -> Fruit
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [
+            Node {
+                start: 22,
+                end: 26,
+                line: 1,
+                column: 22,
+                value: Identifier(
+                    Node {
+                        start: 22,
+                        end: 26,
+                        line: 1,
+                        column: 22,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                ),
+            },
+        ],
+        imports: [],
+        definitions: [
+            TypeSignature(
+                TypeSignature {
+                    name: Node {
+                        start: 29,
+                        end: 33,
+                        line: 3,
+                        column: 0,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    typ: Fun(
+                        [
+                            App(
+                                Node {
+                                    start: 36,
+                                    end: 41,
+                                    line: 3,
+                                    column: 7,
+                                    value: Constructor_ {
+                                        name: Node {
+                                            start: 36,
+                                            end: 41,
+                                            line: 3,
+                                            column: 7,
+                                            value: CapitalizedIdentifier_ {
+                                                name: SymbolU32 {
+                                                    value: 3,
+                                                },
+                                            },
+                                        },
+                                        params: [],
+                                    },
+                                },
+                            ),
+                        ],
+                        App(
+                            Node {
+                                start: 45,
+                                end: 50,
+                                line: 3,
+                                column: 16,
+                                value: Constructor_ {
+                                    name: Node {
+                                        start: 45,
+                                        end: 50,
+                                        line: 3,
+                                        column: 16,
+                                        value: CapitalizedIdentifier_ {
+                                            name: SymbolU32 {
+                                                value: 3,
+                                            },
+                                        },
+                                    },
+                                    params: [],
+                                },
+                            },
+                        ),
+                    ),
+                },
+            ),
+        ],
+        type_definitions: [],
+    },
+    [],
+)

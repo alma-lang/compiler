@@ -141,7 +141,7 @@ pub struct Module {
     pub name: ModuleName,
     pub exports: Vec<Export>,
     pub imports: Vec<Import>,
-    pub definitions: Vec<Definition>,
+    pub definitions: Vec<TypedDefinition>,
     pub type_definitions: Vec<types::TypeDefinition>,
 }
 
@@ -168,6 +168,28 @@ pub type Export = Node<Export_>;
 pub enum Export_ {
     Identifier(Identifier),
     Type(CapitalizedIdentifier, Vec<CapitalizedIdentifier>),
+}
+
+#[derive(Debug)]
+pub enum TypedDefinition {
+    TypeSignature(TypeSignature),
+    Typed(TypeSignature, Definition),
+    Untyped(Definition),
+}
+impl TypedDefinition {
+    pub fn definition(&self) -> Option<&Definition> {
+        use TypedDefinition::*;
+        match self {
+            Typed(_, definition) | Untyped(definition) => Some(definition),
+            TypeSignature(_) => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TypeSignature {
+    pub name: Identifier,
+    pub typ: types::Type,
 }
 
 #[derive(Debug)]
@@ -293,7 +315,7 @@ pub enum ExpressionType {
     Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
     Lambda(Lambda),
     FnCall(Box<Expression>, Vec<Expression>),
-    Let(Vec<Definition>, Box<Expression>),
+    Let(Vec<TypedDefinition>, Box<Expression>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
 }
 

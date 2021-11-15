@@ -39,40 +39,42 @@ Result:
         exports: [],
         imports: [],
         definitions: [
-            Pattern(
-                Node {
-                    start: 44,
-                    end: 45,
-                    line: 7,
-                    column: 0,
-                    value: Identifier(
-                        Node {
-                            start: 44,
-                            end: 45,
-                            line: 7,
-                            column: 0,
-                            value: Identifier_ {
-                                name: SymbolU32 {
-                                    value: 4,
+            Untyped(
+                Pattern(
+                    Node {
+                        start: 44,
+                        end: 45,
+                        line: 7,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 44,
+                                end: 45,
+                                line: 7,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 4,
+                                    },
                                 },
                             },
-                        },
-                    ),
-                },
-                Node {
-                    start: 48,
-                    end: 49,
-                    line: 7,
-                    column: 4,
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
                         ),
                     },
-                },
+                    Node {
+                        start: 48,
+                        end: 49,
+                        line: 7,
+                        column: 4,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
             ),
         ],
         type_definitions: [],
@@ -111,40 +113,42 @@ Result:
             exports: [],
             imports: [],
             definitions: [
-                Pattern(
-                    Node {
-                        start: 37,
-                        end: 38,
-                        line: 5,
-                        column: 2,
-                        value: Identifier(
-                            Node {
-                                start: 37,
-                                end: 38,
-                                line: 5,
-                                column: 2,
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 4,
+                Untyped(
+                    Pattern(
+                        Node {
+                            start: 37,
+                            end: 38,
+                            line: 5,
+                            column: 2,
+                            value: Identifier(
+                                Node {
+                                    start: 37,
+                                    end: 38,
+                                    line: 5,
+                                    column: 2,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 4,
+                                        },
                                     },
                                 },
-                            },
-                        ),
-                    },
-                    Node {
-                        start: 41,
-                        end: 42,
-                        line: 5,
-                        column: 6,
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
                             ),
                         },
-                    },
+                        Node {
+                            start: 41,
+                            end: 42,
+                            line: 5,
+                            column: 6,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Float(
+                                    1.0,
+                                ),
+                            },
+                        },
+                    ),
                 ),
             ],
             type_definitions: [],

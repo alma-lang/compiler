@@ -89,40 +89,42 @@ Result:
             exports: [],
             imports: [],
             definitions: [
-                Pattern(
-                    Node {
-                        start: 80,
-                        end: 81,
-                        line: 7,
-                        column: 4,
-                        value: Identifier(
-                            Node {
-                                start: 80,
-                                end: 81,
-                                line: 7,
-                                column: 4,
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 7,
+                Untyped(
+                    Pattern(
+                        Node {
+                            start: 80,
+                            end: 81,
+                            line: 7,
+                            column: 4,
+                            value: Identifier(
+                                Node {
+                                    start: 80,
+                                    end: 81,
+                                    line: 7,
+                                    column: 4,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 7,
+                                        },
                                     },
                                 },
-                            },
-                        ),
-                    },
-                    Node {
-                        start: 84,
-                        end: 85,
-                        line: 7,
-                        column: 8,
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
                             ),
                         },
-                    },
+                        Node {
+                            start: 84,
+                            end: 85,
+                            line: 7,
+                            column: 8,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Float(
+                                    1.0,
+                                ),
+                            },
+                        },
+                    ),
                 ),
             ],
             type_definitions: [],
@@ -160,40 +162,42 @@ Result:
             exports: [],
             imports: [],
             definitions: [
-                Pattern(
-                    Node {
-                        start: 37,
-                        end: 38,
-                        line: 4,
-                        column: 2,
-                        value: Identifier(
-                            Node {
-                                start: 37,
-                                end: 38,
-                                line: 4,
-                                column: 2,
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 4,
+                Untyped(
+                    Pattern(
+                        Node {
+                            start: 37,
+                            end: 38,
+                            line: 4,
+                            column: 2,
+                            value: Identifier(
+                                Node {
+                                    start: 37,
+                                    end: 38,
+                                    line: 4,
+                                    column: 2,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 4,
+                                        },
                                     },
                                 },
-                            },
-                        ),
-                    },
-                    Node {
-                        start: 41,
-                        end: 42,
-                        line: 4,
-                        column: 6,
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
                             ),
                         },
-                    },
+                        Node {
+                            start: 41,
+                            end: 42,
+                            line: 4,
+                            column: 6,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Float(
+                                    1.0,
+                                ),
+                            },
+                        },
+                    ),
                 ),
             ],
             type_definitions: [],
@@ -231,40 +235,42 @@ Result:
             exports: [],
             imports: [],
             definitions: [
-                Pattern(
-                    Node {
-                        start: 111,
-                        end: 112,
-                        line: 10,
-                        column: 4,
-                        value: Identifier(
-                            Node {
-                                start: 111,
-                                end: 112,
-                                line: 10,
-                                column: 4,
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 10,
+                Untyped(
+                    Pattern(
+                        Node {
+                            start: 111,
+                            end: 112,
+                            line: 10,
+                            column: 4,
+                            value: Identifier(
+                                Node {
+                                    start: 111,
+                                    end: 112,
+                                    line: 10,
+                                    column: 4,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 10,
+                                        },
                                     },
                                 },
-                            },
-                        ),
-                    },
-                    Node {
-                        start: 115,
-                        end: 116,
-                        line: 10,
-                        column: 8,
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                5.0,
                             ),
                         },
-                    },
+                        Node {
+                            start: 115,
+                            end: 116,
+                            line: 10,
+                            column: 8,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Float(
+                                    5.0,
+                                ),
+                            },
+                        },
+                    ),
                 ),
             ],
             type_definitions: [],

@@ -148,40 +148,42 @@ Result:
             },
         ],
         definitions: [
-            Pattern(
-                Node {
-                    start: 146,
-                    end: 150,
-                    line: 12,
-                    column: 0,
-                    value: Identifier(
-                        Node {
-                            start: 146,
-                            end: 150,
-                            line: 12,
-                            column: 0,
-                            value: Identifier_ {
-                                name: SymbolU32 {
-                                    value: 2,
+            Untyped(
+                Pattern(
+                    Node {
+                        start: 146,
+                        end: 150,
+                        line: 12,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 146,
+                                end: 150,
+                                line: 12,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
                                 },
                             },
-                        },
-                    ),
-                },
-                Node {
-                    start: 168,
-                    end: 169,
-                    line: 14,
-                    column: 4,
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
                         ),
                     },
-                },
+                    Node {
+                        start: 168,
+                        end: 169,
+                        line: 14,
+                        column: 4,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
             ),
         ],
         type_definitions: [],

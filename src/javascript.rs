@@ -1,7 +1,7 @@
 use crate::ast::{
     types::{self, TypeDefinition},
     Definition, Export_, Expression, ExpressionType as ET, Lambda, Module, ModuleFullName,
-    ModuleName, Pattern, Pattern_ as P, Unary_ as U,
+    ModuleName, Pattern, Pattern_ as P, TypedDefinition, Unary_ as U,
 };
 use crate::compiler::types::{ModuleAsts, ModuleInterface, ModuleInterfaces};
 use crate::strings::Strings;
@@ -227,21 +227,24 @@ fn generate_definitions(
     indent: usize,
     code: &mut String,
     space_between: bool,
-    definitions: &[Definition],
+    definitions: &[TypedDefinition],
     strings: &Strings,
 ) {
     for (i, definition) in definitions.iter().enumerate() {
         if i > 0 && space_between {
             code.push('\n')
         }
-        match definition {
-            Definition::Lambda(name, lambda) => {
+        match definition.definition() {
+            Some(Definition::Lambda(name, lambda)) => {
                 indented(code, indent, "");
                 generate_function(indent, code, name.value.to_string(strings), lambda, strings);
                 code.push('\n');
             }
-            Definition::Pattern(pattern, expression) => {
+            Some(Definition::Pattern(pattern, expression)) => {
                 generate_let(indent, code, pattern, expression, strings)
+            }
+            None => {
+                // TODO: generate null definition
             }
         }
     }

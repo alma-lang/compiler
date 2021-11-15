@@ -2,7 +2,7 @@ pub mod errors;
 pub mod stages;
 pub mod types;
 
-use crate::ast::{self, Module, ReplEntry};
+use crate::ast::{self, Module, ReplEntry, TypedDefinition};
 use crate::compiler::stages::{check_cycles, infer, parse_files};
 use crate::compiler::types::{ModuleInterfaces, Sources};
 use crate::infer;
@@ -79,7 +79,9 @@ pub fn compile_repl_entry(
             result
         }
         ReplEntry::Definition(definition) => {
-            module.definitions.push(definition);
+            module
+                .definitions
+                .push(TypedDefinition::Untyped(definition));
             let result = compile_repl_entry_helper(
                 module,
                 module_interfaces,
@@ -94,16 +96,18 @@ pub fn compile_repl_entry(
             result
         }
         ReplEntry::Expression(expression) => {
-            module.definitions.push(ast::Definition::Pattern(
-                ast::Node {
-                    value: ast::Pattern_::Hole,
-                    start: 0,
-                    end: 0,
-                    line: 1,
-                    column: 0,
-                },
-                expression,
-            ));
+            module
+                .definitions
+                .push(TypedDefinition::Untyped(ast::Definition::Pattern(
+                    ast::Node {
+                        value: ast::Pattern_::Hole,
+                        start: 0,
+                        end: 0,
+                        line: 1,
+                        column: 0,
+                    },
+                    expression,
+                )));
             let result = compile_repl_entry_helper(
                 module,
                 module_interfaces,
