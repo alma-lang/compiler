@@ -1,0 +1,42 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\nmain : String\nmain = 5\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+main : String
+main = 5
+
+
+---
+Output:
+
+[4:0]
+
+Type mismatch:  Float  ≠  String
+
+Expected
+
+  2│  
+  3│  main : String
+  4│  main = 5
+   │  ↑↑↑↑
+
+with type
+
+Float
+
+to have the same type as
+
+  1│  module Test exposing (main)
+  2│  
+  3│  main : String
+   │  ↑↑↑↑
+  4│  main = 5
+
+with type
+
+String

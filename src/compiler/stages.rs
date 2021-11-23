@@ -6,7 +6,7 @@ use crate::parser;
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::tokenizer;
-use crate::typ::PrimitiveTypes;
+use crate::type_env::TypeEnv;
 use fnv::FnvHashSet as HashSet;
 
 pub fn process_sources(entry_sources: Vec<Source>) -> (Vec<String>, Sources) {
@@ -261,7 +261,7 @@ pub fn infer(
     entry_modules: Vec<ModuleFullName>,
     module_sources: &ModuleSources,
     module_asts: &ModuleAsts,
-    primitive_types: &PrimitiveTypes,
+    primitive_types: &TypeEnv,
     strings: &mut Strings,
 ) -> Result<ModuleInterfaces, String> {
     let mut errors = vec![];

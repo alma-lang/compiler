@@ -237,20 +237,17 @@ impl Type {
         s
     }
 
-    pub fn primitive_types(strings: &mut Strings) -> PrimitiveTypes {
-        let module = strings.get_or_intern("Core");
-        PrimitiveTypes {
-            float: Rc::new(Type::Named(module, strings.get_or_intern("Float"), vec![])),
-            bool: Rc::new(Type::Named(module, strings.get_or_intern("Bool"), vec![])),
-            string: Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-        }
+    pub fn primitive_types(strings: &mut Strings) -> TypeEnv {
+        let module = strings.get_or_intern("Alma");
+        let mut env = TypeEnv::new();
+        let float = strings.get_or_intern("Float");
+        let bool_ = strings.get_or_intern("Bool");
+        let string = strings.get_or_intern("String");
+        env.insert(float, Rc::new(Type::Named(module, float, vec![])));
+        env.insert(bool_, Rc::new(Type::Named(module, bool_, vec![])));
+        env.insert(string, Rc::new(Type::Named(module, string, vec![])));
+        env
     }
-}
-
-pub struct PrimitiveTypes {
-    pub float: Rc<Type>,
-    pub bool: Rc<Type>,
-    pub string: Rc<Type>,
 }
 
 /* Return the next unique lowercase-letter string after the given one, e.g:

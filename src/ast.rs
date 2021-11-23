@@ -38,6 +38,10 @@ impl<V> Node<V> {
             column: self.column,
         }
     }
+
+    pub fn unit(&self) -> Node<()> {
+        self.with_value(())
+    }
 }
 
 // Repl
@@ -184,6 +188,14 @@ impl TypedDefinition {
             TypeSignature(_) => None,
         }
     }
+
+    pub fn typ(&self) -> Option<&TypeSignature> {
+        use TypedDefinition::*;
+        match self {
+            Typed(typ, _) | TypeSignature(typ) => Some(typ),
+            Untyped(_) => None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -246,11 +258,45 @@ pub mod types {
         Var(Identifier),
         Record(RecordType),
     }
+    impl Type {
+        pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
+            use Type::*;
+            match self {
+                Fun(params, ret) => {
+                    for param in params {
+                        param.fill_vars(vars);
+                    }
+                    ret.fill_vars(vars);
+                }
+                App(constructor) => {
+                    for param in &constructor.value.params {
+                        param.fill_vars(vars);
+                    }
+                }
+                Var(identifier) => vars.push(identifier),
+                Record(record) => record.fill_vars(vars),
+            }
+        }
+        pub fn vars(&self) -> Vec<&Identifier> {
+            let mut vars = Vec::new();
+            self.fill_vars(&mut vars);
+            vars
+        }
+    }
 
     #[derive(Debug)]
     pub enum RecordType {
         Record(Record),
         RecordExt(RecordExt),
+    }
+    impl RecordType {
+        pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
+            use RecordType::*;
+            match self {
+                Record(rec) => rec.value.fill_vars(vars),
+                RecordExt(rec) => rec.value.fill_vars(vars),
+            }
+        }
     }
 
     pub type Record = Node<Record_>;
@@ -261,6 +307,12 @@ pub mod types {
     impl Record_ {
         pub fn new(fields: Vec<(Identifier, Type)>) -> Self {
             Self { fields }
+        }
+
+        pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
+            for (_, typ) in &self.fields {
+                typ.fill_vars(vars);
+            }
         }
     }
 
@@ -273,6 +325,13 @@ pub mod types {
     impl RecordExt_ {
         pub fn new(extension: Identifier, fields: Vec<(Identifier, Type)>) -> Self {
             Self { extension, fields }
+        }
+
+        pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
+            vars.push(&self.extension);
+            for (_, typ) in &self.fields {
+                typ.fill_vars(vars);
+            }
         }
     }
 }

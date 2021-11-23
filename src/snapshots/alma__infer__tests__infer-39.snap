@@ -1,0 +1,19 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\nmain : a -> a\nmain a = a\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+main : a -> a
+main a = a
+
+
+---
+Output:
+
+module Test
+
+main : ∀ a . b -> b
