@@ -19,4 +19,4 @@ Output:
 
 module Test
 
-main : Fruit Banana
+main : ∀ ∅ . Fruit Banana

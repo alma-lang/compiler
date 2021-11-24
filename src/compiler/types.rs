@@ -1,7 +1,7 @@
 use crate::ast::Module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
-use crate::type_env::TypeEnv;
+use crate::type_env::{PolyTypeEnv, TypeEnv};
 use fnv::FnvHashMap;
 use std::fmt::Write;
 use std::rc::Rc;
@@ -17,8 +17,8 @@ pub type ModuleAsts = HashMap<StringSymbol, Module>;
 #[derive(Debug)]
 pub struct ModuleInterface {
     pub types: Rc<TypeEnv>,
-    pub type_constructors: HashMap<StringSymbol, Rc<TypeEnv>>,
-    pub definitions: Rc<TypeEnv>,
+    pub type_constructors: HashMap<StringSymbol, Rc<PolyTypeEnv>>,
+    pub definitions: Rc<PolyTypeEnv>,
 }
 
 #[derive(Debug)]

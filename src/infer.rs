@@ -1,13 +1,12 @@
 use crate::ast::{
-    self, AnyIdentifier, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET,
-    Identifier, Import, Lambda, Module, ModuleName, Node, Pattern_ as P, TypedDefinition,
-    Unary_ as U,
+    self, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import,
+    Lambda, Module, Node, Pattern_ as P, TypedDefinition, Unary_ as U,
 };
 use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
 use crate::source::Source;
-use crate::strings::Strings;
+use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::typ::{Type::*, TypeVar::*, *};
-use crate::type_env::TypeEnv;
+use crate::type_env::{PolyTypeEnv, TypeEnv};
 use indexmap::IndexSet;
 use std::cell::RefCell;
 use std::cmp::min;
@@ -43,8 +42,7 @@ enum UnificationError {
 
 #[derive(Debug)]
 pub enum Error<'ast> {
-    UndefinedIdentifier(&'ast AnyIdentifier, Node<()>),
-    UndefinedModule(&'ast ModuleName, Node<()>),
+    UndefinedIdentifier(StringSymbol, Node<()>),
     DuplicateField(&'ast Identifier, &'ast Expression),
     TypeMismatch(Node<()>, Rc<Type>, Option<Node<()>>, Rc<Type>),
     InfiniteType(Node<()>, Rc<Type>),
@@ -65,7 +63,6 @@ impl<'ast> Error<'ast> {
 
         let (position, line_number, column, end) = match self {
             UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
-            UndefinedModule(_, node) => (node.start, node.line, node.column, node.end),
             DuplicateField(node, _) => (node.start, node.line, node.column, node.end),
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
@@ -89,15 +86,7 @@ impl<'ast> Error<'ast> {
             UndefinedIdentifier(identifier, _) => {
                 s.push_str(&format!(
                     "Undefined identifier `{}`\n\n{}",
-                    identifier.to_string(strings),
-                    code
-                ));
-            }
-
-            UndefinedModule(module_name, _) => {
-                s.push_str(&format!(
-                    "Undefined module `{}`. Did you forget to import it?\n\n{}",
-                    module_name.to_string(strings),
+                    strings.resolve(*identifier),
                     code
                 ));
             }
@@ -273,8 +262,8 @@ impl State {
     /* specializes the polytype s by copying the term and replacing the
      * bound type variables consistently by new monotype variables
      * E.g.   inst (forall a b. a -> b -> a) = c -> d -> c */
-    fn instantiate(&mut self, t: &Rc<Type>) -> Rc<Type> {
-        /* Replace any typevars found in the Hashtbl with the
+    fn instantiate(&mut self, t: &Rc<PolyType>) -> Rc<Type> {
+        /* Replace any typevars found in the Hashtable with the
          * associated value in the same table, leave them otherwise */
         fn replace_type_vars(
             vars_to_replace: &HashMap<TypeVarId, Rc<Type>>,
@@ -328,34 +317,19 @@ impl State {
                         replace_type_vars(vars_to_replace, ext),
                     ))
                 }
-
-                Poly(type_vars, typ) => {
-                    let mut vars_to_replace_copy = vars_to_replace.clone();
-                    for var in type_vars.iter() {
-                        vars_to_replace_copy.remove(var);
-                    }
-                    Rc::new(Poly(
-                        type_vars.clone(),
-                        replace_type_vars(&vars_to_replace_copy, typ),
-                    ))
-                }
             }
         }
 
-        if let Type::Poly(vars, typ) = &**t {
-            let mut vars_to_replace: HashMap<TypeVarId, Rc<Type>> = HashMap::default();
-            for var in vars.iter() {
-                vars_to_replace.insert(*var, self.new_type_var());
-            }
-            replace_type_vars(&vars_to_replace, typ)
-        } else {
-            Rc::clone(t)
+        let mut vars_to_replace: HashMap<TypeVarId, Rc<Type>> = HashMap::default();
+        for var in t.vars.iter() {
+            vars_to_replace.insert(*var, self.new_type_var());
         }
+        replace_type_vars(&vars_to_replace, &t.typ)
     }
 
     /* Find all typevars and wrap the type in a Poly */
     /* e.g.  generalize (a -> b -> b) = forall a b. a -> b -> b */
-    fn generalize(&self, t: &Rc<Type>) -> Rc<Type> {
+    fn generalize(&self, t: &Rc<Type>) -> Rc<PolyType> {
         let current_level = self.current_level;
 
         /* collect all the monomorphic typevars */
@@ -397,24 +371,12 @@ impl State {
                     }
                     find_all_tvs(current_level, vars, ext);
                 }
-
-                /* Remove all of tvs from findAllTvs typ */
-                Poly(free_tvs, typ) => {
-                    let mut typ_tvs = IndexSet::new();
-                    find_all_tvs(current_level, &mut typ_tvs, typ);
-
-                    for tv in typ_tvs {
-                        if !free_tvs.contains(&tv) {
-                            vars.insert(tv);
-                        }
-                    }
-                }
             }
         }
 
         let mut tvs = IndexSet::new();
         find_all_tvs(&current_level, &mut tvs, t);
-        Rc::new(Poly(tvs, Rc::clone(t)))
+        Rc::new(PolyType::new(tvs, Rc::clone(t)))
     }
 }
 
@@ -457,14 +419,6 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
                 true
             } else {
                 occurs(a_id, a_level, record_t)
-            }
-        }
-
-        Poly(tvs, t) => {
-            if tvs.iter().any(|tv| a_id == *tv) {
-                false
-            } else {
-                occurs(a_id, a_level, t)
             }
         }
     }
@@ -697,21 +651,15 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
             Ok(())
         }
 
-        /* NOTE: Unneeded rule, never used due to [Var] and inst */
-        (Poly(_vars, typ1), Poly(_vars2, typ2)) => unify_rec(state, typ1, typ2),
-
-        (Unit, _)
-        | (Named(..), _)
-        | (Fn(..), _)
-        | (Poly(..), _)
-        | (Record(_), _)
-        | (RecordExt(..), _) => Err(TypeMismatch),
+        (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => {
+            Err(TypeMismatch)
+        }
     }
 }
 
 fn base_env(
     state: &mut State,
-    env: &mut TypeEnv,
+    env: &mut PolyTypeEnv,
     primitive_types: &TypeEnv,
     strings: &mut Strings,
 ) {
@@ -725,25 +673,25 @@ fn base_env(
 
     env.insert(
         strings.get_or_intern("__op__or"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&bool_), Rc::clone(&bool_)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
 
     env.insert(
         strings.get_or_intern("__op__or"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&bool_), Rc::clone(&bool_)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__and"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&bool_), Rc::clone(&bool_)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
     env.insert(strings.get_or_intern("__op__eq"), {
         let a = state.new_type_var();
@@ -761,59 +709,59 @@ fn base_env(
     });
     env.insert(
         strings.get_or_intern("__op__gt"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__ge"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__lt"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__le"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&bool_),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__add"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&float),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__sub"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&float),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__mult"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&float),
-        )),
+        ))),
     );
     env.insert(
         strings.get_or_intern("__op__div"),
-        Rc::new(Type::Fn(
+        state.generalize(&Rc::new(Type::Fn(
             vec![Rc::clone(&float), Rc::clone(&float)],
             Rc::clone(&float),
-        )),
+        ))),
     );
 }
 
@@ -825,12 +773,12 @@ pub fn infer<'interfaces, 'ast>(
     strings: &mut Strings,
 ) -> Result<ModuleInterface, (ModuleInterface, Vec<Error<'ast>>)> {
     let mut state = State::new();
-    let mut env = TypeEnv::new();
+    let mut env = PolyTypeEnv::new();
     let mut types_env = primitive_types.clone();
     base_env(&mut state, &mut env, primitive_types, strings);
     let mut errors: Vec<Error> = vec![];
 
-    let mut module_definitions = TypeEnv::new();
+    let mut module_definitions = PolyTypeEnv::new();
     let mut module_types = TypeEnv::new();
     let mut module_type_constructors = HashMap::default();
 
@@ -852,7 +800,16 @@ pub fn infer<'interfaces, 'ast>(
                         imported_env.insert(*constructor_name, Rc::clone(constructor_type));
                     }
                 }
-                env.insert(module_ident, Rc::new(Record(imported_env)));
+
+                for (ident, typ) in imported_env.map() {
+                    let full_name = format!(
+                        "{}.{}",
+                        strings.resolve(module_ident),
+                        strings.resolve(*ident)
+                    );
+                    let full_name = strings.get_or_intern(full_name);
+                    env.insert(full_name, Rc::clone(typ));
+                }
 
                 for exposed in &import.value.exposing {
                     match &exposed.value {
@@ -899,9 +856,11 @@ pub fn infer<'interfaces, 'ast>(
     // Add local module types to environment
     for type_def in &module.type_definitions {
         let mut type_vars = TypeEnv::new();
+        state.enter_level();
         for var in &type_def.value.vars {
             type_vars.insert(var.value.name, state.new_type_var());
         }
+        state.exit_level();
         let name = type_def.value.name.value.name;
 
         match &type_def.value.typ {
@@ -917,6 +876,7 @@ pub fn infer<'interfaces, 'ast>(
                     let constructor = &constructor.value;
                     let name = &constructor.name.value.name;
                     let mut param_types = vec![];
+
                     for param in &constructor.params {
                         let typ = ast_type_to_type(
                             &param,
@@ -934,7 +894,7 @@ pub fn infer<'interfaces, 'ast>(
                         Rc::new(Type::Fn(param_types, Rc::clone(&type_def_type)))
                     };
 
-                    env.insert(*name, typ);
+                    env.insert(*name, state.generalize(&typ));
                 }
             }
             ast::types::TypeDefinitionType::Record(record_type) => {
@@ -966,7 +926,7 @@ pub fn infer<'interfaces, 'ast>(
             ast::Export_::Identifier(identifier) => {
                 let name = &identifier.value.name;
                 match env.get(name) {
-                    Some(typ) => module_definitions.insert(*name, Rc::clone(typ)),
+                    Some(poly_type) => module_definitions.insert(*name, Rc::clone(poly_type)),
                     None => errors.push(Error::UndefinedExport(identifier)),
                 }
             }
@@ -975,12 +935,12 @@ pub fn infer<'interfaces, 'ast>(
                 if let Some(typ) = types_env.get(name) {
                     module_types.insert(*name, Rc::clone(typ));
 
-                    let mut constructor_types = TypeEnv::new();
+                    let mut constructor_types = PolyTypeEnv::new();
                     for constructor in constructors {
                         let name = &constructor.value.name;
                         match env.get(name) {
-                            Some(typ) => {
-                                constructor_types.insert(*name, Rc::clone(typ));
+                            Some(poly_type) => {
+                                constructor_types.insert(*name, Rc::clone(poly_type));
                             }
                             None => errors.push(Error::UndefinedExportConstructor(&constructor)),
                         }
@@ -1081,7 +1041,7 @@ fn ast_record_type_to_type<'ast>(
 fn infer_rec<'ast>(
     ast: &'ast Expression,
     state: &mut State,
-    env: &mut TypeEnv,
+    env: &mut PolyTypeEnv,
     types_env: &TypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
@@ -1251,25 +1211,23 @@ fn infer_rec<'ast>(
          *   infer env x = t
          */
         ET::Identifier(module, x) => {
-            let env = if let Some(module) = module {
-                match env.get(&module.full_name) {
-                    Some(module_env) => match &**module_env {
-                        Record(module_env) => module_env,
-                        _ => panic!("Found module with type that wasn't a record with a type env"),
-                    },
-                    None => {
-                        add_error(Err(Error::UndefinedModule(module, ast.unit())), errors);
-                        return state.new_type_var();
-                    }
-                }
+            let name = if let Some(module) = module {
+                // TODO: Check the module if it was imported, would make for a better error message
+                let full_name = format!(
+                    "{}.{}",
+                    strings.resolve(module.full_name),
+                    strings.resolve(x.name())
+                );
+                let full_name = strings.get_or_intern(full_name);
+                full_name
             } else {
-                &env
+                x.name()
             };
 
-            match env.get(&x.name()) {
+            match env.get(&name) {
                 Some(s) => state.instantiate(s),
                 None => {
-                    add_error(Err(Error::UndefinedIdentifier(x, ast.unit())), errors);
+                    add_error(Err(Error::UndefinedIdentifier(name, ast.unit())), errors);
                     state.new_type_var()
                 }
             }
@@ -1323,7 +1281,7 @@ fn infer_rec<'ast>(
 fn infer_definitions<'ast>(
     definitions: &'ast [TypedDefinition],
     state: &mut State,
-    env: &mut TypeEnv,
+    env: &mut PolyTypeEnv,
     types_env: &TypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
@@ -1332,13 +1290,17 @@ fn infer_definitions<'ast>(
         if let Some(definition) = typed_definition.definition() {
             let signature_type = typed_definition.typ().map(|signature| {
                 let mut type_vars = TypeEnv::new();
+                state.enter_level();
                 for var in signature.typ.vars() {
                     type_vars.insert(var.value.name, state.new_type_var());
                 }
+                state.exit_level();
                 let typ = ast_type_to_type(&signature.typ, &type_vars, errors, state, types_env);
 
-                (&signature.name, state.generalize(&typ))
+                (&signature.name, typ)
             });
+
+            // TODO: The error message for type mismatch with the signature sucks.
 
             match &definition {
                 Definition::Lambda(identifier, lambda) => {
@@ -1346,7 +1308,6 @@ fn infer_definitions<'ast>(
                     let t = infer_lambda(lambda, state, env, types_env, strings, errors);
                     state.exit_level();
 
-                    let t = state.generalize(&t);
                     if let Some((signature, signature_type)) = &signature_type {
                         add_error(
                             unify(state, identifier, &t, Some(signature), signature_type),
@@ -1354,6 +1315,7 @@ fn infer_definitions<'ast>(
                         );
                     }
 
+                    let t = state.generalize(&t);
                     env.insert(identifier.value.name, t);
                 }
                 Definition::Pattern(pattern, value) => {
@@ -1361,7 +1323,6 @@ fn infer_definitions<'ast>(
                     let t = infer_rec(value, state, env, types_env, strings, errors);
                     state.exit_level();
 
-                    let t = state.generalize(&t);
                     if let Some((signature, signature_type)) = &signature_type {
                         add_error(
                             // TODO: Too many .unit copying nodes, here and in unify too
@@ -1378,6 +1339,7 @@ fn infer_definitions<'ast>(
                         );
                     }
 
+                    let t = state.generalize(&t);
                     match &pattern.value {
                         P::Hole => (),
                         P::Identifier(x) => env.insert(x.value.name, t),
@@ -1391,15 +1353,20 @@ fn infer_definitions<'ast>(
 fn infer_lambda<'ast>(
     lambda: &'ast Lambda,
     state: &mut State,
-    env: &mut TypeEnv,
+    env: &mut PolyTypeEnv,
     types_env: &TypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
-    let params_with_type: Vec<(&ast::Pattern, Rc<Type>)> = lambda
+    let params_with_type: Vec<(&ast::Pattern, Rc<PolyType>)> = lambda
         .parameters
         .iter()
-        .map(|p| (p, state.new_type_var()))
+        .map(|p| {
+            (
+                p,
+                Rc::new(PolyType::new(IndexSet::new(), state.new_type_var())),
+            )
+        })
         .collect();
 
     let mut env = params_with_type
@@ -1416,8 +1383,8 @@ fn infer_lambda<'ast>(
 
     Rc::new(Fn(
         params_with_type
-            .into_iter()
-            .map(|(_, param_type)| param_type)
+            .iter()
+            .map(|(_, param_type)| Rc::clone(&param_type.typ))
             .collect(),
         return_type,
     ))
@@ -1428,7 +1395,7 @@ fn infer_fn_call<'ast, Args>(
     args: Args,
     ast: &'ast Expression,
     state: &mut State,
-    env: &mut TypeEnv,
+    env: &mut PolyTypeEnv,
     types_env: &TypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
@@ -1480,7 +1447,7 @@ mod tests {
     pub fn infer_expression<'ast>(
         ast: &'ast Expression,
         state: &mut State,
-        env: &mut TypeEnv,
+        env: &mut PolyTypeEnv,
         types_env: &TypeEnv,
         strings: &mut Strings,
     ) -> Result<Rc<Type>, Vec<Error<'ast>>> {
@@ -1647,7 +1614,7 @@ add 5"
                 .unwrap();
 
             let mut state = State::new();
-            let mut env = TypeEnv::new();
+            let mut env = PolyTypeEnv::new();
             let primitive_types = Type::primitive_types(&mut strings);
             base_env(&mut state, &mut env, &primitive_types, &mut strings);
             let s = match infer_expression(

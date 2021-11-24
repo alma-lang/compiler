@@ -22,4 +22,4 @@ Output:
 
 module Test
 
-main : M a
+main : ∀ a . M a

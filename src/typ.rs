@@ -46,12 +46,6 @@ pub enum Type {
 
     Record(TypeEnv),
     RecordExt(TypeEnv, Rc<Type>),
-
-    /* PolyTypes in the form  forall 'a 'b ... 'y :: 'z
-     * The TypeVar list will be a list of all monomorphic TypeVars in 'z
-     * Used only in let-bindings to make the declaration polymorphic
-     */
-    Poly(IndexSet<TypeVarId>, Rc<Type>),
 }
 
 impl Type {
@@ -65,7 +59,7 @@ impl Type {
                 TypeVar::Bound(t) => t.should_parenthesize(),
                 _ => false,
             },
-            Fn(..) | Poly(..) => true,
+            Fn(..) => true,
             _ => false,
         }
     }
@@ -87,6 +81,23 @@ impl Type {
     }
 
     pub fn to_string(&self, strings: &Strings) -> String {
+        let mut s = String::new();
+        self.to_string_rec(&mut vec!['a'], &mut HashMap::default(), &mut s, strings);
+        s
+    }
+
+    /* keep track of number to character bindings for typevars
+     * e.g. '2 => 'a, '5 => 'b, etc.
+     * letters are assigned to typevars by the order in which the typevars
+     * appear in the type, left to right
+     */
+    pub fn to_string_rec<'a>(
+        &self,
+        cur_type_var_name: &'a mut Vec<char>,
+        type_var_names: &'a mut HashMap<u32, String>,
+        s: &'a mut String,
+        strings: &Strings,
+    ) {
         fn fields_to_string<'a>(
             fields: &'a TypeEnv,
             cur_type_var_name: &'a mut Vec<char>,
@@ -106,135 +117,86 @@ impl Type {
 
                 s.push_str(strings.resolve(*key));
                 s.push_str(" : ");
-                to_string_rec(value, cur_type_var_name, type_var_names, s, strings);
+                value.to_string_rec(cur_type_var_name, type_var_names, s, strings);
             }
         }
 
-        /* keep track of number to character bindings for typevars
-         * e.g. '2 => 'a, '5 => 'b, etc.
-         * letters are assigned to typevars by the order in which the typevars
-         * appear in the type, left to right
-         */
-        fn to_string_rec<'a>(
-            t: &'a Type,
-            cur_type_var_name: &'a mut Vec<char>,
-            type_var_names: &'a mut HashMap<u32, String>,
-            s: &'a mut String,
-            strings: &Strings,
-        ) {
-            use Type::*;
-            match t {
-                Unit => s.push_str("()"),
+        use Type::*;
+        match self {
+            Unit => s.push_str("()"),
 
-                Named(_module, name, params) => {
-                    s.push_str(strings.resolve(*name));
-                    for param in params.iter() {
-                        s.push(' ');
-                        to_string_rec(param, cur_type_var_name, type_var_names, s, strings);
-                    }
+            Named(_module, name, params) => {
+                s.push_str(strings.resolve(*name));
+                for param in params.iter() {
+                    s.push(' ');
+                    param.to_string_rec(cur_type_var_name, type_var_names, s, strings);
                 }
+            }
 
-                Var(var) => match &*var.borrow() {
-                    TypeVar::Bound(t) => {
-                        to_string_rec(t, cur_type_var_name, type_var_names, s, strings)
+            Var(var) => match &*var.borrow() {
+                TypeVar::Bound(t) => t.to_string_rec(cur_type_var_name, type_var_names, s, strings),
+
+                TypeVar::Unbound(TypeVarId(n), _) => match type_var_names.get(n) {
+                    Some(name) => s.push_str(name),
+
+                    None => {
+                        let name: String = cur_type_var_name.iter().collect();
+                        s.push_str(&name);
+
+                        type_var_names.insert(*n, name);
+                        next_letter(cur_type_var_name);
                     }
-
-                    TypeVar::Unbound(TypeVarId(n), _) => match type_var_names.get(n) {
-                        Some(name) => s.push_str(name),
-
-                        None => {
-                            let name: String = cur_type_var_name.iter().collect();
-                            s.push_str(&name);
-
-                            type_var_names.insert(*n, name);
-                            next_letter(cur_type_var_name);
-                        }
-                    },
                 },
+            },
 
-                Fn(args, body) => {
-                    for (i, arg) in args.iter().enumerate() {
-                        if i > 0 {
-                            s.push_str(" -> ");
-                        }
-
-                        let parens = arg.should_parenthesize();
-
-                        if parens {
-                            s.push('(');
-                        }
-
-                        to_string_rec(arg, cur_type_var_name, type_var_names, s, strings);
-
-                        if parens {
-                            s.push(')');
-                        }
-                    }
-                    s.push_str(" -> ");
-
-                    to_string_rec(body, cur_type_var_name, type_var_names, s, strings);
-                }
-
-                Record(fields) => {
-                    s.push('{');
-
-                    fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
-
-                    if !fields.map().is_empty() {
-                        s.push(' ');
-                    }
-                    s.push('}');
-                }
-
-                RecordExt(fields, var) => {
-                    s.push_str("{ ");
-
-                    to_string_rec(var, cur_type_var_name, type_var_names, s, strings);
-
-                    if !fields.map().is_empty() {
-                        s.push_str(" |");
+            Fn(args, body) => {
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 {
+                        s.push_str(" -> ");
                     }
 
-                    fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
+                    let parens = arg.should_parenthesize();
 
-                    s.push_str(" }");
-                }
-
-                Poly(type_vars, t) => {
-                    if !type_vars.is_empty() {
-                        s.push('∀');
-
-                        for var in type_vars.iter() {
-                            s.push(' ');
-                            to_string_rec(
-                                &Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                                    *var,
-                                    Level(0), /* This level doesn't matter for printing */
-                                )))),
-                                cur_type_var_name,
-                                type_var_names,
-                                s,
-                                strings,
-                            );
-                        }
-
-                        s.push_str(" . ");
+                    if parens {
+                        s.push('(');
                     }
 
-                    to_string_rec(t, cur_type_var_name, type_var_names, s, strings);
+                    arg.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+
+                    if parens {
+                        s.push(')');
+                    }
                 }
+                s.push_str(" -> ");
+
+                body.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+            }
+
+            Record(fields) => {
+                s.push('{');
+
+                fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
+
+                if !fields.map().is_empty() {
+                    s.push(' ');
+                }
+                s.push('}');
+            }
+
+            RecordExt(fields, var) => {
+                s.push_str("{ ");
+
+                var.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+
+                if !fields.map().is_empty() {
+                    s.push_str(" |");
+                }
+
+                fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
+
+                s.push_str(" }");
             }
         }
-
-        let mut s = String::new();
-        to_string_rec(
-            self,
-            &mut vec!['a'],
-            &mut HashMap::default(),
-            &mut s,
-            strings,
-        );
-        s
     }
 
     pub fn primitive_types(strings: &mut Strings) -> TypeEnv {
@@ -247,6 +209,52 @@ impl Type {
         env.insert(bool_, Rc::new(Type::Named(module, bool_, vec![])));
         env.insert(string, Rc::new(Type::Named(module, string, vec![])));
         env
+    }
+}
+
+/* PolyTypes in the form  forall 'a 'b ... 'y :: 'z
+ * The TypeVar list will be a list of all monomorphic TypeVars in 'z
+ * Used only in let-bindings to make the declaration polymorphic
+ */
+#[derive(PartialEq, Eq, Debug)]
+pub struct PolyType {
+    pub vars: IndexSet<TypeVarId>,
+    pub typ: Rc<Type>,
+}
+impl PolyType {
+    pub fn new(vars: IndexSet<TypeVarId>, typ: Rc<Type>) -> Self {
+        PolyType { vars, typ }
+    }
+
+    pub fn to_string(&self, strings: &Strings) -> String {
+        let mut s = String::new();
+        let mut cur_type_var_name = vec!['a'];
+        let mut type_var_names = HashMap::default();
+
+        s.push('∀');
+        if !self.vars.is_empty() {
+            for var in self.vars.iter() {
+                s.push(' ');
+                let unbound_var = Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                    *var,
+                    Level(0), /* This level doesn't matter for printing */
+                ))));
+                unbound_var.to_string_rec(
+                    &mut cur_type_var_name,
+                    &mut type_var_names,
+                    &mut s,
+                    strings,
+                );
+            }
+        } else {
+            s.push_str(" ∅");
+        }
+        s.push_str(" . ");
+
+        self.typ
+            .to_string_rec(&mut cur_type_var_name, &mut type_var_names, &mut s, strings);
+
+        s
     }
 }
 
@@ -275,7 +283,7 @@ mod test {
     use std::iter::FromIterator;
 
     #[test]
-    fn test_printing() {
+    fn test_printing_types() {
         let mut strings = Strings::new();
 
         let module = strings.get_or_intern("Test");
@@ -388,42 +396,6 @@ mod test {
                 ),
                 "String -> Float -> String",
             ),
-            (
-                Type::Poly(
-                    IndexSet::from_iter(vec![TypeVarId(0)]),
-                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                        TypeVarId(0),
-                        Level(0),
-                    ))))),
-                ),
-                "∀ a . a",
-            ),
-            (
-                Type::Poly(
-                    IndexSet::from_iter(vec![TypeVarId(0)]),
-                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                        TypeVarId(1),
-                        Level(0),
-                    ))))),
-                ),
-                "∀ a . b",
-            ),
-            (
-                Type::Poly(
-                    IndexSet::from_iter(vec![TypeVarId(0)]),
-                    Rc::new(Type::Fn(
-                        vec![Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                            TypeVarId(0),
-                            Level(0),
-                        )))))],
-                        Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                            TypeVarId(0),
-                            Level(0),
-                        ))))),
-                    )),
-                ),
-                "∀ a . a -> a",
-            ),
             (Type::Record(TypeEnv::new()), "{}"),
             (
                 Type::Record({
@@ -504,6 +476,55 @@ mod test {
                     ))))),
                 ),
                 "{ a | age : Int, extra : b }",
+            ),
+        ];
+
+        for (value, expected) in tests {
+            assert_eq!(value.to_string(&strings), expected, "\n\n{:#?}", value);
+        }
+    }
+
+    fn test_printing_polytypes() {
+        let mut strings = Strings::new();
+
+        let module = strings.get_or_intern("Test");
+
+        let tests = vec![
+            (
+                PolyType::new(
+                    IndexSet::from_iter(vec![TypeVarId(0)]),
+                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(0),
+                        Level(0),
+                    ))))),
+                ),
+                "∀ a . a",
+            ),
+            (
+                PolyType::new(
+                    IndexSet::from_iter(vec![TypeVarId(0)]),
+                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(1),
+                        Level(0),
+                    ))))),
+                ),
+                "∀ a . b",
+            ),
+            (
+                PolyType::new(
+                    IndexSet::from_iter(vec![TypeVarId(0)]),
+                    Rc::new(Type::Fn(
+                        vec![Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                            TypeVarId(0),
+                            Level(0),
+                        )))))],
+                        Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                            TypeVarId(0),
+                            Level(0),
+                        ))))),
+                    )),
+                ),
+                "∀ a . a -> a",
             ),
         ];
 

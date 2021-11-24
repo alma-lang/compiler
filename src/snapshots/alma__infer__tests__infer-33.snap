@@ -20,7 +20,7 @@ Output:
 
 module Test
 
-main : Fruit
+main : ∀ ∅ . Fruit
 
 
 module Test.Fruits

@@ -20,12 +20,9 @@ Output:
 
 module User
 
-new : { id : Float }
+new : ∀ ∅ . { id : Float }
 
 
 module User.Id
 
-new : Float
-
-
-
+new : ∀ ∅ . Float

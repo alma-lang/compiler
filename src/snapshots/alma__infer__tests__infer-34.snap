@@ -20,7 +20,7 @@ Output:
 
 [5:7]
 
-Undefined identifier `Banana`
+Undefined identifier `Fruits.Banana`
 
   3│  import Test.Fruits as Fruits
   4│  

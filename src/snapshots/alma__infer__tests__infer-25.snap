@@ -17,4 +17,4 @@ Output:
 
 module Test
 
-main : Fruit
+main : ∀ ∅ . Fruit

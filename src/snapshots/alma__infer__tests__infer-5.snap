@@ -24,16 +24,13 @@ Output:
 
 module Test
 
-a : Float
+a : ∀ ∅ . Float
 
-b : Float
+b : ∀ ∅ . Float
 
 
 module Test.TestInner
 
-a : Float -> Float -> Float
+a : ∀ ∅ . Float -> Float -> Float
 
 b : ∀ a . a -> a
-
-
-

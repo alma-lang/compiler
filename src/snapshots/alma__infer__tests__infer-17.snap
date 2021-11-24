@@ -22,7 +22,7 @@ Output:
 
 module User
 
-new : { id : Float }
+new : ∀ ∅ . { id : Float }
 
 
 module User.Attributes
@@ -32,4 +32,4 @@ module User.Attributes
 
 module User.Attributes.Id
 
-new : Float
+new : ∀ ∅ . Float

@@ -27,4 +27,4 @@ module Parent
 
 module Parent.Test
 
-test : Float
+test : ∀ ∅ . Float

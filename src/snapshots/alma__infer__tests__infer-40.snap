@@ -16,4 +16,4 @@ Output:
 
 module Test
 
-main : Float
+main : ∀ ∅ . Float

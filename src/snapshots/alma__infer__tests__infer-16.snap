@@ -20,7 +20,7 @@ Output:
 
 [5:13]
 
-Undefined module `User.Id`. Did you forget to import it?
+Undefined identifier `User.Id.new`
 
   3│  import User.Id as UserId
   4│  

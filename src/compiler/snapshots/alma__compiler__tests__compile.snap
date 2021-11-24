@@ -7,17 +7,17 @@ expression: "compile(&[r\"\nmodule Modules exposing (main)\n\nimport Modules.Wei
 
 module Modules
 
-main : Float -> Float -> Float
+main : ∀ ∅ . Float -> Float -> Float
 
 
 module Modules.Constants
 
-five : Float
+five : ∀ ∅ . Float
 
 
 module Modules.WeirdMath
 
-weirdAdd : Float -> Float -> Float
+weirdAdd : ∀ ∅ . Float -> Float -> Float
 
 */
 

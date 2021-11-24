@@ -22,9 +22,9 @@ Output:
 
 module Test
 
-main : Float
+main : ∀ ∅ . Float
 
 
 module Test.Fruits
 
-test : Float
+test : ∀ ∅ . Float

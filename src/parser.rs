@@ -831,21 +831,28 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 // If the definition is not directly next to the signature, bail out to avoid
                 // swallowing an unrelated definition
                 let next_name_token = self.get_token();
-                if !matches!(next_name_token.kind, TT::Identifier) || next_name_token.lexeme != name_token.lexeme {
-                    return Ok(Some(TypedDefinition::TypeSignature(signature)))
+                if !matches!(next_name_token.kind, TT::Identifier)
+                    || next_name_token.lexeme != name_token.lexeme
+                {
+                    return Ok(Some(TypedDefinition::TypeSignature(signature)));
                 }
 
                 match self.binding()? {
                     Some(binding) => {
                         let valid_name = match &binding {
-                            Definition::Pattern(Node {
-                                value: Pattern_::Identifier(identifier),
-                                ..
-                            }, _) | 
-                            Definition::Lambda(identifier, _) if &identifier.value == &signature.name.value => {
+                            Definition::Pattern(
+                                Node {
+                                    value: Pattern_::Identifier(identifier),
+                                    ..
+                                },
+                                _,
+                            )
+                            | Definition::Lambda(identifier, _)
+                                if &identifier.value == &signature.name.value =>
+                            {
                                 true
                             }
-                            _ => false
+                            _ => false,
                         };
                         if valid_name {
                             Ok(Some(TypedDefinition::Typed(signature, binding)))
@@ -853,7 +860,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             panic!("Internal parser error: Should not have gotten into a binding if the name is different from the one in a type definition");
                         }
                     }
-                    None => Ok(None)
+                    None => Ok(None),
                 }
             }
             _ => Ok(self.binding()?.map(|b| TypedDefinition::Untyped(b))),
@@ -1273,8 +1280,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let mut module = self.module_name()?.expect("Internal parser error: Just saw a capitalized identifier, how is this not a module name with parts.len() == 1?");
 
                 let (module, identifier) = if module.parts.len() == 1 {
-                    let first = module.parts.swap_remove(0);
-                    (None, AnyIdentifier::CapitalizedIdentifier(first))
+                    // Is there a normal identifier afterwards? If so it is a Module.ident, if not,
+                    // the module's only part is a capitalized identifier.
+                    if let Some(ident) = self.property(module.end())? {
+                        (Some(module), AnyIdentifier::Identifier(ident))
+                    } else {
+                        let first = module.parts.swap_remove(0);
+                        (None, AnyIdentifier::CapitalizedIdentifier(first))
+                    }
                 } else {
                     // Is there a normal identifier afterwards? If so the whole module is fine, if
                     // not, the module's last part is a capitalized identifier.
@@ -2139,6 +2152,8 @@ add 5"
 
         assert_snapshot!(parse("function record.access"));
 
+        assert_snapshot!(parse("A.b"));
+
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
@@ -2652,7 +2667,6 @@ signature : Fruit d -> Fruit e -> Fruit f
 test = 5
 "
         ));
-
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());

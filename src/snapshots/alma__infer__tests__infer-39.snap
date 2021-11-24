@@ -16,4 +16,4 @@ Output:
 
 module Test
 
-main : ∀ a . b -> b
+main : ∀ a . a -> a

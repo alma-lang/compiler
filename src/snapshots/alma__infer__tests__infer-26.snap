@@ -19,4 +19,4 @@ Output:
 
 module Test
 
-main : a -> Fruit a
+main : ∀ a . a -> Fruit a
