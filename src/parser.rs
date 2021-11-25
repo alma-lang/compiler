@@ -2668,6 +2668,23 @@ test = 5
 "
         ));
 
+        assert_snapshot!(parse(
+            "\
+module Test exposing (main)
+
+main =
+    let
+        test : Fruit a -> Fruit b -> Fruit c
+
+        test2 : Fruit a -> Fruit b -> Fruit c
+        test2 a b = c
+
+        test3 a b = c
+
+    test
+"
+        ));
+
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
