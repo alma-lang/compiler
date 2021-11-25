@@ -25,4 +25,6 @@ main : ∀ ∅ . Fruit
 
 module Test.Fruits
 
+Banana : ∀ ∅ . Fruit
+
 

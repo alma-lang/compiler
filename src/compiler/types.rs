@@ -21,6 +21,21 @@ pub struct ModuleInterface {
     pub definitions: Rc<PolyTypeEnv>,
 }
 
+impl ModuleInterface {
+    pub fn to_string(&self, strings: &Strings) -> String {
+        let mut out = String::new();
+
+        for (_typ, constructors) in self.type_constructors.iter() {
+            out.push_str(&constructors.to_string(strings));
+            out.push_str("\n\n");
+        }
+
+        out.push_str(&self.definitions.to_string(strings));
+
+        out
+    }
+}
+
 #[derive(Debug)]
 pub struct ModuleInterfaces(HashMap<StringSymbol, ModuleInterface>);
 
@@ -58,7 +73,7 @@ impl ModuleInterfaces {
                 out,
                 "module {}\n\n{}",
                 strings.resolve(**name),
-                interface.definitions.to_string(strings)
+                interface.to_string(strings)
             )
             .unwrap();
         }

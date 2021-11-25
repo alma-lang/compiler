@@ -27,4 +27,6 @@ main : ∀ ∅ . Float
 
 module Test.Fruits
 
+Banana : ∀ ∅ . Fruit
+
 test : ∀ ∅ . Float
