@@ -12,7 +12,7 @@ use crate::source::Source;
 use crate::strings::Strings;
 use crate::tokenizer;
 use crate::typ::Type;
-use crate::type_env::TypeEnv;
+use crate::type_env::PolyTypeEnv;
 
 pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, String> {
     let mut strings = Strings::new();
@@ -46,7 +46,7 @@ pub fn compile_repl_entry(
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     strings: &mut Strings,
-    primitive_types: &TypeEnv,
+    primitive_types: &PolyTypeEnv,
 ) -> Result<String, String> {
     let tokens = tokenizer::parse(source).map_err(|errors| {
         errors
@@ -131,7 +131,7 @@ fn compile_repl_entry_helper<'ast>(
     source: &Source,
     errors: &mut Vec<infer::Error<'ast>>,
     strings: &mut Strings,
-    primitive_types: &TypeEnv,
+    primitive_types: &PolyTypeEnv,
 ) -> Result<(), String> {
     let result = infer::infer(module_interfaces, module, primitive_types, strings);
     match result {

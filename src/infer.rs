@@ -45,6 +45,8 @@ pub enum Error<'ast> {
     UndefinedIdentifier(StringSymbol, Node<()>),
     DuplicateField(&'ast Identifier, &'ast Expression),
     TypeMismatch(Node<()>, Rc<Type>, Option<Node<()>>, Rc<Type>),
+    SignatureMismatch(Node<()>, Rc<Type>, Rc<Type>),
+    SignatureTooGeneral(Node<()>, Rc<Type>, Rc<Type>),
     InfiniteType(Node<()>, Rc<Type>),
     UndefinedExport(&'ast Identifier),
     UndefinedExportConstructor(&'ast CapitalizedIdentifier),
@@ -65,6 +67,8 @@ impl<'ast> Error<'ast> {
             UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
             DuplicateField(node, _) => (node.start, node.line, node.column, node.end),
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
+            SignatureMismatch(node, ..) => (node.start, node.line, node.column, node.end),
+            SignatureTooGeneral(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
             UndefinedExport(node) => (node.start, node.line, node.column, node.end),
             UndefinedExportConstructor(node) => (node.start, node.line, node.column, node.end),
@@ -161,6 +165,44 @@ with type
                     typ2.to_string(strings),
                     code,
                     code2
+                ));
+            }
+
+            SignatureMismatch(_, typ, typ2) => {
+                s.push_str(&format!(
+                    "The type signature and inferred type don't match
+
+{2}
+
+The type signature says the type is
+
+{0}
+
+but it seems to be
+
+{1}",
+                    typ.to_string(strings),
+                    typ2.to_string(strings),
+                    code
+                ));
+            }
+
+            SignatureTooGeneral(_, typ, typ2) => {
+                s.push_str(&format!(
+                    "The type signature is more general than the inferred type:
+
+{2}
+
+The type signature says the type is
+
+{0}
+
+which it is more general than
+
+{1}",
+                    typ.to_string(strings),
+                    typ2.to_string(strings),
+                    code
                 ));
             }
 
@@ -657,19 +699,142 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
     }
 }
 
+/**
+ * This function must be called after the types have been unified and are compatible
+ */
+fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
+    let signature = find(signature);
+    let inferred = find(inferred);
+
+    match (&*signature, &*inferred) {
+        (Named(_, _, args), Named(_, _, args2)) => {
+            for (a1, a2) in args.iter().zip(args2.iter()) {
+                if signature_is_too_general(a1, a2) {
+                    return true;
+                }
+            }
+            false
+        }
+
+        // Two vars resolved by find above must be unbound, hence not too general
+        (Var(_), Var(_)) => false,
+        // Anything else not a variable means this is a variable in the signature but inferred to
+        // something more specific, hence the signature is too general
+        (Var(_), _) => true,
+
+        (Fn(args, ret), Fn(args2, ret2)) => {
+            for (a1, a2) in args.iter().zip(args2.iter()) {
+                if signature_is_too_general(a1, a2) {
+                    return true;
+                }
+            }
+            signature_is_too_general(ret, ret2)
+        }
+
+        (Record(fields1), Record(fields2)) => {
+            for (key, value) in fields1.map() {
+                if signature_is_too_general(value, fields2.get(key).unwrap()) {
+                    return true;
+                }
+            }
+            for (key, value) in fields2.map() {
+                if signature_is_too_general(value, fields1.get(key).unwrap()) {
+                    return true;
+                }
+            }
+            false
+        }
+
+        (Record(fields), RecordExt(ext_fields, _ext))
+        | (RecordExt(ext_fields, _ext), Record(fields)) => {
+            for (key, value) in ext_fields.map() {
+                if signature_is_too_general(value, fields.get(key).unwrap()) {
+                    return true;
+                }
+            }
+
+            /*
+            // Unify the open record type variable with a record of the remaining fields from
+            // the fixed record.
+            let mut rem_fields = TypeEnv::new();
+            for (key, value) in fields.map() {
+                if !ext_fields.map().contains_key(key) {
+                    rem_fields.insert(*key, Rc::clone(value));
+                }
+            }
+            let rem_rec = Rc::new(Record(rem_fields));
+            unify_rec(state, ext, &rem_rec)
+            */
+            todo!()
+        }
+
+        (RecordExt(fields1, _var1), RecordExt(fields2, _var2)) => {
+            for (key, value) in fields1.map() {
+                if signature_is_too_general(value, fields2.get(key).unwrap()) {
+                    return true;
+                }
+            }
+            for (key, value) in fields2.map() {
+                if signature_is_too_general(value, fields1.get(key).unwrap()) {
+                    return true;
+                }
+            }
+
+            /*
+            // unify { <fields-only-found-on-the-left-side> | new-type-var } varRight
+            {
+                let mut rem_fields1 = TypeEnv::new();
+                for (key, value) in fields1.map() {
+                    if !fields2.map().contains_key(key) {
+                        rem_fields1.insert(*key, Rc::clone(value));
+                    }
+                }
+                let rem_rec1 = Rc::new(RecordExt(rem_fields1, Rc::clone(&var)));
+                unify_rec(state, var2, &rem_rec1)?;
+            }
+
+            // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
+            {
+                let mut rem_fields2 = TypeEnv::new();
+                for (key, value) in fields2.map() {
+                    if !fields1.map().contains_key(key) {
+                        rem_fields2.insert(*key, Rc::clone(value));
+                    }
+                }
+                let rem_rec2 = Rc::new(RecordExt(rem_fields2, Rc::clone(&var)));
+                unify_rec(state, var1, &rem_rec2)?;
+            }
+            */
+
+            todo!()
+        }
+
+        (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => false,
+    }
+}
+
 fn base_env(
     state: &mut State,
     env: &mut PolyTypeEnv,
-    primitive_types: &TypeEnv,
+    primitive_types: &PolyTypeEnv,
     strings: &mut Strings,
 ) {
-    let bool_ = primitive_types.get(&strings.get_or_intern("Bool")).unwrap();
-    let float = primitive_types
-        .get(&strings.get_or_intern("Float"))
-        .unwrap();
-    let _string = primitive_types
-        .get(&strings.get_or_intern("String"))
-        .unwrap();
+    let bool_ =
+        Rc::new(state.instantiate(primitive_types.get(&strings.get_or_intern("Bool")).unwrap()));
+    let float = Rc::new(
+        state.instantiate(
+            primitive_types
+                .get(&strings.get_or_intern("Float"))
+                .unwrap(),
+        ),
+    );
+    let _string = Rc::new(
+        state.instantiate(
+            primitive_types
+                .get(&strings.get_or_intern("String"))
+                .unwrap(),
+        ),
+    );
 
     env.insert(
         strings.get_or_intern("__op__or"),
@@ -769,7 +934,7 @@ fn base_env(
 pub fn infer<'interfaces, 'ast>(
     module_interfaces: &'interfaces ModuleInterfaces,
     module: &'ast Module,
-    primitive_types: &TypeEnv,
+    primitive_types: &PolyTypeEnv,
     strings: &mut Strings,
 ) -> Result<ModuleInterface, (ModuleInterface, Vec<Error<'ast>>)> {
     let mut state = State::new();
@@ -792,7 +957,6 @@ pub fn infer<'interfaces, 'ast>(
                 } else {
                     import.value.module_name.full_name
                 };
-                types_env.insert(module_ident, Rc::new(Record((*imported.types).clone())));
 
                 let mut imported_env = (*imported.definitions).clone();
                 for (_type_name, constructors) in &imported.type_constructors {
@@ -826,7 +990,7 @@ pub fn infer<'interfaces, 'ast>(
                             let name = &type_ast.value.name;
                             match imported.types.get(name) {
                                 Some(typ) => {
-                                    types_env.insert(*name, Rc::clone(&typ));
+                                    types_env.insert(*name, state.generalize(&typ));
 
                                     let constructor_types =
                                         imported.type_constructors.get(name).unwrap();
@@ -870,7 +1034,7 @@ pub fn infer<'interfaces, 'ast>(
                     name,
                     type_vars.map().values().map(|t| Rc::clone(t)).collect(),
                 ));
-                types_env.insert(name, Rc::clone(&type_def_type));
+                types_env.insert(name, state.generalize(&type_def_type));
 
                 for constructor in constructors {
                     let constructor = &constructor.value;
@@ -878,13 +1042,19 @@ pub fn infer<'interfaces, 'ast>(
                     let mut param_types = vec![];
 
                     for param in &constructor.params {
-                        let typ = ast_type_to_type(
+                        let typ = match ast_type_to_type(
                             &param,
                             &type_vars,
                             &mut errors,
                             &mut state,
                             &types_env,
-                        );
+                        ) {
+                            Ok(t) => t,
+                            Err(err) => {
+                                errors.push(err);
+                                state.new_type_var()
+                            }
+                        };
                         param_types.push(typ);
                     }
 
@@ -898,14 +1068,20 @@ pub fn infer<'interfaces, 'ast>(
                 }
             }
             ast::types::TypeDefinitionType::Record(record_type) => {
-                let typ = ast_record_type_to_type(
+                let typ = match ast_record_type_to_type(
                     record_type,
                     &type_vars,
                     &mut errors,
                     &mut state,
                     &types_env,
-                );
-                types_env.insert(name, typ);
+                ) {
+                    Ok(t) => t,
+                    Err(err) => {
+                        errors.push(err);
+                        state.new_type_var()
+                    }
+                };
+                types_env.insert(name, state.generalize(&typ));
             }
         }
     }
@@ -933,7 +1109,7 @@ pub fn infer<'interfaces, 'ast>(
             ast::Export_::Type(type_name, constructors) => {
                 let name = &type_name.value.name;
                 if let Some(typ) = types_env.get(name) {
-                    module_types.insert(*name, Rc::clone(typ));
+                    module_types.insert(*name, Rc::clone(&typ.typ));
 
                     let mut constructor_types = PolyTypeEnv::new();
                     for constructor in constructors {
@@ -970,32 +1146,47 @@ fn ast_type_to_type<'ast>(
     type_vars: &TypeEnv,
     errors: &mut Vec<Error<'ast>>,
     state: &mut State,
-    types_env: &TypeEnv,
-) -> Rc<Type> {
+    types_env: &PolyTypeEnv,
+) -> Result<Rc<Type>, Error<'ast>> {
     match ast_type {
         ast::types::Type::Fun(params, ret) => {
-            let params_types = params
-                .iter()
-                .map(|param| ast_type_to_type(param, type_vars, errors, state, types_env))
-                .collect();
-            let ret_type = ast_type_to_type(&ret, type_vars, errors, state, types_env);
-            Rc::new(Fn(params_types, ret_type))
+            let mut params_types = vec![];
+            for param in params {
+                params_types.push(ast_type_to_type(
+                    &param, type_vars, errors, state, types_env,
+                )?);
+            }
+            let ret_type = ast_type_to_type(&ret, type_vars, errors, state, types_env)?;
+            Ok(Rc::new(Fn(params_types, ret_type)))
         }
 
         ast::types::Type::App(typ) => match types_env.get(&typ.value.name.value.name) {
-            Some(t) => Rc::clone(t),
-            None => {
-                errors.push(Error::UnknownType(&typ.value.name));
-                state.new_type_var()
+            Some(t) => {
+                let t = state.instantiate(t);
+                if let Named(module_name, ..) = &*t {
+                    let mut params_types: Vec<Rc<Type>> = vec![];
+                    for param in &typ.value.params {
+                        params_types.push(ast_type_to_type(
+                            param, type_vars, errors, state, types_env,
+                        )?);
+                    }
+                    let ast_typ =
+                        Rc::new(Named(*module_name, typ.value.name.value.name, params_types));
+
+                    unify(state, typ, &ast_typ, None, &t)?;
+
+                    Ok(ast_typ)
+                } else {
+                    // todo!("Not validating or unifying the params types with whatever we got here")
+                    Ok(state.new_type_var())
+                }
             }
+            None => Err(Error::UnknownType(&typ.value.name)),
         },
 
         ast::types::Type::Var(identifier) => match type_vars.get(&identifier.value.name) {
-            Some(t) => Rc::clone(t),
-            None => {
-                errors.push(Error::UnknownTypeVar(&identifier));
-                state.new_type_var()
-            }
+            Some(t) => Ok(Rc::clone(t)),
+            None => Err(Error::UnknownTypeVar(&identifier)),
         },
 
         ast::types::Type::Record(record_type) => {
@@ -1008,32 +1199,31 @@ fn ast_record_type_to_type<'ast>(
     type_vars: &TypeEnv,
     errors: &mut Vec<Error<'ast>>,
     state: &mut State,
-    types_env: &TypeEnv,
-) -> Rc<Type> {
+    types_env: &PolyTypeEnv,
+) -> Result<Rc<Type>, Error<'ast>> {
     match record_type {
         ast::types::RecordType::Record(record) => {
             let mut fields = TypeEnv::new();
             for (name, ast_type) in &record.value.fields {
-                let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env);
+                let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env)?;
                 fields.insert(name.value.name, typ);
             }
-            Rc::new(Record(fields))
+            Ok(Rc::new(Record(fields)))
         }
         ast::types::RecordType::RecordExt(record_ext) => {
-            let ext_type = match type_vars.get(&record_ext.value.extension.value.name) {
-                Some(t) => Rc::clone(t),
-                None => {
-                    errors.push(Error::UnknownTypeVar(&record_ext.value.extension));
-                    return state.new_type_var();
-                }
+            let ext_type = if let Some(t) = type_vars.get(&record_ext.value.extension.value.name) {
+                Rc::clone(t)
+            } else {
+                return Err(Error::UnknownTypeVar(&record_ext.value.extension));
             };
 
             let mut fields = TypeEnv::new();
             for (name, ast_type) in &record_ext.value.fields {
-                let typ = ast_type_to_type(&ast_type, type_vars, errors, state, types_env);
+                let typ = ast_type_to_type(&ast_type, type_vars, errors, state, types_env)?;
                 fields.insert(name.value.name, typ);
             }
-            Rc::new(RecordExt(fields, ext_type))
+
+            Ok(Rc::new(RecordExt(fields, ext_type)))
         }
     }
 }
@@ -1042,18 +1232,18 @@ fn infer_rec<'ast>(
     ast: &'ast Expression,
     state: &mut State,
     env: &mut PolyTypeEnv,
-    types_env: &TypeEnv,
+    types_env: &PolyTypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
     let typ = match &ast.value.expr {
         ET::Unit => Rc::new(Unit),
 
-        ET::Bool(_) => Rc::clone(types_env.get(&strings.get_or_intern("Bool")).unwrap()),
+        ET::Bool(_) => Rc::clone(&types_env.get(&strings.get_or_intern("Bool")).unwrap().typ),
 
-        ET::Float(_) => Rc::clone(types_env.get(&strings.get_or_intern("Float")).unwrap()),
+        ET::Float(_) => Rc::clone(&types_env.get(&strings.get_or_intern("Float")).unwrap().typ),
 
-        ET::String_(_) => Rc::clone(types_env.get(&strings.get_or_intern("String")).unwrap()),
+        ET::String_(_) => Rc::clone(&types_env.get(&strings.get_or_intern("String")).unwrap().typ),
 
         ET::Record(fields) => {
             let mut typed_fields = TypeEnv::new();
@@ -1145,14 +1335,14 @@ fn infer_rec<'ast>(
                         e,
                         &t,
                         None,
-                        types_env.get(&strings.get_or_intern("Bool")).unwrap(),
+                        &types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
                     ),
                     U::Minus => unify(
                         state,
                         e,
                         &t,
                         None,
-                        types_env.get(&strings.get_or_intern("Bool")).unwrap(),
+                        &types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
                     ),
                 },
                 errors,
@@ -1191,7 +1381,7 @@ fn infer_rec<'ast>(
                     condition,
                     &t,
                     None,
-                    types_env.get(&strings.get_or_intern("Bool")).unwrap(),
+                    &types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
                 ),
                 errors,
             );
@@ -1282,38 +1472,19 @@ fn infer_definitions<'ast>(
     definitions: &'ast [TypedDefinition],
     state: &mut State,
     env: &mut PolyTypeEnv,
-    types_env: &TypeEnv,
+    types_env: &PolyTypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
 ) {
     for typed_definition in definitions {
         if let Some(definition) = typed_definition.definition() {
-            let signature_type = typed_definition.typ().map(|signature| {
-                let mut type_vars = TypeEnv::new();
-                state.enter_level();
-                for var in signature.typ.vars() {
-                    type_vars.insert(var.value.name, state.new_type_var());
-                }
-                state.exit_level();
-                let typ = ast_type_to_type(&signature.typ, &type_vars, errors, state, types_env);
-
-                (&signature.name, typ)
-            });
-
-            // TODO: The error message for type mismatch with the signature sucks.
-
             match &definition {
                 Definition::Lambda(identifier, lambda) => {
                     state.enter_level();
                     let t = infer_lambda(lambda, state, env, types_env, strings, errors);
                     state.exit_level();
 
-                    if let Some((signature, signature_type)) = &signature_type {
-                        add_error(
-                            unify(state, identifier, &t, Some(signature), signature_type),
-                            errors,
-                        );
-                    }
+                    check_signature(&typed_definition, &t, state, types_env, errors);
 
                     let t = state.generalize(&t);
                     env.insert(identifier.value.name, t);
@@ -1323,21 +1494,7 @@ fn infer_definitions<'ast>(
                     let t = infer_rec(value, state, env, types_env, strings, errors);
                     state.exit_level();
 
-                    if let Some((signature, signature_type)) = &signature_type {
-                        add_error(
-                            // TODO: Too many .unit copying nodes, here and in unify too
-                            // TODO: Error message sucks it is too generic. Make a unify_signature
-                            // and produce more specific error message
-                            unify(
-                                state,
-                                &pattern.unit(),
-                                &t,
-                                Some(&signature.unit()),
-                                signature_type,
-                            ),
-                            errors,
-                        );
-                    }
+                    check_signature(&typed_definition, &t, state, types_env, errors);
 
                     let t = state.generalize(&t);
                     match &pattern.value {
@@ -1350,11 +1507,66 @@ fn infer_definitions<'ast>(
     }
 }
 
+fn check_signature<'ast>(
+    typed_definition: &'ast TypedDefinition,
+    typ: &Rc<Type>,
+    state: &mut State,
+    types_env: &PolyTypeEnv,
+    errors: &mut Vec<Error<'ast>>,
+) {
+    if let Some(signature) = typed_definition.typ() {
+        let mut type_vars = TypeEnv::new();
+        state.enter_level();
+        for var in signature.typ.vars() {
+            type_vars.insert(var.value.name, state.new_type_var());
+        }
+        let signature_type_result =
+            ast_type_to_type(&signature.typ, &type_vars, errors, state, types_env);
+        state.exit_level();
+        let signature_type = match signature_type_result {
+            Ok(t) => t,
+            Err(err) => {
+                errors.push(err);
+                return;
+            }
+        };
+
+        // Clone the signature to avoid unifying the signature_type which we use to check if the
+        // type is to general below
+        let signature_type_to_unify = state.generalize(&signature_type);
+        state.enter_level();
+        let signature_type_to_unify = state.instantiate(&signature_type_to_unify);
+        state.exit_level();
+
+        add_error(
+            unify_rec(state, &typ, &signature_type_to_unify).map_err(|e| match e {
+                UnificationError::TypeMismatch => Error::SignatureMismatch(
+                    signature.name.unit(),
+                    Rc::clone(&signature_type_to_unify),
+                    Rc::clone(typ),
+                ),
+                UnificationError::InfiniteType => {
+                    Error::InfiniteType(signature.name.unit(), Rc::clone(&signature_type_to_unify))
+                }
+            }),
+            errors,
+        );
+
+        if signature_is_too_general(&signature_type, &typ) {
+            errors.push(Error::SignatureTooGeneral(
+                signature.name.unit(),
+                Rc::clone(&signature_type),
+                Rc::clone(&typ),
+            ));
+        }
+    }
+}
+
 fn infer_lambda<'ast>(
     lambda: &'ast Lambda,
     state: &mut State,
     env: &mut PolyTypeEnv,
-    types_env: &TypeEnv,
+    types_env: &PolyTypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
@@ -1396,7 +1608,7 @@ fn infer_fn_call<'ast, Args>(
     ast: &'ast Expression,
     state: &mut State,
     env: &mut PolyTypeEnv,
-    types_env: &TypeEnv,
+    types_env: &PolyTypeEnv,
     strings: &mut Strings,
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type>
@@ -1448,7 +1660,7 @@ mod tests {
         ast: &'ast Expression,
         state: &mut State,
         env: &mut PolyTypeEnv,
-        types_env: &TypeEnv,
+        types_env: &PolyTypeEnv,
         strings: &mut Strings,
     ) -> Result<Rc<Type>, Vec<Error<'ast>>> {
         let mut errors: Vec<Error<'ast>> = vec![];
@@ -2108,6 +2320,48 @@ module Test exposing (main)
 
 main : String
 main = 5
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+main : a
+main = 5
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type List a = List a
+
+main : Float -> List Float
+main a = List a
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type List a = List a
+
+main : List a
+main = List 1
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type List a = List a
+
+main : List a Float
+main = List 1
 "
         ));
 

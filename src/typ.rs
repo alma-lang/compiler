@@ -1,6 +1,6 @@
 use crate::ast::ModuleFullName;
 use crate::strings::{Strings, Symbol as StringSymbol};
-use crate::type_env::TypeEnv;
+use crate::type_env::{PolyTypeEnv, TypeEnv};
 use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
 use std::cell::RefCell;
@@ -199,15 +199,33 @@ impl Type {
         }
     }
 
-    pub fn primitive_types(strings: &mut Strings) -> TypeEnv {
+    pub fn primitive_types(strings: &mut Strings) -> PolyTypeEnv {
         let module = strings.get_or_intern("Alma");
-        let mut env = TypeEnv::new();
+        let mut env = PolyTypeEnv::new();
         let float = strings.get_or_intern("Float");
         let bool_ = strings.get_or_intern("Bool");
         let string = strings.get_or_intern("String");
-        env.insert(float, Rc::new(Type::Named(module, float, vec![])));
-        env.insert(bool_, Rc::new(Type::Named(module, bool_, vec![])));
-        env.insert(string, Rc::new(Type::Named(module, string, vec![])));
+        env.insert(
+            float,
+            Rc::new(PolyType::new(
+                IndexSet::new(),
+                Rc::new(Type::Named(module, float, vec![])),
+            )),
+        );
+        env.insert(
+            bool_,
+            Rc::new(PolyType::new(
+                IndexSet::new(),
+                Rc::new(Type::Named(module, bool_, vec![])),
+            )),
+        );
+        env.insert(
+            string,
+            Rc::new(PolyType::new(
+                IndexSet::new(),
+                Rc::new(Type::Named(module, string, vec![])),
+            )),
+        );
         env
     }
 }
