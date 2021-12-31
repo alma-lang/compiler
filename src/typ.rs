@@ -46,6 +46,13 @@ pub enum Type {
 
     Record(TypeEnv),
     RecordExt(TypeEnv, Rc<Type>),
+
+    Alias(
+        ModuleFullName,
+        StringSymbol,
+        Vec<(StringSymbol, Rc<Type>)>,
+        Rc<Type>,
+    ),
 }
 
 impl Type {
@@ -195,6 +202,14 @@ impl Type {
                 fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
 
                 s.push_str(" }");
+            }
+
+            Alias(_module, name, params, _typ) => {
+                s.push_str(strings.resolve(*name));
+                for (name, param) in params.iter() {
+                    s.push(' ');
+                    param.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+                }
             }
         }
     }
@@ -502,10 +517,11 @@ mod test {
         }
     }
 
+    #[test]
     fn test_printing_polytypes() {
         let mut strings = Strings::new();
 
-        let module = strings.get_or_intern("Test");
+        let _module = strings.get_or_intern("Test");
 
         let tests = vec![
             (

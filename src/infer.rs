@@ -359,6 +359,19 @@ impl State {
                         replace_type_vars(vars_to_replace, ext),
                     ))
                 }
+
+                Alias(module, name, params, typ) => Rc::new(Alias(
+                    *module,
+                    *name,
+                    {
+                        let mut new_params = Vec::new();
+                        for (name, param) in params.iter() {
+                            new_params.push((*name, replace_type_vars(vars_to_replace, param)));
+                        }
+                        new_params
+                    },
+                    replace_type_vars(vars_to_replace, typ),
+                )),
             }
         }
 
@@ -413,6 +426,13 @@ impl State {
                     }
                     find_all_tvs(current_level, vars, ext);
                 }
+
+                Alias(_module, _name, params, typ) => {
+                    for (_name, param) in params.iter() {
+                        find_all_tvs(current_level, vars, param);
+                    }
+                    find_all_tvs(current_level, vars, typ)
+                }
             }
         }
 
@@ -463,6 +483,8 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
                 occurs(a_id, a_level, record_t)
             }
         }
+
+        Alias(_module, _name, _params, typ) => occurs(a_id, a_level, typ),
     }
 }
 
@@ -693,6 +715,9 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
             Ok(())
         }
 
+        (Alias(_module, _name, _params, typ), _) => unify_rec(state, typ, t2),
+        (_, Alias(_module, _name, _params, typ)) => unify_rec(state, t1, typ),
+
         (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => {
             Err(TypeMismatch)
         }
@@ -808,6 +833,10 @@ fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
 
             todo!()
         }
+
+        (Alias(_module, _name, _params, typ), _) => signature_is_too_general(typ, &inferred),
+
+        (_, Alias(_module, _name, _params, typ)) => signature_is_too_general(&signature, typ),
 
         (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => false,
     }
@@ -1019,10 +1048,12 @@ pub fn infer<'interfaces, 'ast>(
 
     // Add local module types to environment
     for type_def in &module.type_definitions {
-        let mut type_vars = TypeEnv::new();
+        let mut type_vars = Vec::new();
+        let mut type_vars_env = TypeEnv::new();
         state.enter_level();
         for var in &type_def.value.vars {
-            type_vars.insert(var.value.name, state.new_type_var());
+            type_vars.push((var.value.name, state.new_type_var()));
+            type_vars_env.insert(var.value.name, state.new_type_var());
         }
         state.exit_level();
         let name = type_def.value.name.value.name;
@@ -1032,7 +1063,7 @@ pub fn infer<'interfaces, 'ast>(
                 let type_def_type = Rc::new(Type::Named(
                     module.name.full_name,
                     name,
-                    type_vars.map().values().map(|t| Rc::clone(t)).collect(),
+                    type_vars.iter().map(|(_, t)| Rc::clone(t)).collect(),
                 ));
                 types_env.insert(name, state.generalize(&type_def_type));
 
@@ -1044,7 +1075,7 @@ pub fn infer<'interfaces, 'ast>(
                     for param in &constructor.params {
                         let typ = match ast_type_to_type(
                             &param,
-                            &type_vars,
+                            &type_vars_env,
                             &mut errors,
                             &mut state,
                             &types_env,
@@ -1070,7 +1101,7 @@ pub fn infer<'interfaces, 'ast>(
             ast::types::TypeDefinitionType::Record(record_type) => {
                 let typ = match ast_record_type_to_type(
                     record_type,
-                    &type_vars,
+                    &type_vars_env,
                     &mut errors,
                     &mut state,
                     &types_env,
@@ -1081,6 +1112,7 @@ pub fn infer<'interfaces, 'ast>(
                         state.new_type_var()
                     }
                 };
+                let typ = Rc::new(Alias(module.name.full_name, name, type_vars, typ));
                 types_env.insert(name, state.generalize(&typ));
             }
         }
@@ -1163,22 +1195,38 @@ fn ast_type_to_type<'ast>(
         ast::types::Type::App(typ) => match types_env.get(&typ.value.name.value.name) {
             Some(t) => {
                 let t = state.instantiate(t);
-                if let Named(module_name, ..) = &*t {
-                    let mut params_types: Vec<Rc<Type>> = vec![];
-                    for param in &typ.value.params {
-                        params_types.push(ast_type_to_type(
-                            param, type_vars, errors, state, types_env,
-                        )?);
+                match &*t {
+                    Named(module_name, ..) => {
+                        let mut params_types: Vec<Rc<Type>> = vec![];
+                        for param in &typ.value.params {
+                            params_types.push(ast_type_to_type(
+                                param, type_vars, errors, state, types_env,
+                            )?);
+                        }
+                        let ast_typ =
+                            Rc::new(Named(*module_name, typ.value.name.value.name, params_types));
+
+                        unify(state, typ, &ast_typ, None, &t)?;
+
+                        Ok(ast_typ)
                     }
-                    let ast_typ =
-                        Rc::new(Named(*module_name, typ.value.name.value.name, params_types));
+                    Alias(_module, _name, params, dest_typ) => {
+                        todo!("I'm mid way doing this, Kind of lost TBH...");
+                        if params.len() != typ.value.params.len() {
+                            return Err(Error::TypeMismatch());
+                        }
 
-                    unify(state, typ, &ast_typ, None, &t)?;
+                        for param in &typ.value.params {
+                            let typ = ast_type_to_type(param, type_vars, errors, state, types_env)?;
+                        }
 
-                    Ok(ast_typ)
-                } else {
-                    // todo!("Not validating or unifying the params types with whatever we got here")
-                    Ok(state.new_type_var())
+                        let ast_typ =
+                            Rc::new(Alias(module, typ.value.name.value.name, params_types));
+
+                        unify(state, typ, &ast_typ, None, &t)?;
+
+                        Ok(ast_typ)
+                    }
                 }
             }
             None => Err(Error::UnknownType(&typ.value.name)),
@@ -1403,6 +1451,8 @@ fn infer_rec<'ast>(
         ET::Identifier(module, x) => {
             let name = if let Some(module) = module {
                 // TODO: Check the module if it was imported, would make for a better error message
+                // TODO: This should be pre-computed in the identifier to avoid doing this with
+                // each node in the AST.
                 let full_name = format!(
                     "{}.{}",
                     strings.resolve(module.full_name),
@@ -1531,6 +1581,7 @@ fn check_signature<'ast>(
             }
         };
 
+        // TODO: This is kind of nasty
         // Clone the signature to avoid unifying the signature_type which we use to check if the
         // type is to general below
         let signature_type_to_unify = state.generalize(&signature_type);
@@ -1538,8 +1589,8 @@ fn check_signature<'ast>(
         let signature_type_to_unify = state.instantiate(&signature_type_to_unify);
         state.exit_level();
 
-        add_error(
-            unify_rec(state, &typ, &signature_type_to_unify).map_err(|e| match e {
+        if let Err(e) = unify_rec(state, &typ, &signature_type_to_unify) {
+            errors.push(match e {
                 UnificationError::TypeMismatch => Error::SignatureMismatch(
                     signature.name.unit(),
                     Rc::clone(&signature_type_to_unify),
@@ -1548,16 +1599,15 @@ fn check_signature<'ast>(
                 UnificationError::InfiniteType => {
                     Error::InfiniteType(signature.name.unit(), Rc::clone(&signature_type_to_unify))
                 }
-            }),
-            errors,
-        );
-
-        if signature_is_too_general(&signature_type, &typ) {
-            errors.push(Error::SignatureTooGeneral(
-                signature.name.unit(),
-                Rc::clone(&signature_type),
-                Rc::clone(&typ),
-            ));
+            });
+        } else {
+            if signature_is_too_general(&signature_type, &typ) {
+                errors.push(Error::SignatureTooGeneral(
+                    signature.name.unit(),
+                    Rc::clone(&signature_type),
+                    Rc::clone(&typ),
+                ));
+            }
         }
     }
 }
