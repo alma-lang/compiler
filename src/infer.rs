@@ -172,10 +172,11 @@ with type
 
             WrongArity(_, num_params_applied, num_params, typ) => {
                 s.push_str(&format!(
-                    "Type {2} accepts {0} parameters but it was called with {1}.
+                    "Type `{3}` accepts {0} parameter{1} but it was called with {2}.
 
-{3}",
+{4}",
                     num_params,
+                    if *num_params == 1 { "" } else { "s" },
                     num_params_applied,
                     typ.to_string(strings),
                     code
@@ -611,6 +612,9 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
         (Unit, Unit) => Ok(()),
 
         (Named(module, name, args), Named(module2, name2, args2)) => {
+            // TODO: Specialize the arity error message instead of the generic TypeMismatch. We
+            // could make unify_rec get the ast and original types to pass around and improve many
+            // error messages around the whole function.
             if module != module2 || name != name2 || args.len() != args2.len() {
                 Err(TypeMismatch)
             } else {
@@ -2440,6 +2444,39 @@ type List a = List a
 
 main : List a Float
 main = List 1
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type List a = { x : a }
+
+main : List
+main = { x : 1 }
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type List a = { x : a }
+
+main : List Float
+main = { x : 1 }
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+type List a = { x : a }
+
+main : List Float String
+main = { x : 1 }
 "
         ));
 

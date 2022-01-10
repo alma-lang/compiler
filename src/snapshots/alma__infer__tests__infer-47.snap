@@ -1,0 +1,21 @@
+---
+source: src/infer.rs
+expression: "infer(\"\\\nmodule Test exposing (main)\n\ntype List a = { x : a }\n\nmain : List Float\nmain = { x : 1 }\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+type List a = { x : a }
+
+main : List Float
+main = { x : 1 }
+
+
+---
+Output:
+
+module Test
+
+main : ∀ ∅ . { x : Float }
