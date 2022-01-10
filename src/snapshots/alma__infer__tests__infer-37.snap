@@ -22,4 +22,4 @@ Output:
 
 module Test
 
-main : ∀ a . M a
+main : ∀ ∅ . M Float

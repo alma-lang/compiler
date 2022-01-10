@@ -22,7 +22,7 @@ Output:
 
 [10:9]
 
-Type mismatch:  { add : Float -> Float -> Float, sub : a -> a }  ≠  { add : Float -> Float -> Float, sub : Float -> Float -> Float }
+Type mismatch:  { add : Float -> Float -> Float, sub : a -> a }  ≠  Math Float (alias of { add : Float -> Float -> Float, sub : Float -> Float -> Float })
 
 Expected
 
@@ -33,7 +33,7 @@ Expected
 
 to be
 
-{ add : Float -> Float -> Float, sub : Float -> Float -> Float }
+Math Float (alias of { add : Float -> Float -> Float, sub : Float -> Float -> Float })
 
 but seems to be
 

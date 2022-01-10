@@ -45,6 +45,7 @@ pub enum Error<'ast> {
     UndefinedIdentifier(StringSymbol, Node<()>),
     DuplicateField(&'ast Identifier, &'ast Expression),
     TypeMismatch(Node<()>, Rc<Type>, Option<Node<()>>, Rc<Type>),
+    WrongArity(Node<()>, usize, usize, Rc<Type>),
     SignatureMismatch(Node<()>, Rc<Type>, Rc<Type>),
     SignatureTooGeneral(Node<()>, Rc<Type>, Rc<Type>),
     InfiniteType(Node<()>, Rc<Type>),
@@ -67,6 +68,7 @@ impl<'ast> Error<'ast> {
             UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
             DuplicateField(node, _) => (node.start, node.line, node.column, node.end),
             TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
+            WrongArity(node, ..) => (node.start, node.line, node.column, node.end),
             SignatureMismatch(node, ..) => (node.start, node.line, node.column, node.end),
             SignatureTooGeneral(node, ..) => (node.start, node.line, node.column, node.end),
             InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
@@ -165,6 +167,18 @@ with type
                     typ2.to_string(strings),
                     code,
                     code2
+                ));
+            }
+
+            WrongArity(_, num_params_applied, num_params, typ) => {
+                s.push_str(&format!(
+                    "Type {2} accepts {0} parameters but it was called with {1}.
+
+{3}",
+                    num_params,
+                    num_params_applied,
+                    typ.to_string(strings),
+                    code
                 ));
             }
 
@@ -1052,8 +1066,9 @@ pub fn infer<'interfaces, 'ast>(
         let mut type_vars_env = TypeEnv::new();
         state.enter_level();
         for var in &type_def.value.vars {
-            type_vars.push((var.value.name, state.new_type_var()));
-            type_vars_env.insert(var.value.name, state.new_type_var());
+            let tvar = state.new_type_var();
+            type_vars.push((var.value.name, Rc::clone(&tvar)));
+            type_vars_env.insert(var.value.name, tvar);
         }
         state.exit_level();
         let name = type_def.value.name.value.name;
@@ -1194,7 +1209,9 @@ fn ast_type_to_type<'ast>(
 
         ast::types::Type::App(typ) => match types_env.get(&typ.value.name.value.name) {
             Some(t) => {
+                state.enter_level();
                 let t = state.instantiate(t);
+                state.exit_level();
                 match &*t {
                     Named(module_name, ..) => {
                         let mut params_types: Vec<Rc<Type>> = vec![];
@@ -1210,23 +1227,34 @@ fn ast_type_to_type<'ast>(
 
                         Ok(ast_typ)
                     }
-                    Alias(_module, _name, params, dest_typ) => {
-                        todo!("I'm mid way doing this, Kind of lost TBH...");
+                    Alias(module, name, params, dest_typ) => {
                         if params.len() != typ.value.params.len() {
-                            return Err(Error::TypeMismatch());
+                            return Err(Error::WrongArity(
+                                typ.unit(),
+                                typ.value.params.len(),
+                                params.len(),
+                                t,
+                            ));
                         }
 
-                        for param in &typ.value.params {
-                            let typ = ast_type_to_type(param, type_vars, errors, state, types_env)?;
+                        let mut params_types = vec![];
+                        for (param, (name, dest_param_typ)) in typ.value.params.iter().zip(params) {
+                            let param_typ =
+                                ast_type_to_type(param, type_vars, errors, state, types_env)?;
+                            // TODO: param ast (`typ.unit()`) here should have node to point at it
+                            // directly in the error message
+                            unify(state, &typ.unit(), &param_typ, None, &dest_param_typ)?;
+                            params_types.push((*name, param_typ));
                         }
 
-                        let ast_typ =
-                            Rc::new(Alias(module, typ.value.name.value.name, params_types));
-
-                        unify(state, typ, &ast_typ, None, &t)?;
-
-                        Ok(ast_typ)
+                        Ok(Rc::new(Alias(
+                            *module,
+                            *name,
+                            params_types,
+                            Rc::clone(dest_typ),
+                        )))
                     }
+                    _ => Err(Error::WrongArity(typ.unit(), typ.value.params.len(), 0, t)),
                 }
             }
             None => Err(Error::UnknownType(&typ.value.name)),

@@ -204,12 +204,15 @@ impl Type {
                 s.push_str(" }");
             }
 
-            Alias(_module, name, params, _typ) => {
+            Alias(_module, name, params, typ) => {
                 s.push_str(strings.resolve(*name));
-                for (name, param) in params.iter() {
+                for (_name, param) in params.iter() {
                     s.push(' ');
                     param.to_string_rec(cur_type_var_name, type_var_names, s, strings);
                 }
+                s.push_str(" (alias of ");
+                typ.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+                s.push(')');
             }
         }
     }
