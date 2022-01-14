@@ -18,4 +18,4 @@ Output:
 
 module Test
 
-main : ∀ ∅ . { x : Float }
+main : ∀ ∅ . List Float (alias of { x : Float })

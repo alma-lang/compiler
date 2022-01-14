@@ -1566,7 +1566,7 @@ fn infer_definitions<'ast>(
                     let t = infer_lambda(lambda, state, env, types_env, strings, errors);
                     state.exit_level();
 
-                    check_signature(&typed_definition, &t, state, types_env, errors);
+                    let t = check_signature(&typed_definition, &t, state, types_env, errors);
 
                     let t = state.generalize(&t);
                     env.insert(identifier.value.name, t);
@@ -1576,7 +1576,7 @@ fn infer_definitions<'ast>(
                     let t = infer_rec(value, state, env, types_env, strings, errors);
                     state.exit_level();
 
-                    check_signature(&typed_definition, &t, state, types_env, errors);
+                    let t = check_signature(&typed_definition, &t, state, types_env, errors);
 
                     let t = state.generalize(&t);
                     match &pattern.value {
@@ -1595,7 +1595,7 @@ fn check_signature<'ast>(
     state: &mut State,
     types_env: &PolyTypeEnv,
     errors: &mut Vec<Error<'ast>>,
-) {
+) -> Rc<Type> {
     if let Some(signature) = typed_definition.typ() {
         let mut type_vars = TypeEnv::new();
         state.enter_level();
@@ -1609,7 +1609,7 @@ fn check_signature<'ast>(
             Ok(t) => t,
             Err(err) => {
                 errors.push(err);
-                return;
+                return Rc::clone(typ);
             }
         };
 
@@ -1632,6 +1632,7 @@ fn check_signature<'ast>(
                     Error::InfiniteType(signature.name.unit(), Rc::clone(&signature_type_to_unify))
                 }
             });
+            Rc::clone(typ)
         } else {
             if signature_is_too_general(&signature_type, &typ) {
                 errors.push(Error::SignatureTooGeneral(
@@ -1640,7 +1641,10 @@ fn check_signature<'ast>(
                     Rc::clone(&typ),
                 ));
             }
+            signature_type_to_unify
         }
+    } else {
+        Rc::clone(typ)
     }
 }
 
@@ -2477,6 +2481,20 @@ type List a = { x : a }
 
 main : List Float String
 main = { x : 1 }
+"
+        ));
+
+        assert_snapshot!(infer(
+            "\
+module Test exposing (main)
+
+import Test.Record exposing (Record)
+
+module Test.Record exposing (Record)
+    type Record a = { x : a }
+
+main : Record Float
+main = { x : 5 }
 "
         ));
 
