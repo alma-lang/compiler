@@ -216,5 +216,13 @@ module CycleModule
 
 import CycleModule
         "]));
+
+        assert_snapshot!(compile(&[r"
+module ModuleWithTypeOnlyDefinitions exposing (main)
+
+test : Float -> Float -> Float
+
+main a = test a 5
+        "]));
     }
 }

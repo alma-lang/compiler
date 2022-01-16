@@ -1,6 +1,6 @@
 use crate::ast::{
     self, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import,
-    Lambda, Module, Node, Pattern_ as P, TypedDefinition, Unary_ as U,
+    Lambda, Module, Node, Pattern_ as P, TypeSignature, TypedDefinition, Unary_ as U,
 };
 use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
 use crate::source::Source;
@@ -1585,8 +1585,38 @@ fn infer_definitions<'ast>(
                     }
                 }
             }
+        } else if let Some(typ) = typed_definition.typ() {
+            let t = match type_from_signature(typ, state, types_env, errors) {
+                Ok(t) => t,
+                Err(err) => {
+                    errors.push(err);
+                    state.enter_level();
+                    let t = state.new_type_var();
+                    state.exit_level();
+                    t
+                }
+            };
+            let t = state.generalize(&t);
+            env.insert(typ.name.value.name, t);
         }
     }
+}
+
+fn type_from_signature<'ast>(
+    signature: &'ast TypeSignature,
+    state: &mut State,
+    types_env: &PolyTypeEnv,
+    errors: &mut Vec<Error<'ast>>,
+) -> Result<Rc<Type>, Error<'ast>> {
+    let mut type_vars = TypeEnv::new();
+    state.enter_level();
+    for var in signature.typ.vars() {
+        type_vars.insert(var.value.name, state.new_type_var());
+    }
+    let signature_type_result =
+        ast_type_to_type(&signature.typ, &type_vars, errors, state, types_env);
+    state.exit_level();
+    signature_type_result
 }
 
 fn check_signature<'ast>(
@@ -1597,15 +1627,7 @@ fn check_signature<'ast>(
     errors: &mut Vec<Error<'ast>>,
 ) -> Rc<Type> {
     if let Some(signature) = typed_definition.typ() {
-        let mut type_vars = TypeEnv::new();
-        state.enter_level();
-        for var in signature.typ.vars() {
-            type_vars.insert(var.value.name, state.new_type_var());
-        }
-        let signature_type_result =
-            ast_type_to_type(&signature.typ, &type_vars, errors, state, types_env);
-        state.exit_level();
-        let signature_type = match signature_type_result {
+        let signature_type = match type_from_signature(signature, state, types_env, errors) {
             Ok(t) => t,
             Err(err) => {
                 errors.push(err);
