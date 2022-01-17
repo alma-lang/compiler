@@ -265,22 +265,21 @@ mod tests {
     use super::*;
     use insta::assert_snapshot;
 
-    #[test]
-    fn test_lines_report_at_position_with_pointer() {
-        fn report(code: &str, position: usize, end_position: Option<usize>, lines: u32) -> String {
-            let source = Source::new_orphan(code.to_string());
-            let result =
-                source.lines_report_at_position_with_pointer(position, end_position, lines);
-            format!(
-                "Input:\n\n{}\n\nResult:\n\n{}",
-                code,
-                match &result {
-                    Some(res) => res,
-                    None => "None",
-                }
-            )
-        }
+    fn report(code: &str, position: usize, end_position: Option<usize>, lines: u32) -> String {
+        let source = Source::new_orphan(code.to_string());
+        let result = source.lines_report_at_position_with_pointer(position, end_position, lines);
+        format!(
+            "Input:\n\n{}\n\nResult:\n\n{}",
+            code,
+            match &result {
+                Some(res) => res,
+                None => "None",
+            }
+        )
+    }
 
+    #[test]
+    fn test_pointing_to_the_end_of_file_points_to_last_character_even_with_new_lines() {
         assert_snapshot!(report("type Banana\n", 12, None, 1));
     }
 }

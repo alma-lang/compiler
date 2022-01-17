@@ -387,27 +387,48 @@ mod tests {
     use crate::source::Source;
     use insta::assert_snapshot;
 
+    fn tokenize<'a>(code: &'a str) -> String {
+        let source = &Source::new_orphan(code.to_string());
+        format!("{:#?}", parse(source))
+    }
+
     #[test]
-    fn test_scan_tokens() {
-        fn tokenize<'a>(code: &'a str) -> String {
-            let source = &Source::new_orphan(code.to_string());
-            format!("{:#?}", parse(source))
-        }
-
+    fn empty_file() {
         assert_snapshot!(tokenize(""));
+    }
 
+    #[test]
+    fn test_tokenize_int() {
         assert_snapshot!(tokenize("123"));
+    }
 
+    #[test]
+    fn test_tokenize_float() {
         assert_snapshot!(tokenize("123.345"));
+    }
 
+    #[test]
+    fn test_tokenize_bad_float() {
         assert_snapshot!(tokenize("123.sd"));
+    }
 
+    #[test]
+    fn test_tokenize_whitespace_number_or_string() {
         assert_snapshot!(tokenize("123\n or \"abc\""));
+    }
 
+    #[test]
+    fn test_tokenize_ampersand() {
         assert_snapshot!(tokenize("123\n or &\"abc\""));
+    }
 
+    #[test]
+    fn test_tokenize_string() {
         assert_snapshot!(tokenize(r#""asdf\"asdf""#));
+    }
 
+    #[test]
+    fn test_tokenize_single_line_comment() {
         assert_snapshot!(tokenize("123\n--Banana\n321"));
     }
 }
