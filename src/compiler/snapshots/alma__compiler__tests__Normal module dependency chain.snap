@@ -1,0 +1,71 @@
+---
+source: src/compiler/mod.rs
+expression: "compile(&[r\"\nmodule Modules exposing (main)\n\nimport Modules.WeirdMath exposing (weirdAdd)\n\nmain = weirdAdd\n\n\n\nmodule Modules.Constants exposing (five)\n\n    five = 5\n\n\n\nmodule Modules.WeirdMath exposing (weirdAdd)\n\n    import Modules.Constants exposing (five)\n\n    weirdAdd = \\x y -> x * y + five\n        \"])"
+
+---
+/*
+
+module Modules
+
+main : ∀ ∅ . Float -> Float -> Float
+
+
+module Modules.Constants
+
+five : ∀ ∅ . Float
+
+
+module Modules.WeirdMath
+
+weirdAdd : ∀ ∅ . Float -> Float -> Float
+
+*/
+
+
+globalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {
+
+
+let Modules__Constants = function () {
+
+    let five = 5
+
+    return {
+        five,
+    };
+
+}();
+
+let Modules__WeirdMath = function () {
+
+    let { five } = Modules__Constants
+
+    let weirdAdd = function (x, y) {
+        return __op__add(__op__mult(x, y), five)
+    }
+
+    return {
+        weirdAdd,
+    };
+
+}();
+
+let Modules = function () {
+
+    let { weirdAdd } = Modules__WeirdMath
+
+    let main = weirdAdd
+
+    return {
+        main,
+    };
+
+}();
+
+return {
+    Modules,
+    Modules__WeirdMath,
+    Modules__Constants,
+};
+
+}());
+

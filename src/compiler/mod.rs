@@ -177,7 +177,9 @@ pub mod tests {
 
         // Normal modules
 
-        assert_snapshot!(compile(&[r"
+        assert_snapshot!(
+            "Normal module dependency chain",
+            compile(&[r"
 module Modules exposing (main)
 
 import Modules.WeirdMath exposing (weirdAdd)
@@ -197,11 +199,14 @@ module Modules.WeirdMath exposing (weirdAdd)
     import Modules.Constants exposing (five)
 
     weirdAdd = \x y -> x * y + five
-        "]));
+        "])
+        );
 
         // Cycle modules
 
-        assert_snapshot!(compile(&[r"
+        assert_snapshot!(
+            "Direct dependency module cycle",
+            compile(&[r"
 module CycleModule
 
 import CycleModule.Test
@@ -209,20 +214,27 @@ import CycleModule.Test
 
 module CycleModule.Test
     import CycleModule
-        "]));
+        "])
+        );
 
-        assert_snapshot!(compile(&[r"
+        assert_snapshot!(
+            "Direct module cycle",
+            compile(&[r"
 module CycleModule
 
 import CycleModule
-        "]));
+        "])
+        );
 
-        assert_snapshot!(compile(&[r"
+        assert_snapshot!(
+            "Type only top level definition",
+            compile(&[r"
 module ModuleWithTypeOnlyDefinitions exposing (main)
 
 test : Float -> Float -> Float
 
 main a = test a 5
-        "]));
+        "])
+        );
     }
 }
