@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1823
+expression: "infer(\"if 1 == 1 then True else False\")"
+
+---
+Input:
+
+if 1 == 1 then True else False
+
+---
+Output:
+
+Bool

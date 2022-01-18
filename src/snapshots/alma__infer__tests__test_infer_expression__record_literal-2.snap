@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1866
+expression: "infer(r\"{ x = 1 }\")"
+
+---
+Input:
+
+{ x = 1 }
+
+---
+Output:
+
+{ x : Float }

@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1824
+expression: "infer(\"if 1 == 1 then 1 else 2\")"
+
+---
+Input:
+
+if 1 == 1 then 1 else 2
+
+---
+Output:
+
+Float

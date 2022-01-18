@@ -1,0 +1,29 @@
+---
+source: src/infer.rs
+assertion_line: 1888
+expression: "infer(\"{ {} | age = 1 }\")"
+
+---
+Input:
+
+{ {} | age = 1 }
+
+---
+Output:
+
+[1:2]
+
+Type mismatch:  {}  ≠  { a | age : Float }
+
+Expected
+
+  1│  { {} | age = 1 }
+   │    ↑↑
+
+to be
+
+{ a | age : Float }
+
+but seems to be
+
+{}

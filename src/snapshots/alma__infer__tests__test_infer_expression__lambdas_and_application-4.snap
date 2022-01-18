@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1794
+expression: "infer(r\"\\n -> \\f -> \\x -> f (n f x)\")"
+
+---
+Input:
+
+\n -> \f -> \x -> f (n f x)
+
+---
+Output:
+
+((a -> b) -> c -> a) -> (a -> b) -> c -> b

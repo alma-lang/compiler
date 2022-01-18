@@ -1,0 +1,37 @@
+---
+source: src/infer.rs
+assertion_line: 1995
+expression: "infer(r#\"\nmodule Test exposing (a, b)\n\na = 1\n\nb = 2\n\nmodule Test.TestInner exposing (a, b)\n  a = \\x y -> x + y\n  b = \\c -> c\n\nc = \"hi\"\n\"#)"
+
+---
+Input:
+
+
+module Test exposing (a, b)
+
+a = 1
+
+b = 2
+
+module Test.TestInner exposing (a, b)
+  a = \x y -> x + y
+  b = \c -> c
+
+c = "hi"
+
+
+---
+Output:
+
+module Test
+
+a : ∀ ∅ . Float
+
+b : ∀ ∅ . Float
+
+
+module Test.TestInner
+
+a : ∀ ∅ . Float -> Float -> Float
+
+b : ∀ a . a -> a

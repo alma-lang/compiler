@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1882
+expression: "infer(\".name { name = 1 }\")"
+
+---
+Input:
+
+.name { name = 1 }
+
+---
+Output:
+
+Float

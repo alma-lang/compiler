@@ -1,0 +1,31 @@
+---
+source: src/infer.rs
+assertion_line: 2146
+expression: "infer(\"\\\nmodule User exposing (new)\n\nimport User.Id as UserId\n\nnew = { id = User.Id.new }\n\nmodule User.Id exposing (new)\n    new = 42\n\")"
+
+---
+Input:
+
+module User exposing (new)
+
+import User.Id as UserId
+
+new = { id = User.Id.new }
+
+module User.Id exposing (new)
+    new = 42
+
+
+---
+Output:
+
+[5:13]
+
+Undefined identifier `User.Id.new`
+
+  3│  import User.Id as UserId
+  4│  
+  5│  new = { id = User.Id.new }
+   │               ↑↑↑↑↑↑↑↑↑↑↑
+  6│  
+  7│  module User.Id exposing (new)

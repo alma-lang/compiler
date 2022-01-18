@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1892
+expression: "infer(r#\"(\\thing -> { thing | age = 5 }) { name = \"Joe\", age = 1 }\"#)"
+
+---
+Input:
+
+(\thing -> { thing | age = 5 }) { name = "Joe", age = 1 }
+
+---
+Output:
+
+{ age : Float, name : String }

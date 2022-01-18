@@ -1,0 +1,43 @@
+---
+source: src/infer.rs
+assertion_line: 2027
+expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (test)\n\nadd = \\x -> x + test\n\nmodule Parent.Test exposing (test)\n\n    test = \"hi\"\n\"#)"
+
+---
+Input:
+
+
+module Parent
+
+import Parent.Test exposing (test)
+
+add = \x -> x + test
+
+module Parent.Test exposing (test)
+
+    test = "hi"
+
+
+---
+Output:
+
+[6:16]
+
+Type mismatch:  String  ≠  Float
+
+Expected
+
+  4│  import Parent.Test exposing (test)
+  5│  
+  6│  add = \x -> x + test
+   │                  ↑↑↑↑
+  7│  
+  8│  module Parent.Test exposing (test)
+
+to be
+
+Float
+
+but seems to be
+
+String

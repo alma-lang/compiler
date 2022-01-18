@@ -1,0 +1,24 @@
+---
+source: src/infer.rs
+assertion_line: 1900
+expression: "infer(\"{ name = 1, age = 1, name = 1 }\")"
+
+---
+Input:
+
+{ name = 1, age = 1, name = 1 }
+
+---
+Output:
+
+[1:21]
+
+Duplicate field `name`
+
+  1│  { name = 1, age = 1, name = 1 }
+   │                       ↑↑↑↑
+
+in record
+
+  1│  { name = 1, age = 1, name = 1 }
+

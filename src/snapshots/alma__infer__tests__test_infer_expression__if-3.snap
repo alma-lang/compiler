@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1825
+expression: "infer(\"if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2\")"
+
+---
+Input:
+
+if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2
+
+---
+Output:
+
+Float

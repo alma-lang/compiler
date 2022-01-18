@@ -745,14 +745,14 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
 /**
  * This function must be called after the types have been unified and are compatible
  */
-fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
+fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
     let signature = find(signature);
     let inferred = find(inferred);
 
     match (&*signature, &*inferred) {
         (Named(_, _, args), Named(_, _, args2)) => {
             for (a1, a2) in args.iter().zip(args2.iter()) {
-                if signature_is_too_general(a1, a2) {
+                if signature_is_too_generic(a1, a2) {
                     return true;
                 }
             }
@@ -767,21 +767,21 @@ fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
 
         (Fn(args, ret), Fn(args2, ret2)) => {
             for (a1, a2) in args.iter().zip(args2.iter()) {
-                if signature_is_too_general(a1, a2) {
+                if signature_is_too_generic(a1, a2) {
                     return true;
                 }
             }
-            signature_is_too_general(ret, ret2)
+            signature_is_too_generic(ret, ret2)
         }
 
         (Record(fields1), Record(fields2)) => {
             for (key, value) in fields1.map() {
-                if signature_is_too_general(value, fields2.get(key).unwrap()) {
+                if signature_is_too_generic(value, fields2.get(key).unwrap()) {
                     return true;
                 }
             }
             for (key, value) in fields2.map() {
-                if signature_is_too_general(value, fields1.get(key).unwrap()) {
+                if signature_is_too_generic(value, fields1.get(key).unwrap()) {
                     return true;
                 }
             }
@@ -791,7 +791,7 @@ fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
         (Record(fields), RecordExt(ext_fields, _ext))
         | (RecordExt(ext_fields, _ext), Record(fields)) => {
             for (key, value) in ext_fields.map() {
-                if signature_is_too_general(value, fields.get(key).unwrap()) {
+                if signature_is_too_generic(value, fields.get(key).unwrap()) {
                     return true;
                 }
             }
@@ -813,12 +813,12 @@ fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
 
         (RecordExt(fields1, _var1), RecordExt(fields2, _var2)) => {
             for (key, value) in fields1.map() {
-                if signature_is_too_general(value, fields2.get(key).unwrap()) {
+                if signature_is_too_generic(value, fields2.get(key).unwrap()) {
                     return true;
                 }
             }
             for (key, value) in fields2.map() {
-                if signature_is_too_general(value, fields1.get(key).unwrap()) {
+                if signature_is_too_generic(value, fields1.get(key).unwrap()) {
                     return true;
                 }
             }
@@ -852,9 +852,9 @@ fn signature_is_too_general(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
             todo!()
         }
 
-        (Alias(_module, _name, _params, typ), _) => signature_is_too_general(typ, &inferred),
+        (Alias(_module, _name, _params, typ), _) => signature_is_too_generic(typ, &inferred),
 
-        (_, Alias(_module, _name, _params, typ)) => signature_is_too_general(&signature, typ),
+        (_, Alias(_module, _name, _params, typ)) => signature_is_too_generic(&signature, typ),
 
         (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => false,
     }
@@ -1656,7 +1656,7 @@ fn check_signature<'ast>(
             });
             Rc::clone(typ)
         } else {
-            if signature_is_too_general(&signature_type, &typ) {
+            if signature_is_too_generic(&signature_type, &typ) {
                 errors.push(Error::SignatureTooGeneral(
                     signature.name.unit(),
                     Rc::clone(&signature_type),
@@ -1762,7 +1762,6 @@ mod tests {
     use crate::compiler::stages as compiler;
     use crate::parser;
     use crate::tokenizer;
-    use insta::assert_snapshot;
 
     pub fn infer_expression<'ast>(
         ast: &'ast Expression,
@@ -1781,139 +1780,126 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_infer_expr() {
-        assert_snapshot!(infer(r"\f -> \x -> f x",));
+    mod test_infer_expression {
+        use super::*;
+        use insta::assert_snapshot;
 
-        assert_snapshot!(infer(r"\f -> \x -> f (f x)",));
+        #[test]
+        fn test_lambdas_and_application() {
+            assert_snapshot!(infer(r"\f -> \x -> f x"));
+            assert_snapshot!(infer(r"\f -> \x -> f (f x)"));
+            // (+):
+            assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m f (n f x)"));
+            // succ:
+            assert_snapshot!(infer(r"\n -> \f -> \x -> f (n f x)"));
+            // mult:
+            assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m (n f) x"));
+            // pred:
+            assert_snapshot!(infer(
+                r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)"
+            ));
+        }
 
-        // (+):
-
-        assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m f (n f x)",));
-
-        // succ:
-
-        assert_snapshot!(infer(r"\n -> \f -> \x -> f (n f x)",));
-
-        // mult:
-
-        assert_snapshot!(infer(r"\m -> \n -> \f -> \x -> m (n f) x",));
-
-        // pred:
-
-        assert_snapshot!(infer(
-            r"\n -> \f -> \x -> n (\g -> \h -> h (g f)) (\u -> x) (\u -> u)",
-        ));
-
-        // let generalization tests
-
-        assert_snapshot!(infer(
-            r"
+        #[test]
+        fn test_let_generalization() {
+            assert_snapshot!(infer(
+                r"
       \x ->
         let y = x
         y
-    ",
-        ));
-
-        assert_snapshot!(infer(
-            r"
+    "
+            ));
+            assert_snapshot!(infer(
+                r"
       \x ->
         let y = \z -> x
         y
-      ",
-        ));
+      "
+            ));
+        }
 
-        // if:
+        #[test]
+        fn test_if() {
+            assert_snapshot!(infer("if 1 == 1 then True else False"));
+            assert_snapshot!(infer("if 1 == 1 then 1 else 2"));
+            assert_snapshot!(infer(
+                "if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2"
+            ));
+            assert_snapshot!("bad condition type", infer("if 1 then 5 else 1"));
+        }
 
-        assert_snapshot!(infer("if 1 == 1 then True else False"));
-
-        assert_snapshot!(infer("if 1 == 1 then 1 else 2"));
-
-        // errors:
-
-        assert_snapshot!(infer(
-            "if 1 == 1 then if 1 + 1 > 2 then 5 else 1 / 1 else 2 + 2",
-        ));
-
-        assert_snapshot!(infer("if 1 then 5 else 1"));
-
-        // let:
-
-        assert_snapshot!(infer(
-            r"let incr = \n -> n + 1
+        #[test]
+        fn test_let() {
+            assert_snapshot!(
+                "function binding",
+                infer(
+                    r"
+let incr = \n -> n + 1
 
 incr True"
-        ));
-
-        assert_snapshot!(infer(
-            r"\x ->
+                )
+            );
+            assert_snapshot!(infer(
+                r"
+\x ->
     let a = x + 1
     let b = not x
     x"
-        ));
-
-        assert_snapshot!(infer("let a = bar\nbar"));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer("let a = bar\nbar"));
+            assert_snapshot!(infer(
+                "\
 let add x y = x + y
 
 add 5"
-        ));
+            ));
+        }
 
-        // Infinite type:
+        #[test]
+        fn test_infinite_type() {
+            assert_snapshot!(infer(r"\a -> a 1 a",));
+        }
 
-        assert_snapshot!(infer(r"\a -> a 1 a",));
+        #[test]
+        fn test_record_literal() {
+            assert_snapshot!(infer(r"{}"));
+            assert_snapshot!(infer(r"{ x = 1 }"));
+            assert_snapshot!(infer(r"{ x = 1, y = True }"));
+            assert_snapshot!(infer("{ x = { x = 5 } }"));
+        }
 
-        // Record literal
+        #[test]
+        fn test_property_access() {
+            assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.age"#));
+            assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.msg"#));
+            assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.wat"#));
+            assert_snapshot!(infer(r#"let a = "Hi" in a.wat"#));
+        }
 
-        assert_snapshot!(infer(r"{}"));
+        #[test]
+        fn test_property_access_shorthand_lambda() {
+            assert_snapshot!(infer(".name"));
+            assert_snapshot!(infer(".name { name = 1 }"));
+            assert_snapshot!(infer(".name { age = 1 }"));
+        }
 
-        assert_snapshot!(infer(r"{ x = 1 }"));
+        #[test]
+        fn test_record_update() {
+            assert_snapshot!(infer("{ {} | age = 1 }"));
+            assert_snapshot!(infer("{ { age = 5 } | age = 1 }"));
+            assert_snapshot!(infer("{ { age = 5 } | age = \"Hi\" }"));
+            assert_snapshot!(infer(r"\thing -> { thing | age = 5 }"));
+            assert_snapshot!(infer(
+                r#"(\thing -> { thing | age = 5 }) { name = "Joe", age = 1 }"#
+            ));
+        }
 
-        assert_snapshot!(infer(r"{ x = 1, y = True }"));
-
-        assert_snapshot!(infer("{ x = { x = 5 } }"));
-
-        // Property access
-
-        assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.age"#));
-
-        assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.msg"#));
-
-        assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.wat"#));
-
-        assert_snapshot!(infer(r#"let a = "Hi" in a.wat"#));
-
-        // Property access shorthand lambda
-
-        assert_snapshot!(infer(".name"));
-
-        assert_snapshot!(infer(".name { name = 1 }"));
-
-        assert_snapshot!(infer(".name { age = 1 }"));
-
-        // Record update
-
-        assert_snapshot!(infer("{ {} | age = 1 }"));
-
-        assert_snapshot!(infer("{ { age = 5 } | age = 1 }"));
-
-        assert_snapshot!(infer("{ { age = 5 } | age = \"Hi\" }"));
-
-        assert_snapshot!(infer(r"\thing -> { thing | age = 5 }"));
-
-        assert_snapshot!(infer(
-            r#"(\thing -> { thing | age = 5 }) { name = "Joe", age = 1 }"#
-        ));
-
-        // Duplicate fields in records
-
-        assert_snapshot!(infer("{ age = 1, age = 1 }"));
-
-        assert_snapshot!(infer("{ name = 1, age = 1, name = 1 }"));
-
-        assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
+        #[test]
+        fn test_duplicate_fields_in_records() {
+            assert_snapshot!(infer("{ age = 1, age = 1 }"));
+            assert_snapshot!(infer("{ name = 1, age = 1, name = 1 }"));
+            assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
+        }
 
         fn infer(code: &str) -> String {
             let mut strings = Strings::new();
@@ -1956,50 +1942,58 @@ add 5"
         }
     }
 
-    #[test]
-    fn test_infer() {
-        assert_snapshot!(infer(
-            "
+    mod test_infer_module {
+        use super::*;
+        use insta::assert_snapshot;
+
+        #[test]
+        fn test_module_definitions() {
+            assert_snapshot!(infer(
+                "
 module Test
 
 a = 1
 
 b = 2
            "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "
+        #[test]
+        fn test_exposing() {
+            assert_snapshot!(infer(
+                "
 module Test exposing (a)
 
 a = 1
 
 b = 2
            "
-        ));
-
-        assert_snapshot!(infer(
-            "
+            ));
+            assert_snapshot!(infer(
+                "
 module Test exposing (a, b)
 
 a = 1
 
 b = 2
            "
-        ));
-
-        assert_snapshot!(infer(
-            "
+            ));
+            assert_snapshot!(infer(
+                "
 module Test exposing (c)
 
 a = 1
 
 b = 2
            "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            r#"
+        #[test]
+        fn test_exposing_submodules() {
+            assert_snapshot!(infer(
+                r#"
 module Test exposing (a, b)
 
 a = 1
@@ -2012,10 +2006,13 @@ module Test.TestInner exposing (a, b)
 
 c = "hi"
 "#
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            r#"
+        #[test]
+        fn test_importing_from_submodule() {
+            assert_snapshot!(infer(
+                r#"
 module Parent
 
 import Parent.Test exposing (test)
@@ -2026,10 +2023,9 @@ module Parent.Test exposing (test)
 
     test = 5
 "#
-        ));
-
-        assert_snapshot!(infer(
-            r#"
+            ));
+            assert_snapshot!(infer(
+                r#"
 module Parent
 
 import Parent.Test exposing (test)
@@ -2040,10 +2036,9 @@ module Parent.Test exposing (test)
 
     test = "hi"
 "#
-        ));
-
-        assert_snapshot!(infer(
-            r#"
+            ));
+            assert_snapshot!(infer(
+                r#"
 module Parent
 
 import Parent.Test exposing (nope)
@@ -2054,10 +2049,9 @@ module Parent.Test exposing (test)
 
     test = "hi"
 "#
-        ));
-
-        assert_snapshot!(infer(
-            r#"
+            ));
+            assert_snapshot!(infer(
+                r#"
 module Parent
 
 import Parent.Test exposing (test)
@@ -2068,52 +2062,49 @@ module Parent.Test exposing (test)
 
     test = \x -> x + "hi"
 "#
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            r#"
+        #[test]
+        fn test_import_nonexistent_module() {
+            assert_snapshot!(infer(
+                r#"
 module Parent
 
 import Nope exposing (test)
 
 test = 1
 "#
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_exposing_lambdas() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main, add)
 
 add x y = x + y
 
 main = add 5
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "module Test exposing (last)
+        #[test]
+        fn test_exposing_lambdas_with_patterns_in_params() {
+            assert_snapshot!(infer(
+                "module Test exposing (last)
 
 last _ y = y
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
-module User exposing (id, new)
-
-import User.Id
-
-id = User.Id
-
-new = { id = User.Id.new }
-
-module User.Id exposing (new)
-    new = 42
-"
-        ));
-
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_import_fully_qualified_name() {
+            assert_snapshot!(infer(
+                "\
 module User exposing (new)
 
 import User.Id
@@ -2123,10 +2114,25 @@ new = { id = User.Id.new }
 module User.Id exposing (new)
     new = 42
 "
-        ));
+            ));
+            assert_snapshot!(infer(
+                "\
+module User exposing (new)
 
-        assert_snapshot!(infer(
-            "\
+import User.Id
+
+new = User.Id
+
+module User.Id exposing (new)
+    new = 42
+"
+            ));
+        }
+
+        #[test]
+        fn test_import_alias() {
+            assert_snapshot!(infer(
+                "\
 module User exposing (new)
 
 import User.Id as UserId
@@ -2136,10 +2142,9 @@ new = { id = UserId.new }
 module User.Id exposing (new)
     new = 42
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module User exposing (new)
 
 import User.Id as UserId
@@ -2149,10 +2154,13 @@ new = { id = User.Id.new }
 module User.Id exposing (new)
     new = 42
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_import_nested_fully_qualified_name() {
+            assert_snapshot!(infer(
+                "\
 module User exposing (new)
 
 import User.Attributes
@@ -2164,10 +2172,13 @@ module User.Attributes
     module User.Attributes.Id exposing (new)
         new = 42
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_use_nonexistent_import_from_fully_qualified_module() {
+            assert_snapshot!(infer(
+                "\
 module User exposing (new)
 
 import User.Id
@@ -2177,73 +2188,61 @@ new = User.Id.wat
 module User.Id exposing (new)
     new = 42
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
-module User exposing (new)
-
-import User.Id
-
-new = User.Id
-
-module User.Id exposing (new)
-    new = 42
-"
-        ));
-
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_exposing_type() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (Fruit)
 
 type Fruit = Banana
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (Fruit)
 
 type Fruit = Banana a
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (Fruita)
 
 type Fruit = Banana
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (Fruit)
 
 type Fruit a = Banana a
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (Fruit)
 
 type Fruit a b = Banana a
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_using_union_type() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Fruit = Banana
 
 main = Banana
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Banana = Banana
@@ -2252,10 +2251,9 @@ type Fruit a = Fruit a
 
 main = Fruit
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Banana = Banana
@@ -2264,57 +2262,27 @@ type Fruit a = Fruit a
 
 main = Fruit Banana
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_exposing_union_type_constructor() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (Banana)
 
 type Fruit = Banana
 "
-        ));
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (Fruit(Banana))
 
-        assert_snapshot!(infer(
-            "\
-module Test exposing (main)
-
-import Test.Fruits exposing (Fruit(Banana))
-
-main = Banana
-
-module Test.Fruits exposing (Fruit(Banana))
-    type Fruit = Banana
+type Fruit = Banana
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
-module Test exposing (main)
-
-import Test.Fruits exposing (Banana)
-
-main = Banana
-
-module Test.Fruits exposing (Fruit(Banana))
-    type Fruit = Banana
-"
-        ));
-
-        assert_snapshot!(infer(
-            "\
-module Test exposing (main)
-
-import Test.Fruits exposing (Fruit)
-
-main = Test.Fruits.Banana
-
-module Test.Fruits exposing (Fruit(Banana))
-    type Fruit = Banana
-"
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 import Test.Fruits
@@ -2326,10 +2294,57 @@ module Test.Fruits exposing (test, Fruit(Banana))
 
     test = 1
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_import_union_type_constructor() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Fruit(Banana))
+
+main = Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Banana)
+
+main = Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+"
+            ));
+        }
+
+        #[test]
+        fn test_use_fully_qualified_union_type_constructor() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Fruits exposing (Fruit)
+
+main = Test.Fruits.Banana
+
+module Test.Fruits exposing (Fruit(Banana))
+    type Fruit = Banana
+"
+            ));
+        }
+
+        #[test]
+        fn test_use_union_type_constructor_from_module_alias() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 import Test.Fruits as Fruits
@@ -2339,10 +2354,9 @@ main = Fruits.Banana
 module Test.Fruits exposing (Fruit(Banana))
     type Fruit = Banana
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 import Test.Fruits as Fruits
@@ -2352,30 +2366,35 @@ main = Fruits.Banana
 module Test.Fruits exposing (Fruit)
     type Fruit = Banana
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_constructing_a_union_type() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Fruit a = Banana (a -> a -> a)
 
 main = Banana 1
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Fruit a = Banana (a -> a -> a)
 
 main = Banana (\\x y -> x + y)
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_constructing_a_union_type_with_records() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Math num =
@@ -2387,10 +2406,9 @@ type M num = M (Math num)
 
 main = M { add: \\x y -> x + y, sub: \\x y -> x - y }
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type Math num =
@@ -2402,57 +2420,53 @@ type M num = M (Math num)
 
 main = M { add: \\x y -> x + y, sub: \\x -> x }
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_typed_definition() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 main : a -> a
 main a = a
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 main : Float
 main = 5
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_typed_definition_with_mismatched_signature() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 main : String
 main = 5
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_signature_too_generic() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 main : a
 main = 5
 "
-        ));
-
-        assert_snapshot!(infer(
-            "\
-module Test exposing (main)
-
-type List a = List a
-
-main : Float -> List Float
-main a = List a
-"
-        ));
-
-        assert_snapshot!(infer(
-            "\
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type List a = List a
@@ -2460,10 +2474,27 @@ type List a = List a
 main : List a
 main = List 1
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_function_signature() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+type List a = List a
+
+main : Float -> List Float
+main a = List a
+"
+            ));
+        }
+
+        #[test]
+        fn test_union_type_application_arity_mismatch() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type List a = List a
@@ -2471,21 +2502,13 @@ type List a = List a
 main : List a Float
 main = List 1
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
-module Test exposing (main)
-
-type List a = { x : a }
-
-main : List
-main = { x : 1 }
-"
-        ));
-
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_record_type_application() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type List a = { x : a }
@@ -2493,10 +2516,23 @@ type List a = { x : a }
 main : List Float
 main = { x : 1 }
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_record_type_application_arity_mismatch() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+type List a = { x : a }
+
+main : List
+main = { x : 1 }
+"
+            ));
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 type List a = { x : a }
@@ -2504,10 +2540,13 @@ type List a = { x : a }
 main : List Float String
 main = { x : 1 }
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(infer(
-            "\
+        #[test]
+        fn test_exposing_and_importing_a_record_type() {
+            assert_snapshot!(infer(
+                "\
 module Test exposing (main)
 
 import Test.Record exposing (Record)
@@ -2518,7 +2557,8 @@ module Test.Record exposing (Record)
 main : Record Float
 main = { x : 5 }
 "
-        ));
+            ));
+        }
 
         fn infer(code: &str) -> String {
             let mut strings = Strings::new();

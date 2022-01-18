@@ -1,0 +1,46 @@
+---
+source: src/infer.rs
+assertion_line: 2040
+expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (nope)\n\nadd = \\x -> x + test\n\nmodule Parent.Test exposing (test)\n\n    test = \"hi\"\n\"#)"
+
+---
+Input:
+
+
+module Parent
+
+import Parent.Test exposing (nope)
+
+add = \x -> x + test
+
+module Parent.Test exposing (test)
+
+    test = "hi"
+
+
+---
+Output:
+
+[4:29]
+
+Module `Parent.Test` doesn't appear to expose `nope`
+
+  2│  module Parent
+  3│  
+  4│  import Parent.Test exposing (nope)
+   │                               ↑↑↑↑
+  5│  
+  6│  add = \x -> x + test
+
+----------------------------------------
+
+[6:16]
+
+Undefined identifier `test`
+
+  4│  import Parent.Test exposing (nope)
+  5│  
+  6│  add = \x -> x + test
+   │                  ↑↑↑↑
+  7│  
+  8│  module Parent.Test exposing (test)

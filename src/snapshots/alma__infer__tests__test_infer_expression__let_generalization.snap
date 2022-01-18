@@ -1,0 +1,18 @@
+---
+source: src/infer.rs
+assertion_line: 1805
+expression: "infer(r\"\n      \\x ->\n        let y = x\n        y\n    \")"
+
+---
+Input:
+
+
+      \x ->
+        let y = x
+        y
+    
+
+---
+Output:
+
+a -> a

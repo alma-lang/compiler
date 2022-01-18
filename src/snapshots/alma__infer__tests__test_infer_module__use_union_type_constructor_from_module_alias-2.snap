@@ -1,0 +1,31 @@
+---
+source: src/infer.rs
+assertion_line: 2358
+expression: "infer(\"\\\nmodule Test exposing (main)\n\nimport Test.Fruits as Fruits\n\nmain = Fruits.Banana\n\nmodule Test.Fruits exposing (Fruit)\n    type Fruit = Banana\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+import Test.Fruits as Fruits
+
+main = Fruits.Banana
+
+module Test.Fruits exposing (Fruit)
+    type Fruit = Banana
+
+
+---
+Output:
+
+[5:7]
+
+Undefined identifier `Fruits.Banana`
+
+  3│  import Test.Fruits as Fruits
+  4│  
+  5│  main = Fruits.Banana
+   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑
+  6│  
+  7│  module Test.Fruits exposing (Fruit)

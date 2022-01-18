@@ -1,0 +1,33 @@
+---
+source: src/infer.rs
+assertion_line: 1850
+expression: "infer(\"\\\nlet add x y = x + y\n\nadd 5\")"
+
+---
+Input:
+
+let add x y = x + y
+
+add 5
+
+---
+Output:
+
+[3:0]
+
+Type mismatch:  Float -> a  ≠  Float -> Float -> Float
+
+Expected
+
+  1│  let add x y = x + y
+  2│  
+  3│  add 5
+   │  ↑↑↑↑↑
+
+to be
+
+Float -> Float -> Float
+
+but seems to be
+
+Float -> a

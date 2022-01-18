@@ -1,0 +1,31 @@
+---
+source: src/infer.rs
+assertion_line: 2014
+expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (test)\n\nadd = \\x -> x + test\n\nmodule Parent.Test exposing (test)\n\n    test = 5\n\"#)"
+
+---
+Input:
+
+
+module Parent
+
+import Parent.Test exposing (test)
+
+add = \x -> x + test
+
+module Parent.Test exposing (test)
+
+    test = 5
+
+
+---
+Output:
+
+module Parent
+
+
+
+
+module Parent.Test
+
+test : ∀ ∅ . Float

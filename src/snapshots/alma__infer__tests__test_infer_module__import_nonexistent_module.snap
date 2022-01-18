@@ -1,0 +1,29 @@
+---
+source: src/infer.rs
+assertion_line: 2070
+expression: "infer(r#\"\nmodule Parent\n\nimport Nope exposing (test)\n\ntest = 1\n\"#)"
+
+---
+Input:
+
+
+module Parent
+
+import Nope exposing (test)
+
+test = 1
+
+
+---
+Output:
+
+[4:0]
+
+Couldn't find module `Nope`
+
+  2│  module Parent
+  3│  
+  4│  import Nope exposing (test)
+   │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+  5│  
+  6│  test = 1
