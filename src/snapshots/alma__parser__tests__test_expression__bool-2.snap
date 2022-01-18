@@ -1,0 +1,26 @@
+---
+source: src/parser.rs
+assertion_line: 1969
+expression: "parse(\"False\")"
+
+---
+Input:
+
+False
+
+Result:
+
+Node {
+    start: 0,
+    end: 5,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Bool(
+            false,
+        ),
+    },
+}

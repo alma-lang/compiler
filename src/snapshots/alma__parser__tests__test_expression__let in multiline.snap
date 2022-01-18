@@ -1,0 +1,149 @@
+---
+source: src/parser.rs
+assertion_line: 2116
+expression: "parse(\"\\\nlet x = a\n  x\nin\nx\")"
+
+---
+Input:
+
+let x = a
+  x
+in
+x
+
+Result:
+
+Node {
+    start: 0,
+    end: 18,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Let(
+            [
+                Untyped(
+                    Pattern(
+                        Node {
+                            start: 4,
+                            end: 5,
+                            line: 1,
+                            column: 4,
+                            value: Identifier(
+                                Node {
+                                    start: 4,
+                                    end: 5,
+                                    line: 1,
+                                    column: 4,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 1,
+                                        },
+                                    },
+                                },
+                            ),
+                        },
+                        Node {
+                            start: 8,
+                            end: 13,
+                            line: 1,
+                            column: 8,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: FnCall(
+                                    Node {
+                                        start: 8,
+                                        end: 9,
+                                        line: 1,
+                                        column: 8,
+                                        value: Expression_ {
+                                            typ: RefCell {
+                                                value: None,
+                                            },
+                                            expr: Identifier(
+                                                None,
+                                                Identifier(
+                                                    Node {
+                                                        start: 8,
+                                                        end: 9,
+                                                        line: 1,
+                                                        column: 8,
+                                                        value: Identifier_ {
+                                                            name: SymbolU32 {
+                                                                value: 2,
+                                                            },
+                                                        },
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    },
+                                    [
+                                        Node {
+                                            start: 12,
+                                            end: 13,
+                                            line: 2,
+                                            column: 2,
+                                            value: Expression_ {
+                                                typ: RefCell {
+                                                    value: None,
+                                                },
+                                                expr: Identifier(
+                                                    None,
+                                                    Identifier(
+                                                        Node {
+                                                            start: 12,
+                                                            end: 13,
+                                                            line: 2,
+                                                            column: 2,
+                                                            value: Identifier_ {
+                                                                name: SymbolU32 {
+                                                                    value: 1,
+                                                                },
+                                                            },
+                                                        },
+                                                    ),
+                                                ),
+                                            },
+                                        },
+                                    ],
+                                ),
+                            },
+                        },
+                    ),
+                ),
+            ],
+            Node {
+                start: 17,
+                end: 18,
+                line: 4,
+                column: 0,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        None,
+                        Identifier(
+                            Node {
+                                start: 17,
+                                end: 18,
+                                line: 4,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 1,
+                                    },
+                                },
+                            },
+                        ),
+                    ),
+                },
+            },
+        ),
+    },
+}

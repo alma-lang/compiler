@@ -1,0 +1,26 @@
+---
+source: src/parser.rs
+assertion_line: 2020
+expression: "parse(\"(((1)))\")"
+
+---
+Input:
+
+(((1)))
+
+Result:
+
+Node {
+    start: 3,
+    end: 4,
+    line: 1,
+    column: 3,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+}

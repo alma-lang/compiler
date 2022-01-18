@@ -1,0 +1,72 @@
+---
+source: src/parser.rs
+assertion_line: 2070
+expression: "parse(\"\nif True then\n  1\n\nelse\n  2\")"
+
+---
+Input:
+
+
+if True then
+  1
+
+else
+  2
+
+Result:
+
+Node {
+    start: 1,
+    end: 27,
+    line: 2,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: If(
+            Node {
+                start: 4,
+                end: 8,
+                line: 2,
+                column: 3,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Bool(
+                        true,
+                    ),
+                },
+            },
+            Node {
+                start: 16,
+                end: 17,
+                line: 3,
+                column: 2,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Float(
+                        1.0,
+                    ),
+                },
+            },
+            Node {
+                start: 26,
+                end: 27,
+                line: 6,
+                column: 2,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Float(
+                        2.0,
+                    ),
+                },
+            },
+        ),
+    },
+}

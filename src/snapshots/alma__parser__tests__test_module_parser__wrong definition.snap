@@ -1,0 +1,35 @@
+---
+source: src/parser.rs
+assertion_line: 2532
+expression: "parse(\"\nmodule Test\n\ntype Banana : asdf\n\")"
+
+---
+Input:
+
+
+module Test
+
+type Banana : asdf
+
+
+Result:
+
+4:12: Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `:`
+
+  2│  module Test
+  3│  
+  4│  type Banana : asdf
+   │              ↑
+
+Error {
+    message: "4:12: Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `:`\n\n  2│  module Test\n  3│  \n  4│  type Banana : asdf\n   │              ↑",
+    token: Token {
+        kind: Colon,
+        position: 26,
+        end_position: 27,
+        lexeme: ":",
+        line: 4,
+        column: 12,
+        indent: 0,
+    },
+}

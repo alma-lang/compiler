@@ -1,0 +1,77 @@
+---
+source: src/parser.rs
+assertion_line: 2320
+expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\")"
+
+---
+Input:
+
+module Parent
+
+module Parent.Test
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 13,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+        type_definitions: [],
+    },
+    [
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 22,
+                        end: 28,
+                        line: 3,
+                        column: 7,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                        },
+                    },
+                    Node {
+                        start: 29,
+                        end: 33,
+                        line: 3,
+                        column: 14,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                ],
+                full_name: SymbolU32 {
+                    value: 3,
+                },
+            },
+            exports: [],
+            imports: [],
+            definitions: [],
+            type_definitions: [],
+        },
+    ],
+)

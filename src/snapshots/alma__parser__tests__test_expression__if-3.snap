@@ -1,0 +1,109 @@
+---
+source: src/parser.rs
+assertion_line: 2078
+expression: "parse(\"if True then incr 1 else 2\")"
+
+---
+Input:
+
+if True then incr 1 else 2
+
+Result:
+
+Node {
+    start: 0,
+    end: 26,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: If(
+            Node {
+                start: 3,
+                end: 7,
+                line: 1,
+                column: 3,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Bool(
+                        true,
+                    ),
+                },
+            },
+            Node {
+                start: 13,
+                end: 19,
+                line: 1,
+                column: 13,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: FnCall(
+                        Node {
+                            start: 13,
+                            end: 17,
+                            line: 1,
+                            column: 13,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Identifier(
+                                    None,
+                                    Identifier(
+                                        Node {
+                                            start: 13,
+                                            end: 17,
+                                            line: 1,
+                                            column: 13,
+                                            value: Identifier_ {
+                                                name: SymbolU32 {
+                                                    value: 1,
+                                                },
+                                            },
+                                        },
+                                    ),
+                                ),
+                            },
+                        },
+                        [
+                            Node {
+                                start: 18,
+                                end: 19,
+                                line: 1,
+                                column: 18,
+                                value: Expression_ {
+                                    typ: RefCell {
+                                        value: None,
+                                    },
+                                    expr: Float(
+                                        1.0,
+                                    ),
+                                },
+                            },
+                        ],
+                    ),
+                },
+            },
+            Node {
+                start: 25,
+                end: 26,
+                line: 1,
+                column: 25,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Float(
+                        2.0,
+                    ),
+                },
+            },
+        ),
+    },
+}

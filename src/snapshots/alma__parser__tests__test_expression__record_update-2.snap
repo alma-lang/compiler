@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2228
+expression: "parse(\"{ 5 : x = 1 }\")"
+
+---
+Input:
+
+{ 5 : x = 1 }
+
+Result:
+
+1:4: Expected `|` between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`
+
+  1│  { 5 : x = 1 }
+   │      ↑
+
+Error {
+    message: "1:4: Expected `|` between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`\n\n  1│  { 5 : x = 1 }\n   │      ↑",
+    token: Token {
+        kind: Colon,
+        position: 4,
+        end_position: 5,
+        lexeme: ":",
+        line: 1,
+        column: 4,
+        indent: 0,
+    },
+}

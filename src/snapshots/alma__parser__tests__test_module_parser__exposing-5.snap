@@ -1,0 +1,37 @@
+---
+source: src/parser.rs
+assertion_line: 2418
+expression: "parse(\"\\\nmodule Test exposing (a, b\n\na = 1\n\nb = True\")"
+
+---
+Input:
+
+module Test exposing (a, b
+
+a = 1
+
+b = True
+
+Result:
+
+3:0: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `a`
+
+  1│  module Test exposing (a, b
+  2│  
+  3│  a = 1
+   │  ↑
+  4│  
+  5│  b = True
+
+Error {
+    message: "3:0: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `a`\n\n  1│  module Test exposing (a, b\n  2│  \n  3│  a = 1\n   │  ↑\n  4│  \n  5│  b = True",
+    token: Token {
+        kind: Identifier,
+        position: 28,
+        end_position: 29,
+        lexeme: "a",
+        line: 3,
+        column: 0,
+        indent: 0,
+    },
+}

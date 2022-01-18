@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2021
+expression: "parse(\"(((1))\")"
+
+---
+Input:
+
+(((1))
+
+Result:
+
+1:6: Expected `)` after parenthesized expression, but instead found: `[End of file]`
+
+  1│  (((1))
+   │  ↑
+
+Error {
+    message: "1:6: Expected `)` after parenthesized expression, but instead found: `[End of file]`\n\n  1│  (((1))\n   │  ↑",
+    token: Token {
+        kind: Eof,
+        position: 6,
+        end_position: 6,
+        lexeme: "[End of file]",
+        line: 1,
+        column: 6,
+        indent: 0,
+    },
+}

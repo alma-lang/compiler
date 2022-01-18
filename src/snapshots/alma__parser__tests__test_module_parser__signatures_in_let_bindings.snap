@@ -1,0 +1,557 @@
+---
+source: src/parser.rs
+assertion_line: 2931
+expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain =\n    let\n        test : Fruit a -> Fruit b -> Fruit c\n\n        test2 : Fruit a -> Fruit b -> Fruit c\n        test2 a b = c\n\n        test3 a b = c\n\n    test\n\")"
+
+---
+Input:
+
+module Test exposing (main)
+
+main =
+    let
+        test : Fruit a -> Fruit b -> Fruit c
+
+        test2 : Fruit a -> Fruit b -> Fruit c
+        test2 a b = c
+
+        test3 a b = c
+
+    test
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [
+            Node {
+                start: 22,
+                end: 26,
+                line: 1,
+                column: 22,
+                value: Identifier(
+                    Node {
+                        start: 22,
+                        end: 26,
+                        line: 1,
+                        column: 22,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                ),
+            },
+        ],
+        imports: [],
+        definitions: [
+            Untyped(
+                Pattern(
+                    Node {
+                        start: 29,
+                        end: 33,
+                        line: 3,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 29,
+                                end: 33,
+                                line: 3,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 40,
+                        end: 190,
+                        line: 4,
+                        column: 4,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Let(
+                                [
+                                    TypeSignature(
+                                        TypeSignature {
+                                            name: Node {
+                                                start: 52,
+                                                end: 56,
+                                                line: 5,
+                                                column: 8,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 3,
+                                                    },
+                                                },
+                                            },
+                                            typ: Fun(
+                                                [
+                                                    App(
+                                                        Node {
+                                                            start: 59,
+                                                            end: 66,
+                                                            line: 5,
+                                                            column: 15,
+                                                            value: Constructor_ {
+                                                                name: Node {
+                                                                    start: 59,
+                                                                    end: 64,
+                                                                    line: 5,
+                                                                    column: 15,
+                                                                    value: CapitalizedIdentifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 4,
+                                                                        },
+                                                                    },
+                                                                },
+                                                                params: [
+                                                                    Var(
+                                                                        Node {
+                                                                            start: 65,
+                                                                            end: 66,
+                                                                            line: 5,
+                                                                            column: 21,
+                                                                            value: Identifier_ {
+                                                                                name: SymbolU32 {
+                                                                                    value: 5,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        },
+                                                    ),
+                                                    App(
+                                                        Node {
+                                                            start: 70,
+                                                            end: 77,
+                                                            line: 5,
+                                                            column: 26,
+                                                            value: Constructor_ {
+                                                                name: Node {
+                                                                    start: 70,
+                                                                    end: 75,
+                                                                    line: 5,
+                                                                    column: 26,
+                                                                    value: CapitalizedIdentifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 4,
+                                                                        },
+                                                                    },
+                                                                },
+                                                                params: [
+                                                                    Var(
+                                                                        Node {
+                                                                            start: 76,
+                                                                            end: 77,
+                                                                            line: 5,
+                                                                            column: 32,
+                                                                            value: Identifier_ {
+                                                                                name: SymbolU32 {
+                                                                                    value: 6,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        },
+                                                    ),
+                                                ],
+                                                App(
+                                                    Node {
+                                                        start: 81,
+                                                        end: 88,
+                                                        line: 5,
+                                                        column: 37,
+                                                        value: Constructor_ {
+                                                            name: Node {
+                                                                start: 81,
+                                                                end: 86,
+                                                                line: 5,
+                                                                column: 37,
+                                                                value: CapitalizedIdentifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 4,
+                                                                    },
+                                                                },
+                                                            },
+                                                            params: [
+                                                                Var(
+                                                                    Node {
+                                                                        start: 87,
+                                                                        end: 88,
+                                                                        line: 5,
+                                                                        column: 43,
+                                                                        value: Identifier_ {
+                                                                            name: SymbolU32 {
+                                                                                value: 7,
+                                                                            },
+                                                                        },
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                    Typed(
+                                        TypeSignature {
+                                            name: Node {
+                                                start: 98,
+                                                end: 103,
+                                                line: 7,
+                                                column: 8,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 8,
+                                                    },
+                                                },
+                                            },
+                                            typ: Fun(
+                                                [
+                                                    App(
+                                                        Node {
+                                                            start: 106,
+                                                            end: 113,
+                                                            line: 7,
+                                                            column: 16,
+                                                            value: Constructor_ {
+                                                                name: Node {
+                                                                    start: 106,
+                                                                    end: 111,
+                                                                    line: 7,
+                                                                    column: 16,
+                                                                    value: CapitalizedIdentifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 4,
+                                                                        },
+                                                                    },
+                                                                },
+                                                                params: [
+                                                                    Var(
+                                                                        Node {
+                                                                            start: 112,
+                                                                            end: 113,
+                                                                            line: 7,
+                                                                            column: 22,
+                                                                            value: Identifier_ {
+                                                                                name: SymbolU32 {
+                                                                                    value: 5,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        },
+                                                    ),
+                                                    App(
+                                                        Node {
+                                                            start: 117,
+                                                            end: 124,
+                                                            line: 7,
+                                                            column: 27,
+                                                            value: Constructor_ {
+                                                                name: Node {
+                                                                    start: 117,
+                                                                    end: 122,
+                                                                    line: 7,
+                                                                    column: 27,
+                                                                    value: CapitalizedIdentifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 4,
+                                                                        },
+                                                                    },
+                                                                },
+                                                                params: [
+                                                                    Var(
+                                                                        Node {
+                                                                            start: 123,
+                                                                            end: 124,
+                                                                            line: 7,
+                                                                            column: 33,
+                                                                            value: Identifier_ {
+                                                                                name: SymbolU32 {
+                                                                                    value: 6,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            },
+                                                        },
+                                                    ),
+                                                ],
+                                                App(
+                                                    Node {
+                                                        start: 128,
+                                                        end: 135,
+                                                        line: 7,
+                                                        column: 38,
+                                                        value: Constructor_ {
+                                                            name: Node {
+                                                                start: 128,
+                                                                end: 133,
+                                                                line: 7,
+                                                                column: 38,
+                                                                value: CapitalizedIdentifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 4,
+                                                                    },
+                                                                },
+                                                            },
+                                                            params: [
+                                                                Var(
+                                                                    Node {
+                                                                        start: 134,
+                                                                        end: 135,
+                                                                        line: 7,
+                                                                        column: 44,
+                                                                        value: Identifier_ {
+                                                                            name: SymbolU32 {
+                                                                                value: 7,
+                                                                            },
+                                                                        },
+                                                                    },
+                                                                ),
+                                                            ],
+                                                        },
+                                                    },
+                                                ),
+                                            ),
+                                        },
+                                        Lambda(
+                                            Node {
+                                                start: 144,
+                                                end: 149,
+                                                line: 8,
+                                                column: 8,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 8,
+                                                    },
+                                                },
+                                            },
+                                            Lambda {
+                                                parameters: [
+                                                    Node {
+                                                        start: 150,
+                                                        end: 151,
+                                                        line: 8,
+                                                        column: 14,
+                                                        value: Identifier(
+                                                            Node {
+                                                                start: 150,
+                                                                end: 151,
+                                                                line: 8,
+                                                                column: 14,
+                                                                value: Identifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 5,
+                                                                    },
+                                                                },
+                                                            },
+                                                        ),
+                                                    },
+                                                    Node {
+                                                        start: 152,
+                                                        end: 153,
+                                                        line: 8,
+                                                        column: 16,
+                                                        value: Identifier(
+                                                            Node {
+                                                                start: 152,
+                                                                end: 153,
+                                                                line: 8,
+                                                                column: 16,
+                                                                value: Identifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 6,
+                                                                    },
+                                                                },
+                                                            },
+                                                        ),
+                                                    },
+                                                ],
+                                                body: Node {
+                                                    start: 156,
+                                                    end: 157,
+                                                    line: 8,
+                                                    column: 20,
+                                                    value: Expression_ {
+                                                        typ: RefCell {
+                                                            value: None,
+                                                        },
+                                                        expr: Identifier(
+                                                            None,
+                                                            Identifier(
+                                                                Node {
+                                                                    start: 156,
+                                                                    end: 157,
+                                                                    line: 8,
+                                                                    column: 20,
+                                                                    value: Identifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 7,
+                                                                        },
+                                                                    },
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    Untyped(
+                                        Lambda(
+                                            Node {
+                                                start: 167,
+                                                end: 172,
+                                                line: 10,
+                                                column: 8,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 9,
+                                                    },
+                                                },
+                                            },
+                                            Lambda {
+                                                parameters: [
+                                                    Node {
+                                                        start: 173,
+                                                        end: 174,
+                                                        line: 10,
+                                                        column: 14,
+                                                        value: Identifier(
+                                                            Node {
+                                                                start: 173,
+                                                                end: 174,
+                                                                line: 10,
+                                                                column: 14,
+                                                                value: Identifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 5,
+                                                                    },
+                                                                },
+                                                            },
+                                                        ),
+                                                    },
+                                                    Node {
+                                                        start: 175,
+                                                        end: 176,
+                                                        line: 10,
+                                                        column: 16,
+                                                        value: Identifier(
+                                                            Node {
+                                                                start: 175,
+                                                                end: 176,
+                                                                line: 10,
+                                                                column: 16,
+                                                                value: Identifier_ {
+                                                                    name: SymbolU32 {
+                                                                        value: 6,
+                                                                    },
+                                                                },
+                                                            },
+                                                        ),
+                                                    },
+                                                ],
+                                                body: Node {
+                                                    start: 179,
+                                                    end: 180,
+                                                    line: 10,
+                                                    column: 20,
+                                                    value: Expression_ {
+                                                        typ: RefCell {
+                                                            value: None,
+                                                        },
+                                                        expr: Identifier(
+                                                            None,
+                                                            Identifier(
+                                                                Node {
+                                                                    start: 179,
+                                                                    end: 180,
+                                                                    line: 10,
+                                                                    column: 20,
+                                                                    value: Identifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 7,
+                                                                        },
+                                                                    },
+                                                                },
+                                                            ),
+                                                        ),
+                                                    },
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                ],
+                                Node {
+                                    start: 186,
+                                    end: 190,
+                                    line: 12,
+                                    column: 4,
+                                    value: Expression_ {
+                                        typ: RefCell {
+                                            value: None,
+                                        },
+                                        expr: Identifier(
+                                            None,
+                                            Identifier(
+                                                Node {
+                                                    start: 186,
+                                                    end: 190,
+                                                    line: 12,
+                                                    column: 4,
+                                                    value: Identifier_ {
+                                                        name: SymbolU32 {
+                                                            value: 3,
+                                                        },
+                                                    },
+                                                },
+                                            ),
+                                        ),
+                                    },
+                                },
+                            ),
+                        },
+                    },
+                ),
+            ),
+        ],
+        type_definitions: [],
+    },
+    [],
+)

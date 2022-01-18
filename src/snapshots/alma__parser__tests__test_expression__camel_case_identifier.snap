@@ -1,0 +1,39 @@
+---
+source: src/parser.rs
+assertion_line: 1989
+expression: "parse(\"variableOne\")"
+
+---
+Input:
+
+variableOne
+
+Result:
+
+Node {
+    start: 0,
+    end: 11,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier(
+            None,
+            Identifier(
+                Node {
+                    start: 0,
+                    end: 11,
+                    line: 1,
+                    column: 0,
+                    value: Identifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ),
+        ),
+    },
+}

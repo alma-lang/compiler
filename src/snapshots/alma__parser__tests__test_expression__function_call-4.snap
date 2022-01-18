@@ -1,0 +1,31 @@
+---
+source: src/parser.rs
+assertion_line: 2035
+expression: "parse(\"fun\\narg\")"
+
+---
+Input:
+
+fun
+arg
+
+Result:
+
+2:0: Expected the end of input, but instead found: `arg`
+
+  1│  fun
+  2│  arg
+   │  ↑↑↑
+
+Error {
+    message: "2:0: Expected the end of input, but instead found: `arg`\n\n  1│  fun\n  2│  arg\n   │  ↑↑↑",
+    token: Token {
+        kind: Identifier,
+        position: 4,
+        end_position: 7,
+        lexeme: "arg",
+        line: 2,
+        column: 0,
+        indent: 0,
+    },
+}

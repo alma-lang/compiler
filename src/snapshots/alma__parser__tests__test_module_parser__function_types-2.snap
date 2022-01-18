@@ -1,0 +1,164 @@
+---
+source: src/parser.rs
+assertion_line: 2809
+expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = { f : a -> b }\n\")"
+
+---
+Input:
+
+module Test exposing (Fruit)
+
+type Fruit a b = { f : a -> b }
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [
+            Node {
+                start: 22,
+                end: 27,
+                line: 1,
+                column: 22,
+                value: Type(
+                    Node {
+                        start: 22,
+                        end: 27,
+                        line: 1,
+                        column: 22,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    [],
+                ),
+            },
+        ],
+        imports: [],
+        definitions: [],
+        type_definitions: [
+            Node {
+                start: 30,
+                end: 61,
+                line: 3,
+                column: 0,
+                value: TypeDefinition_ {
+                    name: Node {
+                        start: 35,
+                        end: 40,
+                        line: 3,
+                        column: 5,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    vars: [
+                        Node {
+                            start: 41,
+                            end: 42,
+                            line: 3,
+                            column: 11,
+                            value: Identifier_ {
+                                name: SymbolU32 {
+                                    value: 3,
+                                },
+                            },
+                        },
+                        Node {
+                            start: 43,
+                            end: 44,
+                            line: 3,
+                            column: 13,
+                            value: Identifier_ {
+                                name: SymbolU32 {
+                                    value: 4,
+                                },
+                            },
+                        },
+                    ],
+                    typ: Record(
+                        Record(
+                            Node {
+                                start: 47,
+                                end: 61,
+                                line: 3,
+                                column: 17,
+                                value: Record_ {
+                                    fields: [
+                                        (
+                                            Node {
+                                                start: 49,
+                                                end: 50,
+                                                line: 3,
+                                                column: 19,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 5,
+                                                    },
+                                                },
+                                            },
+                                            Fun(
+                                                [
+                                                    Var(
+                                                        Node {
+                                                            start: 53,
+                                                            end: 54,
+                                                            line: 3,
+                                                            column: 23,
+                                                            value: Identifier_ {
+                                                                name: SymbolU32 {
+                                                                    value: 3,
+                                                                },
+                                                            },
+                                                        },
+                                                    ),
+                                                ],
+                                                Var(
+                                                    Node {
+                                                        start: 58,
+                                                        end: 59,
+                                                        line: 3,
+                                                        column: 28,
+                                                        value: Identifier_ {
+                                                            name: SymbolU32 {
+                                                                value: 4,
+                                                            },
+                                                        },
+                                                    },
+                                                ),
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            },
+                        ),
+                    ),
+                },
+            },
+        ],
+    },
+    [],
+)

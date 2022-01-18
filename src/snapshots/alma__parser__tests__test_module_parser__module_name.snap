@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2463
+expression: "parse(\"module i_am_not_PascalCase\")"
+
+---
+Input:
+
+module i_am_not_PascalCase
+
+Result:
+
+1:7: Expected a `PascalCase` name for the module, but instead found: `i_am_not_PascalCase`
+
+  1│  module i_am_not_PascalCase
+   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+Error {
+    message: "1:7: Expected a `PascalCase` name for the module, but instead found: `i_am_not_PascalCase`\n\n  1│  module i_am_not_PascalCase\n   │         ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
+    token: Token {
+        kind: Identifier,
+        position: 7,
+        end_position: 26,
+        lexeme: "i_am_not_PascalCase",
+        line: 1,
+        column: 7,
+        indent: 0,
+    },
+}

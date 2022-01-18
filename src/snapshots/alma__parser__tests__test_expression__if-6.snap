@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2081
+expression: "parse(\"if True then 1\")"
+
+---
+Input:
+
+if True then 1
+
+Result:
+
+1:14: Expected the `else` branch of the if expression, but instead found: `[End of file]`
+
+  1│  if True then 1
+   │                ↑
+
+Error {
+    message: "1:14: Expected the `else` branch of the if expression, but instead found: `[End of file]`\n\n  1│  if True then 1\n   │                ↑",
+    token: Token {
+        kind: Eof,
+        position: 14,
+        end_position: 14,
+        lexeme: "[End of file]",
+        line: 1,
+        column: 14,
+        indent: 0,
+    },
+}

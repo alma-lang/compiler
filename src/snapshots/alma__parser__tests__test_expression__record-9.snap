@@ -1,0 +1,54 @@
+---
+source: src/parser.rs
+assertion_line: 2206
+expression: "parse(\"{ x = 5 }\")"
+
+---
+Input:
+
+{ x = 5 }
+
+Result:
+
+Node {
+    start: 0,
+    end: 9,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Record(
+            [
+                (
+                    Node {
+                        start: 2,
+                        end: 3,
+                        line: 1,
+                        column: 2,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                        },
+                    },
+                    Node {
+                        start: 6,
+                        end: 7,
+                        line: 1,
+                        column: 6,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                5.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        ),
+    },
+}

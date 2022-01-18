@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2009
+expression: "parse(\"\\\"\\n\\\"\")"
+
+---
+Input:
+
+"
+"
+
+Result:
+
+Node {
+    start: 0,
+    end: 3,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: String_(
+            SymbolU32 {
+                value: 1,
+            },
+        ),
+    },
+}

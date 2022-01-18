@@ -1,0 +1,26 @@
+---
+source: src/parser.rs
+assertion_line: 1984
+expression: "parse(\"123.2\")"
+
+---
+Input:
+
+123.2
+
+Result:
+
+Node {
+    start: 0,
+    end: 5,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            123.2,
+        ),
+    },
+}

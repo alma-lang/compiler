@@ -1,0 +1,307 @@
+---
+source: src/parser.rs
+assertion_line: 2771
+expression: "parse(\"\\\n-- Comment\nmodule Test\n    -- Comment\n    exposing (\n    -- Comment\n    main)\n\n-- Comment\nimport Test.Fruits exposing (Fruit(Banana))\n\n-- Comment\nmain =\n-- Comment\n    1\n\n-- Comment\nmodule Test.Fruits\n    -- Comment\n    exposing (Fruit(Banana))\n    -- Comment\n    type Fruit =\n        -- Comment\n        Banana\n\")"
+
+---
+Input:
+
+-- Comment
+module Test
+    -- Comment
+    exposing (
+    -- Comment
+    main)
+
+-- Comment
+import Test.Fruits exposing (Fruit(Banana))
+
+-- Comment
+main =
+-- Comment
+    1
+
+-- Comment
+module Test.Fruits
+    -- Comment
+    exposing (Fruit(Banana))
+    -- Comment
+    type Fruit =
+        -- Comment
+        Banana
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 18,
+                    end: 22,
+                    line: 2,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [
+            Node {
+                start: 72,
+                end: 76,
+                line: 6,
+                column: 4,
+                value: Identifier(
+                    Node {
+                        start: 72,
+                        end: 76,
+                        line: 6,
+                        column: 4,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                ),
+            },
+        ],
+        imports: [
+            Node {
+                start: 90,
+                end: 133,
+                line: 9,
+                column: 0,
+                value: Import_ {
+                    module_name: ModuleName {
+                        parts: [
+                            Node {
+                                start: 97,
+                                end: 101,
+                                line: 9,
+                                column: 7,
+                                value: CapitalizedIdentifier_ {
+                                    name: SymbolU32 {
+                                        value: 1,
+                                    },
+                                },
+                            },
+                            Node {
+                                start: 102,
+                                end: 108,
+                                line: 9,
+                                column: 12,
+                                value: CapitalizedIdentifier_ {
+                                    name: SymbolU32 {
+                                        value: 3,
+                                    },
+                                },
+                            },
+                        ],
+                        full_name: SymbolU32 {
+                            value: 4,
+                        },
+                    },
+                    alias: None,
+                    exposing: [
+                        Node {
+                            start: 119,
+                            end: 132,
+                            line: 9,
+                            column: 29,
+                            value: Type(
+                                Node {
+                                    start: 119,
+                                    end: 124,
+                                    line: 9,
+                                    column: 29,
+                                    value: CapitalizedIdentifier_ {
+                                        name: SymbolU32 {
+                                            value: 5,
+                                        },
+                                    },
+                                },
+                                [
+                                    Node {
+                                        start: 125,
+                                        end: 131,
+                                        line: 9,
+                                        column: 35,
+                                        value: CapitalizedIdentifier_ {
+                                            name: SymbolU32 {
+                                                value: 6,
+                                            },
+                                        },
+                                    },
+                                ],
+                            ),
+                        },
+                    ],
+                },
+            },
+        ],
+        definitions: [
+            Untyped(
+                Pattern(
+                    Node {
+                        start: 146,
+                        end: 150,
+                        line: 12,
+                        column: 0,
+                        value: Identifier(
+                            Node {
+                                start: 146,
+                                end: 150,
+                                line: 12,
+                                column: 0,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            },
+                        ),
+                    },
+                    Node {
+                        start: 168,
+                        end: 169,
+                        line: 14,
+                        column: 4,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
+            ),
+        ],
+        type_definitions: [],
+    },
+    [
+        Module {
+            name: ModuleName {
+                parts: [
+                    Node {
+                        start: 189,
+                        end: 193,
+                        line: 17,
+                        column: 7,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                        },
+                    },
+                    Node {
+                        start: 194,
+                        end: 200,
+                        line: 17,
+                        column: 12,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 3,
+                            },
+                        },
+                    },
+                ],
+                full_name: SymbolU32 {
+                    value: 4,
+                },
+            },
+            exports: [
+                Node {
+                    start: 230,
+                    end: 243,
+                    line: 19,
+                    column: 14,
+                    value: Type(
+                        Node {
+                            start: 230,
+                            end: 235,
+                            line: 19,
+                            column: 14,
+                            value: CapitalizedIdentifier_ {
+                                name: SymbolU32 {
+                                    value: 5,
+                                },
+                            },
+                        },
+                        [
+                            Node {
+                                start: 236,
+                                end: 242,
+                                line: 19,
+                                column: 20,
+                                value: CapitalizedIdentifier_ {
+                                    name: SymbolU32 {
+                                        value: 6,
+                                    },
+                                },
+                            },
+                        ],
+                    ),
+                },
+            ],
+            imports: [],
+            definitions: [],
+            type_definitions: [
+                Node {
+                    start: 264,
+                    end: 310,
+                    line: 21,
+                    column: 4,
+                    value: TypeDefinition_ {
+                        name: Node {
+                            start: 269,
+                            end: 274,
+                            line: 21,
+                            column: 9,
+                            value: CapitalizedIdentifier_ {
+                                name: SymbolU32 {
+                                    value: 5,
+                                },
+                            },
+                        },
+                        vars: [],
+                        typ: Union(
+                            [
+                                Node {
+                                    start: 304,
+                                    end: 310,
+                                    line: 23,
+                                    column: 8,
+                                    value: Constructor_ {
+                                        name: Node {
+                                            start: 304,
+                                            end: 310,
+                                            line: 23,
+                                            column: 8,
+                                            value: CapitalizedIdentifier_ {
+                                                name: SymbolU32 {
+                                                    value: 6,
+                                                },
+                                            },
+                                        },
+                                        params: [],
+                                    },
+                                },
+                            ],
+                        ),
+                    },
+                },
+            ],
+        },
+    ],
+)

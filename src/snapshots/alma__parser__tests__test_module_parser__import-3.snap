@@ -1,0 +1,90 @@
+---
+source: src/parser.rs
+assertion_line: 2442
+expression: "parse(\"\\\nmodule Test\n\nimport Banana exposing (phone)\")"
+
+---
+Input:
+
+module Test
+
+import Banana exposing (phone)
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [],
+        imports: [
+            Node {
+                start: 13,
+                end: 43,
+                line: 3,
+                column: 0,
+                value: Import_ {
+                    module_name: ModuleName {
+                        parts: [
+                            Node {
+                                start: 20,
+                                end: 26,
+                                line: 3,
+                                column: 7,
+                                value: CapitalizedIdentifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            },
+                        ],
+                        full_name: SymbolU32 {
+                            value: 2,
+                        },
+                    },
+                    alias: None,
+                    exposing: [
+                        Node {
+                            start: 37,
+                            end: 42,
+                            line: 3,
+                            column: 24,
+                            value: Identifier(
+                                Node {
+                                    start: 37,
+                                    end: 42,
+                                    line: 3,
+                                    column: 24,
+                                    value: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 3,
+                                        },
+                                    },
+                                },
+                            ),
+                        },
+                    ],
+                },
+            },
+        ],
+        definitions: [],
+        type_definitions: [],
+    },
+    [],
+)

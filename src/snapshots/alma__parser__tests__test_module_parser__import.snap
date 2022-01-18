@@ -1,0 +1,70 @@
+---
+source: src/parser.rs
+assertion_line: 2430
+expression: "parse(\"\\\nmodule Test\n\nimport Banana\")"
+
+---
+Input:
+
+module Test
+
+import Banana
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 7,
+                    end: 11,
+                    line: 1,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [],
+        imports: [
+            Node {
+                start: 13,
+                end: 26,
+                line: 3,
+                column: 0,
+                value: Import_ {
+                    module_name: ModuleName {
+                        parts: [
+                            Node {
+                                start: 20,
+                                end: 26,
+                                line: 3,
+                                column: 7,
+                                value: CapitalizedIdentifier_ {
+                                    name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            },
+                        ],
+                        full_name: SymbolU32 {
+                            value: 2,
+                        },
+                    },
+                    alias: None,
+                    exposing: [],
+                },
+            },
+        ],
+        definitions: [],
+        type_definitions: [],
+    },
+    [],
+)

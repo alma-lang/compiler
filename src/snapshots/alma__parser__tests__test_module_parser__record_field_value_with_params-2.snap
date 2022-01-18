@@ -1,0 +1,175 @@
+---
+source: src/parser.rs
+assertion_line: 2724
+expression: "parse(\"\nmodule Test\n\ntype Fruit a = { test : (Banana a (Phone a)) }\n\")"
+
+---
+Input:
+
+
+module Test
+
+type Fruit a = { test : (Banana a (Phone a)) }
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                Node {
+                    start: 8,
+                    end: 12,
+                    line: 2,
+                    column: 7,
+                    value: CapitalizedIdentifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [],
+        imports: [],
+        definitions: [],
+        type_definitions: [
+            Node {
+                start: 14,
+                end: 60,
+                line: 4,
+                column: 0,
+                value: TypeDefinition_ {
+                    name: Node {
+                        start: 19,
+                        end: 24,
+                        line: 4,
+                        column: 5,
+                        value: CapitalizedIdentifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    vars: [
+                        Node {
+                            start: 25,
+                            end: 26,
+                            line: 4,
+                            column: 11,
+                            value: Identifier_ {
+                                name: SymbolU32 {
+                                    value: 3,
+                                },
+                            },
+                        },
+                    ],
+                    typ: Record(
+                        Record(
+                            Node {
+                                start: 29,
+                                end: 60,
+                                line: 4,
+                                column: 15,
+                                value: Record_ {
+                                    fields: [
+                                        (
+                                            Node {
+                                                start: 31,
+                                                end: 35,
+                                                line: 4,
+                                                column: 17,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 4,
+                                                    },
+                                                },
+                                            },
+                                            App(
+                                                Node {
+                                                    start: 39,
+                                                    end: 57,
+                                                    line: 4,
+                                                    column: 25,
+                                                    value: Constructor_ {
+                                                        name: Node {
+                                                            start: 39,
+                                                            end: 45,
+                                                            line: 4,
+                                                            column: 25,
+                                                            value: CapitalizedIdentifier_ {
+                                                                name: SymbolU32 {
+                                                                    value: 5,
+                                                                },
+                                                            },
+                                                        },
+                                                        params: [
+                                                            Var(
+                                                                Node {
+                                                                    start: 46,
+                                                                    end: 47,
+                                                                    line: 4,
+                                                                    column: 32,
+                                                                    value: Identifier_ {
+                                                                        name: SymbolU32 {
+                                                                            value: 3,
+                                                                        },
+                                                                    },
+                                                                },
+                                                            ),
+                                                            App(
+                                                                Node {
+                                                                    start: 49,
+                                                                    end: 56,
+                                                                    line: 4,
+                                                                    column: 35,
+                                                                    value: Constructor_ {
+                                                                        name: Node {
+                                                                            start: 49,
+                                                                            end: 54,
+                                                                            line: 4,
+                                                                            column: 35,
+                                                                            value: CapitalizedIdentifier_ {
+                                                                                name: SymbolU32 {
+                                                                                    value: 6,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                        params: [
+                                                                            Var(
+                                                                                Node {
+                                                                                    start: 55,
+                                                                                    end: 56,
+                                                                                    line: 4,
+                                                                                    column: 41,
+                                                                                    value: Identifier_ {
+                                                                                        name: SymbolU32 {
+                                                                                            value: 3,
+                                                                                        },
+                                                                                    },
+                                                                                },
+                                                                            ),
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ),
+                                                        ],
+                                                    },
+                                                },
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            },
+                        ),
+                    ),
+                },
+            },
+        ],
+    },
+    [],
+)

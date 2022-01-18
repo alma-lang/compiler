@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2213
+expression: "parse(\"a. b\")"
+
+---
+Input:
+
+a. b
+
+Result:
+
+1:1: A property access must have the dot and identifier together, like this `a.b.c`
+
+  1│  a. b
+   │   ↑
+
+Error {
+    message: "1:1: A property access must have the dot and identifier together, like this `a.b.c`\n\n  1│  a. b\n   │   ↑",
+    token: Token {
+        kind: Dot,
+        position: 1,
+        end_position: 2,
+        lexeme: ".",
+        line: 1,
+        column: 1,
+        indent: 0,
+    },
+}

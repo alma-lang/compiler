@@ -1,0 +1,136 @@
+---
+source: src/parser.rs
+assertion_line: 2230
+expression: "parse(\"{ if True then {} else {} | x = 1, y = 3 }\")"
+
+---
+Input:
+
+{ if True then {} else {} | x = 1, y = 3 }
+
+Result:
+
+Node {
+    start: 0,
+    end: 42,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: RecordUpdate(
+            Node {
+                start: 2,
+                end: 25,
+                line: 1,
+                column: 2,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: If(
+                        Node {
+                            start: 5,
+                            end: 9,
+                            line: 1,
+                            column: 5,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Bool(
+                                    true,
+                                ),
+                            },
+                        },
+                        Node {
+                            start: 15,
+                            end: 17,
+                            line: 1,
+                            column: 15,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Record(
+                                    [],
+                                ),
+                            },
+                        },
+                        Node {
+                            start: 23,
+                            end: 25,
+                            line: 1,
+                            column: 23,
+                            value: Expression_ {
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Record(
+                                    [],
+                                ),
+                            },
+                        },
+                    ),
+                },
+            },
+            [
+                (
+                    Node {
+                        start: 28,
+                        end: 29,
+                        line: 1,
+                        column: 28,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                        },
+                    },
+                    Node {
+                        start: 32,
+                        end: 33,
+                        line: 1,
+                        column: 32,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                1.0,
+                            ),
+                        },
+                    },
+                ),
+                (
+                    Node {
+                        start: 35,
+                        end: 36,
+                        line: 1,
+                        column: 35,
+                        value: Identifier_ {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                        },
+                    },
+                    Node {
+                        start: 39,
+                        end: 40,
+                        line: 1,
+                        column: 39,
+                        value: Expression_ {
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                3.0,
+                            ),
+                        },
+                    },
+                ),
+            ],
+        ),
+    },
+}

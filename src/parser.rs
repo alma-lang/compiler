@@ -1940,7 +1940,6 @@ pub fn parse_repl<'source, 'strings, 'tokens>(
 pub mod tests {
     use super::*;
     use crate::tokenizer;
-    use insta::assert_snapshot;
 
     pub fn parse_expression<'source, 'strings, 'tokens>(
         source: &'source Source,
@@ -1960,199 +1959,291 @@ pub mod tests {
         parser.eof(Box::new(result))
     }
 
-    #[test]
-    fn test_expression_parser() {
-        assert_snapshot!(parse("True"));
+    mod test_expression {
+        use super::*;
+        use insta::assert_snapshot;
 
-        assert_snapshot!(parse("False"));
+        #[test]
+        fn test_bool() {
+            assert_snapshot!(parse("True"));
+            assert_snapshot!(parse("False"));
+        }
 
-        assert_snapshot!(parse("()"));
+        #[test]
+        fn test_unit() {
+            assert_snapshot!(parse("()"));
+        }
 
-        assert_snapshot!(parse("123"));
+        #[test]
+        fn test_int() {
+            assert_snapshot!(parse("123"));
+        }
 
-        assert_snapshot!(parse("123.2"));
+        #[test]
+        fn test_float() {
+            assert_snapshot!(parse("123.2"));
+        }
 
-        assert_snapshot!(parse("variableOne"));
+        #[test]
+        fn test_camel_case_identifier() {
+            assert_snapshot!(parse("variableOne"));
+        }
 
-        assert_snapshot!(parse("variable_one"));
+        #[test]
+        fn test_snake_case_identifier() {
+            assert_snapshot!(parse("variable_one"));
+        }
 
-        assert_snapshot!(parse("espaÆàʥñÑol"));
+        #[test]
+        fn test_special_chars_identifier() {
+            assert_snapshot!(parse("espaÆàʥñÑol"));
+        }
 
-        assert_snapshot!(parse("\"😄\""));
+        #[test]
+        fn test_emoji_string() {
+            assert_snapshot!(parse("\"😄\""));
+        }
 
-        assert_snapshot!(parse("\"\n\""));
+        #[test]
+        fn test_new_line_string() {
+            assert_snapshot!(parse("\"\n\""));
+        }
 
-        assert_snapshot!(parse("\"\""));
+        #[test]
+        fn test_empty_string() {
+            assert_snapshot!(parse("\"\""));
+        }
 
-        assert_snapshot!(parse("(\"\")"));
-
-        assert_snapshot!(parse("(((1)))"));
-
-        assert_snapshot!(parse("(((1))"));
-
-        assert_snapshot!(parse("(((1))))"));
-
-        assert_snapshot!(parse(
-            "(
+        #[test]
+        fn test_parenthesis() {
+            assert_snapshot!(parse("(\"\")"));
+            assert_snapshot!(parse("(((1)))"));
+            assert_snapshot!(parse("(((1))"));
+            assert_snapshot!(parse("(((1))))"));
+            assert_snapshot!(parse(
+                "(
   ((1))
 )",
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse("fun arg"));
-
-        assert_snapshot!(parse("fun\n arg"));
-
-        assert_snapshot!(parse("  fun\n    arg"));
-
-        assert_snapshot!(parse("fun\narg"));
-
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_function_call() {
+            assert_snapshot!(parse("fun arg"));
+            assert_snapshot!(parse("fun\n arg"));
+            assert_snapshot!(parse("  fun\n    arg"));
+            assert_snapshot!(parse("fun\narg"));
+            assert_snapshot!(parse(
+                "
 fun arg1
   arg2 arg3
   arg4",
-        ));
+            ));
+            assert_snapshot!(parse("hello ()"));
+        }
 
-        assert_snapshot!(parse("hello ()"));
+        #[test]
+        fn test_unary_operators() {
+            assert_snapshot!(parse("not False"));
+            assert_snapshot!(parse("- 5"));
+            assert_snapshot!(parse("incr (-5)"));
+        }
 
-        assert_snapshot!(parse("not False"));
+        #[test]
+        fn test_binary_operators() {
+            assert_snapshot!(parse("1 - 5"));
+            assert_snapshot!(parse("1 - -5"));
+            assert_snapshot!(parse("1 + 2 / 3"));
+            assert_snapshot!(parse("1 == 2 / 3"));
+        }
 
-        assert_snapshot!(parse("- 5"));
+        #[test]
+        fn test_lambda() {
+            assert_snapshot!(parse("\\a -> a"));
+            assert_snapshot!(parse("\\a -> \\b -> a"));
+            assert_snapshot!(parse("\\a b -> a"));
+        }
 
-        assert_snapshot!(parse("incr (-5)"));
-
-        assert_snapshot!(parse("1 - 5"));
-
-        assert_snapshot!(parse("1 - -5"));
-
-        assert_snapshot!(parse("1 + 2 / 3"));
-
-        assert_snapshot!(parse("1 == 2 / 3"));
-
-        assert_snapshot!(parse("\\a -> a"));
-
-        assert_snapshot!(parse("\\a -> \\b -> a"));
-
-        assert_snapshot!(parse("\\a b -> a"));
-
-        assert_snapshot!(parse("if True then 1 else 2"));
-
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_if() {
+            assert_snapshot!(parse("if True then 1 else 2"));
+            assert_snapshot!(parse(
+                "
 if True then
   1
 
 else
   2",
-        ));
+            ));
+            assert_snapshot!(parse("if True then incr 1 else 2"));
+            assert_snapshot!(parse("if True then if False then 1 else 3 else 2"));
+            assert_snapshot!(parse("if True { 1 } else 2"));
+            assert_snapshot!(parse("if True then 1"));
+        }
 
-        assert_snapshot!(parse("if True then incr 1 else 2"));
+        #[test]
+        fn test_let() {
+            assert_snapshot!(
+                "single line body same indent",
+                parse(
+                    "\
+let x = 1
+x"
+                )
+            );
+            assert_snapshot!(
+                "single line indented body",
+                parse(
+                    "\
+let x = a
+  x"
+                )
+            );
+            assert_snapshot!(
+                "single line indented binding value same line body",
+                parse(
+                    "\
+let x = a
+  x
+x"
+                )
+            );
+        }
 
-        assert_snapshot!(parse("if True then if False then 1 else 3 else 2"));
+        #[test]
+        fn test_let_in() {
+            assert_snapshot!("let in", parse("let x = a x in x"));
+            assert_snapshot!(
+                "let in multiline",
+                parse(
+                    "\
+let x = a
+  x
+in
+x"
+                )
+            );
+            assert_snapshot!(
+                "let in multiline bad indent in binding value",
+                parse(
+                    "\
+let
+  x = a
+  x
+in
+x"
+                )
+            );
+            assert_snapshot!(
+                "let in multiline 2",
+                parse(
+                    "\
+let
+  x = a
+    x
+in
+x"
+                )
+            );
+            assert_snapshot!(
+                "let in, many bindings indented",
+                parse(
+                    "\
+let
+  x = a
+    x
+ b = 5
+in
+x"
+                )
+            );
+        }
 
-        assert_snapshot!(parse("if True { 1 } else 2"));
-
-        assert_snapshot!(parse("if True then 1"));
-
-        assert_snapshot!(parse("let x = 1\nx"));
-
-        assert_snapshot!(parse("let x = a\n  x"));
-
-        assert_snapshot!(parse("let x = a\n  x\nx"));
-
-        assert_snapshot!(parse("let x = a x in x"));
-
-        assert_snapshot!(parse("let x = a\n  x\nin\nx"));
-
-        assert_snapshot!(parse("let\n  x = a\n  x\nin\nx"));
-
-        assert_snapshot!(parse("let\n  x = a\n    x\nin\nx"));
-
-        assert_snapshot!(parse("let\n  x = a\n    x\n b = 5\nin\nx"));
-
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_let_pascalcase_identifier() {
+            assert_snapshot!(parse(
+                "\
 let
   IAmNotCamelCase = 1
 in
 IAmNotCamelCase
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse("let _ = a x in x"));
+        #[test]
+        fn test_hole_pattern() {
+            assert_snapshot!(parse("let _ = a x in x"));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_lambda_syntax_sugar() {
+            assert_snapshot!(parse(
+                "\
 let
   incr n = n + 1
 in
 incr 5
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 let add x y = x + y
 add 5"
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse("{}"));
+        #[test]
+        fn test_record() {
+            assert_snapshot!(parse("{}"));
+            assert_snapshot!(parse("let a = { in 5"));
+            assert_snapshot!(parse("{ 1 : 5 }"));
+            assert_snapshot!(parse("{ x : 5 }"));
+            assert_snapshot!(parse("{ Sneaky : 5 }"));
+            assert_snapshot!(parse("{ , x : 5 }"));
+            assert_snapshot!(parse("{ x : 5 , }"));
+            assert_snapshot!(parse("{ x : 5 , y : 10 }"));
+            assert_snapshot!(parse("{ x = 5 }"));
+            assert_snapshot!(parse("{ x = { x = 5 } }"));
+        }
 
-        assert_snapshot!(parse("let a = { in 5"));
+        #[test]
+        fn test_property_access() {
+            assert_snapshot!(parse("a.b"));
+            assert_snapshot!(parse("a. b"));
+            assert_snapshot!(parse("a.b.c.d"));
+        }
 
-        assert_snapshot!(parse("{ 1 : 5 }"));
+        #[test]
+        fn test_shorthand_property_access_lambda() {
+            assert_snapshot!(parse(".b"));
+            assert_snapshot!(parse(". b"));
+            assert_snapshot!(parse("a .b"));
+            assert_snapshot!(parse(".a b"));
+        }
 
-        assert_snapshot!(parse("{ x : 5 }"));
+        #[test]
+        fn test_record_update() {
+            assert_snapshot!(parse("{ 5 | x = 1 }"));
+            assert_snapshot!(parse("{ 5 : x = 1 }"));
+            assert_snapshot!(parse("{ 5 | x = 1, y = 3 }"));
+            assert_snapshot!(
+                "arbitrary expression in the record slot",
+                parse("{ if True then {} else {} | x = 1, y = 3 }")
+            );
+        }
 
-        assert_snapshot!(parse("{ Sneaky : 5 }"));
-
-        assert_snapshot!(parse("{ , x : 5 }"));
-
-        assert_snapshot!(parse("{ x : 5 , }"));
-
-        assert_snapshot!(parse("{ x : 5 , y : 10 }"));
-
-        assert_snapshot!(parse("{ x = 5 }"));
-
-        assert_snapshot!(parse("{ x = { x = 5 } }"));
-
-        assert_snapshot!(parse("a.b"));
-
-        assert_snapshot!(parse("a. b"));
-
-        assert_snapshot!(parse("a.b.c.d"));
-
-        assert_snapshot!(parse(".b"));
-
-        assert_snapshot!(parse(". b"));
-
-        assert_snapshot!(parse("a .b"));
-
-        assert_snapshot!(parse(".a b"));
-
-        assert_snapshot!(parse("{ 5 | x = 1 }"));
-
-        assert_snapshot!(parse("{ 5 : x = 1 }"));
-
-        assert_snapshot!(parse("{ 5 | x = 1, y = 3 }"));
-
-        assert_snapshot!(parse("{ if True then {} else {} | x = 1, y = 3 }"));
-
-        assert_snapshot!(parse("A"));
-
-        assert_snapshot!(parse("A.B"));
-
-        assert_snapshot!(parse("A.B.C"));
-
-        assert_snapshot!(parse("A.b.c"));
-
-        assert_snapshot!(parse("A.B.c"));
-
-        assert_snapshot!(parse("A.B.C.d"));
-
-        assert_snapshot!(parse("function record.access"));
-
-        assert_snapshot!(parse("A.b"));
+        #[test]
+        fn test_identifiers_with_module_access() {
+            assert_snapshot!(parse("A"));
+            assert_snapshot!(parse("A.B"));
+            assert_snapshot!(parse("A.B.C"));
+            assert_snapshot!(parse("A.b.c"));
+            assert_snapshot!(parse("A.B.c"));
+            assert_snapshot!(parse("A.B.C.d"));
+            assert_snapshot!(parse("function record.access"));
+            assert_snapshot!(parse("A.b"));
+        }
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
@@ -2170,33 +2261,78 @@ add 5"
         }
     }
 
-    #[test]
-    fn test_module_parser() {
-        assert_snapshot!(parse("True"));
+    mod test_module_parser {
+        use super::*;
+        use insta::assert_snapshot;
 
-        assert_snapshot!(parse("module Test"));
+        #[test]
+        fn test_module_not_an_expression() {
+            assert_snapshot!(parse("True"));
+        }
 
-        assert_snapshot!(parse("module Test\n\na = 1"));
+        #[test]
+        fn test_empty_module() {
+            assert_snapshot!(parse("module Test"));
+        }
 
-        assert_snapshot!(parse("module Test\n\na = 1\n\nb = True"));
+        #[test]
+        fn test_top_level_def() {
+            assert_snapshot!(parse(
+                "\
+module Test
 
-        assert_snapshot!(parse("module Test\n\na = 1 + 2) + 3\n\nb = * add\n  5"));
+a = 1"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
 
-        assert_snapshot!(parse("module Test\n\na = 1 + 2 + 3\n\nb = * add\n  5"));
+a = 1
 
-        assert_snapshot!(parse("module Parent\n\nmodule Parent.Test"));
+b = True"
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_parsing_errors() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+a = 1 + 2) + 3
+
+b = * add
+  5"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+a = 1 + 2 + 3
+
+b = * add
+  5"
+            ));
+        }
+
+        #[test]
+        fn test_submodule() {
+            assert_snapshot!(parse(
+                "\
+module Parent
+
+module Parent.Test"
+            ));
+            assert_snapshot!(parse(
+                "\
 module Parent
 
 module Parent.Test
 
   a = 1"
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Parent
 
 module Parent.Test
@@ -2205,10 +2341,11 @@ module Parent.Test
 
 a = 1
 "
-        ));
-
-        assert_snapshot!(parse({
-            "\
+            ));
+            assert_snapshot!(
+                "parsing errors",
+                parse(
+                    "\
 module Parent
 
 module Parent.Test
@@ -2222,10 +2359,14 @@ a = 1 + 2) + 3
 
 b = * add
   5"
-        },));
+                )
+            );
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_submodules_nested() {
+            assert_snapshot!(parse(
+                "\
 module Parent
 
 module Parent.Test1
@@ -2237,26 +2378,75 @@ module Parent.Test1
 module Parent.Test2
     c = 5
     ",
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse("module Test exposing (a)\n\na = 1\n\nb = True"));
+        #[test]
+        fn test_exposing() {
+            assert_snapshot!(parse(
+                "\
+module Test exposing (a)
 
-        assert_snapshot!(parse("module Test exposing (a, b)\n\na = 1\n\nb = True"));
+a = 1
 
-        assert_snapshot!(parse("module Test exposing a, b\n\na = 1\n\nb = True"));
+b = True"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing (a, b)
 
-        assert_snapshot!(parse("module Test exposing (a b)\n\na = 1\n\nb = True"));
+a = 1
 
-        assert_snapshot!(parse("module Test exposing (a, b\n\na = 1\n\nb = True"));
+b = True"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing a, b
 
-        assert_snapshot!(parse("module Test\n\nimport Banana"));
+a = 1
 
-        assert_snapshot!(parse("module Test\n\nimport Banana as B"));
+b = True"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing (a b)
 
-        assert_snapshot!(parse("module Test\n\nimport Banana exposing (phone)"));
+a = 1
 
-        assert_snapshot!(parse(
-            "\
+b = True"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing (a, b
+
+a = 1
+
+b = True"
+            ));
+        }
+
+        #[test]
+        fn test_import() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+import Banana"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+import Banana as B"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+import Banana exposing (phone)"
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test
 
 import Banana as B
@@ -2265,21 +2455,22 @@ import Phone exposing (raffi)
 
 import Apple as A exposing (orange)
 ",
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse("module i_am_not_PascalCase"));
-
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_module_name() {
+            assert_snapshot!(parse("module i_am_not_PascalCase"));
+            assert_snapshot!(parse(
+                "\
 module Test
 
 module i_am_not_PascalCase
     test = 1
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test
 
 module Test.Test2
@@ -2287,222 +2478,282 @@ module Test.Test2
     module i_am_not_PascalCase
         test = 1
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_definition_pascalcase_identifier() {
+            assert_snapshot!(parse(
+                "\
 module Test
 
 IAmNotCamelCase = 1
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_lambda_syntax_sugar() {
+            assert_snapshot!(parse(
+                "\
 module Test
 
 incr n = n + 1
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse("module Te_st"));
-
-        assert_snapshot!(parse("module Test.Te_st"));
-
-        assert_snapshot!(parse("module Test.Te_st.Test"));
-
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_module_name_validation() {
+            assert_snapshot!(parse("module Te_st"));
+            assert_snapshot!(parse("module Test.Te_st"));
+            assert_snapshot!(parse("module Test.Te_st.Test"));
+            assert_snapshot!(parse(
+                "
 module Test.Something
 
 module Test.Banana
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_type_definition() {
+            assert_snapshot!(
+                "no definition",
+                parse(
+                    "
 module Test
 
 type Banana
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "wrong definition",
+                parse(
+                    "
 module Test
 
 type Banana : asdf
 "
-        ));
+                )
+            );
+        }
 
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_union_types() {
+            assert_snapshot!(
+                "single branch",
+                parse(
+                    "
 module Test
 
 type Fruit = Banana
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "multiple branch",
+                parse(
+                    "
 module Test
 
 type Fruit = Banana | Apple
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "wrong branch separator",
+                parse(
+                    "
 module Test
 
 type Fruit = Banana / Apple
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "branch with params",
+                parse(
+                    "
 module Test
 
 type Fruit = Banana a
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "with type variable parameter",
+                parse(
+                    "
 module Test
 
 type Fruit a = Banana a
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "with type variable parameter many branches",
+                parse(
+                    "
 module Test
 
 type Fruit a = Banana a | Phone
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "multiline w/ equal",
+                parse(
+                    "
 module Test
 
 type Fruit a
     = Banana a
     | Phone
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "multiline w/ vbar",
+                parse(
+                    "
 module Test
 
 type Fruit a =
     | Banana a
     | Phone
 "
-        ));
+                )
+            );
+        }
 
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_record() {
+            assert_snapshot!(
+                "empty",
+                parse(
+                    "
 module Test
 
 type Fruit = {}
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "unclosed record",
+                parse(
+                    "
 module Test
 
 type Fruit = {
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "missing value on field",
+                parse(
+                    "
 module Test
 
 type Fruit = { name }
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "single field",
+                parse(
+                    "
 module Test
 
 type Fruit = { name : String }
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+                )
+            );
+            assert_snapshot!(
+                "many fields",
+                parse(
+                    "
 module Test
 
 type Fruit = { name : String , banana: Phone }
 "
-        ));
+                )
+            );
+        }
 
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_extensible_record() {
+            assert_snapshot!(parse(
+                "
 module Test
 
 type Fruit a = { a | name : String , banana: Phone }
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_constructor_parameters() {
+            assert_snapshot!(parse(
+                "
 module Test
 
 type Fruit a = Banana a Phone a
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+            ));
+            assert_snapshot!(parse(
+                "
 module Test
 
 type Fruit a = Banana a (Phone a)
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "
+        #[test]
+        fn test_record_field_value_with_params() {
+            assert_snapshot!(parse(
+                "
 module Test
 
 type Fruit a = { test : Banana a (Phone a) }
 "
-        ));
-
-        assert_snapshot!(parse(
-            "
+            ));
+            assert_snapshot!(parse(
+                "
 module Test
 
 type Fruit a = { test : (Banana a (Phone a)) }
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_types_and_definitions() {
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 type Fruit = Banana
 
 main = Banana
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_exposing_types() {
+            assert_snapshot!(parse(
+                "\
 module Test exposing (Fruit(Banana))
 
 type Fruit = Banana
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 import Test.Fruits exposing (Fruit(Banana))
@@ -2512,10 +2763,13 @@ main = 1
 module Test.Fruits exposing (Fruit(Banana))
     type Fruit = Banana
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_single_line_comments() {
+            assert_snapshot!(parse(
+                "\
 -- Comment
 module Test
     -- Comment
@@ -2540,71 +2794,61 @@ module Test.Fruits
         -- Comment
         Banana
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_function_types() {
+            assert_snapshot!(parse(
+                "\
 module Test exposing (Fruit)
 
 type Fruit a b = Fruit (a -> b)
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (Fruit)
 
 type Fruit a b = { f : a -> b }
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (Fruit)
 
 type Fruit a b = { f : (a -> b) }
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (Fruit)
 
 type Fruit a b = Fruit (a -> b -> c)
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_type_only_definitions() {
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit
 
 test = 5
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
-module Test exposing (main)
-
-main : Fruit
-main = Fruit
-
-test = 5
-"
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit
@@ -2613,10 +2857,27 @@ signature : Fruit
 
 test = 5
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_typed_definitions() {
+            assert_snapshot!(parse(
+                "\
+module Test exposing (main)
+
+main : Fruit
+main = Fruit
+
+test = 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_signatures() {
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit a b
@@ -2625,28 +2886,25 @@ signature : Fruit b
 
 test = 5
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit -> Fruit
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit -> Fruit a
 
 test = 5
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit a b -> Fruit a b
@@ -2654,10 +2912,9 @@ main = Fruit
 
 test = 5
 "
-        ));
-
-        assert_snapshot!(parse(
-            "\
+            ));
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main : Fruit a -> Fruit b -> Fruit c
@@ -2666,10 +2923,13 @@ signature : Fruit d -> Fruit e -> Fruit f
 
 test = 5
 "
-        ));
+            ));
+        }
 
-        assert_snapshot!(parse(
-            "\
+        #[test]
+        fn test_signatures_in_let_bindings() {
+            assert_snapshot!(parse(
+                "\
 module Test exposing (main)
 
 main =
@@ -2683,7 +2943,8 @@ main =
 
     test
 "
-        ));
+            ));
+        }
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());

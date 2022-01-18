@@ -1,0 +1,170 @@
+---
+source: src/parser.rs
+assertion_line: 2057
+expression: "parse(\"1 == 2 / 3\")"
+
+---
+Input:
+
+1 == 2 / 3
+
+Result:
+
+Node {
+    start: 0,
+    end: 10,
+    line: 1,
+    column: 0,
+    value: Expression_ {
+        typ: RefCell {
+            value: None,
+        },
+        expr: Binary(
+            Node {
+                start: 2,
+                end: 4,
+                line: 1,
+                column: 2,
+                value: Expression_ {
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Identifier(
+                        None,
+                        Identifier(
+                            Node {
+                                start: 2,
+                                end: 4,
+                                line: 1,
+                                column: 2,
+                                value: Identifier_ {
+                                    name: SymbolU32 {
+                                        value: 1,
+                                    },
+                                },
+                            },
+                        ),
+                    ),
+                },
+            },
+            Node {
+                start: 2,
+                end: 4,
+                line: 1,
+                column: 2,
+                value: Binop_ {
+                    typ: Equal,
+                    precedence: 11,
+                    associativity: Ltr,
+                    fn_: Identifier_ {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                    },
+                },
+            },
+            [
+                Node {
+                    start: 0,
+                    end: 1,
+                    line: 1,
+                    column: 0,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            1.0,
+                        ),
+                    },
+                },
+                Node {
+                    start: 5,
+                    end: 10,
+                    line: 1,
+                    column: 5,
+                    value: Expression_ {
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Binary(
+                            Node {
+                                start: 7,
+                                end: 8,
+                                line: 1,
+                                column: 7,
+                                value: Expression_ {
+                                    typ: RefCell {
+                                        value: None,
+                                    },
+                                    expr: Identifier(
+                                        None,
+                                        Identifier(
+                                            Node {
+                                                start: 7,
+                                                end: 8,
+                                                line: 1,
+                                                column: 7,
+                                                value: Identifier_ {
+                                                    name: SymbolU32 {
+                                                        value: 2,
+                                                    },
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                },
+                            },
+                            Node {
+                                start: 7,
+                                end: 8,
+                                line: 1,
+                                column: 7,
+                                value: Binop_ {
+                                    typ: Division,
+                                    precedence: 15,
+                                    associativity: Ltr,
+                                    fn_: Identifier_ {
+                                        name: SymbolU32 {
+                                            value: 2,
+                                        },
+                                    },
+                                },
+                            },
+                            [
+                                Node {
+                                    start: 5,
+                                    end: 6,
+                                    line: 1,
+                                    column: 5,
+                                    value: Expression_ {
+                                        typ: RefCell {
+                                            value: None,
+                                        },
+                                        expr: Float(
+                                            2.0,
+                                        ),
+                                    },
+                                },
+                                Node {
+                                    start: 9,
+                                    end: 10,
+                                    line: 1,
+                                    column: 9,
+                                    value: Expression_ {
+                                        typ: RefCell {
+                                            value: None,
+                                        },
+                                        expr: Float(
+                                            3.0,
+                                        ),
+                                    },
+                                },
+                            ],
+                        ),
+                    },
+                },
+            ],
+        ),
+    },
+}

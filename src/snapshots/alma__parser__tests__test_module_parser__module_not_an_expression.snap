@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+assertion_line: 2270
+expression: "parse(\"True\")"
+
+---
+Input:
+
+True
+
+Result:
+
+1:0: Expected `module FileName` at the start of the file, but instead found: `True`
+
+  1│  True
+   │  ↑↑↑↑
+
+Error {
+    message: "1:0: Expected `module FileName` at the start of the file, but instead found: `True`\n\n  1│  True\n   │  ↑↑↑↑",
+    token: Token {
+        kind: True,
+        position: 0,
+        end_position: 4,
+        lexeme: "True",
+        line: 1,
+        column: 0,
+        indent: 0,
+    },
+}
