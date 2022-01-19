@@ -204,7 +204,7 @@ but it seems to be
 
             SignatureTooGeneral(_, typ, typ2) => {
                 s.push_str(&format!(
-                    "The type signature is more general than the inferred type:
+                    "The type signature is more generic than the inferred type:
 
 {2}
 
@@ -214,7 +214,11 @@ The type signature says the type is
 
 which it is more general than
 
-{1}",
+{1}
+
+which was inferred from the code.
+
+Change the signature to be more specific or try to make your code more generic.",
                     typ.to_string(strings),
                     typ2.to_string(strings),
                     code
@@ -503,42 +507,42 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
     }
 }
 
-fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
-    let typ = find(typ);
-    if let RecordExt(_, _) = &*typ {
-        let mut all_fields = TypeEnv::new();
-        let mut typ = typ;
-
-        loop {
-            match &*typ {
-                Record(fields) => {
-                    for (k, v) in fields.map() {
-                        all_fields.insert(*k, Rc::clone(v));
-                    }
-                    return Some(Rc::new(Record(all_fields)));
-                }
-                RecordExt(fields, ext) => {
-                    for (k, v) in fields.map() {
-                        all_fields.insert(*k, Rc::clone(v));
-                    }
-                    typ = find(ext);
-                }
-                Var(var) => {
-                    let var_read = (**var).borrow();
-                    match &*var_read {
-                        Unbound(_, _) => {
-                            return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
-                        }
-                        Bound(_) => unreachable!(),
-                    };
-                }
-                _ => return None,
-            }
-        }
-    } else {
-        None
-    }
-}
+// fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
+//     let typ = find(typ);
+//     if let RecordExt(_, _) = &*typ {
+//         let mut all_fields = TypeEnv::new();
+//         let mut typ = typ;
+//
+//         loop {
+//             match &*typ {
+//                 Record(fields) => {
+//                     for (k, v) in fields.map() {
+//                         all_fields.insert(*k, Rc::clone(v));
+//                     }
+//                     return Some(Rc::new(Record(all_fields)));
+//                 }
+//                 RecordExt(fields, ext) => {
+//                     for (k, v) in fields.map() {
+//                         all_fields.insert(*k, Rc::clone(v));
+//                     }
+//                     typ = find(ext);
+//                 }
+//                 Var(var) => {
+//                     let var_read = (**var).borrow();
+//                     match &*var_read {
+//                         Unbound(_, _) => {
+//                             return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
+//                         }
+//                         Bound(_) => unreachable!(),
+//                     };
+//                 }
+//                 _ => return None,
+//             }
+//         }
+//     } else {
+//         None
+//     }
+// }
 
 fn find(typ: &Rc<Type>) -> Rc<Type> {
     match &**typ {
@@ -596,9 +600,7 @@ fn unify_var(
                 Err(UnificationError::InfiniteType)
             } else {
                 let mut var = var.borrow_mut();
-                let new_dest_type =
-                    flatten_record(other_type).unwrap_or_else(|| Rc::clone(other_type));
-                *var = Bound(new_dest_type);
+                *var = Bound(Rc::clone(other_type));
                 Ok(())
             }
         }
@@ -780,36 +782,19 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
                     return true;
                 }
             }
-            for (key, value) in fields2.map() {
-                if signature_is_too_generic(value, fields1.get(key).unwrap()) {
+            false
+        }
+
+        (Record(fields), RecordExt(ext_fields, _ext)) => {
+            for (key, value) in fields.map() {
+                if signature_is_too_generic(value, ext_fields.get(key).unwrap()) {
                     return true;
                 }
             }
             false
         }
 
-        (Record(fields), RecordExt(ext_fields, _ext))
-        | (RecordExt(ext_fields, _ext), Record(fields)) => {
-            for (key, value) in ext_fields.map() {
-                if signature_is_too_generic(value, fields.get(key).unwrap()) {
-                    return true;
-                }
-            }
-
-            /*
-            // Unify the open record type variable with a record of the remaining fields from
-            // the fixed record.
-            let mut rem_fields = TypeEnv::new();
-            for (key, value) in fields.map() {
-                if !ext_fields.map().contains_key(key) {
-                    rem_fields.insert(*key, Rc::clone(value));
-                }
-            }
-            let rem_rec = Rc::new(Record(rem_fields));
-            unify_rec(state, ext, &rem_rec)
-            */
-            todo!()
-        }
+        (RecordExt(_ext_fields, _ext), Record(_fields)) => true,
 
         (RecordExt(fields1, _var1), RecordExt(fields2, _var2)) => {
             for (key, value) in fields1.map() {
@@ -1361,12 +1346,7 @@ fn infer_rec<'ast>(
                 errors,
             );
 
-            // Unify the type of this expression with the inferred type after the unification with
-            // the base record. Gives a chance to flatten the inner record types when substituting.
-            let t = state.new_type_var();
-            add_error(unify(state, record, &t, None, &inferred_type), errors);
-
-            t
+            inferred_type
         }
 
         ET::PropAccess(expr, field) => {
@@ -2556,6 +2536,18 @@ module Test.Record exposing (Record)
 
 main : Record Float
 main = { x : 5 }
+"
+            ));
+        }
+
+        #[test]
+        fn test_signature_records_too_generic_check() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+main : { x : a } -> Float
+main r = r.x + 1
 "
             ));
         }

@@ -119,8 +119,8 @@ impl Type {
 
                 if i != 0 {
                     s.push(',');
+                    s.push(' ');
                 }
-                s.push(' ');
 
                 s.push_str(strings.resolve(*key));
                 s.push_str(" : ");
@@ -182,6 +182,10 @@ impl Type {
             Record(fields) => {
                 s.push('{');
 
+                if !fields.map().is_empty() {
+                    s.push(' ');
+                }
+
                 fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
 
                 if !fields.map().is_empty() {
@@ -190,16 +194,96 @@ impl Type {
                 s.push('}');
             }
 
-            RecordExt(fields, var) => {
-                s.push_str("{ ");
+            RecordExt(_, ext) => {
+                let fields = get_extensible_record_fields(TypeEnv::new(), self);
 
-                var.to_string_rec(cur_type_var_name, type_var_names, s, strings);
-
-                if !fields.map().is_empty() {
-                    s.push_str(" |");
+                fn get_extensible_record_fields(mut all_fields: TypeEnv, typ: &Type) -> TypeEnv {
+                    match typ {
+                        Record(fields) => {
+                            for (k, v) in fields.map() {
+                                all_fields.insert(*k, Rc::clone(v));
+                            }
+                            return all_fields;
+                        }
+                        RecordExt(fields, ext) => {
+                            for (k, v) in fields.map() {
+                                all_fields.insert(*k, Rc::clone(v));
+                            }
+                            get_extensible_record_fields(all_fields, ext)
+                        }
+                        Var(var) => {
+                            let var_read = (**var).borrow();
+                            match &*var_read {
+                                TypeVar::Unbound(_, _) => all_fields,
+                                TypeVar::Bound(typ) => {
+                                    get_extensible_record_fields(all_fields, typ)
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
                 }
 
-                fields_to_string(fields, cur_type_var_name, type_var_names, s, strings);
+                fn extensible_record_base_to_string<'a>(
+                    typ: &Type,
+                    cur_type_var_name: &'a mut Vec<char>,
+                    type_var_names: &'a mut HashMap<u32, String>,
+                    s: &'a mut String,
+                    strings: &Strings,
+                ) -> bool {
+                    match typ {
+                        Record(_) => false,
+                        RecordExt(_, ext) => extensible_record_base_to_string(
+                            ext,
+                            cur_type_var_name,
+                            type_var_names,
+                            s,
+                            strings,
+                        ),
+                        Var(var) => {
+                            let var_read = (**var).borrow();
+                            match &*var_read {
+                                TypeVar::Unbound(_, _) => {
+                                    typ.to_string_rec(
+                                        cur_type_var_name,
+                                        type_var_names,
+                                        s,
+                                        strings,
+                                    );
+                                    true
+                                }
+                                TypeVar::Bound(typ) => extensible_record_base_to_string(
+                                    typ,
+                                    cur_type_var_name,
+                                    type_var_names,
+                                    s,
+                                    strings,
+                                ),
+                            }
+                        }
+                        _ => {
+                            typ.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+                            true
+                        }
+                    }
+                }
+
+                s.push_str("{ ");
+
+                let printed_extension = extensible_record_base_to_string(
+                    ext,
+                    cur_type_var_name,
+                    type_var_names,
+                    s,
+                    strings,
+                );
+
+                if printed_extension && !fields.map().is_empty() {
+                    s.push_str(" | ");
+                }
+                if !fields.map().is_empty() {
+                    fields_to_string(&fields, cur_type_var_name, type_var_names, s, strings);
+                }
 
                 s.push_str(" }");
             }
