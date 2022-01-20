@@ -507,42 +507,42 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
     }
 }
 
-// fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
-//     let typ = find(typ);
-//     if let RecordExt(_, _) = &*typ {
-//         let mut all_fields = TypeEnv::new();
-//         let mut typ = typ;
-//
-//         loop {
-//             match &*typ {
-//                 Record(fields) => {
-//                     for (k, v) in fields.map() {
-//                         all_fields.insert(*k, Rc::clone(v));
-//                     }
-//                     return Some(Rc::new(Record(all_fields)));
-//                 }
-//                 RecordExt(fields, ext) => {
-//                     for (k, v) in fields.map() {
-//                         all_fields.insert(*k, Rc::clone(v));
-//                     }
-//                     typ = find(ext);
-//                 }
-//                 Var(var) => {
-//                     let var_read = (**var).borrow();
-//                     match &*var_read {
-//                         Unbound(_, _) => {
-//                             return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
-//                         }
-//                         Bound(_) => unreachable!(),
-//                     };
-//                 }
-//                 _ => return None,
-//             }
-//         }
-//     } else {
-//         None
-//     }
-// }
+fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
+    let typ = find(typ);
+    if let RecordExt(_, _) = &*typ {
+        let mut all_fields = TypeEnv::new();
+        let mut typ = typ;
+
+        loop {
+            match &*typ {
+                Record(fields) => {
+                    for (k, v) in fields.map() {
+                        all_fields.insert(*k, Rc::clone(v));
+                    }
+                    return Some(Rc::new(Record(all_fields)));
+                }
+                RecordExt(fields, ext) => {
+                    for (k, v) in fields.map() {
+                        all_fields.insert(*k, Rc::clone(v));
+                    }
+                    typ = find(ext);
+                }
+                Var(var) => {
+                    let var_read = (**var).borrow();
+                    match &*var_read {
+                        Unbound(_, _) => {
+                            return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
+                        }
+                        Bound(_) => unreachable!(),
+                    };
+                }
+                _ => return None,
+            }
+        }
+    } else {
+        None
+    }
+}
 
 fn find(typ: &Rc<Type>) -> Rc<Type> {
     match &**typ {
@@ -740,6 +740,8 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
 fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
     let signature = find(signature);
     let inferred = find(inferred);
+    let signature = flatten_record(&signature).unwrap_or_else(|| signature);
+    let inferred = flatten_record(&inferred).unwrap_or_else(|| inferred);
 
     match (&*signature, &*inferred) {
         (Named(_, _, args), Named(_, _, args2)) => {
@@ -786,45 +788,16 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
 
         (RecordExt(_ext_fields, _ext), Record(_fields)) => true,
 
-        (RecordExt(fields1, _var1), RecordExt(fields2, _var2)) => {
-            for (key, value) in fields1.map() {
-                if signature_is_too_generic(value, fields2.get(key).unwrap()) {
+        (RecordExt(signature_fields, signature_ext), RecordExt(inferred_fields, inferred_ext)) => {
+            for (key, signature_field_value) in signature_fields.map() {
+                if signature_is_too_generic(
+                    signature_field_value,
+                    inferred_fields.get(key).unwrap(),
+                ) {
                     return true;
                 }
             }
-            for (key, value) in fields2.map() {
-                if signature_is_too_generic(value, fields1.get(key).unwrap()) {
-                    return true;
-                }
-            }
-
-            /*
-            // unify { <fields-only-found-on-the-left-side> | new-type-var } varRight
-            {
-                let mut rem_fields1 = TypeEnv::new();
-                for (key, value) in fields1.map() {
-                    if !fields2.map().contains_key(key) {
-                        rem_fields1.insert(*key, Rc::clone(value));
-                    }
-                }
-                let rem_rec1 = Rc::new(RecordExt(rem_fields1, Rc::clone(&var)));
-                unify_rec(state, var2, &rem_rec1)?;
-            }
-
-            // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
-            {
-                let mut rem_fields2 = TypeEnv::new();
-                for (key, value) in fields2.map() {
-                    if !fields1.map().contains_key(key) {
-                        rem_fields2.insert(*key, Rc::clone(value));
-                    }
-                }
-                let rem_rec2 = Rc::new(RecordExt(rem_fields2, Rc::clone(&var)));
-                unify_rec(state, var1, &rem_rec2)?;
-            }
-            */
-
-            todo!()
+            signature_is_too_generic(signature_ext, inferred_ext)
         }
 
         (Alias(_module, _name, _params, typ), _) => signature_is_too_generic(typ, &inferred),
@@ -2539,6 +2512,18 @@ module Test exposing (main)
 
 main : { x : a } -> Float
 main r = r.x + 1
+"
+            ));
+        }
+
+        #[test]
+        fn test_signature_extensible_records_too_generic_check() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+main : { r | x : a, y: a } -> Float
+main r = r.x + r.y + 1
 "
             ));
         }
