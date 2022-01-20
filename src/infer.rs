@@ -35,11 +35,6 @@ use std::rc::Rc;
  *  taken from http://okmij.org/ftp/ML/generalization.html
  */
 
-enum UnificationError {
-    TypeMismatch,
-    InfiniteType,
-}
-
 #[derive(Debug)]
 pub enum Error<'ast> {
     UndefinedIdentifier(StringSymbol, Node<()>),
@@ -560,31 +555,27 @@ fn find(typ: &Rc<Type>) -> Rc<Type> {
 fn unify<'ast, T>(
     state: &mut State,
     ast: &Node<T>,
-    t1: &Rc<Type>,
+    typ: &Rc<Type>,
     ast2: Option<&Node<T>>,
-    t2: &Rc<Type>,
+    typ2: &Rc<Type>,
 ) -> Result<(), Error<'ast>> {
-    unify_rec(state, t1, t2).map_err(|e| match e {
-        UnificationError::TypeMismatch => Error::TypeMismatch(
-            ast.unit(),
-            Rc::clone(t1),
-            ast2.map(|ast2| ast2.unit()),
-            Rc::clone(t2),
-        ),
-        UnificationError::InfiniteType => Error::InfiniteType(ast.unit(), Rc::clone(t1)),
-    })
+    unify_rec(state, typ, typ2, ast, typ, ast2, typ2)
 }
 
-fn unify_var(
+fn unify_var<'ast, T>(
     state: &mut State,
-    typ: &Rc<Type>,
+    t: &Rc<Type>,
     var: &Rc<RefCell<TypeVar>>,
     other_type: &Rc<Type>,
-) -> Result<(), UnificationError> {
+    ast: &Node<T>,
+    typ: &Rc<Type>,
+    ast2: Option<&Node<T>>,
+    typ2: &Rc<Type>,
+) -> Result<(), Error<'ast>> {
     let var_read = (**var).borrow();
     match &*var_read {
         // The 'find' in the union-find algorithm
-        Bound(dest_var) => unify_rec(state, dest_var, other_type),
+        Bound(dest_var) => unify_rec(state, dest_var, other_type, ast, typ, ast2, typ2),
 
         // Create binding for unbound type variable
         Unbound(a_id, a_level) => {
@@ -593,11 +584,11 @@ fn unify_var(
             // can panic the occurs check if type 1 and type 2 point to the same thing
             drop(var_read);
 
-            if typ == other_type {
+            if t == other_type {
                 Ok(())
             } else if occurs(a_id, a_level, other_type) {
                 /* a = a, but dont create a recursive binding to itself */
-                Err(UnificationError::InfiniteType)
+                Err(Error::InfiniteType(ast.unit(), Rc::clone(t)))
             } else {
                 let mut var = var.borrow_mut();
                 *var = Bound(Rc::clone(other_type));
@@ -607,9 +598,15 @@ fn unify_var(
     }
 }
 
-fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), UnificationError> {
-    use UnificationError::*;
-
+fn unify_rec<'ast, T>(
+    state: &mut State,
+    t1: &Rc<Type>,
+    t2: &Rc<Type>,
+    ast: &Node<T>,
+    typ: &Rc<Type>,
+    ast2: Option<&Node<T>>,
+    typ2: &Rc<Type>,
+) -> Result<(), Error<'ast>> {
     match (&**t1, &**t2) {
         (Unit, Unit) => Ok(()),
 
@@ -618,27 +615,37 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
             // could make unify_rec get the ast and original types to pass around and improve many
             // error messages around the whole function.
             if module != module2 || name != name2 || args.len() != args2.len() {
-                Err(TypeMismatch)
+                Err(Error::TypeMismatch(
+                    ast.unit(),
+                    Rc::clone(typ),
+                    ast2.map(|ast2| ast2.unit()),
+                    Rc::clone(typ2),
+                ))
             } else {
                 for (a1, a2) in args.iter().zip(args2.iter()) {
-                    unify_rec(state, a1, a2)?;
+                    unify_rec(state, a1, a2, ast, typ, ast2, typ2)?;
                 }
                 Ok(())
             }
         }
 
-        (Var(var), _) => unify_var(state, t1, var, t2),
+        (Var(var), _) => unify_var(state, t1, var, t2, ast, typ, ast2, typ2),
 
-        (_, Var(var)) => unify_var(state, t2, var, t1),
+        (_, Var(var)) => unify_var(state, t2, var, t1, ast, typ, ast2, typ2),
 
         (Fn(args, body), Fn(args2, body2)) => {
             if args.len() != args2.len() {
-                Err(TypeMismatch)
+                Err(Error::TypeMismatch(
+                    ast.unit(),
+                    Rc::clone(typ),
+                    ast2.map(|ast2| ast2.unit()),
+                    Rc::clone(typ2),
+                ))
             } else {
                 for (a1, a2) in args.iter().zip(args2.iter()) {
-                    unify_rec(state, a1, a2)?;
+                    unify_rec(state, a1, a2, ast, typ, ast2, typ2)?;
                 }
-                unify_rec(state, body, body2)
+                unify_rec(state, body, body2, ast, typ, ast2, typ2)
             }
         }
 
@@ -648,16 +655,42 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
 
             for (key, value) in fields1.map() {
                 if fields2.map().contains_key(key) {
-                    unify_rec(state, value, fields2.get(key).unwrap())?;
+                    unify_rec(
+                        state,
+                        value,
+                        fields2.get(key).unwrap(),
+                        ast,
+                        typ,
+                        ast2,
+                        typ2,
+                    )?;
                 } else {
-                    return Err(TypeMismatch);
+                    return Err(Error::TypeMismatch(
+                        ast.unit(),
+                        Rc::clone(typ),
+                        ast2.map(|ast2| ast2.unit()),
+                        Rc::clone(typ2),
+                    ));
                 }
             }
             for (key, value) in fields2.map() {
                 if fields1.map().contains_key(key) {
-                    unify_rec(state, value, fields1.get(key).unwrap())?;
+                    unify_rec(
+                        state,
+                        value,
+                        fields1.get(key).unwrap(),
+                        ast,
+                        typ,
+                        ast2,
+                        typ2,
+                    )?;
                 } else {
-                    return Err(TypeMismatch);
+                    return Err(Error::TypeMismatch(
+                        ast.unit(),
+                        Rc::clone(typ),
+                        ast2.map(|ast2| ast2.unit()),
+                        Rc::clone(typ2),
+                    ));
                 }
             }
 
@@ -670,9 +703,14 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
             // a field doesn't exist it is a mismatch
             for (key, value) in ext_fields.map() {
                 if fields.map().contains_key(key) {
-                    unify_rec(state, value, fields.get(key).unwrap())?;
+                    unify_rec(state, value, fields.get(key).unwrap(), ast, typ, ast2, typ2)?;
                 } else {
-                    return Err(TypeMismatch);
+                    return Err(Error::TypeMismatch(
+                        ast.unit(),
+                        Rc::clone(typ),
+                        ast2.map(|ast2| ast2.unit()),
+                        Rc::clone(typ2),
+                    ));
                 }
             }
 
@@ -685,14 +723,22 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
                 }
             }
             let rem_rec = Rc::new(Record(rem_fields));
-            unify_rec(state, ext, &rem_rec)
+            unify_rec(state, ext, &rem_rec, ast, typ, ast2, typ2)
         }
 
         (RecordExt(fields1, var1), RecordExt(fields2, var2)) => {
             // Check common fields on the records, and unify types
             for (key, value) in fields1.map() {
                 if fields2.map().contains_key(key) {
-                    unify_rec(state, value, fields2.get(key).unwrap())?;
+                    unify_rec(
+                        state,
+                        value,
+                        fields2.get(key).unwrap(),
+                        ast,
+                        typ,
+                        ast2,
+                        typ2,
+                    )?;
                 }
             }
 
@@ -707,7 +753,7 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
                     }
                 }
                 let rem_rec1 = Rc::new(RecordExt(rem_fields1, Rc::clone(&var)));
-                unify_rec(state, var2, &rem_rec1)?;
+                unify_rec(state, var2, &rem_rec1, ast, typ, ast2, typ2)?;
             }
 
             // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
@@ -719,17 +765,22 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
                     }
                 }
                 let rem_rec2 = Rc::new(RecordExt(rem_fields2, Rc::clone(&var)));
-                unify_rec(state, var1, &rem_rec2)?;
+                unify_rec(state, var1, &rem_rec2, ast, typ, ast2, typ2)?;
             }
 
             Ok(())
         }
 
-        (Alias(_module, _name, _params, typ), _) => unify_rec(state, typ, t2),
-        (_, Alias(_module, _name, _params, typ)) => unify_rec(state, t1, typ),
+        (Alias(_module, _name, _params, t), _) => unify_rec(state, t, t2, ast, typ, ast2, typ2),
+        (_, Alias(_module, _name, _params, t)) => unify_rec(state, t1, t, ast, typ, ast2, typ2),
 
         (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => {
-            Err(TypeMismatch)
+            Err(Error::TypeMismatch(
+                ast.unit(),
+                Rc::clone(typ),
+                ast2.map(|ast2| ast2.unit()),
+                Rc::clone(typ2),
+            ))
         }
     }
 }
@@ -1586,16 +1637,14 @@ fn check_signature<'ast>(
         let signature_type_to_unify = state.instantiate(&signature_type_to_unify);
         state.exit_level();
 
-        if let Err(e) = unify_rec(state, &typ, &signature_type_to_unify) {
+        if let Err(e) = unify(state, &signature.name, &typ, None, &signature_type_to_unify) {
             errors.push(match e {
-                UnificationError::TypeMismatch => Error::SignatureMismatch(
-                    signature.name.unit(),
+                Error::TypeMismatch(ast, _, _, _) => Error::SignatureMismatch(
+                    ast,
                     Rc::clone(&signature_type_to_unify),
                     Rc::clone(typ),
                 ),
-                UnificationError::InfiniteType => {
-                    Error::InfiniteType(signature.name.unit(), Rc::clone(&signature_type_to_unify))
-                }
+                _ => e,
             });
             Rc::clone(typ)
         } else {
