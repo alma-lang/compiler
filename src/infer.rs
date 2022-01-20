@@ -13,26 +13,9 @@ use std::cmp::min;
 use std::rc::Rc;
 
 /*
- *  This implementation follows the type inference rules given at
- *  https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system#Algorithm_J
- *
- *  The algorithm itself uses most of the names from the above link, with
- *  a few changed for ease of typing:
- *       Γ (gamma) => env
- *       ⊢ⱼ (perpendicular symbol with j subscript, a.k.a. algorithm J) => infer
- *       Γ¯ (gamma bar) => generalize
- *
- *  And some expr constructors changed to match their more colloquial names
- *  to hopefully make this somewhat more approachable:
- *       Var => Identifier
- *       App => FnCall
- *       Abs => Lambda
- *
- *  Note that a let-binding (or Declaration here) can be of either
- *  a variable or a function
- *
- *  Additionally, implementation of "levels" for efficient generalization is
- *  taken from http://okmij.org/ftp/ML/generalization.html
+ * Resources:
+ *   - https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system#Algorithm_J
+ *   - http://okmij.org/ftp/ML/generalization.html
  */
 
 #[derive(Debug)]
@@ -315,12 +298,16 @@ impl State {
         )))))
     }
 
-    /* specializes the polytype s by copying the term and replacing the
-     * bound type variables consistently by new monotype variables
-     * E.g.   inst (forall a b. a -> b -> a) = c -> d -> c */
+    /**
+     * Specializes the PolyType s by copying the term and replacing the
+     * bound type variables consistently by new monomorphic type variables
+     *
+     * E.g. instantiate (forall a b. a -> b -> a) = c -> d -> c
+     */
     fn instantiate(&mut self, t: &Rc<PolyType>) -> Rc<Type> {
-        /* Replace any typevars found in the Hashtable with the
-         * associated value in the same table, leave them otherwise */
+        /* Replace any type vars found in the hashtable with the
+         * associated value in the same table, leave them otherwise
+         */
         fn replace_type_vars(
             vars_to_replace: &HashMap<TypeVarId, Rc<Type>>,
             t: &Rc<Type>,
@@ -396,12 +383,13 @@ impl State {
         replace_type_vars(&vars_to_replace, &t.typ)
     }
 
-    /* Find all typevars and wrap the type in a Poly */
-    /* e.g.  generalize (a -> b -> b) = forall a b. a -> b -> b */
+    /* Find all type variables and wrap the type in a PolyType
+     * e.g. generalize (a -> b -> b) = forall a b. a -> b -> b
+     */
     fn generalize(&self, t: &Rc<Type>) -> Rc<PolyType> {
         let current_level = self.current_level;
 
-        /* collect all the monomorphic typevars */
+        // Collect all the monomorphic typevars
         fn find_all_tvs(current_level: &Level, vars: &mut IndexSet<TypeVarId>, t: &Rc<Type>) {
             match &**t {
                 Unit => (),
@@ -456,10 +444,9 @@ impl State {
     }
 }
 
-/* The find for our union-find like algorithm */
-/* Go through the given type, replacing all typevars with their bound types when possible */
-
-/* Can a monomorphic Var(a) be found inside this type? */
+/**
+ * Can a monomorphic Var(a) be found inside this type?
+ */
 fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
     match &**t {
         Unit => false,
@@ -587,7 +574,7 @@ fn unify_var<'ast, T>(
             if t == other_type {
                 Ok(())
             } else if occurs(a_id, a_level, other_type) {
-                /* a = a, but dont create a recursive binding to itself */
+                // a = a, but dont create a recursive binding to itself
                 Err(Error::InfiniteType(ast.unit(), Rc::clone(t)))
             } else {
                 let mut var = var.borrow_mut();
@@ -976,7 +963,11 @@ fn base_env(
     );
 }
 
-/* The main entry point to type inference */
+/**
+ * The main entry point to type inference.
+ *
+ * Infer the types of the whole module and produce its module interface with types.
+ */
 pub fn infer<'interfaces, 'ast>(
     module_interfaces: &'interfaces ModuleInterfaces,
     module: &'ast Module,
@@ -1440,12 +1431,19 @@ fn infer_rec<'ast>(
         }
 
         /* If
-         * infer env condition = t0
-         * unify t0 bool
-         * infer env then = t1
-         * infer env else_ = t2
-         * unify t1 t2
-         * infer env (if condition then else) = t2
+         *
+         * Condition must be boolean:
+         *
+         *     t0 = infer condition
+         *     unify t0 bool
+         *
+         * then and else branches must have the same type:
+         *
+         *     t1 = infer then
+         *     t2 = infer else
+         *     unify t1 t2
+         *
+         * The final type is any of t1 or t2
          */
         ET::If(condition, then, else_) => {
             let t = infer_rec(condition, state, env, types_env, strings, errors);
@@ -1468,11 +1466,11 @@ fn infer_rec<'ast>(
         }
 
         /*
-         * Var
-         *   x : s ∊ env
-         *   t = inst s
-         *   -----------
-         *   infer env x = t
+         * Identifier
+         *
+         * Given x of type s in env:
+         *
+         *     t = inst s
          */
         ET::Identifier(module, x) => {
             let name = if let Some(module) = module {
@@ -1499,36 +1497,66 @@ fn infer_rec<'ast>(
             }
         }
 
-        /* App
-         *   infer env f = t0
-         *   infer env x = t1
-         *   t' = newVar ()
-         *   unify t0 (t1 -> t')
-         *   ---------------
-         *   infer env (f x) = t'
+        /* FnCall
+         *
+         * Given `f ...args`
+         *
+         * Infer the type of the function and arguments
+         *
+         *     t0 = infer f
+         *     targs = map infer args
+         * 
+         * Unify the function type of targs -> t' with the inferred f type
+         *
+         *     t' = new_var ()
+         *     unify t0 (targs -> t')
          */
         ET::FnCall(f, args) => {
             infer_fn_call(f, args.iter(), ast, state, env, types_env, strings, errors)
         }
 
-        /* Abs
-         *   t = newVar ()
-         *   infer (SMap.add x t env) e = t'
-         *   -------------
-         *   infer env (fun x -> e) = t -> t'
+        /* Lambda
+         *
+         * Given (lambda ...params -> body)
+         *
+         * Collect the param types and add them to scope
+         *
+         *     tparams = []
+         *     for param in params
+         *         t = new_var ()
+         *         add env param (generalize t)
+         *         add tparams t
+         *
+         * Infer the type of the body with the new scope
+         *
+         *     t' = infer env body
+         *
+         *  The lambda type is then:
+         *
+         *     tparams -> t'
          */
         ET::Lambda(lambda) => infer_lambda(lambda, state, env, types_env, strings, errors),
 
         /* Let
-         *   infer env e0 = t
-         *   infer (SMap.add x (generalize t) env) e1 = t'
-         *   -----------------
-         *   infer env (let x = e0 in e1) = t'
          *
-         * enter/exitLevel optimizations are from
-         * http://okmij.org/ftp/ML/generalization.html
-         * In this implementation, they're required so we don't generalize types
-         * that escape into the environment.
+         * Given `let x = e0, x2 = e1, ... in body`
+         *
+         * Infer binding expressions and add them to scope
+         *
+         *     for (x, e) in bindings
+         *         t = infer env e
+         *         add env x (generalize t)
+         *
+         * Infer the body with the new env
+         *
+         *     infer env e1
+         *
+         * enter_level/exit_level optimizations are from
+         *
+         *     http://okmij.org/ftp/ML/generalization.html
+         *
+         * They're required so we don't generalize types that escape into
+         * the environment.
          */
         ET::Let(bindings, e) => {
             let mut new_env = env.clone();

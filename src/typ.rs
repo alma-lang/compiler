@@ -21,32 +21,44 @@ pub enum TypeVar {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Type {
-    /* Unit type () */
+    // Unit type ()
     Unit,
 
-    /* Named type (Int, Bool, List a, ...) */
+    // Named type (Int, Bool, List a, ...)
     Named(ModuleFullName, StringSymbol, Vec<Rc<Type>>),
 
-    /* 'a, 'b, etc.
+    /* a, b, etc.
      *
      * A reference to a bound or unbound TypeVar, set during unification.
+     *
      * This is unique to algorithm J where mutation is needed to remember
-     * some substitutions.
+     * substitutions.
+     *
      * The level of this TypeVar identifies how many let-bindings deep it was
      * declared in. This is used to prevent generalization of TypeVars that
      * escape outside the current let-binding scope.
      */
     Var(Rc<RefCell<TypeVar>>),
 
-    /* 'a -> 'b, all functions are single-argument only
-     * e.g. \a b c -> c  is automatically translated to \a -> \b -> \c -> c
-     * Currying is also automatic
+    /* a1 a2 a3 ...an -> b
+     *
+     * e.g. \a b c -> c
      */
     Fn(Vec<Rc<Type>>, Rc<Type>),
 
+    /* Records with field value pairs
+     *
+     * e.g. { x: Float, y: Float }
+     */
     Record(TypeEnv),
+
+    /* Extensible record with at least these field value pairs
+     *
+     * e.g. { a | x: Float, y: Float }
+     */
     RecordExt(TypeEnv, Rc<Type>),
 
+    // Alias to another type. Used when defining a record type with a name
     Alias(
         ModuleFullName,
         StringSymbol,
@@ -56,8 +68,9 @@ pub enum Type {
 }
 
 impl Type {
-    /* If this type is the a in a -> b, should it be parenthesized?
-     * Note this is recursive in case bound typevars are used
+    /**
+     * If this type is the a in a -> b, should it be parenthesized?
+     * Note this is recursive in case bound type vars are used
      */
     fn should_parenthesize(&self) -> bool {
         use Type::*;
@@ -93,14 +106,11 @@ impl Type {
         s
     }
 
-    /* keep track of number to character bindings for typevars
-     * e.g. '2 => 'a, '5 => 'b, etc.
-     * letters are assigned to typevars by the order in which the typevars
-     * appear in the type, left to right
-     */
     pub fn to_string_rec<'a>(
         &self,
         cur_type_var_name: &'a mut Vec<char>,
+        // keep track of number to character bindings for typevars
+        // e.g. 2 => a, 5 => b, etc.
         type_var_names: &'a mut HashMap<u32, String>,
         s: &'a mut String,
         strings: &Strings,
@@ -357,7 +367,7 @@ impl PolyType {
                 s.push(' ');
                 let unbound_var = Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                     *var,
-                    Level(0), /* This level doesn't matter for printing */
+                    Level(0), // This level doesn't matter for printing
                 ))));
                 unbound_var.to_string_rec(
                     &mut cur_type_var_name,
