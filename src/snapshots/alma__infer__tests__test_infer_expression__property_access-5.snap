@@ -1,0 +1,14 @@
+---
+source: src/infer.rs
+assertion_line: 1820
+expression: "infer(r\"\\r -> r.x + r.y\")"
+
+---
+Input:
+
+\r -> r.x + r.y
+
+---
+Output:
+
+{ a | x : Float, y : Float } -> Float

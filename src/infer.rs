@@ -689,20 +689,10 @@ fn unify_rec(state: &mut State, t1: &Rc<Type>, t2: &Rc<Type>) -> Result<(), Unif
         }
 
         (RecordExt(fields1, var1), RecordExt(fields2, var2)) => {
-            // Check fields on each record, and unify types of the values against the other
-            // record. If the field doesn't exist then it is a type mismatch.
+            // Check common fields on the records, and unify types
             for (key, value) in fields1.map() {
                 if fields2.map().contains_key(key) {
                     unify_rec(state, value, fields2.get(key).unwrap())?;
-                } else {
-                    return Err(TypeMismatch);
-                }
-            }
-            for (key, value) in fields2.map() {
-                if fields1.map().contains_key(key) {
-                    unify_rec(state, value, fields1.get(key).unwrap())?;
-                } else {
-                    return Err(TypeMismatch);
                 }
             }
 
@@ -1854,6 +1844,7 @@ add 5"
             assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.msg"#));
             assert_snapshot!(infer(r#"{ age = 1, msg = "Hello" }.wat"#));
             assert_snapshot!(infer(r#"let a = "Hi" in a.wat"#));
+            assert_snapshot!(infer(r"\r -> r.x + r.y"));
         }
 
         #[test]
