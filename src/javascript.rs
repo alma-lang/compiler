@@ -244,7 +244,7 @@ fn generate_definitions(
                 generate_let(indent, code, pattern, expression, strings)
             }
             None => {
-                // TODO: generate null definition
+                ()
             }
         }
     }

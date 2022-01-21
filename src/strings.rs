@@ -8,7 +8,6 @@ pub struct Strings(StringInterner<Symbol, DefaultBackend<Symbol>, FnvBuildHasher
 
 impl Strings {
     pub fn new() -> Self {
-        // TODO: Test other hashers and capacity
         Strings(StringInterner::new())
     }
 
