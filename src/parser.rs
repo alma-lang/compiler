@@ -235,7 +235,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Export>> {
-        if let None = self.match_token(TT::Exposing) {
+        if self.match_token(TT::Exposing).is_none() {
             return Ok(vec![]);
         }
 
@@ -329,7 +329,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self_.expected_but_found_error("Expected an identifier of the module to import")
             })?;
 
-            let alias = if let Some(_) = self.match_token(TT::As) {
+            let alias = if self.match_token(TT::As).is_some() {
                 Some(self.required(
                     |self_| Ok(self_.capitalized_identifier()),
                     |self_| {
@@ -371,7 +371,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn type_def(&mut self) -> ParseResult<'source, 'tokens, Option<TypeDefinition>> {
         let type_token = self.get_token();
 
-        if let None = self.match_token(TT::Type) {
+        if self.match_token(TT::Type).is_none() {
             return Ok(None);
         }
 
@@ -472,7 +472,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn type_record(&mut self) -> ParseResult<'source, 'tokens, Option<types::RecordType>> {
         let left_paren_token = self.get_token();
-        if let None = self.match_token(LeftBrace) {
+        if self.match_token(LeftBrace).is_none() {
             return Ok(None);
         }
 
@@ -520,7 +520,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     ));
                 };
 
-                if let None = self.match_token(TT::Pipe) {
+                if self.match_token(TT::Pipe).is_none() {
                     return Err(self.expected_but_found_error(
                         "Expected `|` between the type variable and \
                         the fields of the record (like this \
@@ -531,7 +531,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let fields = self.type_record_fields()?;
                 let last_token = self.get_token();
 
-                if let None = self.match_token(RightBrace) {
+                if self.match_token(RightBrace).is_none() {
                     return Err(Error::expected_but_found(
                         self.source,
                         last_token,
@@ -572,7 +572,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             },
         )?;
 
-        if let None = self.match_token(TT::Colon) {
+        if self.match_token(TT::Colon).is_none() {
             return Err(
                 self.expected_but_found_error("Expected a `:` between the field name and its type")
             );
@@ -608,13 +608,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn type_parens(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
         let token = self.get_token();
-        if let None = self.match_token(LeftParen) {
+        if self.match_token(LeftParen).is_none() {
             return Ok(None);
         }
 
         let type_ = self.type_function("Expected a type inside the parenthesis")?;
 
-        if let Some(_) = self.match_token(RightParen) {
+        if self.match_token(RightParen).is_some() {
             Ok(Some(type_))
         } else {
             Err(Error::expected_but_found(
@@ -709,7 +709,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     definitions,
                     type_definitions,
                 )
-            } else if let Some(_) = self.match_token(TT::Eof) {
+            } else if self.match_token(TT::Eof).is_some() {
                 Ok((modules, definitions, type_definitions))
             } else {
                 Err(self.expected_but_found_error(
@@ -718,9 +718,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     `type User = LoggedIn | Anon`",
                 ))
             }
-        } else if let Some(_) = self.match_token(TT::Eof) {
-            Ok((modules, definitions, type_definitions))
-        } else if self.current_token_outside_indent_for_module_definitions(top_level, module_token)
+        } else if self.match_token(TT::Eof).is_some()
+            || self.current_token_outside_indent_for_module_definitions(top_level, module_token)
         {
             Ok((modules, definitions, type_definitions))
         } else {
@@ -770,7 +769,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn let_(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
         let let_token = self.get_token();
-        if let None = self.match_token(TT::Let) {
+        if self.match_token(TT::Let).is_none() {
             return Ok(None);
         }
 
@@ -789,7 +788,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             },
         )?;
 
-        if !self.match_token(TT::In).is_some()
+        if self.match_token(TT::In).is_none()
             && !self.is_token_after_line_and_same_indent_as(let_token)
         {
             return Err(self.expected_but_found_error(
@@ -848,7 +847,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 _,
                             )
                             | Definition::Lambda(identifier, _)
-                                if &identifier.value == &signature.name.value =>
+                                if identifier.value == signature.name.value =>
                             {
                                 true
                             }
@@ -863,7 +862,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     None => Ok(None),
                 }
             }
-            _ => Ok(self.binding()?.map(|b| TypedDefinition::Untyped(b))),
+            _ => Ok(self.binding()?.map(TypedDefinition::Untyped)),
         }
     }
 
@@ -911,7 +910,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         Ok(definition)
     }
     fn binding_rhs(&mut self) -> ParseResult<'source, 'tokens, Expression> {
-        if let None = self.match_token(TT::Equal) {
+        if self.match_token(TT::Equal).is_none() {
             return Err(self.expected_but_found_error(
                 "Expected an = and an expression \
                 for the right side of the definition",
@@ -928,7 +927,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn if_(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
         let token = self.get_token();
 
-        if let None = self.match_token(TT::If) {
+        if self.match_token(TT::If).is_none() {
             return Ok(None);
         }
 
@@ -939,7 +938,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             )
         })?;
 
-        if let None = self.match_token(TT::Then) {
+        if self.match_token(TT::Then).is_none() {
             return Err(self.expected_but_found_error(
                 "Expected the keyword `then` and \
                 an expression to parse the if expression",
@@ -953,7 +952,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             )
         })?;
 
-        if let None = self.match_token(TT::Else) {
+        if self.match_token(TT::Else).is_none() {
             return Err(
                 self.expected_but_found_error("Expected the `else` branch of the if expression")
             );
@@ -983,7 +982,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn lambda(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
         let token = self.get_token();
 
-        if let None = self.match_token(Backslash) {
+        if self.match_token(Backslash).is_none() {
             return Ok(None);
         }
 
@@ -991,7 +990,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             self_.expected_but_found_error("Expected a list of parameters")
         })?;
 
-        if let None = self.match_token(Arrow) {
+        if self.match_token(Arrow).is_none() {
             return Err(self.expected_but_found_error(
                 "Expected a `->` arrow after the list of parameters for the function",
             ));
@@ -1021,7 +1020,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     fn pattern(&mut self) -> ParseResult<'source, 'tokens, Option<Pattern>> {
         let token = self.get_token();
 
-        if let Some(_) = self.match_token(TT::Underscore) {
+        if self.match_token(TT::Underscore).is_some() {
             Ok(Some(Node::new(Pattern_::Hole, token, token)))
         } else if let Some(identifier) = self.identifier() {
             Ok(Some(Node::new(
@@ -1375,7 +1374,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                             )
                         })?;
 
-                        if let None = self.match_token(Pipe) {
+                        if self.match_token(Pipe).is_none() {
                             return Err(self.expected_but_found_error(
                                 "Expected `|` between the record and \
                                 the fields to update (like this \
@@ -1416,7 +1415,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self_.expected_but_found_error("Expected an expression inside the parenthesis")
                 })?;
 
-                if let Some(_) = self.match_token(RightParen) {
+                if self.match_token(RightParen).is_some() {
                     Ok(Some(expr))
                 } else {
                     Err(Error::expected_but_found(

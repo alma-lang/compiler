@@ -115,7 +115,6 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
             }
             None => {
                 // Modules are already in scope, no need to print anything
-                ()
             }
         }
 
@@ -198,8 +197,6 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                             }
                             line(code, indent, "}");
                         }
-
-                        line(code, indent, "}");
                     } else {
                         indented(code, indent, "let ");
                         code.push_str(constructor_name);
@@ -214,8 +211,9 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                                 writeln!(code, "_{}: null,", i).unwrap();
                             }
                         }
-                        line(code, indent, "}");
                     }
+
+                    line(code, indent, "}");
                 }
             }
             types::TypeDefinitionType::Record(_) => (),
@@ -243,9 +241,7 @@ fn generate_definitions(
             Some(Definition::Pattern(pattern, expression)) => {
                 generate_let(indent, code, pattern, expression, strings)
             }
-            None => {
-                ()
-            }
+            None => (),
         }
     }
 }

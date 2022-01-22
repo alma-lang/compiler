@@ -213,7 +213,7 @@ impl Type {
                             for (k, v) in fields.map() {
                                 all_fields.insert(*k, Rc::clone(v));
                             }
-                            return all_fields;
+                            all_fields
                         }
                         RecordExt(fields, ext) => {
                             for (k, v) in fields.map() {

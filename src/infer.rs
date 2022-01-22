@@ -778,8 +778,8 @@ fn unify_rec<'ast, T>(
 fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
     let signature = find(signature);
     let inferred = find(inferred);
-    let signature = flatten_record(&signature).unwrap_or_else(|| signature);
-    let inferred = flatten_record(&inferred).unwrap_or_else(|| inferred);
+    let signature = flatten_record(&signature).unwrap_or(signature);
+    let inferred = flatten_record(&inferred).unwrap_or(inferred);
 
     match (&*signature, &*inferred) {
         (Named(_, _, args), Named(_, _, args2)) => {
@@ -996,7 +996,7 @@ pub fn infer<'interfaces, 'ast>(
                 };
 
                 let mut imported_env = (*imported.definitions).clone();
-                for (_type_name, constructors) in &imported.type_constructors {
+                for constructors in imported.type_constructors.values() {
                     for (constructor_name, constructor_type) in constructors.map() {
                         imported_env.insert(*constructor_name, Rc::clone(constructor_type));
                     }
@@ -1482,8 +1482,7 @@ fn infer_rec<'ast>(
                     strings.resolve(module.full_name),
                     strings.resolve(x.name())
                 );
-                let full_name = strings.get_or_intern(full_name);
-                full_name
+                strings.get_or_intern(full_name)
             } else {
                 x.name()
             };
@@ -1505,7 +1504,7 @@ fn infer_rec<'ast>(
          *
          *     t0 = infer f
          *     targs = map infer args
-         * 
+         *
          * Unify the function type of targs -> t' with the inferred f type
          *
          *     t' = new_var ()
