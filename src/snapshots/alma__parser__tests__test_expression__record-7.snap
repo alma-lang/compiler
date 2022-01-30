@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2204
+assertion_line: 2426
 expression: "parse(\"{ x : 5 , }\")"
 
 ---
@@ -10,13 +10,15 @@ Input:
 
 Result:
 
-1:10: Expected an identifier for the name of the field in the record, but instead found: `}`
+:1:10
+
+Expected an identifier for the name of the field in the record, but instead found: `}`
 
   1│  { x : 5 , }
    │            ↑
 
 Error {
-    message: "1:10: Expected an identifier for the name of the field in the record, but instead found: `}`\n\n  1│  { x : 5 , }\n   │            ↑",
+    kind: InvalidRecordFieldKey,
     token: Token {
         kind: RightBrace,
         position: 10,

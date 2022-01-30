@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2094
+assertion_line: 2292
 expression: "parse(\"\\\nlet x = a\n  x\")"
 
 ---
@@ -11,14 +11,16 @@ let x = a
 
 Result:
 
-2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: `[End of file]`
+:2:3
+
+Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: `[End of file]`
 
   1│  let x = a
   2│    x
    │     ↑
 
 Error {
-    message: "2:3: Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: `[End of file]`\n\n  1│  let x = a\n  2│    x\n   │     ↑",
+    kind: InvalidLetBodyIndent,
     token: Token {
         kind: Eof,
         position: 13,

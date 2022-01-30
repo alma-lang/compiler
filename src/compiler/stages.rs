@@ -91,8 +91,8 @@ fn parse_file<'source>(
 
     let mut module_names = vec![];
 
-    let (module, submodules) =
-        parser::parse(source, &tokens, strings).map_err(|error| vec![error.to_string(source)])?;
+    let (module, submodules) = parser::parse(source, &tokens, strings)
+        .map_err(|error| vec![error.to_string(source, strings)])?;
 
     for module in submodules {
         // Add all submodules to queue

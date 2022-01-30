@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2213
+assertion_line: 2435
 expression: "parse(\"a. b\")"
 
 ---
@@ -10,13 +10,15 @@ a. b
 
 Result:
 
-1:1: A property access must have the dot and identifier together, like this `a.b.c`
+:1:1
+
+A property access must have the dot and identifier together, like this `a.b.c`
 
   1│  a. b
    │   ↑
 
 Error {
-    message: "1:1: A property access must have the dot and identifier together, like this `a.b.c`\n\n  1│  a. b\n   │   ↑",
+    kind: InvalidPropertyAccessSeparator,
     token: Token {
         kind: Dot,
         position: 1,

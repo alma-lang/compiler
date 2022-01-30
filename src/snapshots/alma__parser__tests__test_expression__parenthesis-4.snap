@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2022
+assertion_line: 2244
 expression: "parse(\"(((1))))\")"
 
 ---
@@ -10,13 +10,15 @@ Input:
 
 Result:
 
-1:7: Expected the end of input, but instead found: `)`
+:1:7
+
+Expected the end of input, but instead found: `)`
 
   1│  (((1))))
    │         ↑
 
 Error {
-    message: "1:7: Expected the end of input, but instead found: `)`\n\n  1│  (((1))))\n   │         ↑",
+    kind: InvalidEndOfInput,
     token: Token {
         kind: RightParen,
         position: 7,

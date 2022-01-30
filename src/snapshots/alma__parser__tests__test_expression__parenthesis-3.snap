@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2021
+assertion_line: 2243
 expression: "parse(\"(((1))\")"
 
 ---
@@ -10,13 +10,25 @@ Input:
 
 Result:
 
-1:6: Expected `)` after parenthesized expression, but instead found: `[End of file]`
+:1:6
+
+Expected `)` after parenthesized expression, but instead found: `[End of file]`
 
   1│  (((1))
-   │  ↑
+   │        ↑
 
 Error {
-    message: "1:6: Expected `)` after parenthesized expression, but instead found: `[End of file]`\n\n  1│  (((1))\n   │  ↑",
+    kind: InvalidParenthesizedExpressionLastDelimiter(
+        Token {
+            kind: LeftParen,
+            position: 0,
+            end_position: 1,
+            lexeme: "(",
+            line: 1,
+            column: 0,
+            indent: 0,
+        },
+    ),
     token: Token {
         kind: Eof,
         position: 6,

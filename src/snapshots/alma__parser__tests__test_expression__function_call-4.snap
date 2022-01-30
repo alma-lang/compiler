@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2035
+assertion_line: 2257
 expression: "parse(\"fun\\narg\")"
 
 ---
@@ -11,14 +11,16 @@ arg
 
 Result:
 
-2:0: Expected the end of input, but instead found: `arg`
+:2:0
+
+Expected the end of input, but instead found: `arg`
 
   1│  fun
   2│  arg
    │  ↑↑↑
 
 Error {
-    message: "2:0: Expected the end of input, but instead found: `arg`\n\n  1│  fun\n  2│  arg\n   │  ↑↑↑",
+    kind: InvalidEndOfInput,
     token: Token {
         kind: Identifier,
         position: 4,

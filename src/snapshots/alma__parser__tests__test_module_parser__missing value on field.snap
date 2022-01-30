@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2654
+assertion_line: 2876
 expression: "parse(\"\nmodule Test\n\ntype Fruit = { name }\n\")"
 
 ---
@@ -14,7 +14,9 @@ type Fruit = { name }
 
 Result:
 
-4:20: Expected `|` between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: `}`
+:4:20
+
+Expected `|` between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: `}`
 
   2│  module Test
   3│  
@@ -22,7 +24,7 @@ Result:
    │                      ↑
 
 Error {
-    message: "4:20: Expected `|` between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: `}`\n\n  2│  module Test\n  3│  \n  4│  type Fruit = { name }\n   │                      ↑",
+    kind: InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
     token: Token {
         kind: RightBrace,
         position: 34,

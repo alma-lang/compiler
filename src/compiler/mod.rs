@@ -56,8 +56,8 @@ pub fn compile_repl_entry(
             .join("\n\n")
     })?;
 
-    let entry =
-        parser::parse_repl(source, &tokens, strings).map_err(|error| error.to_string(source))?;
+    let entry = parser::parse_repl(source, &tokens, strings)
+        .map_err(|error| error.to_string(source, strings))?;
 
     let mut errors = vec![];
 

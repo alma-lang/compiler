@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2202
+assertion_line: 2400
 expression: "parse(\"{ Sneaky : 5 }\")"
 
 ---
@@ -10,13 +10,15 @@ Input:
 
 Result:
 
-1:9: Expected `|` between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`
+:1:9
+
+Expected a record literal `{ x = 1, y = 2 }`or a record update `{ record | x = 5, y = 4 }`, but instead found: `:`
 
   1│  { Sneaky : 5 }
    │           ↑
 
 Error {
-    message: "1:9: Expected `|` between the record and the fields to update (like this `{ record | field = 5 }`), but instead found: `:`\n\n  1│  { Sneaky : 5 }\n   │           ↑",
+    kind: InvalidRecordFieldsOrExtensibleRecordExpression,
     token: Token {
         kind: Colon,
         position: 9,

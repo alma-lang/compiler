@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2126
+assertion_line: 2348
 expression: "parse(\"\\\nlet\n  x = a\n  x\nin\nx\")"
 
 ---
@@ -14,7 +14,9 @@ x
 
 Result:
 
-4:0: Expected an `=` sign or list of parameters for the definition of `x`, but instead found: `in`
+:4:0
+
+Expected an `=` sign or list of parameters for the definition of `x`, but instead found: `in`
 
   2│    x = a
   3│    x
@@ -23,7 +25,13 @@ Result:
   5│  x
 
 Error {
-    message: "4:0: Expected an `=` sign or list of parameters for the definition of `x`, but instead found: `in`\n\n  2│    x = a\n  3│    x\n  4│  in\n   │  ↑↑\n  5│  x",
+    kind: InvalidLetBindingParametersOrEqualSeparator(
+        Identifier_ {
+            name: SymbolU32 {
+                value: 1,
+            },
+        },
+    ),
     token: Token {
         kind: In,
         position: 16,

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2402
+assertion_line: 2624
 expression: "parse(\"\\\nmodule Test exposing a, b\n\na = 1\n\nb = True\")"
 
 ---
@@ -14,7 +14,9 @@ b = True
 
 Result:
 
-1:21: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `a`
+:1:21
+
+Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `a`
 
   1│  module Test exposing a, b
    │                       ↑
@@ -22,7 +24,7 @@ Result:
   3│  a = 1
 
 Error {
-    message: "1:21: Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `a`\n\n  1│  module Test exposing a, b\n   │                       ↑\n  2│  \n  3│  a = 1",
+    kind: InvalidModuleExportsDelimiter,
     token: Token {
         kind: Identifier,
         position: 21,

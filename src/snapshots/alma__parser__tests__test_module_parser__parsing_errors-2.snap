@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2307
+assertion_line: 2529
 expression: "parse(\"\\\nmodule Test\n\na = 1 + 2 + 3\n\nb = * add\n  5\")"
 
 ---
@@ -15,7 +15,9 @@ b = * add
 
 Result:
 
-5:4: Expected an expression for the right side of the definition, but instead found: `*`
+:5:4
+
+Expected an expression for the right side of the definition, but instead found: `*`
 
   3│  a = 1 + 2 + 3
   4│  
@@ -24,7 +26,7 @@ Result:
   6│    5
 
 Error {
-    message: "5:4: Expected an expression for the right side of the definition, but instead found: `*`\n\n  3│  a = 1 + 2 + 3\n  4│  \n  5│  b = * add\n   │      ↑\n  6│    5",
+    kind: InvalidLetBindingRhs,
     token: Token {
         kind: Star,
         position: 32,

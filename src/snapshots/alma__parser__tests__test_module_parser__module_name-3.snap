@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2472
+assertion_line: 2670
 expression: "parse(\"\\\nmodule Test\n\nmodule Test.Test2\n\n    module i_am_not_PascalCase\n        test = 1\n\")"
 
 ---
@@ -16,7 +16,11 @@ module Test.Test2
 
 Result:
 
-5:11: Expected a `PascalCase` name for the module, but instead found: `i_am_not_PascalCase`
+:5:11
+
+Invalid module name 'i_am_not_PascalCase'.
+
+Module names have to be `PascalCase` and also not have extraneous characters, because they need to match the file name in the file system.
 
   3│  module Test.Test2
   4│  
@@ -25,7 +29,7 @@ Result:
   6│          test = 1
 
 Error {
-    message: "5:11: Expected a `PascalCase` name for the module, but instead found: `i_am_not_PascalCase`\n\n  3│  module Test.Test2\n  4│  \n  5│      module i_am_not_PascalCase\n   │             ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n  6│          test = 1",
+    kind: InvalidModuleNameSegment,
     token: Token {
         kind: Identifier,
         position: 43,

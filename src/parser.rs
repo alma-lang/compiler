@@ -68,58 +68,458 @@ use crate::token::{
     ● field                → IDENTIFIER ":" expression
 */
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
+enum ErrorType<'source, 'tokens> {
+    // Top level
+    InvalidReplEntry,
+    InvalidEndOfInput,
+
+    // Module definition
+    MissingModuleName,
+    InvalidModuleNameSegment,
+    MissingTopLevelModule,
+    ModuleAndFileNameMismatch(ModuleName),
+    SubmoduleAndParentModuleNameMismatch(ModuleName),
+    InvalidModuleDefinitionLhs,
+    InvalidModuleDefinition,
+
+    // Exports
+    NotEnoughModuleExports,
+    InvalidModuleExportsDelimiter,
+    InvalidModuleExportsSeparatorOrLastDelimiter,
+    InvalidModuleExport,
+    InvalidModuleExportConstructor,
+    MissingModuleExportConstructors,
+    InvalidModuleExportConstructorsSeparatorOrLastDelimiter,
+
+    // Imports
+    InvalidImportModuleName,
+    InvalidImportModuleAlias,
+
+    // Types
+    InvalidTypeDefinitionName,
+    InvalidTypeDefinitionTypeVarsOrEqualSeparator,
+    InvalidUnionTypeDefinitionConstructor,
+    MissingUnionTypeDefinitionConstructors,
+    InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
+        /* First delimiter of the record */ &'tokens Token<'source>,
+    ),
+    InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
+    InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
+    MissingRecordTypeFields,
+    InvalidRecordTypeFieldKey,
+    InvalidRecordTypeFieldType,
+    InvalidRecordTypeFieldSeparator,
+    InvalidParenthesizedTypeDelimiter(/* First delimiter */ &'tokens Token<'source>),
+    InvalidFunctionParameterType,
+    InvalidParenthesizedTypeType,
+    InvalidTypeSignatureType,
+
+    // Expressions
+    InvalidExpression,
+    MissingLetBindings,
+    InvalidLetBodyIndent,
+    InvalidLetBodyExpression,
+    InvalidLetBindingParametersOrEqualSeparator(Identifier_),
+    InvalidLetBindingSeparator,
+    InvalidLetBindingRhs,
+    InvalidIfCondition,
+    InvalidIfThen,
+    InvalidThenBranch,
+    InvalidIfElse,
+    InvalidIfElseBranch,
+    MissingLambdaParamaters,
+    InvalidLambdaArrow,
+    InvalidLambdaBody,
+    InvalidBinopRhs(/* Binop token */ &'tokens Token<'source>),
+    InvalidUnaryRhs(/* Unary op token */ &'tokens Token<'source>),
+    InvalidPropertyAccessSeparator,
+    InvalidPropertyAccessIdentifier,
+    InvalidFloat(&'tokens Token<'source>),
+    InvalidRecordFieldSeparatorOrLastDelimiter,
+    InvalidRecordFieldsOrExtensibleRecordExpression,
+    InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
+    InvalidParenthesizedExpression,
+    InvalidParenthesizedExpressionLastDelimiter(/* First delimiter */ &'tokens Token<'source>),
+    InvalidPropertyAccessLambdaWhitespace,
+    InvalidPropertyAccessLambdaIdentifier,
+    MissingRecordFields,
+    InvalidRecordFieldKey,
+    InvalidRecordFieldKeyValueSeparator,
+    InvalidRecordFieldValue,
+}
+
+use ErrorType::*;
+
+impl<'source, 'tokens> ErrorType<'source, 'tokens> {
+    pub fn get_code_pointer(&self) -> Option<&'tokens Token<'source>> {
+        match self {
+            InvalidRecordTypeFieldTypeOrLastRecordDelimiter(first_brace) => Some(first_brace),
+            InvalidParenthesizedTypeDelimiter(first_paren) => Some(first_paren),
+            _ => None,
+        }
+    }
+
+    pub fn to_string<'strings>(
+        &self,
+        error: &Error<'source, 'tokens>,
+        strings: &'strings Strings,
+    ) -> String {
+        let expected_but_found =
+            |message: &str| format!("{}, but instead found: `{}`", message, error.token.lexeme);
+
+        match self {
+            ModuleAndFileNameMismatch(name) => format!(
+                "The module name '{}' differs from the name of the file.\n\n\
+                Module names need to match the folder and file names from the \
+                file system",
+                &name.to_string(strings)
+            ),
+
+            SubmoduleAndParentModuleNameMismatch(name) => format!(
+                "The sub-module name '{}' differs from the name of the parent \
+                module.\n\nModule names need to match their parent module path \
+                names and specify their name at the end.\n\nLike this:\n\
+                \n    module Admin\
+                \n        module Admin.User\
+                \n            module Admin.User.Id\
+                \n\n",
+                &name.to_string(strings)
+            ),
+
+            MissingTopLevelModule => {
+                expected_but_found("Expected `module FileName` at the start of the file")
+            }
+
+            InvalidReplEntry => expected_but_found(
+                "Expected an import, a top level definition, \
+                or an expression",
+            ),
+
+            InvalidEndOfInput => expected_but_found("Expected the end of input"),
+
+            MissingModuleName => expected_but_found("Expected the module name"),
+
+            InvalidModuleNameSegment => format!(
+                "Invalid module name '{}'.\n\n\
+                Module names have to be `PascalCase` \
+                and also not have extraneous characters, \
+                because they need to match the file name \
+                in the file system.",
+                error.token.lexeme
+            ),
+
+            NotEnoughModuleExports => expected_but_found(
+                "Parsing the module exports expected at least \
+                one definition or type to export",
+            ),
+
+            InvalidModuleExportsSeparatorOrLastDelimiter => expected_but_found(
+                "Parsing the module exports expected a comma \
+                separated list of exports inside parenthesis",
+            ),
+
+            InvalidModuleExportsDelimiter => expected_but_found(
+                "Parsing the module exports expected a comma \
+                separated list of exports inside parenthesis",
+            ),
+
+            InvalidModuleExport => {
+                expected_but_found("Expected a function or type name from the module")
+            }
+
+            InvalidModuleExportConstructor => {
+                expected_but_found("Expected a `PascalCase` name for a constructor")
+            }
+
+            InvalidModuleExportConstructorsSeparatorOrLastDelimiter => expected_but_found(
+                "Parsing the type constructors expected a comma \
+                    separated list of constructor names inside parenthesis",
+            ),
+
+            MissingModuleExportConstructors => expected_but_found(
+                "Parsing the type constructors expected at least \
+                one inside the parens",
+            ),
+
+            InvalidImportModuleName => {
+                expected_but_found("Expected an identifier of the module to import")
+            }
+
+            InvalidImportModuleAlias => {
+                expected_but_found("Expected an identifier for the alias of the module")
+            }
+
+            InvalidTypeDefinitionName => {
+                expected_but_found("Expected a `PascalCase` name for the type")
+            }
+
+            InvalidTypeDefinitionTypeVarsOrEqualSeparator => expected_but_found(
+                "Expected type variable names like `a` or a `=` sign \
+                between the name and the type definition",
+            ),
+
+            InvalidUnionTypeDefinitionConstructor => expected_but_found(
+                "Expected a constructor for the type like `type User = User Int`",
+            ),
+
+            MissingUnionTypeDefinitionConstructors => expected_but_found(
+                "Expected at least one constructor \
+                for the type like `type User = User Int`",
+            ),
+
+            InvalidRecordTypeFieldTypeOrLastRecordDelimiter(_first_delimiter) => {
+                expected_but_found(
+                    // TODO: This error message can be better and also be triggered when there is
+                    // an issue with the , separator while adding more record fields
+                    "Expected `}` to close a record literal",
+                )
+            }
+
+            InvalidRecordTypeFieldKeyOrExtensibleRecordVariable => expected_but_found(
+                "Expected a record literal `{ x : Int, y : Int }`\
+                    or an extensible record `{ a | x : Int, y : Int }`",
+            ),
+
+            InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator => {
+                // TODO: This error message can trigger also when there is an issue with the
+                // : separator between fields, so it isn't only about extensible records. Should be
+                // made a bit more expressive.
+                expected_but_found(
+                    "Expected `|` between the type variable and \
+                    the fields of the record (like this \
+                    `{ a | field : Type }`)",
+                )
+            }
+
+            MissingRecordTypeFields => expected_but_found(
+                // TODO: This error message should talk about having at least one field with value,
+                // it is too generic and can be improved
+                "Expected a record field (like this `{ field : Type }`)",
+            ),
+
+            InvalidRecordTypeFieldKey => expected_but_found(
+                "Expected a camelCase identifier for \
+                the field name in the record",
+            ),
+
+            InvalidRecordTypeFieldType => {
+                expected_but_found("Expected a type for the field in the record")
+            }
+
+            InvalidRecordTypeFieldSeparator => expected_but_found(
+                "Expected a camelCase identifier for \
+                the field name in the record",
+            ),
+
+            InvalidParenthesizedTypeDelimiter(_first_paren) => expected_but_found(
+                // TODO: This error message can be better and show the whole parenthesized
+                // expression
+                "Expected `)` after parenthesized type",
+            ),
+
+            InvalidFunctionParameterType =>
+            // Improve this message, very generic
+            {
+                expected_but_found("Expected a type")
+            }
+
+            InvalidParenthesizedTypeType => {
+                expected_but_found("Expected a type inside the parenthesis")
+            }
+
+            InvalidTypeSignatureType => {
+                expected_but_found("Expected a type for the type signature")
+            }
+
+            InvalidModuleDefinitionLhs => expected_but_found(
+                "Expected the left side of a definition like `n = 5` \
+                or `add x y = x + y` or a type definition like \
+                `type User = LoggedIn | Anon`",
+            ),
+
+            InvalidModuleDefinition => expected_but_found(
+                "Expected a definition like `n = 5` \
+                or `add x y = x + y` or a type definition like \
+                `type User = LoggedIn | Anon`",
+            ),
+
+            InvalidExpression => expected_but_found("Expected an expression"),
+
+            MissingLetBindings => expected_but_found(
+                // TODO: This error message can be improved, may show up when there were no
+                // bindings in the same line or indented from the let, which means they could be
+                // badly indentend below. At the very least it can be made more useful
+                "Expected a pattern for the left side of the let expression",
+            ),
+
+            InvalidLetBodyIndent => expected_but_found(
+                "Expected the let definition to be followed by another \
+                expression in the next line and same indentation",
+            ),
+
+            InvalidLetBodyExpression => {
+                expected_but_found("Expected an expression for the body of the let bindings")
+            }
+
+            InvalidLetBindingParametersOrEqualSeparator(name) => expected_but_found(&format!(
+                "Expected an `=` sign or list of parameters for the definition of `{}`",
+                name.to_string(strings)
+            )),
+
+            InvalidLetBindingSeparator => expected_but_found(
+                "Expected an = and an expression \
+                for the right side of the definition",
+            ),
+
+            InvalidLetBindingRhs => {
+                expected_but_found("Expected an expression for the right side of the definition")
+            }
+
+            InvalidIfCondition => expected_but_found(
+                "Expected an expression for the condition \
+                in the if expression (eg: if True then 1 else 2)",
+            ),
+
+            InvalidIfThen => expected_but_found(
+                "Expected the keyword `then` and \
+                an expression to parse the if expression",
+            ),
+
+            InvalidThenBranch => expected_but_found(
+                "Expected an expression for the first\
+                branch of the if (eg: if True then \"Hi\" else \"Ho\")",
+            ),
+
+            // TODO: Improve error message
+            InvalidIfElse => expected_but_found("Expected the `else` branch of the if expression"),
+
+            InvalidIfElseBranch => expected_but_found(
+                "Expected an expression for the else\
+                branch of the if (eg: if True then \"Hi\" else \"Ho\")",
+            ),
+
+            MissingLambdaParamaters => expected_but_found("Expected a list of parameters"),
+
+            InvalidLambdaArrow => expected_but_found(
+                "Expected a `->` arrow after the list of parameters for the function",
+            ),
+
+            InvalidLambdaBody => {
+                expected_but_found("Expected an expression for the body of the function")
+            }
+
+            InvalidBinopRhs(op) => expected_but_found(&format!(
+                "Expected an expression after the binary operator `{}`",
+                op.lexeme
+            )),
+
+            InvalidUnaryRhs(op) => expected_but_found(&format!(
+                "Expected an expression after the unary operator `{}`",
+                op.lexeme
+            )),
+
+            InvalidPropertyAccessSeparator => "A property access must have the dot \
+                and identifier together, \
+                like this `a.b.c`"
+                .to_owned(),
+
+            InvalidPropertyAccessIdentifier => "Expected an identifier after a \
+                dot for the property access"
+                .to_owned(),
+
+            InvalidFloat(token) => format!("Failed to parse number token `{}`", token.lexeme),
+
+            InvalidRecordFieldSeparatorOrLastDelimiter => {
+                expected_but_found("Expected `}` to close a record literal")
+            }
+
+            InvalidRecordFieldsOrExtensibleRecordExpression => expected_but_found(
+                "Expected a record literal `{ x = 1, y = 2 }`\
+                or a record update `{ record | x = 5, y = 4 }`",
+            ),
+
+            InvalidExtensibleRecordFieldSeparatorOrLastDelimiter =>
+            // TODO: This error message can be better
+            {
+                expected_but_found("Expected `}` to close a record update expression")
+            }
+
+            InvalidParenthesizedExpression => {
+                expected_but_found("Expected an expression inside the parenthesis")
+            }
+
+            InvalidParenthesizedExpressionLastDelimiter(_first_paren) =>
+            // TODO: This error message can be better
+            {
+                expected_but_found("Expected `)` after parenthesized expression")
+            }
+
+            InvalidPropertyAccessLambdaWhitespace => "A property access must have the dot \
+                and identifier together, like this `.name`"
+                .to_owned(),
+
+            InvalidPropertyAccessLambdaIdentifier => "Expected an identifier after a \
+                dot for the property access"
+                .to_owned(),
+
+            MissingRecordFields => {
+                expected_but_found("Expected a record field (like this `{ field = 5 }`)")
+            }
+
+            InvalidRecordFieldKey => {
+                expected_but_found("Expected an identifier for the name of the field in the record")
+            }
+
+            InvalidRecordFieldKeyValueSeparator => expected_but_found(
+                "Expected a `:` separating the name of \
+                the field and the value in the record",
+            ),
+
+            InvalidRecordFieldValue => expected_but_found(
+                "Expected an expression for the value \
+                of the field in the record",
+            ),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Error<'source, 'tokens> {
-    message: String,
-    token: &'tokens Token<'source>,
+    kind: ErrorType<'source, 'tokens>,
+    pub token: &'tokens Token<'source>,
 }
 
 impl<'source, 'tokens> Error<'source, 'tokens> {
-    fn new(
+    fn new(token: &'tokens Token<'source>, kind: ErrorType<'source, 'tokens>) -> Self {
+        Self { token, kind }
+    }
+
+    pub fn to_string<'strings>(
+        &self,
         source: &'source Source,
-        token: &'tokens Token<'source>,
-        point_at_token: Option<&'tokens Token>,
-        message: &str,
-    ) -> Self {
-        let (position, end, line_number) = match point_at_token {
-            Some(t) => (t.position, t.end_position, t.line),
-            None => (token.position, token.end_position, token.line),
-        };
+        strings: &'strings Strings,
+    ) -> String {
+        let message = self.kind.to_string(self, strings);
+        let point_at_token = self.kind.get_code_pointer().unwrap_or(self.token);
 
         let message = format!(
-            "{}:{}: {}\n\n{}",
-            token.line,
-            token.column,
+            "{}\n\n{}",
             message,
             source
-                .lines_report_at_position_with_pointer(position, Some(end), line_number,)
+                .lines_report_at_position_with_pointer(
+                    point_at_token.position,
+                    Some(point_at_token.end_position),
+                    point_at_token.line,
+                )
                 .unwrap()
         );
-
-        Self { message, token }
-    }
-
-    fn expected_but_found(
-        source: &'source Source,
-        token: &'tokens Token<'source>,
-        point_at_token: Option<&'tokens Token>,
-        message: &str,
-    ) -> Self {
-        Self::new(
-            source,
-            token,
-            point_at_token,
-            &format!("{}, but instead found: `{}`", message, token.lexeme),
-        )
-    }
-
-    pub fn to_string(&self, source: &'source Source) -> String {
         format!(
             "{}:{}:{}\n\n{}",
             source.name(),
             self.token.line,
             self.token.column,
-            self.message
+            message
         )
     }
 }
@@ -139,8 +539,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let module = self.module(None)?;
         match module {
             Some(mut modules) => self.eof((modules.pop().unwrap(), modules)),
-            None => Err(self
-                .expected_but_found_error("Expected `module FileName` at the start of the file")),
+            None => Err(Error::new(self.get_token(), MissingTopLevelModule)),
         }
     }
 
@@ -150,10 +549,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             None => match self.binding()? {
                 Some(definition) => ReplEntry::Definition(definition),
                 None => ReplEntry::Expression(self.required(Self::expression, |self_| {
-                    self_.expected_but_found_error(
-                        "Expected an import, a top level definition, \
-                        or an expression",
-                    )
+                    Error::new(self_.get_token(), InvalidReplEntry)
                 })?),
             },
         };
@@ -165,7 +561,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let eof_token = self.get_token();
         match eof_token.kind {
             TT::Eof => Ok(result),
-            _ => Err(self.expected_but_found_error("Expected the end of input")),
+            _ => Err(Error::new(self.get_token(), InvalidEndOfInput)),
         }
     }
 
@@ -176,40 +572,20 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let top_level = !matches!(parent_module, Some(_));
 
         if let Some(module_token) = self.match_token(TT::Module) {
-            let name = self.required(Self::module_name, |self_| {
-                self_.expected_but_found_error("Expected the module name")
-            })?;
+            let name = self.module_name(|| MissingModuleName)?;
 
             if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                 return Err(Error::new(
-                    self.source,
                     module_token,
-                    None,
-                    &format!(
-                        "The module name '{}' differs from the name of the file.\n\n\
-                                    Module names need to match the folder and file names from the \
-                                    file system",
-                        &name.to_string(self.strings)
-                    ),
+                    ErrorType::ModuleAndFileNameMismatch(name),
                 ));
             } else if parent_module
                 .map(|m| !name.valid_in_parent_module(m))
                 .unwrap_or(false)
             {
                 return Err(Error::new(
-                    self.source,
                     module_token,
-                    None,
-                    &format!(
-                        "The sub-module name '{}' differs from the name of the parent \
-                            module.\n\nModule names need to match their parent module path \
-                                    names and specify their name at the end.\n\nLike this:\n\
-                                    \n    module Admin\
-                                    \n        module Admin.User\
-                                    \n            module Admin.User.Id\
-                                    \n\n",
-                        &name.to_string(self.strings)
-                    ),
+                    ErrorType::SubmoduleAndParentModuleNameMismatch(name),
                 ));
             }
 
@@ -243,27 +619,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Comma,
             (TT::LeftParen, TT::RightParen),
             Self::export,
+            |self_| Error::new(self_.get_token(), NotEnoughModuleExports),
             |self_| {
-                self_.expected_but_found_error(
-                    "Parsing the module exports expected at least \
-                    one definition or type to export",
-                )
-            },
-            |self_| {
-                self_.expected_but_found_error(
-                    "Parsing the module exports expected a comma \
-                    separated list of exports inside parenthesis",
+                Error::new(
+                    self_.get_token(),
+                    InvalidModuleExportsSeparatorOrLastDelimiter,
                 )
             },
         )?;
 
-        if exports.is_empty() {
-            Err(self.expected_but_found_error(
-                "Parsing the module exports expected a comma \
-                separated list of exports inside parenthesis",
-            ))
-        } else {
+        if let Some(exports) = exports {
             Ok(exports)
+        } else {
+            Err(Error::new(self.get_token(), InvalidModuleExportsDelimiter))
         }
     }
 
@@ -275,7 +643,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         } else if let Some(export) = self.export_type()? {
             Ok(export)
         } else {
-            Err(self.expected_but_found_error("Expected a function or type name from the module"))
+            Err(Error::new(self.get_token(), InvalidModuleExport))
         }
     }
     fn export_type(&mut self) -> ParseResult<'source, 'tokens, Option<Export>> {
@@ -286,26 +654,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 |self_| {
                     self_.required(
                         |self_| Ok(self_.capitalized_identifier()),
-                        |self_| {
-                            self_.expected_but_found_error(
-                                "Expected a `PascalCase` name for a constructor",
-                            )
-                        },
+                        |self_| Error::new(self_.get_token(), InvalidModuleExportConstructor),
                     )
                 },
-                |self_: &mut Self| {
-                    self_.expected_but_found_error(
-                        "Parsing the type constructors expected at least \
-                        one inside the parens",
-                    )
-                },
-                |self_: &mut Self| {
-                    self_.expected_but_found_error(
-                        "Parsing the type constructors expected a comma \
-                        separated list of constructor names inside parenthesis",
+                |self_| Error::new(self_.get_token(), MissingModuleExportConstructors),
+                |self_| {
+                    Error::new(
+                        self_.get_token(),
+                        InvalidModuleExportConstructorsSeparatorOrLastDelimiter,
                     )
                 },
             )?;
+
+            let constructors = constructors.unwrap_or_else(|| vec![]);
 
             let line = export.line;
             let column = export.column;
@@ -325,18 +686,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn import(&mut self) -> ParseResult<'source, 'tokens, Option<Import>> {
         if let Some(import_token) = self.match_token(TT::Import) {
-            let module_name = self.required(Self::module_name, |self_| {
-                self_.expected_but_found_error("Expected an identifier of the module to import")
-            })?;
+            let module_name = self.module_name(|| InvalidImportModuleName)?;
 
             let alias = if self.match_token(TT::As).is_some() {
                 Some(self.required(
                     |self_| Ok(self_.capitalized_identifier()),
-                    |self_| {
-                        self_.expected_but_found_error(
-                            "Expected an identifier for the alias of the module",
-                        )
-                    },
+                    |self_| Error::new(self_.get_token(), InvalidImportModuleAlias),
                 )?)
             } else {
                 None
@@ -377,7 +732,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let name = self.required(
             |self_| Ok(self_.capitalized_identifier()),
-            |self_| self_.expected_but_found_error("Expected a `PascalCase` name for the type"),
+            |self_| Error::new(self_.get_token(), InvalidTypeDefinitionName),
         )?;
 
         let vars = self.many(|self_| match self_.identifier() {
@@ -388,9 +743,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self_.advance();
                     Ok(None)
                 } else {
-                    Err(self_.expected_but_found_error(
-                        "Expected type variable names like `a` or a `=` sign \
-                        between the name and the type definition",
+                    Err(Error::new(
+                        self_.get_token(),
+                        InvalidTypeDefinitionTypeVarsOrEqualSeparator,
                     ))
                 }
             }
@@ -424,17 +779,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Pipe)),
             |self_| {
                 self_.required(Self::type_constructor, |self_| {
-                    self_.expected_but_found_error(
-                        "Expected a constructor for the type like `type User = User Int`",
-                    )
+                    Error::new(self_.get_token(), InvalidUnionTypeDefinitionConstructor)
                 })
             },
-            |self_| {
-                self_.expected_but_found_error(
-                    "Expected at least one constructor \
-                    for the type like `type User = User Int`",
-                )
-            },
+            |self_| Error::new(self_.get_token(), MissingUnionTypeDefinitionConstructors),
         )?;
 
         Ok(branches)
@@ -471,7 +819,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_record(&mut self) -> ParseResult<'source, 'tokens, Option<types::RecordType>> {
-        let left_paren_token = self.get_token();
+        let left_brace_token = self.get_token();
         if self.match_token(LeftBrace).is_none() {
             return Ok(None);
         }
@@ -485,7 +833,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self.advance();
                 Ok(Some(types::RecordType::Record(Node::new(
                     types::Record_::new(vec![]),
-                    left_paren_token,
+                    left_brace_token,
                     next_token,
                 ))))
             }
@@ -497,15 +845,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 if let Some(last_token) = self.match_token(RightBrace) {
                     Ok(Some(types::RecordType::Record(Node::new(
                         types::Record_::new(fields),
-                        left_paren_token,
+                        left_brace_token,
                         last_token,
                     ))))
                 } else {
-                    Err(Error::expected_but_found(
-                        self.source,
+                    Err(Error::new(
                         self.get_token(),
-                        Some(left_paren_token),
-                        "Expected `}` to close a record literal",
+                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token),
                     ))
                 }
             }
@@ -514,17 +860,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let extension = if let Some(identifier) = self.identifier() {
                     identifier
                 } else {
-                    return Err(self.expected_but_found_error(
-                        "Expected a record literal `{ x : Int, y : Int }`\
-                        or an extensible record `{ a | x : Int, y : Int }`",
+                    return Err(Error::new(
+                        self.get_token(),
+                        InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
                     ));
                 };
 
                 if self.match_token(TT::Pipe).is_none() {
-                    return Err(self.expected_but_found_error(
-                        "Expected `|` between the type variable and \
-                        the fields of the record (like this \
-                        `{ a | field : Type }`)",
+                    return Err(Error::new(
+                        self.get_token(),
+                        InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
                     ));
                 }
 
@@ -532,17 +877,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let last_token = self.get_token();
 
                 if self.match_token(RightBrace).is_none() {
-                    return Err(Error::expected_but_found(
-                        self.source,
-                        last_token,
-                        Some(left_paren_token),
-                        "Expected `}` to close a record type",
+                    return Err(Error::new(
+                        self.get_token(),
+                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token),
                     ));
                 }
 
                 Ok(Some(types::RecordType::RecordExt(Node::new(
                     types::RecordExt_::new(extension, fields),
-                    left_paren_token,
+                    left_brace_token,
                     last_token,
                 ))))
             }
@@ -553,32 +896,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::type_record_field,
-            |self_| {
-                self_.expected_but_found_error(
-                    "Expected a record field (like this `{ field : Type }`)",
-                )
-            },
+            |self_| Error::new(self_.get_token(), MissingRecordTypeFields),
         )
     }
 
     fn type_record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Type)> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
-            |self_| {
-                self_.expected_but_found_error(
-                    "Expected a camelCase identifier for \
-                    the field name in the record",
-                )
-            },
+            |self_| Error::new(self_.get_token(), InvalidRecordTypeFieldKey),
         )?;
 
         if self.match_token(TT::Colon).is_none() {
-            return Err(
-                self.expected_but_found_error("Expected a `:` between the field name and its type")
-            );
+            return Err(Error::new(
+                self.get_token(),
+                InvalidRecordTypeFieldSeparator,
+            ));
         }
 
-        let typ = self.type_function("Expected a type for the field in the record")?;
+        let typ = self.type_function(|| InvalidRecordTypeFieldType)?;
         Ok((identifier, typ))
     }
 
@@ -612,35 +947,37 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             return Ok(None);
         }
 
-        let type_ = self.type_function("Expected a type inside the parenthesis")?;
+        let type_ = self.type_function(|| InvalidParenthesizedTypeType)?;
 
         if self.match_token(RightParen).is_some() {
             Ok(Some(type_))
         } else {
-            Err(Error::expected_but_found(
-                self.source,
+            Err(Error::new(
                 self.get_token(),
-                Some(token),
-                "Expected `)` after parenthesized type",
+                InvalidParenthesizedTypeDelimiter(token),
             ))
         }
     }
 
-    fn type_function(&mut self, expected_type_error: &str) -> ParseResult<'source, 'tokens, Type> {
+    fn type_function(
+        &mut self,
+        on_type_parse_error: fn() -> ErrorType<'source, 'tokens>,
+    ) -> ParseResult<'source, 'tokens, Type> {
         let mut params = self.one_or_many_sep(
             // Using a comma for the parameters can be an issue because function types can be used
             // in other comma separated elements like record fields, so this type_function would
             // eat the comma that was intended for the record field.
-            // type Test = { a : x, y -> z }
-            // type Test = { a : x, y : z }
-            // type Test = { a : (x, y -> z) }
+            //     type Test = { a : x, y -> z }
+            //     type Test = { a : x, y : z }
+            //     type Test = { a : (x, y -> z) }
+            // So for now only arrows as parameter separators
             |self_| Ok(self_.match_token(TT::Arrow)),
             |self_| {
                 self_.required(Self::type_, |self_| {
-                    self_.expected_but_found_error("Expected a type")
+                    Error::new(self_.get_token(), InvalidFunctionParameterType)
                 })
             },
-            |self_| self_.expected_but_found_error(expected_type_error),
+            |self_| Error::new(self_.get_token(), on_type_parse_error()),
         )?;
 
         if params.len() == 1 {
@@ -712,22 +1049,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else if self.match_token(TT::Eof).is_some() {
                 Ok((modules, definitions, type_definitions))
             } else {
-                Err(self.expected_but_found_error(
-                    "Expected the left side of a definition like `n = 5` \
-                    or `add x y = x + y` or a type definition like \
-                    `type User = LoggedIn | Anon`",
-                ))
+                Err(Error::new(self.get_token(), InvalidModuleDefinitionLhs))
             }
         } else if self.match_token(TT::Eof).is_some()
             || self.current_token_outside_indent_for_module_definitions(top_level, module_token)
         {
             Ok((modules, definitions, type_definitions))
         } else {
-            Err(self.expected_but_found_error(
-                "Expected a definition like `n = 5` \
-                or `add x y = x + y` or a type definition like \
-                `type User = LoggedIn | Anon`",
-            ))
+            Err(Error::new(self.get_token(), InvalidModuleDefinition))
         }
     }
 
@@ -781,25 +1110,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     Ok(None)
                 }
             },
-            |self_| {
-                self_.expected_but_found_error(
-                    "Expected a pattern for the left side of the let expression",
-                )
-            },
+            |self_| Error::new(self_.get_token(), MissingLetBindings),
         )?;
 
         if self.match_token(TT::In).is_none()
             && !self.is_token_after_line_and_same_indent_as(let_token)
         {
-            return Err(self.expected_but_found_error(
-                "Expected the let definition to be followed by another \
-                expression in the next line and same indentation",
-            ));
+            return Err(Error::new(self.get_token(), InvalidLetBodyIndent));
         }
 
         let body = self.required(Self::expression, |self_| {
-            self_
-                .expected_but_found_error("Expected an expression for the body of the let bindings")
+            Error::new(self_.get_token(), InvalidLetBodyExpression)
         })?;
 
         let line = let_token.line;
@@ -824,7 +1145,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 // Skip over the colon
                 self.advance();
 
-                let typ = self.type_function("Expected a type for the type signature")?;
+                let typ = self.type_function(|| InvalidTypeSignatureType)?;
                 let signature = TypeSignature { name, typ };
 
                 // If the definition is not directly next to the signature, bail out to avoid
@@ -886,10 +1207,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
-                        self_.expected_but_found_error(&format!(
-                            "Expected an `=` sign or list of parameters for the definition of `{}`",
-                            identifier.value.to_string(self_.strings)
-                        ))
+                        Error::new(
+                            self_.get_token(),
+                            InvalidLetBindingParametersOrEqualSeparator(identifier.value.clone()),
+                        )
                     })?;
 
                     let expr = self.binding_rhs()?;
@@ -911,16 +1232,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
     fn binding_rhs(&mut self) -> ParseResult<'source, 'tokens, Expression> {
         if self.match_token(TT::Equal).is_none() {
-            return Err(self.expected_but_found_error(
-                "Expected an = and an expression \
-                for the right side of the definition",
-            ));
+            return Err(Error::new(self.get_token(), InvalidLetBindingSeparator));
         }
 
         self.required(Self::expression, |self_| {
-            self_.expected_but_found_error(
-                "Expected an expression for the right side of the definition",
-            )
+            Error::new(self_.get_token(), InvalidLetBindingRhs)
         })
     }
 
@@ -932,37 +1248,23 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let condition = self.required(Self::binary, |self_| {
-            self_.expected_but_found_error(
-                "Expected an expression for the condition \
-                in the if expression (eg: if True then 1 else 2)",
-            )
+            Error::new(self_.get_token(), InvalidIfCondition)
         })?;
 
         if self.match_token(TT::Then).is_none() {
-            return Err(self.expected_but_found_error(
-                "Expected the keyword `then` and \
-                an expression to parse the if expression",
-            ));
+            return Err(Error::new(self.get_token(), InvalidIfThen));
         }
 
         let then = self.required(Self::expression, |self_| {
-            self_.expected_but_found_error(
-                "Expected an expression for the first\
-                branch of the if (eg: if True then \"Hi\" else \"Ho\")",
-            )
+            Error::new(self_.get_token(), InvalidThenBranch)
         })?;
 
         if self.match_token(TT::Else).is_none() {
-            return Err(
-                self.expected_but_found_error("Expected the `else` branch of the if expression")
-            );
+            return Err(Error::new(self.get_token(), InvalidIfElse));
         }
 
         let else_ = self.required(Self::expression, |self_| {
-            self_.expected_but_found_error(
-                "Expected an expression for the else\
-                branch of the if (eg: if True then \"Hi\" else \"Ho\")",
-            )
+            Error::new(self_.get_token(), InvalidIfElseBranch)
         })?;
 
         let line = token.line;
@@ -987,17 +1289,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
 
         let params = self.one_or_many(Self::pattern, |self_| {
-            self_.expected_but_found_error("Expected a list of parameters")
+            Error::new(self_.get_token(), MissingLambdaParamaters)
         })?;
 
         if self.match_token(Arrow).is_none() {
-            return Err(self.expected_but_found_error(
-                "Expected a `->` arrow after the list of parameters for the function",
-            ));
+            return Err(Error::new(self.get_token(), InvalidLambdaArrow));
         }
 
         let body = self.required(Self::expression, |self_| {
-            self_.expected_but_found_error("Expected an expression for the body of the function")
+            Error::new(self_.get_token(), InvalidLambdaBody)
         })?;
 
         let line = token.line;
@@ -1071,10 +1371,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let op_node = Node::new(op, token, token);
 
             let right = self.required(Self::unary, |self_| {
-                self_.expected_but_found_error(&format!(
-                    "Expected an expression after the binary operator `{}`",
-                    &token.lexeme
-                ))
+                Error::new(self_.get_token(), InvalidBinopRhs(&token))
             })?;
 
             Ok(Some((op_node, right)))
@@ -1114,10 +1411,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }))
             }
             (None, Some(expr)) => Ok(Some(expr)),
-            (Some(_), None) => Err(self.expected_but_found_error(&format!(
-                "Expected an expression after the unary operator `{}`",
-                &token.lexeme
-            ))),
+            (Some(_), None) => Err(Error::new(self.get_token(), InvalidUnaryRhs(&token))),
             (None, None) => Ok(None),
         }
     }
@@ -1211,22 +1505,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         )))
                     }
 
-                    TT::Identifier => Err(Error::new(
-                        self.source,
-                        dot_token,
-                        None,
-                        "A property access must have the dot \
-                            and identifier together, \
-                            like this `a.b.c`",
-                    )),
+                    TT::Identifier => Err(Error::new(dot_token, InvalidPropertyAccessSeparator)),
 
-                    _ => Err(Error::new(
-                        self.source,
-                        dot_token,
-                        None,
-                        "Expected an identifier after a \
-                            dot for the property access",
-                    )),
+                    _ => Err(Error::new(dot_token, InvalidPropertyAccessIdentifier)),
                 }
             }
             _ => Ok(None),
@@ -1248,14 +1529,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             TT::Float => {
                 let lexeme = token.lexeme;
-                let n = lexeme.parse::<f64>().map_err(|_| {
-                    Error::new(
-                        self.source,
-                        token,
-                        None,
-                        &format!("Failed to parse number token `{}`", lexeme),
-                    )
-                })?;
+                let n = lexeme
+                    .parse::<f64>()
+                    .map_err(|_| Error::new(token, InvalidFloat(token)))?;
 
                 self.advance();
 
@@ -1276,7 +1552,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             }
 
             TT::CapitalizedIdentifier => {
-                let mut module = self.module_name()?.expect("Internal parser error: Just saw a capitalized identifier, how is this not a module name with parts.len() == 1?");
+                let mut module = self.module_name(|| InvalidModuleNameSegment)?;
 
                 let (module, identifier) = if module.parts.len() == 1 {
                     // Is there a normal identifier afterwards? If so it is a Module.ident, if not,
@@ -1356,11 +1632,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 right_brace_token,
                             )))
                         } else {
-                            Err(Error::expected_but_found(
-                                self.source,
+                            Err(Error::new(
                                 self.get_token(),
-                                Some(token),
-                                "Expected `}` to close a record literal",
+                                InvalidRecordFieldSeparatorOrLastDelimiter,
                             ))
                         }
                     }
@@ -1368,17 +1642,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     // Record update
                     _ => {
                         let record = self.required(Self::expression, |self_| {
-                            self_.expected_but_found_error(
-                                "Expected a record literal `{ x = 1, y = 2 }`\
-                                or a record update `{ record | x = 5, y = 4 }`",
+                            Error::new(
+                                self_.get_token(),
+                                InvalidRecordFieldsOrExtensibleRecordExpression,
                             )
                         })?;
 
                         if self.match_token(Pipe).is_none() {
-                            return Err(self.expected_but_found_error(
-                                "Expected `|` between the record and \
-                                the fields to update (like this \
-                                `{ record | field = 5 }`)",
+                            return Err(Error::new(
+                                self.get_token(),
+                                InvalidRecordFieldsOrExtensibleRecordExpression,
                             ));
                         }
 
@@ -1391,11 +1664,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 right_brace_token,
                             )))
                         } else {
-                            Err(Error::expected_but_found(
-                                self.source,
+                            Err(Error::new(
                                 self.get_token(),
-                                Some(token),
-                                "Expected `}` to close a record update expression",
+                                InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
                             ))
                         }
                     }
@@ -1412,17 +1683,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 // Parenthesized expression
                 let expr = self.required(Self::expression, |self_| {
-                    self_.expected_but_found_error("Expected an expression inside the parenthesis")
+                    Error::new(self_.get_token(), InvalidParenthesizedExpression)
                 })?;
 
                 if self.match_token(RightParen).is_some() {
                     Ok(Some(expr))
                 } else {
-                    Err(Error::expected_but_found(
-                        self.source,
+                    Err(Error::new(
                         self.get_token(),
-                        Some(token),
-                        "Expected `)` after parenthesized expression",
+                        InvalidParenthesizedExpressionLastDelimiter(token),
                     ))
                 }
             }
@@ -1450,21 +1719,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
 
                     // Dot with whitespace and an identifier afterwards
-                    TT::Identifier => Err(Error::new(
-                        self.source,
-                        token,
-                        None,
-                        "A property access must have the dot \
-                        and identifier together, like this `.name`",
-                    )),
+                    TT::Identifier => Err(Error::new(token, InvalidPropertyAccessLambdaWhitespace)),
 
-                    _ => Err(Error::new(
-                        self.source,
-                        token,
-                        None,
-                        "Expected an identifier after a \
-                                dot for the property access",
-                    )),
+                    _ => Err(Error::new(token, InvalidPropertyAccessLambdaIdentifier)),
                 }
             }
 
@@ -1476,42 +1733,35 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::record_field,
-            |self_| {
-                self_
-                    .expected_but_found_error("Expected a record field (like this `{ field = 5 }`)")
-            },
+            |self_| Error::new(self_.get_token(), MissingRecordFields),
         )
     }
 
     fn record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Expression)> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
-            |self_| {
-                self_.expected_but_found_error(
-                    "Expected an identifier for the name of the field in the record",
-                )
-            },
+            |self_| Error::new(self_.get_token(), InvalidRecordFieldKey),
         )?;
 
         if !matches!(self.get_token().kind, Colon | Equal) {
-            return Err(self.expected_but_found_error(
-                "Expected a `:` separating the name of \
-                the field and the value in the record",
+            return Err(Error::new(
+                self.get_token(),
+                InvalidRecordFieldKeyValueSeparator,
             ));
         }
         self.advance();
 
         let expr = self.required(Self::expression, |self_| {
-            self_.expected_but_found_error(
-                "Expected an expression for the value \
-                    of the field in the record",
-            )
+            Error::new(self_.get_token(), InvalidRecordFieldValue)
         })?;
 
         Ok((identifier, expr))
     }
 
-    fn module_name(&mut self) -> ParseResult<'source, 'tokens, Option<ModuleName>> {
+    fn module_name(
+        &mut self,
+        on_name_parse_error: fn() -> ErrorType<'source, 'tokens>,
+    ) -> ParseResult<'source, 'tokens, ModuleName> {
         let start = self.current;
         let identifiers = self.one_or_many_sep(
             |self_| {
@@ -1528,26 +1778,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| {
                 self_.required(
                     |self_| Ok(self_.capitalized_identifier()),
-                    |self_| {
-                        self_
-                            .expected_but_found_error("Expected a `PascalCase` name for the module")
-                    },
+                    |self_| Error::new(self_.get_token(), InvalidModuleNameSegment),
                 )
             },
-            |self_| {
-                self_.expected_but_found_error(
-                    "Expected a `PascalCase` identifier for the module name",
-                )
-            },
+            |self_| Error::new(self_.get_token(), on_name_parse_error()),
         )?;
 
-        if identifiers.is_empty() {
-            Ok(None)
-        } else {
-            let end = self.current;
-            self.build_module_name(&self.tokens[start..end], identifiers)
-                .map(Some)
-        }
+        debug_assert!(!identifiers.is_empty());
+        let end = self.current;
+        self.build_module_name(&self.tokens[start..end], identifiers)
     }
     fn build_module_name(
         &mut self,
@@ -1556,21 +1795,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     ) -> ParseResult<'source, 'tokens, ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
             let name = &names[i];
-            let name_str = name.value.to_string(self.strings);
             let token = tokens.iter().find(|t| t.position == name.start).unwrap();
-            Error::new(
-                self.source,
-                &token,
-                None,
-                &format!(
-                    "Invalid module name '{}'.\n\n\
-                    Module names have to be `PascalCase` \
-                    and also not have extraneous characters, \
-                    because they need to match the file name \
-                    in the file system.",
-                    name_str
-                ),
-            )
+            Error::new(&token, InvalidModuleNameSegment)
         })
     }
 
@@ -1705,7 +1931,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         parse: Parser,
         on_first_not_found: E1,
         on_missing_separator_or_last_delimiter: E2,
-    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
+    ) -> ParseResult<'source, 'tokens, Option<Vec<ParserResult>>>
     where
         Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
         E1: Fn(&mut Self) -> Error<'source, 'tokens>,
@@ -1714,7 +1940,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let (first_delimiter, last_delimiter) = delimiter;
 
         if self.get_token().kind != first_delimiter {
-            return Ok(vec![]);
+            return Ok(None);
         }
         self.advance();
 
@@ -1745,7 +1971,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             i += 1;
         }
 
-        Ok(items)
+        Ok(Some(items))
     }
 
     fn one_or_many<Parser, ParserResult, E>(
@@ -1835,10 +2061,6 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         } else {
             None
         }
-    }
-
-    fn expected_but_found_error(&self, msg: &str) -> Error<'source, 'tokens> {
-        Error::expected_but_found(self.source, self.get_token(), None, msg)
     }
 }
 
@@ -1953,7 +2175,7 @@ pub mod tests {
         };
 
         let result = parser.required(State::expression, |self_| {
-            self_.expected_but_found_error("Expected an expression")
+            Error::new(self_.get_token(), InvalidExpression)
         })?;
         parser.eof(Box::new(result))
     }
@@ -2254,7 +2476,7 @@ add 5"
                 code,
                 match &result {
                     Ok(ast) => format!("{:#?}", ast),
-                    Err(e) => format!("{}\n\n{:#?}", e.message.clone(), e),
+                    Err(e) => format!("{}\n\n{:#?}", e.to_string(&source, &strings), e),
                 }
             )
         }
@@ -2955,7 +3177,7 @@ main =
                 code,
                 match &result {
                     Ok(ast) => format!("{:#?}", ast),
-                    Err(e) => format!("{}\n\n{:#?}", e.message.clone(), e),
+                    Err(e) => format!("{}\n\n{:#?}", e.to_string(&source, &strings), e),
                 }
             )
         }

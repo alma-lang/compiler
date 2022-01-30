@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2510
+assertion_line: 2732
 expression: "parse(\"module Test.Te_st.Test\")"
 
 ---
@@ -10,7 +10,9 @@ module Test.Te_st.Test
 
 Result:
 
-1:12: Invalid module name 'Te_st'.
+:1:12
+
+Invalid module name 'Te_st'.
 
 Module names have to be `PascalCase` and also not have extraneous characters, because they need to match the file name in the file system.
 
@@ -18,7 +20,7 @@ Module names have to be `PascalCase` and also not have extraneous characters, be
    │              ↑↑↑↑↑
 
 Error {
-    message: "1:12: Invalid module name 'Te_st'.\n\nModule names have to be `PascalCase` and also not have extraneous characters, because they need to match the file name in the file system.\n\n  1│  module Test.Te_st.Test\n   │              ↑↑↑↑↑",
+    kind: InvalidModuleNameSegment,
     token: Token {
         kind: CapitalizedIdentifier,
         position: 12,
