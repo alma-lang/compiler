@@ -1552,6 +1552,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             }
 
             TT::CapitalizedIdentifier => {
+                // TODO: This is slightly wrong, since it will validate the last module segment as
+                // a module name, even though it can be just a CapitalizedIdentifier which can have
+                // more characters.
                 let mut module = self.module_name(|| InvalidModuleNameSegment)?;
 
                 let (module, identifier) = if module.parts.len() == 1 {
