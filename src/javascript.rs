@@ -15,7 +15,8 @@ fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
         if i > 0 {
             out.push_str("__");
         }
-        write!(out, "{}", module.value.to_string(strings)).unwrap();
+        let module = module.value.to_string(strings);
+        write!(out, "{module}").unwrap();
     }
 }
 
@@ -28,18 +29,16 @@ pub fn generate(
     let mut code = String::new();
 
     // Print types
-    write!(
-        &mut code,
-        "/*\n\n{}\n\n*/\n\n",
-        &module_interfaces.to_string(strings)
-    )
-    .unwrap();
+    {
+        let module_interfaces = &module_interfaces.to_string(strings);
+        write!(&mut code, "/*\n\n{module_interfaces}\n\n*/\n\n").unwrap();
+    }
 
     code.push_str("\nglobalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {\n\n");
 
     // for module_name in sorted_modules.iter().rev() {
     //     let name = strings.resolve(*module_name);
-    //     writeln!(code, "let {} = ", alias.value.to_string(strings),).unwrap();
+    //     writeln!(code, "let {} = ", alias.value.to_string(strings)).unwrap();
     // }
 
     for module_name in sorted_modules {
@@ -109,7 +108,8 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
         match &import.alias {
             Some(alias) => {
                 indented(code, indent, "");
-                write!(code, "let {} = ", alias.value.to_string(strings),).unwrap();
+                let alias = alias.value.to_string(strings);
+                write!(code, "let {alias} = ").unwrap();
                 module_full_name(code, &import.module_name, strings);
                 code.push('\n');
             }
@@ -133,7 +133,8 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
                 }
             }
             indented(code, indent, "");
-            write!(code, "let {{ {} }} = ", identifiers.join(", "),).unwrap();
+            let fields = identifiers.join(", ");
+            write!(code, "let {{ {fields} }} = ").unwrap();
             module_full_name(code, &import.module_name, strings);
             code.push('\n')
         }
@@ -174,7 +175,7 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                             if i > 0 {
                                 code.push_str(", ");
                             }
-                            write!(code, "_{}", i).unwrap();
+                            write!(code, "_{i}").unwrap();
                         }
                         code.push_str(") {\n");
 
@@ -274,7 +275,7 @@ fn generate_function(
     lambda: &Lambda,
     strings: &Strings,
 ) {
-    write!(code, "function {}(", name).unwrap();
+    write!(code, "function {name}(").unwrap();
 
     for (i, pattern) in lambda.parameters.iter().enumerate() {
         if i > 0 {
@@ -333,14 +334,13 @@ fn generate_expression(
             }
         }
 
-        ET::Float(float) => write!(code, "{}", float).unwrap(),
+        ET::Float(float) => write!(code, "{float}").unwrap(),
 
-        ET::String_(string) => write!(
-            code,
-            "\"{}\"",
-            strings.resolve(*string).replace("\n", "\\n")
-        )
-        .unwrap(),
+        ET::String_(string) => {
+            let escaped_string = strings.resolve(*string).replace("\n", "\\n");
+            write!(code, "\"{escaped_string}\"").unwrap()
+        }
+
         ET::Identifier(module, identifier) => {
             if let Some(module) = module {
                 module_full_name(code, module, strings);
@@ -395,7 +395,8 @@ fn generate_expression(
         }
 
         ET::PropAccessLambda(field) => {
-            write!(code, "(r => r.{})", field.value.to_string(strings)).unwrap()
+            let field = field.value.to_string(strings);
+            write!(code, "(r => r.{field})").unwrap()
         }
 
         ET::Unary(unary, expression) => {
@@ -491,7 +492,7 @@ fn add_indent(level: usize) -> usize {
 }
 
 fn indented(out: &mut String, indent: usize, line: &str) {
-    write!(out, "{0:1$}{2}", "", indent, line).unwrap();
+    write!(out, "{0:indent$}{line}", "").unwrap();
 }
 fn line(out: &mut String, indent: usize, line: &str) {
     indented(out, indent, line);

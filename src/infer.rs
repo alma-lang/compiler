@@ -69,9 +69,8 @@ impl<'ast> Error<'ast> {
         match self {
             UndefinedIdentifier(identifier, _) => {
                 s.push_str(&format!(
-                    "Undefined identifier `{}`\n\n{}",
-                    strings.resolve(*identifier),
-                    code
+                    "Undefined identifier `{identifier}`\n\n{code}",
+                    identifier = strings.resolve(*identifier),
                 ));
             }
 
@@ -79,42 +78,40 @@ impl<'ast> Error<'ast> {
                 let record_code = source
                     .lines_report_at_position(expr.start, Some(expr.end), expr.line, false)
                     .unwrap();
-                s.push_str(&format!(
-                    "Duplicate field `{0}`
+                let identifier = identifier.value.to_string(strings);
 
-{1}
+                s.push_str(&format!(
+                    "Duplicate field `{identifier}`
+
+{code}
 
 in record
 
-{2}",
-                    identifier.value.to_string(strings),
-                    code,
-                    record_code
+{record_code}",
                 ));
             }
 
             InfiniteType(_, _) => {
-                s.push_str(&format!("Infinite type\n\n{}", code));
+                s.push_str(&format!("Infinite type\n\n{code}"));
             }
 
             TypeMismatch(_, typ, None, typ2) => {
+                let typ = typ.to_string(strings);
+                let typ2 = typ2.to_string(strings);
                 s.push_str(&format!(
-                    "Type mismatch:  {0}  ≠  {1}
+                    "Type mismatch:  {typ}  ≠  {typ2}
 
 Expected
 
-{2}
+{code}
 
 to be
 
-{1}
+{typ2}
 
 but seems to be
 
-{0}",
-                    typ.to_string(strings),
-                    typ2.to_string(strings),
-                    code
+{typ}",
                 ));
             }
 
@@ -122,142 +119,120 @@ but seems to be
                 let code2 = source
                     .lines_report_at_position_with_pointer(node.start, Some(node.end), node.line)
                     .unwrap();
+                let typ = typ.to_string(strings);
+                let typ2 = typ2.to_string(strings);
 
                 s.push_str(&format!(
-                    "Type mismatch:  {0}  ≠  {1}
+                    "Type mismatch:  {typ}  ≠  {typ2}
 
 Expected
 
-{2}
+{code}
 
 with type
 
-{0}
+{typ}
 
 to have the same type as
 
-{3}
+{code2}
 
 with type
 
-{1}",
-                    typ.to_string(strings),
-                    typ2.to_string(strings),
-                    code,
-                    code2
+{typ2}",
                 ));
             }
 
             WrongArity(_, num_params_applied, num_params, typ) => {
+                let plural = if *num_params == 1 { "" } else { "s" };
+                let typ = typ.to_string(strings);
                 s.push_str(&format!(
-                    "Type `{3}` accepts {0} parameter{1} but it was called with {2}.
+                    "Type `{typ}` accepts {num_params} parameter{plural} but it was called with {num_params_applied}.
 
-{4}",
-                    num_params,
-                    if *num_params == 1 { "" } else { "s" },
-                    num_params_applied,
-                    typ.to_string(strings),
-                    code
+{code}",
                 ));
             }
 
             SignatureMismatch(_, typ, typ2) => {
+                let typ = typ.to_string(strings);
+                let typ2 = typ2.to_string(strings);
                 s.push_str(&format!(
                     "The type signature and inferred type don't match
 
-{2}
+{code}
 
 The type signature says the type is
 
-{0}
+{typ}
 
 but it seems to be
 
-{1}",
-                    typ.to_string(strings),
-                    typ2.to_string(strings),
-                    code
+{typ2}",
                 ));
             }
 
             SignatureTooGeneral(_, typ, typ2) => {
+                let typ = typ.to_string(strings);
+                let typ2 = typ2.to_string(strings);
                 s.push_str(&format!(
                     "The type signature is more generic than the inferred type:
 
-{2}
+{code}
 
 The type signature says the type is
 
-{0}
+{typ}
 
 which it is more general than
 
-{1}
+{typ2}
 
 which was inferred from the code.
 
 Change the signature to be more specific or try to make your code more generic.",
-                    typ.to_string(strings),
-                    typ2.to_string(strings),
-                    code
                 ));
             }
 
             UndefinedExport(export) => {
-                s.push_str(&format!(
-                    "Undefined identifier `{}`\n\n{}",
-                    export.value.to_string(strings),
-                    code
-                ));
+                let export = export.value.to_string(strings);
+                s.push_str(&format!("Undefined identifier `{export}`\n\n{code}"));
             }
 
-            UndefinedExportConstructor(export) => {
-                s.push_str(&format!(
-                    "Undefined identifier `{}`\n\n{}",
-                    export.value.to_string(strings),
-                    code
-                ));
+            UndefinedExportConstructor(constructor) => {
+                let constructor = constructor.value.to_string(strings);
+                s.push_str(&format!("Undefined identifier `{constructor}`\n\n{code}"));
             }
 
             UnknownImport(import) => {
-                s.push_str(&format!(
-                    "Couldn't find module `{}`\n\n{}",
-                    import.value.module_name.to_string(strings),
-                    code
-                ));
+                let module = import.value.module_name.to_string(strings);
+                s.push_str(&format!("Couldn't find module `{module}`\n\n{code}"));
             }
 
             UnknownImportDefinition(export, import) => {
+                let module = import.value.module_name.to_string(strings);
+                let export = export.value.to_string(strings);
                 s.push_str(&format!(
-                    "Module `{}` doesn't appear to expose `{}`\n\n{}",
-                    import.value.module_name.to_string(strings),
-                    export.value.to_string(strings),
-                    code
+                    "Module `{module}` doesn't appear to expose `{export}`\n\n{code}"
                 ));
             }
 
             UnknownImportConstructor(export, import) => {
+                let module = import.value.module_name.to_string(strings);
+                let export = export.value.to_string(strings);
                 s.push_str(&format!(
-                    "Module `{}` doesn't appear to expose `{}`\n\n{}",
-                    import.value.module_name.to_string(strings),
-                    export.value.to_string(strings),
-                    code
+                    "Module `{module}` doesn't appear to expose `{export}`\n\n{code}"
                 ));
             }
 
             UnknownType(name) => {
-                s.push_str(&format!(
-                    "Couldn't find type `{}`\n\n{}",
-                    name.value.to_string(strings),
-                    code
-                ));
+                let type_name = name.value.to_string(strings);
+                s.push_str(&format!("Couldn't find type `{type_name}`\n\n{code}"));
             }
 
             UnknownTypeVar(name) => {
+                let type_name = name.value.to_string(strings);
                 s.push_str(&format!(
-                    "Type variable `{}` has not been declared\n\n{}",
-                    name.value.to_string(strings),
-                    code
+                    "Type variable `{type_name}` has not been declared\n\n{code}"
                 ));
             }
         };
@@ -1003,11 +978,11 @@ pub fn infer<'interfaces, 'ast>(
                 }
 
                 for (ident, typ) in imported_env.map() {
-                    let full_name = format!(
-                        "{}.{}",
-                        strings.resolve(module_ident),
-                        strings.resolve(*ident)
-                    );
+                    let full_name = {
+                        let module = strings.resolve(module_ident);
+                        let ident = strings.resolve(*ident);
+                        format!("{module}.{ident}")
+                    };
                     let full_name = strings.get_or_intern(full_name);
                     env.insert(full_name, Rc::clone(typ));
                 }
@@ -1477,11 +1452,11 @@ fn infer_rec<'ast>(
                 // TODO: Check the module if it was imported, would make for a better error message
                 // TODO: This should be pre-computed in the identifier to avoid doing this with
                 // each node in the AST.
-                let full_name = format!(
-                    "{}.{}",
-                    strings.resolve(module.full_name),
-                    strings.resolve(x.name())
-                );
+                let full_name = {
+                    let module = strings.resolve(module.full_name);
+                    let name = strings.resolve(x.name());
+                    format!("{module}.{name}")
+                };
                 strings.get_or_intern(full_name)
             } else {
                 x.name()
@@ -1876,7 +1851,7 @@ add 5"
 
         #[test]
         fn test_infinite_type() {
-            assert_snapshot!(infer(r"\a -> a 1 a",));
+            assert_snapshot!(infer(r"\a -> a 1 a"));
         }
 
         #[test]
@@ -1943,7 +1918,7 @@ add 5"
             let mut env = PolyTypeEnv::new();
             let primitive_types = Type::primitive_types(&mut strings);
             base_env(&mut state, &mut env, &primitive_types, &mut strings);
-            let s = match infer_expression(
+            let result = match infer_expression(
                 &ast,
                 &mut state,
                 &mut env,
@@ -1958,7 +1933,7 @@ add 5"
                     .join("\n\n"),
             };
 
-            format!("Input:\n\n{}\n\n---\nOutput:\n\n{}", code, s)
+            format!("Input:\n\n{code}\n\n---\nOutput:\n\n{result}")
         }
     }
 
@@ -2626,7 +2601,7 @@ main r = r.x + r.y + 1
                 Err(err) => err,
             };
 
-            format!("Input:\n\n{}\n\n---\nOutput:\n\n{}", &code, actual)
+            format!("Input:\n\n{code}\n\n---\nOutput:\n\n{actual}")
         }
     }
 }

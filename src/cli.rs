@@ -51,8 +51,8 @@ pub fn repl() {
                     &mut strings,
                     &primitive_types,
                 ) {
-                    Ok(out) => println!("{}", out),
-                    Err(errs) => eprintln!("{}", errs),
+                    Ok(out) => println!("{out}"),
+                    Err(errs) => eprintln!("{errs}"),
                 };
                 println!();
             }
@@ -65,7 +65,7 @@ pub fn repl() {
                 break;
             }
             Err(err) => {
-                eprintln!("Error: {:?}", err);
+                eprintln!("Error: {err:?}");
                 break;
             }
         }
@@ -79,8 +79,8 @@ fn source_from_path(file_path: String) -> Source {
     match Source::new_file(file_path.clone()) {
         Ok(source) => source,
         Err(err) => {
-            eprintln!("There was a problem with the file '{}'", file_path);
-            eprintln!("{}", err);
+            eprintln!("There was a problem with the file '{file_path}'");
+            eprintln!("{err}");
             process::exit(1);
         }
     }
@@ -91,9 +91,9 @@ pub fn compile_files(files: Vec<String>) {
     let (entry_sources, sources) = process_sources(sources);
 
     match compiler::compile(&entry_sources, &sources) {
-        Ok(out) => println!("{}", out),
+        Ok(out) => println!("{out}"),
         Err(errs) => {
-            eprintln!("\n{}\n", errs);
+            eprintln!("\n{errs}\n");
             process::exit(1);
         }
     };
@@ -104,9 +104,9 @@ pub fn bench(runs: u32, file_path: String) {
 
     for _ in 0..runs {
         match compiler::compile(&entry_sources, &sources) {
-            Ok(out) => println!("{}", out),
+            Ok(out) => println!("{out}"),
             Err(errs) => {
-                eprintln!("\n{}\n", errs);
+                eprintln!("\n{errs}\n");
                 process::exit(1);
             }
         };

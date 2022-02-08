@@ -249,11 +249,11 @@ fn check_cycles_in_path(
 }
 
 fn cycle_error(cycle_names: &[&str]) -> String {
+    let cycle_graph = cycle_names.join("\n        ↓\n    ");
     format!(
-        "Cycle detected between modules:\n\n    {}\n\n\
-                            Alma's module system does not support \
-                            cyclic dependencies.",
-        cycle_names.join("\n        ↓\n    ")
+        "Cycle detected between modules:\n\n    {cycle_graph}\n\n\
+        Alma's module system does not support \
+        cyclic dependencies."
     )
 }
 
@@ -278,9 +278,9 @@ pub fn infer(
                     continue;
                 }
                 let module = module_asts.get(&module_name).unwrap_or_else(|| {
+                    let module_name = strings.resolve(module_name);
                     panic!(
-                        "Couldn't find module {} in the ASTs",
-                        strings.resolve(module_name)
+                        "Couldn't find module {module_name} in the ASTs"
                     )
                 });
 

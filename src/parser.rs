@@ -165,26 +165,28 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
         error: &Error<'source, 'tokens>,
         strings: &'strings Strings,
     ) -> String {
-        let expected_but_found =
-            |message: &str| format!("{}, but instead found: `{}`", message, error.token.lexeme);
+        let expected_but_found = |message: &str| {
+            let lexeme = error.token.lexeme;
+            format!("{message}, but instead found: `{lexeme}`")
+        };
 
         match self {
             ModuleAndFileNameMismatch(name) => format!(
-                "The module name '{}' differs from the name of the file.\n\n\
+                "The module name '{name}' differs from the name of the file.\n\n\
                 Module names need to match the folder and file names from the \
                 file system",
-                &name.to_string(strings)
+                name = &name.to_string(strings)
             ),
 
             SubmoduleAndParentModuleNameMismatch(name) => format!(
-                "The sub-module name '{}' differs from the name of the parent \
+                "The sub-module name '{name}' differs from the name of the parent \
                 module.\n\nModule names need to match their parent module path \
                 names and specify their name at the end.\n\nLike this:\n\
                 \n    module Admin\
                 \n        module Admin.User\
                 \n            module Admin.User.Id\
                 \n\n",
-                &name.to_string(strings)
+                name = &name.to_string(strings)
             ),
 
             MissingTopLevelModule => {
@@ -201,12 +203,12 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
             MissingModuleName => expected_but_found("Expected the module name"),
 
             InvalidModuleNameSegment => format!(
-                "Invalid module name '{}'.\n\n\
+                "Invalid module name '{lexeme}'.\n\n\
                 Module names have to be `PascalCase` \
                 and also not have extraneous characters, \
                 because they need to match the file name \
                 in the file system.",
-                error.token.lexeme
+                lexeme = error.token.lexeme
             ),
 
             NotEnoughModuleExports => expected_but_found(
@@ -363,8 +365,8 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
             }
 
             InvalidLetBindingParametersOrEqualSeparator(name) => expected_but_found(&format!(
-                "Expected an `=` sign or list of parameters for the definition of `{}`",
-                name.to_string(strings)
+                "Expected an `=` sign or list of parameters for the definition of `{name}`",
+                name = name.to_string(strings)
             )),
 
             InvalidLetBindingSeparator => expected_but_found(
@@ -410,13 +412,13 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
             }
 
             InvalidBinopRhs(op) => expected_but_found(&format!(
-                "Expected an expression after the binary operator `{}`",
-                op.lexeme
+                "Expected an expression after the binary operator `{lexeme}`",
+                lexeme = op.lexeme
             )),
 
             InvalidUnaryRhs(op) => expected_but_found(&format!(
-                "Expected an expression after the unary operator `{}`",
-                op.lexeme
+                "Expected an expression after the unary operator `{lexeme}`",
+                lexeme = op.lexeme
             )),
 
             InvalidPropertyAccessSeparator => "A property access must have the dot \
@@ -428,7 +430,10 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
                 dot for the property access"
                 .to_owned(),
 
-            InvalidFloat(token) => format!("Failed to parse number token `{}`", token.lexeme),
+            InvalidFloat(token) => format!(
+                "Failed to parse number token `{lexeme}`",
+                lexeme = token.lexeme
+            ),
 
             InvalidRecordFieldSeparatorOrLastDelimiter => {
                 expected_but_found("Expected `}` to close a record literal")
@@ -500,27 +505,23 @@ impl<'source, 'tokens> Error<'source, 'tokens> {
         source: &'source Source,
         strings: &'strings Strings,
     ) -> String {
-        let message = self.kind.to_string(self, strings);
-        let point_at_token = self.kind.get_code_pointer().unwrap_or(self.token);
+        let message = {
+            let message = self.kind.to_string(self, strings);
+            let point_at_token = self.kind.get_code_pointer().unwrap_or(self.token);
 
-        let message = format!(
-            "{}\n\n{}",
-            message,
-            source
+            let lines_report = source
                 .lines_report_at_position_with_pointer(
                     point_at_token.position,
                     Some(point_at_token.end_position),
                     point_at_token.line,
                 )
-                .unwrap()
-        );
-        format!(
-            "{}:{}:{}\n\n{}",
-            source.name(),
-            self.token.line,
-            self.token.column,
-            message
-        )
+                .unwrap();
+            format!("{message}\n\n{lines_report}")
+        };
+        let source_name = source.name();
+        let line = self.token.line;
+        let column = self.token.column;
+        format!("{source_name}:{line}:{column}\n\n{message}")
     }
 }
 
@@ -2473,15 +2474,14 @@ add 5"
             let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
             let mut strings = Strings::new();
-            let result = parse_expression(&source, &tokens, &mut strings);
-            format!(
-                "Input:\n\n{}\n\nResult:\n\n{}",
-                code,
-                match &result {
-                    Ok(ast) => format!("{:#?}", ast),
-                    Err(e) => format!("{}\n\n{:#?}", e.to_string(&source, &strings), e),
+            let result = match &parse_expression(&source, &tokens, &mut strings) {
+                Ok(ast) => format!("{ast:#?}"),
+                Err(error) => {
+                    let error_str = error.to_string(&source, &strings);
+                    format!("{error_str}\n\n{error:#?}")
                 }
-            )
+            };
+            format!("Input:\n\n{code}\n\nResult:\n\n{result}")
         }
     }
 
@@ -3174,15 +3174,14 @@ main =
             let source = Source::new_orphan(code.to_string());
             let tokens = tokenizer::parse(&source).unwrap();
             let mut strings = Strings::new();
-            let result = super::parse(&source, &tokens, &mut strings);
-            format!(
-                "Input:\n\n{}\n\nResult:\n\n{}",
-                code,
-                match &result {
-                    Ok(ast) => format!("{:#?}", ast),
-                    Err(e) => format!("{}\n\n{:#?}", e.to_string(&source, &strings), e),
+            let result = match &super::parse(&source, &tokens, &mut strings) {
+                Ok(ast) => format!("{ast:#?}"),
+                Err(error) => {
+                    let error_str = error.to_string(&source, &strings);
+                    format!("{error_str}\n\n{error:#?}")
                 }
-            )
+            };
+            format!("Input:\n\n{code}\n\nResult:\n\n{result}")
         }
     }
 }

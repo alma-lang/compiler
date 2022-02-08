@@ -69,13 +69,9 @@ impl ModuleInterfaces {
             if i > 0 {
                 out.push_str("\n\n\n");
             }
-            write!(
-                out,
-                "module {}\n\n{}",
-                strings.resolve(**name),
-                interface.to_string(strings)
-            )
-            .unwrap();
+            let name = strings.resolve(**name);
+            let interface = interface.to_string(strings);
+            write!(out, "module {name}\n\n{interface}").unwrap();
         }
 
         out

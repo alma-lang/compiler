@@ -16,11 +16,11 @@ impl Error {
         let mut msg = String::new();
 
         msg.push_str(&format!(
-            "{}:{}:{}\n\n{}",
-            source.name(),
-            self.line,
-            self.column,
-            self.message
+            "{name}:{line}:{column}\n\n{message}",
+            name = source.name(),
+            line = self.line,
+            column = self.column,
+            message = self.message
         ));
 
         msg
@@ -215,7 +215,7 @@ impl<'source> State<'source> {
                         self.parse_token(Some(ch));
                     }
 
-                    ch => self.add_error(&format!("Unexpected character '{}'.", ch), false),
+                    ch => self.add_error(&format!("Unexpected character '{ch}'."), false),
                 },
             },
 

@@ -40,13 +40,9 @@ impl TypeEnv {
             if i > 0 {
                 out.push_str("\n\n");
             }
-            write!(
-                out,
-                "{} : {}",
-                strings.resolve(**name),
-                typ.to_string(strings)
-            )
-            .unwrap();
+            let name = strings.resolve(**name);
+            let typ = typ.to_string(strings);
+            write!(out, "{name} : {typ}").unwrap();
         }
 
         out
@@ -90,13 +86,9 @@ impl PolyTypeEnv {
             if i > 0 {
                 out.push_str("\n\n");
             }
-            write!(
-                out,
-                "{} : {}",
-                strings.resolve(**name),
-                typ.to_string(strings)
-            )
-            .unwrap();
+            let name = strings.resolve(**name);
+            let typ = typ.to_string(strings);
+            write!(out, "{name} : {typ}").unwrap();
         }
 
         out

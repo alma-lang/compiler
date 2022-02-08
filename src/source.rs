@@ -20,15 +20,13 @@ impl fmt::Display for Error {
         match self {
             InvalidExtension(extension) => write!(
                 f,
-                "Invalid file extension '{}'. Please use the '.alma' extension",
-                extension
+                "Invalid file extension '{extension}'. Please use the '.alma' extension",
             ),
             InvalidFileName(name) => write!(
                 f,
-                "Invalid file name '{}'. Alma file names must look like this 'MyFile.alma'",
-                name
+                "Invalid file name '{name}'. Alma file names must look like this 'MyFile.alma'",
             ),
-            IO(err) => write!(f, "There was an error reading the file.\n\n{}", err),
+            IO(err) => write!(f, "There was an error reading the file.\n\n{err}"),
         }
     }
 }
@@ -172,10 +170,8 @@ impl Source {
                 message.push('\n');
             }
             message.push_str(&format!(
-                "  {0:1$}│  {2}",
-                line_number - lines_before.len() as u32 + i as u32,
-                line_number_width,
-                l
+                "  {line_number:line_number_width$}│  {l}",
+                line_number = line_number - lines_before.len() as u32 + i as u32,
             ));
         }
 
@@ -185,10 +181,7 @@ impl Source {
                 if !message.is_empty() {
                     message.push('\n');
                 }
-                message.push_str(&format!(
-                    "  {0:1$}│  {2}\n",
-                    line_number, line_number_width, line
-                ));
+                message.push_str(&format!("  {line_number:line_number_width$}│  {line}\n"));
 
                 if show_pointer {
                     let num_pointers = max(1, end_position.unwrap_or(position) - position);
@@ -205,11 +198,10 @@ impl Source {
                     let num_spaces = min(line.len(), num_spaces);
 
                     message.push_str(&format!(
-                        "  {0:1$}│  {2}{3}",
-                        " ",
-                        line_number_width,
-                        str::repeat(" ", num_spaces as usize),
-                        str::repeat("↑", num_pointers as usize)
+                        "  {space:line_number_width$}│  {spaces}{pointers}",
+                        space = ' ',
+                        spaces = str::repeat(" ", num_spaces as usize),
+                        pointers = str::repeat("↑", num_pointers as usize)
                     ));
                 }
             }
@@ -219,11 +211,9 @@ impl Source {
                         message.push('\n');
                     }
                     message.push_str(&format!(
-                        "  {0:1$}│{3} {2}",
-                        line_number + i as u32,
-                        line_number_width,
-                        l,
-                        if show_pointer { "→" } else { " " },
+                        "  {line_number:line_number_width$}│{line_marker} {l}",
+                        line_number = line_number + i as u32,
+                        line_marker = if show_pointer { "→" } else { " " },
                     ));
                 }
             }
@@ -232,10 +222,8 @@ impl Source {
         for (i, l) in lines_after.iter().enumerate() {
             message.push('\n');
             message.push_str(&format!(
-                "  {0:1$}│  {2}",
-                line_number + 1 + i as u32,
-                line_number_width,
-                l
+                "  {line_number:line_number_width$}│  {l}",
+                line_number = line_number + 1 + i as u32,
             ));
         }
         Some(message)
@@ -251,12 +239,12 @@ impl Source {
     }
 
     pub fn to_string_with_line_and_col(&self, line: u32, column: u32) -> String {
-        let s = match &self.source {
+        let file_name = match &self.source {
             SourceOrigin::File(path) => path.to_str().unwrap(),
             SourceOrigin::NotAFile => "",
         };
-        let space = if s.is_empty() { "" } else { " " };
-        format!("{}{}[{}:{}]", s, space, line, column)
+        let space = if file_name.is_empty() { "" } else { " " };
+        format!("{file_name}{space}[{line}:{column}]")
     }
 }
 
@@ -269,9 +257,8 @@ mod tests {
         let source = Source::new_orphan(code.to_string());
         let result = source.lines_report_at_position_with_pointer(position, end_position, lines);
         format!(
-            "Input:\n\n{}\n\nResult:\n\n{}",
-            code,
-            match &result {
+            "Input:\n\n{code}\n\nResult:\n\n{result}",
+            result = match &result {
                 Some(res) => res,
                 None => "None",
             }
