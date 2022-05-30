@@ -7,6 +7,7 @@ use crate::ast::{
     Unary_::{Minus, Not},
     *,
 };
+use crate::module;
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
@@ -69,7 +70,7 @@ use crate::token::{
 */
 
 #[derive(Debug)]
-enum ErrorType<'source, 'tokens> {
+enum ErrorType {
     // Top level
     InvalidReplEntry,
     InvalidEndOfInput,
@@ -102,7 +103,7 @@ enum ErrorType<'source, 'tokens> {
     InvalidUnionTypeDefinitionConstructor,
     MissingUnionTypeDefinitionConstructors,
     InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
-        /* First delimiter of the record */ &'tokens Token<'source>,
+        /* First delimiter of the record */ module::tokens::Index,
     ),
     InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
@@ -110,13 +111,12 @@ enum ErrorType<'source, 'tokens> {
     InvalidRecordTypeFieldKey,
     InvalidRecordTypeFieldType,
     InvalidRecordTypeFieldSeparator,
-    InvalidParenthesizedTypeDelimiter(/* First delimiter */ &'tokens Token<'source>),
+    InvalidParenthesizedTypeDelimiter(/* First delimiter */ module::tokens::Index),
     InvalidFunctionParameterType,
     InvalidParenthesizedTypeType,
     InvalidTypeSignatureType,
 
     // Expressions
-    InvalidExpression,
     MissingLetBindings,
     InvalidLetBodyIndent,
     InvalidLetBodyExpression,
@@ -131,16 +131,16 @@ enum ErrorType<'source, 'tokens> {
     MissingLambdaParamaters,
     InvalidLambdaArrow,
     InvalidLambdaBody,
-    InvalidBinopRhs(/* Binop token */ &'tokens Token<'source>),
-    InvalidUnaryRhs(/* Unary op token */ &'tokens Token<'source>),
+    InvalidBinopRhs(/* Binop token */ module::tokens::Index),
+    InvalidUnaryRhs(/* Unary op token */ module::tokens::Index),
     InvalidPropertyAccessSeparator,
     InvalidPropertyAccessIdentifier,
-    InvalidFloat(&'tokens Token<'source>),
+    InvalidFloat(module::tokens::Index),
     InvalidRecordFieldSeparatorOrLastDelimiter,
     InvalidRecordFieldsOrExtensibleRecordExpression,
     InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
     InvalidParenthesizedExpression,
-    InvalidParenthesizedExpressionLastDelimiter(/* First delimiter */ &'tokens Token<'source>),
+    InvalidParenthesizedExpressionLastDelimiter(/* First delimiter */ module::tokens::Index),
     InvalidPropertyAccessLambdaWhitespace,
     InvalidPropertyAccessLambdaIdentifier,
     MissingRecordFields,
@@ -151,22 +151,24 @@ enum ErrorType<'source, 'tokens> {
 
 use ErrorType::*;
 
-impl<'source, 'tokens> ErrorType<'source, 'tokens> {
-    pub fn get_code_pointer(&self) -> Option<&'tokens Token<'source>> {
+impl ErrorType {
+    pub fn get_code_pointer(&self) -> Option<module::tokens::Index> {
         match self {
-            InvalidRecordTypeFieldTypeOrLastRecordDelimiter(first_brace) => Some(first_brace),
-            InvalidParenthesizedTypeDelimiter(first_paren) => Some(first_paren),
+            InvalidRecordTypeFieldTypeOrLastRecordDelimiter(first_brace) => Some(*first_brace),
+            InvalidParenthesizedTypeDelimiter(first_paren) => Some(*first_paren),
             _ => None,
         }
     }
 
-    pub fn to_string<'strings>(
+    pub fn to_string<'tokens, 'strings>(
         &self,
-        error: &Error<'source, 'tokens>,
+        error: &Error,
+        tokens: &'tokens [Token],
         strings: &'strings Strings,
     ) -> String {
+        let get_lexeme = |token: module::tokens::Index| tokens[error.token].kind.to_string(strings);
         let expected_but_found = |message: &str| {
-            let lexeme = error.token.lexeme;
+            let lexeme = get_lexeme(error.token);
             format!("{message}, but instead found: `{lexeme}`")
         };
 
@@ -208,7 +210,7 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
                 and also not have extraneous characters, \
                 because they need to match the file name \
                 in the file system.",
-                lexeme = error.token.lexeme
+                lexeme = get_lexeme(error.token)
             ),
 
             NotEnoughModuleExports => expected_but_found(
@@ -346,8 +348,6 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
                 `type User = LoggedIn | Anon`",
             ),
 
-            InvalidExpression => expected_but_found("Expected an expression"),
-
             MissingLetBindings => expected_but_found(
                 // TODO: This error message can be improved, may show up when there were no
                 // bindings in the same line or indented from the let, which means they could be
@@ -413,12 +413,12 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
 
             InvalidBinopRhs(op) => expected_but_found(&format!(
                 "Expected an expression after the binary operator `{lexeme}`",
-                lexeme = op.lexeme
+                lexeme = get_lexeme(*op)
             )),
 
             InvalidUnaryRhs(op) => expected_but_found(&format!(
                 "Expected an expression after the unary operator `{lexeme}`",
-                lexeme = op.lexeme
+                lexeme = get_lexeme(*op)
             )),
 
             InvalidPropertyAccessSeparator => "A property access must have the dot \
@@ -432,7 +432,7 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
 
             InvalidFloat(token) => format!(
                 "Failed to parse number token `{lexeme}`",
-                lexeme = token.lexeme
+                lexeme = get_lexeme(*token)
             ),
 
             InvalidRecordFieldSeparatorOrLastDelimiter => {
@@ -490,67 +490,69 @@ impl<'source, 'tokens> ErrorType<'source, 'tokens> {
 }
 
 #[derive(Debug)]
-pub struct Error<'source, 'tokens> {
-    kind: ErrorType<'source, 'tokens>,
-    pub token: &'tokens Token<'source>,
+pub struct Error {
+    kind: ErrorType,
+    pub token: module::tokens::Index,
 }
 
-impl<'source, 'tokens> Error<'source, 'tokens> {
-    fn new(token: &'tokens Token<'source>, kind: ErrorType<'source, 'tokens>) -> Self {
+impl Error {
+    fn new(token: module::tokens::Index, kind: ErrorType) -> Self {
         Self { token, kind }
     }
 
-    pub fn to_string<'strings>(
+    pub fn to_string<'source, 'strings, 'tokens>(
         &self,
         source: &'source Source,
+        tokens: &'tokens [Token],
         strings: &'strings Strings,
     ) -> String {
+        let token = tokens[self.token];
         let message = {
-            let message = self.kind.to_string(self, strings);
-            let point_at_token = self.kind.get_code_pointer().unwrap_or(self.token);
+            let message = self.kind.to_string(self, tokens, strings);
+            let point_at_token = tokens[self.kind.get_code_pointer().unwrap_or(self.token)];
 
             let lines_report = source
                 .lines_report_at_position_with_pointer(
-                    point_at_token.position,
-                    Some(point_at_token.end_position),
+                    point_at_token.start,
+                    Some(point_at_token.end),
                     point_at_token.line,
                 )
                 .unwrap();
             format!("{message}\n\n{lines_report}")
         };
         let source_name = source.name();
-        let line = self.token.line;
-        let column = self.token.column;
+        let line = token.line;
+        let column = token.column;
         format!("{source_name}:{line}:{column}\n\n{message}")
     }
 }
 
-type ParseResult<'source, 'tokens, A> = Result<A, Error<'source, 'tokens>>;
+type ParseResult<A> = Result<A, Error>;
 
 #[derive(Debug)]
 struct State<'source, 'strings, 'tokens> {
     strings: &'strings mut Strings,
     source: &'source Source,
-    tokens: &'tokens [Token<'source>],
+    tokens: &'tokens [Token],
     current: usize,
 }
 
 impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
-    fn file(&mut self) -> ParseResult<'source, 'tokens, (Module, Vec<Module>)> {
+    fn file(&mut self) -> ParseResult<(Module, Vec<Module>)> {
         let module = self.module(None)?;
         match module {
             Some(mut modules) => self.eof((modules.pop().unwrap(), modules)),
-            None => Err(Error::new(self.get_token(), MissingTopLevelModule)),
+            None => Err(Error::new(self.get_token_index(), MissingTopLevelModule)),
         }
     }
 
-    fn repl_entry(&mut self) -> ParseResult<'source, 'tokens, ReplEntry> {
+    fn repl_entry(&mut self) -> ParseResult<ReplEntry> {
         let result = match self.import()? {
             Some(import) => ReplEntry::Import(import),
             None => match self.binding()? {
                 Some(definition) => ReplEntry::Definition(definition),
                 None => ReplEntry::Expression(self.required(Self::expression, |self_| {
-                    Error::new(self_.get_token(), InvalidReplEntry)
+                    Error::new(self_.get_token_index(), InvalidReplEntry)
                 })?),
             },
         };
@@ -558,26 +560,23 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         self.eof(result)
     }
 
-    pub fn eof<T>(&mut self, result: T) -> ParseResult<'source, 'tokens, T> {
-        let eof_token = self.get_token();
+    pub fn eof<T>(&mut self, result: T) -> ParseResult<T> {
+        let (_, eof_token) = self.get_token();
         match eof_token.kind {
             TT::Eof => Ok(result),
-            _ => Err(Error::new(self.get_token(), InvalidEndOfInput)),
+            _ => Err(Error::new(self.get_token_index(), InvalidEndOfInput)),
         }
     }
 
-    fn module(
-        &mut self,
-        parent_module: Option<&ModuleName>,
-    ) -> ParseResult<'source, 'tokens, Option<Vec<Module>>> {
+    fn module(&mut self, parent_module: Option<&ModuleName>) -> ParseResult<Option<Vec<Module>>> {
         let top_level = !matches!(parent_module, Some(_));
 
-        if let Some(module_token) = self.match_token(TT::Module) {
+        if let Some((module_token_idx, module_token)) = self.match_token(TT::Module) {
             let name = self.module_name(|| MissingModuleName)?;
 
             if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                 return Err(Error::new(
-                    module_token,
+                    module_token_idx,
                     ErrorType::ModuleAndFileNameMismatch(name),
                 ));
             } else if parent_module
@@ -585,7 +584,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 .unwrap_or(false)
             {
                 return Err(Error::new(
-                    module_token,
+                    module_token_idx,
                     ErrorType::SubmoduleAndParentModuleNameMismatch(name),
                 ));
             }
@@ -611,7 +610,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn exposing(&mut self) -> ParseResult<'source, 'tokens, Vec<Export>> {
+    fn exposing(&mut self) -> ParseResult<Vec<Export>> {
         if self.match_token(TT::Exposing).is_none() {
             return Ok(vec![]);
         }
@@ -620,10 +619,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Comma,
             (TT::LeftParen, TT::RightParen),
             Self::export,
-            |self_| Error::new(self_.get_token(), NotEnoughModuleExports),
+            |self_| Error::new(self_.get_token_index(), NotEnoughModuleExports),
             |self_| {
                 Error::new(
-                    self_.get_token(),
+                    self_.get_token_index(),
                     InvalidModuleExportsSeparatorOrLastDelimiter,
                 )
             },
@@ -632,11 +631,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if let Some(exports) = exports {
             Ok(exports)
         } else {
-            Err(Error::new(self.get_token(), InvalidModuleExportsDelimiter))
+            Err(Error::new(
+                self.get_token_index(),
+                InvalidModuleExportsDelimiter,
+            ))
         }
     }
 
-    fn export(&mut self) -> ParseResult<'source, 'tokens, Export> {
+    fn export(&mut self) -> ParseResult<Export> {
         if let Some(export) = self.identifier() {
             // Make intermediate node to please borrow checker
             let node = &export.with_value(());
@@ -644,10 +646,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         } else if let Some(export) = self.export_type()? {
             Ok(export)
         } else {
-            Err(Error::new(self.get_token(), InvalidModuleExport))
+            Err(Error::new(self.get_token_index(), InvalidModuleExport))
         }
     }
-    fn export_type(&mut self) -> ParseResult<'source, 'tokens, Option<Export>> {
+    fn export_type(&mut self) -> ParseResult<Option<Export>> {
         if let Some(export) = self.capitalized_identifier() {
             let constructors = self.one_or_many_delimited(
                 TT::Comma,
@@ -655,13 +657,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 |self_| {
                     self_.required(
                         |self_| Ok(self_.capitalized_identifier()),
-                        |self_| Error::new(self_.get_token(), InvalidModuleExportConstructor),
+                        |self_| Error::new(self_.get_token_index(), InvalidModuleExportConstructor),
                     )
                 },
-                |self_| Error::new(self_.get_token(), MissingModuleExportConstructors),
+                |self_| Error::new(self_.get_token_index(), MissingModuleExportConstructors),
                 |self_| {
                     Error::new(
-                        self_.get_token(),
+                        self_.get_token_index(),
                         InvalidModuleExportConstructorsSeparatorOrLastDelimiter,
                     )
                 },
@@ -669,30 +671,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             let constructors = constructors.unwrap_or_else(|| vec![]);
 
-            let line = export.line;
-            let column = export.column;
-            let start = export.start;
-            let end = self.prev_token().end_position;
             Ok(Some(Node {
                 value: Export_::Type(export, constructors),
-                start,
-                end,
-                line,
-                column,
+                start: export.start,
+                end: self.prev_token_index(),
             }))
         } else {
             Ok(None)
         }
     }
 
-    fn import(&mut self) -> ParseResult<'source, 'tokens, Option<Import>> {
-        if let Some(import_token) = self.match_token(TT::Import) {
+    fn import(&mut self) -> ParseResult<Option<Import>> {
+        if let Some((import_token_index, _)) = self.match_token(TT::Import) {
             let module_name = self.module_name(|| InvalidImportModuleName)?;
 
             let alias = if self.match_token(TT::As).is_some() {
                 Some(self.required(
                     |self_| Ok(self_.capitalized_identifier()),
-                    |self_| Error::new(self_.get_token(), InvalidImportModuleAlias),
+                    |self_| Error::new(self_.get_token_index(), InvalidImportModuleAlias),
                 )?)
             } else {
                 None
@@ -701,7 +697,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let exposing = self.exposing()?;
 
             let end = if !exposing.is_empty() {
-                self.prev_token().end_position
+                self.prev_token_index()
             } else if let Some(alias) = &alias {
                 alias.end
             } else {
@@ -714,18 +710,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     alias,
                     exposing,
                 },
-                start: import_token.position,
+                start: import_token_index,
                 end,
-                line: import_token.line,
-                column: import_token.column,
             }))
         } else {
             Ok(None)
         }
     }
 
-    fn type_def(&mut self) -> ParseResult<'source, 'tokens, Option<TypeDefinition>> {
-        let type_token = self.get_token();
+    fn type_def(&mut self) -> ParseResult<Option<TypeDefinition>> {
+        let (type_token_index, type_token) = self.get_token();
 
         if self.match_token(TT::Type).is_none() {
             return Ok(None);
@@ -733,19 +727,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let name = self.required(
             |self_| Ok(self_.capitalized_identifier()),
-            |self_| Error::new(self_.get_token(), InvalidTypeDefinitionName),
+            |self_| Error::new(self_.get_token_index(), InvalidTypeDefinitionName),
         )?;
 
         let vars = self.many(|self_| match self_.identifier() {
             Some(variable) => Ok(Some(variable)),
             None => {
-                let token = self_.get_token();
+                let (_, token) = self_.get_token();
                 if matches!(token.kind, Equal) {
                     self_.advance();
                     Ok(None)
                 } else {
                     Err(Error::new(
-                        self_.get_token(),
+                        self_.get_token_index(),
                         InvalidTypeDefinitionTypeVarsOrEqualSeparator,
                     ))
                 }
@@ -759,20 +753,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             types::TypeDefinitionType::Union(branches)
         };
 
-        let line = type_token.line;
-        let column = type_token.column;
-        let start = type_token.position;
-        let end = self.prev_token().end_position;
+        let (end_index, _) = self.prev_token();
         Ok(Some(Node {
             value: types::TypeDefinition_::new(name, vars, type_definition),
-            start,
-            end,
-            line,
-            column,
+            start: type_token_index,
+            end: end_index,
         }))
     }
 
-    fn type_union_branches(&mut self) -> ParseResult<'source, 'tokens, Vec<types::Constructor>> {
+    fn type_union_branches(&mut self) -> ParseResult<Vec<types::Constructor>> {
         // Optionally eat a first pipe for multiline branches
         self.match_token(TT::Pipe);
 
@@ -780,17 +769,25 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Pipe)),
             |self_| {
                 self_.required(Self::type_constructor, |self_| {
-                    Error::new(self_.get_token(), InvalidUnionTypeDefinitionConstructor)
+                    Error::new(
+                        self_.get_token_index(),
+                        InvalidUnionTypeDefinitionConstructor,
+                    )
                 })
             },
-            |self_| Error::new(self_.get_token(), MissingUnionTypeDefinitionConstructors),
+            |self_| {
+                Error::new(
+                    self_.get_token_index(),
+                    MissingUnionTypeDefinitionConstructors,
+                )
+            },
         )?;
 
         Ok(branches)
     }
 
-    fn type_constructor(&mut self) -> ParseResult<'source, 'tokens, Option<types::Constructor>> {
-        let constructor_token = self.get_token();
+    fn type_constructor(&mut self) -> ParseResult<Option<types::Constructor>> {
+        let (_, constructor_token) = self.get_token();
         if let Some(name) = self.capitalized_identifier() {
             let params = self.many(|self_| {
                 if !self_.is_token_in_same_line_or_nested_indent_from(constructor_token) {
@@ -802,15 +799,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }
             })?;
 
-            let line = name.line;
-            let column = name.column;
             let start = name.start;
-            let end = self.prev_token().end_position;
-
+            let (end, _) = self.prev_token();
             Ok(Some(Node {
                 value: types::Constructor_::new(name, params),
-                line,
-                column,
                 start,
                 end,
             }))
@@ -819,13 +811,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_record(&mut self) -> ParseResult<'source, 'tokens, Option<types::RecordType>> {
-        let left_brace_token = self.get_token();
+    fn type_record(&mut self) -> ParseResult<Option<types::RecordType>> {
+        let left_brace_token_index = self.get_token_index();
         if self.match_token(LeftBrace).is_none() {
             return Ok(None);
         }
 
-        let next_token = self.get_token();
+        let (next_token_index, next_token) = self.get_token();
         let second_next_token = self.peek_next_token();
 
         match (next_token.kind, second_next_token.kind) {
@@ -834,25 +826,25 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self.advance();
                 Ok(Some(types::RecordType::Record(Node::new(
                     types::Record_::new(vec![]),
-                    left_brace_token,
-                    next_token,
+                    left_brace_token_index,
+                    next_token_index,
                 ))))
             }
 
             // Record literal
-            (TT::Identifier, Colon) => {
+            (TT::Identifier(_), Colon) => {
                 let fields = self.type_record_fields()?;
 
-                if let Some(last_token) = self.match_token(RightBrace) {
+                if let Some((last_token_index, _)) = self.match_token(RightBrace) {
                     Ok(Some(types::RecordType::Record(Node::new(
                         types::Record_::new(fields),
-                        left_brace_token,
-                        last_token,
+                        left_brace_token_index,
+                        last_token_index,
                     ))))
                 } else {
                     Err(Error::new(
-                        self.get_token(),
-                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token),
+                        self.get_token_index(),
+                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token_index),
                     ))
                 }
             }
@@ -862,54 +854,54 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     identifier
                 } else {
                     return Err(Error::new(
-                        self.get_token(),
+                        self.get_token_index(),
                         InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
                     ));
                 };
 
                 if self.match_token(TT::Pipe).is_none() {
                     return Err(Error::new(
-                        self.get_token(),
+                        self.get_token_index(),
                         InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
                     ));
                 }
 
                 let fields = self.type_record_fields()?;
-                let last_token = self.get_token();
+                let (last_token_index, _) = self.get_token();
 
                 if self.match_token(RightBrace).is_none() {
                     return Err(Error::new(
-                        self.get_token(),
-                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token),
+                        self.get_token_index(),
+                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token_index),
                     ));
                 }
 
                 Ok(Some(types::RecordType::RecordExt(Node::new(
                     types::RecordExt_::new(extension, fields),
-                    left_brace_token,
-                    last_token,
+                    left_brace_token_index,
+                    last_token_index,
                 ))))
             }
         }
     }
 
-    fn type_record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Type)>> {
+    fn type_record_fields(&mut self) -> ParseResult<Vec<(Identifier, Type)>> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::type_record_field,
-            |self_| Error::new(self_.get_token(), MissingRecordTypeFields),
+            |self_| Error::new(self_.get_token_index(), MissingRecordTypeFields),
         )
     }
 
-    fn type_record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Type)> {
+    fn type_record_field(&mut self) -> ParseResult<(Identifier, Type)> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
-            |self_| Error::new(self_.get_token(), InvalidRecordTypeFieldKey),
+            |self_| Error::new(self_.get_token_index(), InvalidRecordTypeFieldKey),
         )?;
 
         if self.match_token(TT::Colon).is_none() {
             return Err(Error::new(
-                self.get_token(),
+                self.get_token_index(),
                 InvalidRecordTypeFieldSeparator,
             ));
         }
@@ -918,20 +910,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         Ok((identifier, typ))
     }
 
-    fn type_param(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
+    fn type_param(&mut self) -> ParseResult<Option<Type>> {
         if let Some(type_) = self.type_parens()? {
             Ok(Some(type_))
         } else if let Some(ident) = self.capitalized_identifier() {
-            let line = ident.line;
-            let column = ident.column;
-            let start = ident.start;
-            let end = ident.end;
             Ok(Some(Type::App(Node {
                 value: types::Constructor_::new(ident, vec![]),
-                line,
-                column,
-                start,
-                end,
+                start: ident.start,
+                end: ident.end,
             })))
         } else if let Some(ident) = self.identifier() {
             Ok(Some(Type::Var(ident)))
@@ -942,8 +928,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_parens(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
-        let token = self.get_token();
+    fn type_parens(&mut self) -> ParseResult<Option<Type>> {
+        let (token_index, token) = self.get_token();
         if self.match_token(LeftParen).is_none() {
             return Ok(None);
         }
@@ -954,16 +940,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Ok(Some(type_))
         } else {
             Err(Error::new(
-                self.get_token(),
-                InvalidParenthesizedTypeDelimiter(token),
+                self.get_token_index(),
+                InvalidParenthesizedTypeDelimiter(token_index),
             ))
         }
     }
 
-    fn type_function(
-        &mut self,
-        on_type_parse_error: fn() -> ErrorType<'source, 'tokens>,
-    ) -> ParseResult<'source, 'tokens, Type> {
+    fn type_function(&mut self, on_type_parse_error: fn() -> ErrorType) -> ParseResult<Type> {
         let mut params = self.one_or_many_sep(
             // Using a comma for the parameters can be an issue because function types can be used
             // in other comma separated elements like record fields, so this type_function would
@@ -975,10 +958,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Arrow)),
             |self_| {
                 self_.required(Self::type_, |self_| {
-                    Error::new(self_.get_token(), InvalidFunctionParameterType)
+                    Error::new(self_.get_token_index(), InvalidFunctionParameterType)
                 })
             },
-            |self_| Error::new(self_.get_token(), on_type_parse_error()),
+            |self_| Error::new(self_.get_token_index(), on_type_parse_error()),
         )?;
 
         if params.len() == 1 {
@@ -989,7 +972,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn type_(&mut self) -> ParseResult<'source, 'tokens, Option<Type>> {
+    fn type_(&mut self) -> ParseResult<Option<Type>> {
         if let Some(ident) = self.identifier() {
             Ok(Some(Type::Var(ident)))
         } else if let Some(type_) = self.type_constructor()? {
@@ -1011,8 +994,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         mut modules: Vec<Module>,
         mut definitions: Vec<TypedDefinition>,
         mut type_definitions: Vec<TypeDefinition>,
-    ) -> ParseResult<'source, 'tokens, (Vec<Module>, Vec<TypedDefinition>, Vec<TypeDefinition>)>
-    {
+    ) -> ParseResult<(Vec<Module>, Vec<TypedDefinition>, Vec<TypeDefinition>)> {
         let current_token_has_valid_indent =
             self.current_token_has_valid_indent_for_module_definitions(top_level, module_token);
 
@@ -1050,14 +1032,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else if self.match_token(TT::Eof).is_some() {
                 Ok((modules, definitions, type_definitions))
             } else {
-                Err(Error::new(self.get_token(), InvalidModuleDefinitionLhs))
+                Err(Error::new(
+                    self.get_token_index(),
+                    InvalidModuleDefinitionLhs,
+                ))
             }
         } else if self.match_token(TT::Eof).is_some()
             || self.current_token_outside_indent_for_module_definitions(top_level, module_token)
         {
             Ok((modules, definitions, type_definitions))
         } else {
-            Err(Error::new(self.get_token(), InvalidModuleDefinition))
+            Err(Error::new(self.get_token_index(), InvalidModuleDefinition))
         }
     }
 
@@ -1085,7 +1070,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    pub fn expression(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+    pub fn expression(&mut self) -> ParseResult<Option<Expression>> {
         if let Some(let_) = self.let_()? {
             Ok(Some(let_))
         } else if let Some(if_) = self.if_()? {
@@ -1097,8 +1082,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn let_(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        let let_token = self.get_token();
+    fn let_(&mut self) -> ParseResult<Option<Expression>> {
+        let (let_token_index, let_token) = self.get_token();
+
         if self.match_token(TT::Let).is_none() {
             return Ok(None);
         }
@@ -1111,36 +1097,30 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     Ok(None)
                 }
             },
-            |self_| Error::new(self_.get_token(), MissingLetBindings),
+            |self_| Error::new(self_.get_token_index(), MissingLetBindings),
         )?;
 
         if self.match_token(TT::In).is_none()
             && !self.is_token_after_line_and_same_indent_as(let_token)
         {
-            return Err(Error::new(self.get_token(), InvalidLetBodyIndent));
+            return Err(Error::new(self.get_token_index(), InvalidLetBodyIndent));
         }
 
         let body = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token(), InvalidLetBodyExpression)
+            Error::new(self_.get_token_index(), InvalidLetBodyExpression)
         })?;
 
-        let line = let_token.line;
-        let column = let_token.column;
-        let start = let_token.position;
-        let end = body.end;
         Ok(Some(Node {
             value: E::untyped(Let(bindings, Box::new(body))),
-            line,
-            column,
-            start,
-            end,
+            start: let_token_index,
+            end: body.end,
         }))
     }
 
-    fn typed_binding(&mut self) -> ParseResult<'source, 'tokens, Option<TypedDefinition>> {
-        let name_token = self.get_token();
+    fn typed_binding(&mut self) -> ParseResult<Option<TypedDefinition>> {
+        let (_, name_token) = self.get_token();
         match (name_token.kind, self.peek_next_token().kind) {
-            (TT::Identifier, TT::Colon) => {
+            (TT::Identifier(_), TT::Colon) => {
                 let name = self.identifier().unwrap();
 
                 // Skip over the colon
@@ -1151,10 +1131,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 // If the definition is not directly next to the signature, bail out to avoid
                 // swallowing an unrelated definition
-                let next_name_token = self.get_token();
-                if !matches!(next_name_token.kind, TT::Identifier)
-                    || next_name_token.lexeme != name_token.lexeme
-                {
+                let (_, next_name_token) = self.get_token();
+                if next_name_token.kind != name_token.kind {
                     return Ok(Some(TypedDefinition::TypeSignature(signature)));
                 }
 
@@ -1188,8 +1166,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn binding(&mut self) -> ParseResult<'source, 'tokens, Option<Definition>> {
-        let token = self.get_token();
+    fn binding(&mut self) -> ParseResult<Option<Definition>> {
+        let token_index = self.get_token_index();
 
         let pattern = self.pattern()?;
 
@@ -1199,17 +1177,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 ..
             }) => {
                 // Peek to see if it is just an identifier and =, and return a pattern
-                if self.get_token().kind == Equal {
+                let (_, equal_token) = self.get_token();
+                if equal_token.kind == Equal {
                     let expr = self.binding_rhs()?;
                     Some(Definition::Pattern(
-                        Node::new(Pattern_::Identifier(identifier), token, token),
+                        Node::new(Pattern_::Identifier(identifier), token_index, token_index),
                         expr,
                     ))
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
                         Error::new(
-                            self_.get_token(),
+                            self_.get_token_index(),
                             InvalidLetBindingParametersOrEqualSeparator(identifier.value.clone()),
                         )
                     })?;
@@ -1231,148 +1210,143 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         Ok(definition)
     }
-    fn binding_rhs(&mut self) -> ParseResult<'source, 'tokens, Expression> {
+    fn binding_rhs(&mut self) -> ParseResult<Expression> {
         if self.match_token(TT::Equal).is_none() {
-            return Err(Error::new(self.get_token(), InvalidLetBindingSeparator));
+            return Err(Error::new(
+                self.get_token_index(),
+                InvalidLetBindingSeparator,
+            ));
         }
 
         self.required(Self::expression, |self_| {
-            Error::new(self_.get_token(), InvalidLetBindingRhs)
+            Error::new(self_.get_token_index(), InvalidLetBindingRhs)
         })
     }
 
-    fn if_(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        let token = self.get_token();
+    fn if_(&mut self) -> ParseResult<Option<Expression>> {
+        let token_index = self.get_token_index();
 
         if self.match_token(TT::If).is_none() {
             return Ok(None);
         }
 
         let condition = self.required(Self::binary, |self_| {
-            Error::new(self_.get_token(), InvalidIfCondition)
+            Error::new(self_.get_token_index(), InvalidIfCondition)
         })?;
 
         if self.match_token(TT::Then).is_none() {
-            return Err(Error::new(self.get_token(), InvalidIfThen));
+            return Err(Error::new(self.get_token_index(), InvalidIfThen));
         }
 
         let then = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token(), InvalidThenBranch)
+            Error::new(self_.get_token_index(), InvalidThenBranch)
         })?;
 
         if self.match_token(TT::Else).is_none() {
-            return Err(Error::new(self.get_token(), InvalidIfElse));
+            return Err(Error::new(self.get_token_index(), InvalidIfElse));
         }
 
         let else_ = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token(), InvalidIfElseBranch)
+            Error::new(self_.get_token_index(), InvalidIfElseBranch)
         })?;
-
-        let line = token.line;
-        let column = token.column;
-        let start = token.position;
-        let end = else_.end;
 
         Ok(Some(Node {
             value: E::untyped(If(Box::new(condition), Box::new(then), Box::new(else_))),
-            line,
-            column,
-            start,
-            end,
+            start: token_index,
+            end: else_.end,
         }))
     }
 
-    fn lambda(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        let token = self.get_token();
+    fn lambda(&mut self) -> ParseResult<Option<Expression>> {
+        let token_index = self.get_token_index();
 
         if self.match_token(Backslash).is_none() {
             return Ok(None);
         }
 
         let params = self.one_or_many(Self::pattern, |self_| {
-            Error::new(self_.get_token(), MissingLambdaParamaters)
+            Error::new(self_.get_token_index(), MissingLambdaParamaters)
         })?;
 
         if self.match_token(Arrow).is_none() {
-            return Err(Error::new(self.get_token(), InvalidLambdaArrow));
+            return Err(Error::new(self.get_token_index(), InvalidLambdaArrow));
         }
 
         let body = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token(), InvalidLambdaBody)
+            Error::new(self_.get_token_index(), InvalidLambdaBody)
         })?;
-
-        let line = token.line;
-        let column = token.column;
-        let start = token.position;
-        let end = body.end;
 
         Ok(Some(Node {
             value: E::untyped(ET::Lambda(Lambda {
                 parameters: params,
                 body: Box::new(body),
             })),
-            line,
-            column,
-            start,
-            end,
+            start: token_index,
+            end: body.end,
         }))
     }
 
-    fn pattern(&mut self) -> ParseResult<'source, 'tokens, Option<Pattern>> {
-        let token = self.get_token();
+    fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
+        let token_index = self.get_token_index();
 
         if self.match_token(TT::Underscore).is_some() {
-            Ok(Some(Node::new(Pattern_::Hole, token, token)))
+            Ok(Some(Node::new(Pattern_::Hole, token_index, token_index)))
         } else if let Some(identifier) = self.identifier() {
             Ok(Some(Node::new(
                 Pattern_::Identifier(identifier),
-                token,
-                token,
+                token_index,
+                token_index,
             )))
         } else {
             Ok(None)
         }
     }
 
-    fn binary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+    fn binary(&mut self) -> ParseResult<Option<Expression>> {
         if let Some(expr) = self.unary()? {
             self.many(Self::binary_step).map(|mut binops| {
                 // Make the binops options to be able to take them later
                 let mut binops: Vec<Option<(Binop, Expression)>> =
                     binops.drain(..).map(Some).collect();
 
-                Some(organize_binops(expr, &mut binops, &mut (0), 0))
+                Some(organize_binops(
+                    self.strings,
+                    expr,
+                    &mut binops,
+                    &mut (0),
+                    0,
+                ))
             })
         } else {
             Ok(None)
         }
     }
-    fn binary_step(&mut self) -> ParseResult<'source, 'tokens, Option<(Binop, Expression)>> {
-        let token = self.get_token();
+    fn binary_step(&mut self) -> ParseResult<Option<(Binop, Expression)>> {
+        let (token_index, token) = self.get_token();
 
         let op = match token.kind {
-            Slash => Some(Binop_::division(self.strings)),
-            Star => Some(Binop_::multiplication(self.strings)),
-            Plus => Some(Binop_::addition(self.strings)),
-            TT::Minus => Some(Binop_::substraction(self.strings)),
-            BangEqual => Some(Binop_::not_equal(self.strings)),
-            EqualEqual => Some(Binop_::equal(self.strings)),
-            Greater => Some(Binop_::greater_than(self.strings)),
-            GreaterEqual => Some(Binop_::greater_equal_than(self.strings)),
-            Less => Some(Binop_::less_than(self.strings)),
-            LessEqual => Some(Binop_::less_equal_than(self.strings)),
-            And => Some(Binop_::and(self.strings)),
-            Or => Some(Binop_::or(self.strings)),
+            Slash => Some(binop::DIVISION),
+            Star => Some(binop::MULTIPLICATION),
+            Plus => Some(binop::ADDITION),
+            TT::Minus => Some(binop::SUBSTRACTION),
+            BangEqual => Some(binop::NOT_EQUAL),
+            EqualEqual => Some(binop::EQUAL),
+            Greater => Some(binop::GREATER_THAN),
+            GreaterEqual => Some(binop::GREATER_EQUAL_THAN),
+            Less => Some(binop::LESS_THAN),
+            LessEqual => Some(binop::LESS_EQUAL_THAN),
+            And => Some(binop::AND),
+            Or => Some(binop::OR),
             _ => None,
         };
 
         if let Some(op) = op {
             self.advance();
 
-            let op_node = Node::new(op, token, token);
+            let op_node = Node::new(op, token_index, token_index);
 
             let right = self.required(Self::unary, |self_| {
-                Error::new(self_.get_token(), InvalidBinopRhs(&token))
+                Error::new(self_.get_token_index(), InvalidBinopRhs(token_index))
             })?;
 
             Ok(Some((op_node, right)))
@@ -1381,8 +1355,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn unary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        let token = self.get_token();
+    fn unary(&mut self) -> ParseResult<Option<Expression>> {
+        let (token_index, token) = self.get_token();
 
         let u = match token.kind {
             TT::Not => {
@@ -1398,27 +1372,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         match (u, self.call()?) {
             (Some(u), Some(expr)) => {
-                let op = Node::new(u, token, token);
-                let line = op.line;
-                let column = op.column;
-                let start = op.start;
-                let end = expr.end;
+                let op = Node::new(u, token_index, token_index);
                 Ok(Some(Node {
                     value: E::untyped(Unary(op, Box::new(expr))),
-                    line,
-                    column,
-                    start,
-                    end,
+                    start: op.start,
+                    end: expr.end,
                 }))
             }
             (None, Some(expr)) => Ok(Some(expr)),
-            (Some(_), None) => Err(Error::new(self.get_token(), InvalidUnaryRhs(&token))),
+            (Some(_), None) => Err(Error::new(
+                self.get_token_index(),
+                InvalidUnaryRhs(token_index),
+            )),
             (None, None) => Ok(None),
         }
     }
 
-    fn call(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        let token = self.get_token();
+    fn call(&mut self) -> ParseResult<Option<Expression>> {
+        let (_, token) = self.get_token();
 
         if let Some(expr) = self.prop_access()? {
             let args = self.many(|self_| self_.argument(token))?;
@@ -1428,16 +1399,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else {
                 let last_arg = &args[args.len() - 1];
 
-                let line = expr.line;
-                let column = expr.column;
-                let start = expr.start;
-                let end = last_arg.end;
                 Ok(Some(Node {
                     value: E::untyped(FnCall(Box::new(expr), args)),
-                    line,
-                    column,
-                    start,
-                    end,
+                    start: expr.start,
+                    end: last_arg.end,
                 }))
             }
         } else {
@@ -1445,10 +1410,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn argument(
-        &mut self,
-        first_token: &Token,
-    ) -> ParseResult<'source, 'tokens, Option<Expression>> {
+    fn argument(&mut self, first_token: &Token) -> ParseResult<Option<Expression>> {
         if self.is_token_in_same_line_or_nested_indent_from(first_token) {
             match self.prop_access()? {
                 Some(arg) => Ok(Some(arg)),
@@ -1460,102 +1422,114 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn prop_access(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
+    fn prop_access(&mut self) -> ParseResult<Option<Expression>> {
         if let Some(expr) = self.primary()? {
             self.properties(expr).map(Some)
         } else {
             Ok(None)
         }
     }
-    fn properties(&mut self, expr: Expression) -> ParseResult<'source, 'tokens, Expression> {
+    fn properties(&mut self, expr: Expression) -> ParseResult<Expression> {
         let mut expr = expr;
         while let Some(identifier) = self.property(expr.end)? {
             expr = {
                 let start = expr.start;
                 let end = identifier.end;
-                let line = expr.line;
-                let column = expr.column;
                 Node {
                     value: E::untyped(PropAccess(Box::new(expr), identifier)),
-                    start,
-                    end,
-                    line,
-                    column,
+                    start: expr.start,
+                    end: identifier.end,
                 }
             };
         }
 
         Ok(expr)
     }
-    fn property(&mut self, prev_end: usize) -> ParseResult<'source, 'tokens, Option<Identifier>> {
-        let dot_token = self.get_token();
+    fn property(&mut self, prev_end: usize) -> ParseResult<Option<Identifier>> {
+        let (dot_token_index, dot_token) = self.get_token();
         match dot_token.kind {
             // Dot token without whitespace between the prev token is a record access
-            Dot if dot_token.position == prev_end => {
+            Dot if dot_token.start == prev_end => {
                 self.advance();
 
-                let identifier_token = self.get_token();
+                let (identifier_token_index, identifier_token) = self.get_token();
                 match identifier_token.kind {
                     // Dot token without whitespace between it and the identifier is a prop access
-                    TT::Identifier if identifier_token.position == dot_token.end_position => {
+                    TT::Identifier(name) if identifier_token.start == dot_token.end => {
                         self.advance();
                         Ok(Some(Node::new(
-                            Identifier_::new(identifier_token.lexeme, self.strings),
-                            identifier_token,
-                            identifier_token,
+                            Identifier_::new(name),
+                            identifier_token_index,
+                            identifier_token_index,
                         )))
                     }
 
-                    TT::Identifier => Err(Error::new(dot_token, InvalidPropertyAccessSeparator)),
+                    TT::Identifier(_) => {
+                        Err(Error::new(dot_token_index, InvalidPropertyAccessSeparator))
+                    }
 
-                    _ => Err(Error::new(dot_token, InvalidPropertyAccessIdentifier)),
+                    _ => Err(Error::new(dot_token_index, InvalidPropertyAccessIdentifier)),
                 }
             }
             _ => Ok(None),
         }
     }
 
-    fn primary(&mut self) -> ParseResult<'source, 'tokens, Option<Expression>> {
-        let token = self.get_token();
+    fn primary(&mut self) -> ParseResult<Option<Expression>> {
+        let (token_index, token) = self.get_token();
 
         match token.kind {
             False => {
                 self.advance();
-                Ok(Some(Node::new(E::untyped(Bool(false)), token, token)))
+                Ok(Some(Node::new(
+                    E::untyped(Bool(false)),
+                    token_index,
+                    token_index,
+                )))
             }
             True => {
                 self.advance();
-                Ok(Some(Node::new(E::untyped(Bool(true)), token, token)))
-            }
-
-            TT::Float => {
-                let lexeme = token.lexeme;
-                let n = lexeme
-                    .parse::<f64>()
-                    .map_err(|_| Error::new(token, InvalidFloat(token)))?;
-
-                self.advance();
-
-                Ok(Some(Node::new(E::untyped(Float(n)), token, token)))
-            }
-
-            TT::Identifier => {
-                self.advance();
-
-                let identifier =
-                    Node::new(Identifier_::new(token.lexeme, self.strings), token, token);
-
                 Ok(Some(Node::new(
-                    E::untyped(ET::Identifier(None, AnyIdentifier::Identifier(identifier))),
-                    token,
-                    token,
+                    E::untyped(Bool(true)),
+                    token_index,
+                    token_index,
                 )))
             }
 
-            TT::CapitalizedIdentifier => {
+            TT::Float(lexeme) => {
+                let n = self
+                    .strings
+                    .resolve(lexeme)
+                    .parse::<f64>()
+                    .map_err(|_| Error::new(token_index, InvalidFloat(token_index)))?;
+
+                self.advance();
+
+                Ok(Some(Node::new(
+                    E::untyped(Float(n)),
+                    token_index,
+                    token_index,
+                )))
+            }
+
+            TT::Identifier(lexeme) => {
+                self.advance();
+
+                let identifier = Node::new(Identifier_::new(lexeme), token_index, token_index);
+
+                Ok(Some(Node::new(
+                    E::untyped(ET::Identifier(None, AnyIdentifier::Identifier(identifier))),
+                    token_index,
+                    token_index,
+                )))
+            }
+
+            TT::CapitalizedIdentifier(_) => {
                 // TODO: This is slightly wrong, since it will validate the last module segment as
                 // a module name, even though it can be just a CapitalizedIdentifier which can have
                 // more characters.
+                // Maybe what should happen is that I should restrain capitalized identifiers to
+                // have the same kinds of characters as the module name part.
                 let mut module = self.module_name(|| InvalidModuleNameSegment)?;
 
                 let (module, identifier) = if module.parts.len() == 1 {
@@ -1579,38 +1553,38 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
                 };
 
-                let (line, column, start, end) = if let Some(module) = &module {
+                let (start, end) = if let Some(module) = &module {
                     let first = &module.parts[0];
-                    (first.line, first.column, first.start, identifier.node().end)
+                    (first.start, identifier.node().end)
                 } else {
                     let node = identifier.node();
-                    (node.line, node.column, node.start, node.end)
+                    (node.start, node.end)
                 };
                 Ok(Some(Node {
                     value: E::untyped(ET::Identifier(module, identifier)),
                     start,
                     end,
-                    line,
-                    column,
                 }))
             }
 
-            TT::String_ => {
+            TT::String_(string) => {
                 self.advance();
 
-                let lexeme = token.lexeme;
+                let lexeme = self.strings.resolve(string);
+                // TODO: This here means we are storing the full string with quotes in the
+                // interner, and then now again without quotes. Quite a waste
                 // Remove the wrapper quotes from the value
                 let value = &lexeme[1..(lexeme.len() - 1)];
                 Ok(Some(Node::new(
                     E::untyped(String_(self.strings.get_or_intern(value))),
-                    token,
-                    token,
+                    token_index,
+                    token_index,
                 )))
             }
 
             LeftBrace => {
                 self.advance();
-                let next_token = self.get_token();
+                let (next_token_index, next_token) = self.get_token();
                 let second_next_token = self.peek_next_token();
 
                 match (next_token.kind, second_next_token.kind) {
@@ -1620,24 +1594,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                         Ok(Some(Node::new(
                             E::untyped(Record(vec![])),
-                            token,
-                            next_token,
+                            token_index,
+                            next_token_index,
                         )))
                     }
 
                     // Record literal
-                    (TT::Identifier, Colon) | (TT::Identifier, Equal) => {
+                    (TT::Identifier(_), Colon) | (TT::Identifier(_), Equal) => {
                         let fields = self.record_fields()?;
 
-                        if let Some(right_brace_token) = self.match_token(RightBrace) {
+                        if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(Node::new(
                                 E::untyped(Record(fields)),
-                                token,
-                                right_brace_token,
+                                token_index,
+                                right_brace_token_index,
                             )))
                         } else {
                             Err(Error::new(
-                                self.get_token(),
+                                self.get_token_index(),
                                 InvalidRecordFieldSeparatorOrLastDelimiter,
                             ))
                         }
@@ -1647,29 +1621,29 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     _ => {
                         let record = self.required(Self::expression, |self_| {
                             Error::new(
-                                self_.get_token(),
+                                self_.get_token_index(),
                                 InvalidRecordFieldsOrExtensibleRecordExpression,
                             )
                         })?;
 
                         if self.match_token(Pipe).is_none() {
                             return Err(Error::new(
-                                self.get_token(),
+                                self.get_token_index(),
                                 InvalidRecordFieldsOrExtensibleRecordExpression,
                             ));
                         }
 
                         let fields = self.record_fields()?;
 
-                        if let Some(right_brace_token) = self.match_token(RightBrace) {
+                        if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(Node::new(
                                 E::untyped(RecordUpdate(Box::new(record), fields)),
-                                token,
-                                right_brace_token,
+                                token_index,
+                                right_brace_token_index,
                             )))
                         } else {
                             Err(Error::new(
-                                self.get_token(),
+                                self.get_token_index(),
                                 InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
                             ))
                         }
@@ -1681,51 +1655,61 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 self.advance();
 
                 // Unit expression
-                if let Some(right_paren_token) = self.match_token(RightParen) {
-                    return Ok(Some(Node::new(E::untyped(Unit), token, right_paren_token)));
+                if let Some((right_paren_token_index, _)) = self.match_token(RightParen) {
+                    return Ok(Some(Node::new(
+                        E::untyped(Unit),
+                        token_index,
+                        right_paren_token_index,
+                    )));
                 }
 
                 // Parenthesized expression
                 let expr = self.required(Self::expression, |self_| {
-                    Error::new(self_.get_token(), InvalidParenthesizedExpression)
+                    Error::new(self_.get_token_index(), InvalidParenthesizedExpression)
                 })?;
 
                 if self.match_token(RightParen).is_some() {
                     Ok(Some(expr))
                 } else {
                     Err(Error::new(
-                        self.get_token(),
-                        InvalidParenthesizedExpressionLastDelimiter(token),
+                        self.get_token_index(),
+                        InvalidParenthesizedExpressionLastDelimiter(token_index),
                     ))
                 }
             }
 
             Dot => {
                 self.advance();
-                let identifier_token = self.get_token();
+                let (identifier_token_index, identifier_token) = self.get_token();
 
                 match identifier_token.kind {
                     // Dot token without whitespace between it and the identifier is a lambda w/ prop access
-                    TT::Identifier if identifier_token.position == token.end_position => {
+                    TT::Identifier(lexeme) if identifier_token.start == token.end => {
                         self.advance();
 
                         let name_identifier = Node::new(
-                            Identifier_::new(identifier_token.lexeme, self.strings),
-                            identifier_token,
-                            identifier_token,
+                            Identifier_::new(lexeme),
+                            identifier_token_index,
+                            identifier_token_index,
                         );
 
                         Ok(Some(Node::new(
                             E::untyped(PropAccessLambda(name_identifier)),
-                            token,
-                            identifier_token,
+                            token_index,
+                            identifier_token_index,
                         )))
                     }
 
                     // Dot with whitespace and an identifier afterwards
-                    TT::Identifier => Err(Error::new(token, InvalidPropertyAccessLambdaWhitespace)),
+                    TT::Identifier(_) => Err(Error::new(
+                        token_index,
+                        InvalidPropertyAccessLambdaWhitespace,
+                    )),
 
-                    _ => Err(Error::new(token, InvalidPropertyAccessLambdaIdentifier)),
+                    _ => Err(Error::new(
+                        token_index,
+                        InvalidPropertyAccessLambdaIdentifier,
+                    )),
                 }
             }
 
@@ -1733,46 +1717,44 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn record_fields(&mut self) -> ParseResult<'source, 'tokens, Vec<(Identifier, Expression)>> {
+    fn record_fields(&mut self) -> ParseResult<Vec<(Identifier, Expression)>> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::record_field,
-            |self_| Error::new(self_.get_token(), MissingRecordFields),
+            |self_| Error::new(self_.get_token_index(), MissingRecordFields),
         )
     }
 
-    fn record_field(&mut self) -> ParseResult<'source, 'tokens, (Identifier, Expression)> {
+    fn record_field(&mut self) -> ParseResult<(Identifier, Expression)> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
-            |self_| Error::new(self_.get_token(), InvalidRecordFieldKey),
+            |self_| Error::new(self_.get_token_index(), InvalidRecordFieldKey),
         )?;
 
-        if !matches!(self.get_token().kind, Colon | Equal) {
+        let (_, separator) = self.get_token();
+        if !matches!(separator.kind, Colon | Equal) {
             return Err(Error::new(
-                self.get_token(),
+                self.get_token_index(),
                 InvalidRecordFieldKeyValueSeparator,
             ));
         }
         self.advance();
 
         let expr = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token(), InvalidRecordFieldValue)
+            Error::new(self_.get_token_index(), InvalidRecordFieldValue)
         })?;
 
         Ok((identifier, expr))
     }
 
-    fn module_name(
-        &mut self,
-        on_name_parse_error: fn() -> ErrorType<'source, 'tokens>,
-    ) -> ParseResult<'source, 'tokens, ModuleName> {
+    fn module_name(&mut self, on_name_parse_error: fn() -> ErrorType) -> ParseResult<ModuleName> {
         let start = self.current;
         let identifiers = self.one_or_many_sep(
             |self_| {
-                let dot_token = self_.get_token();
+                let (_, dot_token) = self_.get_token();
                 let possibly_module_identifier = self_.peek_next_token();
                 match (dot_token.kind, possibly_module_identifier.kind) {
-                    (TT::Dot, TT::CapitalizedIdentifier) => {
+                    (TT::Dot, TT::CapitalizedIdentifier(_)) => {
                         self_.advance();
                         Ok(Some(dot_token))
                     }
@@ -1782,57 +1764,89 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| {
                 self_.required(
                     |self_| Ok(self_.capitalized_identifier()),
-                    |self_| Error::new(self_.get_token(), InvalidModuleNameSegment),
+                    |self_| Error::new(self_.get_token_index(), InvalidModuleNameSegment),
                 )
             },
-            |self_| Error::new(self_.get_token(), on_name_parse_error()),
+            |self_| Error::new(self_.get_token_index(), on_name_parse_error()),
         )?;
 
         debug_assert!(!identifiers.is_empty());
         let end = self.current;
-        self.build_module_name(&self.tokens[start..end], identifiers)
+        self.build_module_name(start, &self.tokens[start..end], identifiers)
     }
     fn build_module_name(
         &mut self,
-        tokens: &'tokens [Token<'source>],
+        start: usize,
+        tokens: &'tokens [Token],
         names: Vec<CapitalizedIdentifier>,
-    ) -> ParseResult<'source, 'tokens, ModuleName> {
+    ) -> ParseResult<ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
             let name = &names[i];
-            let token = tokens.iter().find(|t| t.position == name.start).unwrap();
-            Error::new(&token, InvalidModuleNameSegment)
+            let token_relative_index = tokens.iter().position(|t| t.start == name.start).unwrap();
+            // TODO: get the token indexes here somehow
+            Error::new(start + token_relative_index, InvalidModuleNameSegment)
         })
     }
 
     fn identifier(&mut self) -> Option<Identifier> {
-        self.match_token(TT::Identifier).map(|identifier_token| {
-            let name_identifier = Identifier_::new(identifier_token.lexeme, self.strings);
-            Node::new(name_identifier, identifier_token, identifier_token)
-        })
+        if let (
+            identifier_token_index,
+            Token {
+                kind: TT::Identifier(lexeme),
+                ..
+            },
+        ) = self.get_token()
+        {
+            let name_identifier = Identifier_::new(*lexeme);
+            Some(Node::new(
+                name_identifier,
+                identifier_token_index,
+                identifier_token_index,
+            ))
+        } else {
+            None
+        }
     }
 
     fn capitalized_identifier(&mut self) -> Option<CapitalizedIdentifier> {
-        self.match_token(TT::CapitalizedIdentifier)
-            .map(|identifier_token| {
-                let name_identifier =
-                    CapitalizedIdentifier_::new(identifier_token.lexeme, self.strings);
-                Node::new(name_identifier, identifier_token, identifier_token)
-            })
+        if let (
+            identifier_token_index,
+            Token {
+                kind: TT::CapitalizedIdentifier(lexeme),
+                ..
+            },
+        ) = self.get_token()
+        {
+            let name_identifier = CapitalizedIdentifier_::new(*lexeme);
+            Some(Node::new(
+                name_identifier,
+                identifier_token_index,
+                identifier_token_index,
+            ))
+        } else {
+            None
+        }
     }
 
     // Utilities
 
-    fn prev_token(&self) -> &'tokens Token<'source> {
-        let (_, token) = self.prev_non_comment_token(self.current);
-        token
+    fn prev_token(&self) -> (module::tokens::Index, &'tokens Token) {
+        self.prev_non_comment_token(self.current)
+    }
+    fn prev_token_index(&self) -> module::tokens::Index {
+        let (idx, _) = self.prev_non_comment_token(self.current);
+        idx
     }
 
-    fn get_token(&self) -> &'tokens Token<'source> {
-        let (_, token) = self.next_non_comment_token(self.current);
-        token
+    fn get_token(&self) -> (module::tokens::Index, &'tokens Token) {
+        self.next_non_comment_token(self.current)
+    }
+    fn get_token_index(&self) -> module::tokens::Index {
+        let (idx, _) = self.next_non_comment_token(self.current);
+        idx
     }
 
-    fn peek_next_token(&self) -> &'tokens Token<'source> {
+    fn peek_next_token(&self) -> &'tokens Token {
         let (first, token) = self.next_non_comment_token(self.current);
         match token.kind {
             Eof => token,
@@ -1851,7 +1865,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         };
     }
 
-    fn next_non_comment_token(&self, start: usize) -> (usize, &'tokens Token<'source>) {
+    fn next_non_comment_token(&self, start: usize) -> (usize, &'tokens Token) {
         let mut i = start;
         let mut token;
         loop {
@@ -1873,7 +1887,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         (i, token)
     }
 
-    fn prev_non_comment_token(&self, start: usize) -> (usize, &'tokens Token<'source>) {
+    fn prev_non_comment_token(&self, start: usize) -> (usize, &'tokens Token) {
         let mut i = start - 1;
         let mut token;
         loop {
@@ -1896,19 +1910,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn is_token_in_same_indent_and_column_as(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
+        let (_, token) = self.get_token();
         parent_token.line < token.line
             && token.indent == parent_token.indent
             && token.column == parent_token.column
     }
 
     fn is_token_after_line_and_same_indent_as(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
+        let (_, token) = self.get_token();
         parent_token.line < token.line && token.indent == parent_token.indent
     }
 
     fn is_token_in_same_line_or_nested_indent_from(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
+        let (_, token) = self.get_token();
         parent_token.line == token.line
             || (parent_token.line < token.line && token.indent > parent_token.indent)
     }
@@ -1917,14 +1931,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         &self,
         parent_token: &Token,
     ) -> bool {
-        let token = self.get_token();
+        let (_, token) = self.get_token();
         parent_token.line < token.line
             && token.indent > parent_token.indent
             && token.column == token.indent
     }
 
     fn is_token_equal_or_less_indented_than(&self, parent_token: &Token) -> bool {
-        let token = self.get_token();
+        let (_, token) = self.get_token();
         parent_token.line < token.line && token.indent <= parent_token.indent
     }
 
@@ -1935,15 +1949,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         parse: Parser,
         on_first_not_found: E1,
         on_missing_separator_or_last_delimiter: E2,
-    ) -> ParseResult<'source, 'tokens, Option<Vec<ParserResult>>>
+    ) -> ParseResult<Option<Vec<ParserResult>>>
     where
-        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
-        E1: Fn(&mut Self) -> Error<'source, 'tokens>,
-        E2: Fn(&mut Self) -> Error<'source, 'tokens>,
+        Parser: Fn(&mut Self) -> ParseResult<ParserResult>,
+        E1: Fn(&mut Self) -> Error,
+        E2: Fn(&mut Self) -> Error,
     {
         let (first_delimiter, last_delimiter) = delimiter;
 
-        if self.get_token().kind != first_delimiter {
+        let (_, token) = self.get_token();
+        if token.kind != first_delimiter {
             return Ok(None);
         }
         self.advance();
@@ -1952,7 +1967,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let mut i = 0;
 
         loop {
-            let token = self.get_token();
+            let (_, token) = self.get_token();
             if token.kind == last_delimiter {
                 if i == 0 {
                     return Err(on_first_not_found(self));
@@ -1982,10 +1997,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         &mut self,
         parse: Parser,
         on_first_not_found: E,
-    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
+    ) -> ParseResult<Vec<ParserResult>>
     where
-        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<ParserResult>>,
-        E: Fn(&mut Self) -> Error<'source, 'tokens>,
+        Parser: Fn(&mut Self) -> ParseResult<Option<ParserResult>>,
+        E: Fn(&mut Self) -> Error,
     {
         let items = self.many(parse)?;
         if items.is_empty() {
@@ -2000,11 +2015,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         delimiter: DelimiterParser,
         parse: Parser,
         on_first_not_found: E,
-    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
+    ) -> ParseResult<Vec<ParserResult>>
     where
-        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, ParserResult>,
-        DelimiterParser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<Delimiter>>,
-        E: Fn(&mut Self) -> Error<'source, 'tokens>,
+        Parser: Fn(&mut Self) -> ParseResult<ParserResult>,
+        DelimiterParser: Fn(&mut Self) -> ParseResult<Option<Delimiter>>,
+        E: Fn(&mut Self) -> Error,
     {
         let mut i = 0;
         let mut items = vec![];
@@ -2027,12 +2042,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn many<Parser, ParserResult>(
-        &mut self,
-        parse: Parser,
-    ) -> ParseResult<'source, 'tokens, Vec<ParserResult>>
+    fn many<Parser, ParserResult>(&mut self, parse: Parser) -> ParseResult<Vec<ParserResult>>
     where
-        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<ParserResult>>,
+        Parser: Fn(&mut Self) -> ParseResult<Option<ParserResult>>,
     {
         let mut items = vec![];
         while let Some(item) = parse(self)? {
@@ -2045,10 +2057,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         &mut self,
         parse: Parser,
         on_none: E,
-    ) -> ParseResult<'source, 'tokens, ParserResult>
+    ) -> ParseResult<ParserResult>
     where
-        Parser: Fn(&mut Self) -> ParseResult<'source, 'tokens, Option<ParserResult>>,
-        E: Fn(&mut Self) -> Error<'source, 'tokens>,
+        Parser: Fn(&mut Self) -> ParseResult<Option<ParserResult>>,
+        E: Fn(&mut Self) -> Error,
     {
         if let Some(result) = parse(self)? {
             Ok(result)
@@ -2057,11 +2069,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn match_token(&mut self, typ: token::Type) -> Option<&'tokens Token<'source>> {
-        let token = self.get_token();
-        if self.get_token().kind == typ {
+    fn match_token(&mut self, typ: token::Type) -> Option<(module::tokens::Index, &'tokens Token)> {
+        let (token_index, token) = self.get_token();
+        if std::mem::discriminant(&token.kind) == std::mem::discriminant(&typ) {
             self.advance();
-            Some(token)
+            Some((token_index, token))
         } else {
             None
         }
@@ -2069,6 +2081,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 }
 
 fn organize_binops(
+    strings: &mut Strings,
     left: Expression,
     binops: &mut Vec<Option<(Binop, Expression)>>,
     current: &mut usize,
@@ -2099,26 +2112,21 @@ fn organize_binops(
                             0
                         };
 
-                    let right = organize_binops(rhs, binops, current, next_min_precedence);
-
-                    let line = left.line;
-                    let column = left.column;
-                    let start = left.start;
-                    let end = right.end;
+                    let right = organize_binops(strings, rhs, binops, current, next_min_precedence);
 
                     left = Node {
                         value: E::untyped(Binary(
                             Box::new(op.with_value(E::untyped(ET::Identifier(
                                 None,
-                                AnyIdentifier::Identifier(op.with_value(op.value.fn_.clone())),
+                                AnyIdentifier::Identifier(
+                                    op.with_value(op.value.get_function_identifier(strings)),
+                                ),
                             )))),
                             op,
                             Box::new([left, right]),
                         )),
-                        line,
-                        column,
-                        start,
-                        end,
+                        start: left.start,
+                        end: right.end,
                     }
                 } else {
                     break;
@@ -2133,9 +2141,9 @@ fn organize_binops(
 
 pub fn parse<'source, 'strings, 'tokens>(
     source: &'source Source,
-    tokens: &'tokens [Token<'source>],
+    tokens: &'tokens [Token],
     strings: &'strings mut Strings,
-) -> ParseResult<'source, 'tokens, (Module, Vec<Module>)> {
+) -> ParseResult<(Module, Vec<Module>)> {
     let mut parser = State {
         strings,
         source,
@@ -2148,9 +2156,9 @@ pub fn parse<'source, 'strings, 'tokens>(
 
 pub fn parse_repl<'source, 'strings, 'tokens>(
     source: &'source Source,
-    tokens: &'tokens [Token<'source>],
+    tokens: &'tokens [Token],
     strings: &'strings mut Strings,
-) -> ParseResult<'source, 'tokens, ReplEntry> {
+) -> ParseResult<ReplEntry> {
     let mut parser = State {
         strings,
         source,
@@ -2168,9 +2176,9 @@ pub mod tests {
 
     pub fn parse_expression<'source, 'strings, 'tokens>(
         source: &'source Source,
-        tokens: &'tokens [Token<'source>],
+        tokens: &'tokens [Token],
         strings: &'strings mut Strings,
-    ) -> ParseResult<'source, 'tokens, Box<Expression>> {
+    ) -> ParseResult<Box<Expression>> {
         let mut parser = State {
             strings,
             source,
@@ -2179,7 +2187,7 @@ pub mod tests {
         };
 
         let result = parser.required(State::expression, |self_| {
-            Error::new(self_.get_token(), InvalidExpression)
+            Error::new(self_.get_token_index(), InvalidModuleDefinitionLhs)
         })?;
         parser.eof(Box::new(result))
     }
@@ -2472,12 +2480,13 @@ add 5"
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
-            let tokens = tokenizer::parse(&source).unwrap();
             let mut strings = Strings::new();
-            let result = match &parse_expression(&source, &tokens, &mut strings) {
+            let mut module = module::Module::new();
+            tokenizer::parse(&source, &mut strings, &mut module).unwrap();
+            let result = match &parse_expression(&source, &module.tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
-                    let error_str = error.to_string(&source, &strings);
+                    let error_str = error.to_string(&source, &module.tokens, &strings);
                     format!("{error_str}\n\n{error:#?}")
                 }
             };
@@ -3172,12 +3181,13 @@ main =
 
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
-            let tokens = tokenizer::parse(&source).unwrap();
             let mut strings = Strings::new();
-            let result = match &super::parse(&source, &tokens, &mut strings) {
+            let mut module = module::Module::new();
+            let tokens = tokenizer::parse(&source, &mut strings, &mut module).unwrap();
+            let result = match &super::parse(&source, &module.tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
-                    let error_str = error.to_string(&source, &strings);
+                    let error_str = error.to_string(&source, &module.tokens, &strings);
                     format!("{error_str}\n\n{error:#?}")
                 }
             };

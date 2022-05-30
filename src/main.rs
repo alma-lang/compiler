@@ -3,6 +3,7 @@ mod cli;
 mod compiler;
 mod infer;
 mod javascript;
+mod module;
 mod parser;
 mod source;
 mod strings;

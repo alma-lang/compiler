@@ -2,11 +2,12 @@ pub mod errors;
 pub mod stages;
 pub mod types;
 
-use crate::ast::{self, Module, ReplEntry, TypedDefinition};
+use crate::ast::{self, ReplEntry, TypedDefinition};
 use crate::compiler::stages::{check_cycles, infer, parse_files};
 use crate::compiler::types::{ModuleInterfaces, Sources};
 use crate::infer;
 use crate::javascript;
+use crate::module::Module;
 use crate::parser;
 use crate::source::Source;
 use crate::strings::Strings;
@@ -43,12 +44,13 @@ pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, St
 
 pub fn compile_repl_entry(
     module: &mut Module,
+    module_ast: &mut ast::Module,
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     strings: &mut Strings,
     primitive_types: &PolyTypeEnv,
 ) -> Result<String, String> {
-    let tokens = tokenizer::parse(source).map_err(|errors| {
+    tokenizer::parse(source, strings, module).map_err(|errors| {
         errors
             .iter()
             .map(|e| e.to_string(source))
@@ -56,8 +58,8 @@ pub fn compile_repl_entry(
             .join("\n\n")
     })?;
 
-    let entry = parser::parse_repl(source, &tokens, strings)
-        .map_err(|error| error.to_string(source, strings))?;
+    let entry = parser::parse_repl(source, &module.tokens, strings)
+        .map_err(|error| error.to_string(source, &module.tokens, strings))?;
 
     let mut errors = vec![];
 
@@ -65,9 +67,9 @@ pub fn compile_repl_entry(
     // print the type of it
     match entry {
         ReplEntry::Import(import) => {
-            module.imports.push(import);
+            module_ast.imports.push(import);
             let result = compile_repl_entry_helper(
-                module,
+                module_ast,
                 module_interfaces,
                 source,
                 &mut errors,
@@ -75,16 +77,16 @@ pub fn compile_repl_entry(
                 primitive_types,
             );
             if result.is_err() {
-                module.imports.pop();
+                module_ast.imports.pop();
             }
             result
         }
         ReplEntry::Definition(definition) => {
-            module
+            module_ast
                 .definitions
                 .push(TypedDefinition::Untyped(definition));
             let result = compile_repl_entry_helper(
-                module,
+                module_ast,
                 module_interfaces,
                 source,
                 &mut errors,
@@ -92,32 +94,30 @@ pub fn compile_repl_entry(
                 primitive_types,
             );
             if result.is_err() {
-                module.definitions.pop();
+                module_ast.definitions.pop();
             }
             result
         }
         ReplEntry::Expression(expression) => {
-            module
+            module_ast
                 .definitions
                 .push(TypedDefinition::Untyped(ast::Definition::Pattern(
                     ast::Node {
                         value: ast::Pattern_::Hole,
                         start: 0,
                         end: 0,
-                        line: 1,
-                        column: 0,
                     },
                     expression,
                 )));
             let result = compile_repl_entry_helper(
-                module,
+                module_ast,
                 module_interfaces,
                 source,
                 &mut errors,
                 strings,
                 primitive_types,
             );
-            module.definitions.pop();
+            module_ast.definitions.pop();
             result
         }
     }
@@ -126,7 +126,7 @@ pub fn compile_repl_entry(
 
 // Encapsulate the compiler logic regardless of repl entry type
 fn compile_repl_entry_helper<'ast>(
-    module: &'ast Module,
+    module: &'ast ast::Module,
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     errors: &mut Vec<infer::Error<'ast>>,

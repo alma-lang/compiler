@@ -1,31 +1,29 @@
+use crate::module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
-use crate::token::Token;
 use crate::typ;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-// AST Node
-
 #[derive(PartialEq, Debug)]
 pub struct Node<V> {
-    pub start: usize,
-    pub end: usize,
-    pub line: u32,
-    pub column: u32,
+    pub start: module::tokens::Index,
+    pub end: module::tokens::Index,
     pub value: V,
 }
 
 impl<V> Node<V> {
-    pub fn new(value: V, first_token: &Token, last_token: &Token) -> Self {
+    pub fn new(
+        value: V,
+        first_token: module::tokens::Index,
+        last_token: module::tokens::Index,
+    ) -> Self {
         Node {
             value,
-            start: first_token.position,
-            end: last_token.end_position,
-            line: first_token.line,
-            column: first_token.column,
+            start: first_token,
+            end: last_token,
         }
     }
 
@@ -34,8 +32,6 @@ impl<V> Node<V> {
             value,
             start: self.start,
             end: self.end,
-            line: self.line,
-            column: self.column,
         }
     }
 
@@ -128,7 +124,7 @@ impl ModuleName {
         true
     }
 
-    pub fn end(&self) -> usize {
+    pub fn end(&self) -> module::tokens::Index {
         self.parts
             .last()
             .expect("Module names should never be empty")
@@ -395,8 +391,9 @@ pub enum Unary_ {
 }
 
 pub mod binop {
-    use super::{Identifier_, Node};
     use crate::strings::Strings;
+
+    use super::{Identifier_, Node};
 
     #[derive(PartialEq, Debug, Clone)]
     pub enum Type {
@@ -427,121 +424,102 @@ pub mod binop {
         typ: Type,
         pub precedence: u32,
         pub associativity: Associativity,
-        pub fn_: Identifier_,
+    }
+
+    impl Binop_ {
+        pub fn get_function_identifier(&self, strings: &mut Strings) -> Identifier_ {
+            let name_sym = strings.get_or_intern(match self.typ {
+                Or => "__op_or",
+                And => "__op_and",
+                Equal => "__op_eq",
+                NotEqual => "__op_ne",
+                GreaterThan => "__op_gt",
+                GreaterEqualThan => "__op_ge",
+                LessThan => "__op_lt",
+                LessEqualThan => "__op_le",
+                Addition => "__op_add",
+                Substraction => "__op_sub",
+                Multiplication => "__op_mult",
+                Division => "__op_div",
+            });
+            Identifier_::new(name_sym)
+        }
     }
 
     use Associativity::*;
     use Type::*;
 
-    impl Binop_ {
-        pub fn or(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: Or,
-                precedence: 6,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__or", strings),
-            }
-        }
+    pub const OR: Binop_ = Binop_ {
+        typ: Or,
+        precedence: 6,
+        associativity: Ltr,
+    };
 
-        pub fn and(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: And,
-                precedence: 7,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__and", strings),
-            }
-        }
+    pub const AND: Binop_ = Binop_ {
+        typ: And,
+        precedence: 7,
+        associativity: Ltr,
+    };
 
-        pub fn equal(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: Equal,
-                precedence: 11,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__eq", strings),
-            }
-        }
+    pub const EQUAL: Binop_ = Binop_ {
+        typ: Equal,
+        precedence: 11,
+        associativity: Ltr,
+    };
 
-        pub fn not_equal(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: NotEqual,
-                precedence: 11,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__ne", strings),
-            }
-        }
+    pub const NOT_EQUAL: Binop_ = Binop_ {
+        typ: NotEqual,
+        precedence: 11,
+        associativity: Ltr,
+    };
 
-        pub fn greater_than(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: GreaterThan,
-                precedence: 12,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__gt", strings),
-            }
-        }
+    pub const GREATER_THAN: Binop_ = Binop_ {
+        typ: GreaterThan,
+        precedence: 12,
+        associativity: Ltr,
+    };
 
-        pub fn greater_equal_than(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: GreaterEqualThan,
-                precedence: 12,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__ge", strings),
-            }
-        }
+    pub const GREATER_EQUAL_THAN: Binop_ = Binop_ {
+        typ: GreaterEqualThan,
+        precedence: 12,
+        associativity: Ltr,
+    };
 
-        pub fn less_than(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: LessThan,
-                precedence: 12,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__lt", strings),
-            }
-        }
+    pub const LESS_THAN: Binop_ = Binop_ {
+        typ: LessThan,
+        precedence: 12,
+        associativity: Ltr,
+    };
 
-        pub fn less_equal_than(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: LessEqualThan,
-                precedence: 12,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__le", strings),
-            }
-        }
+    pub const LESS_EQUAL_THAN: Binop_ = Binop_ {
+        typ: LessEqualThan,
+        precedence: 12,
+        associativity: Ltr,
+    };
 
-        pub fn addition(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: Addition,
-                precedence: 14,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__add", strings),
-            }
-        }
+    pub const ADDITION: Binop_ = Binop_ {
+        typ: Addition,
+        precedence: 14,
+        associativity: Ltr,
+    };
 
-        pub fn substraction(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: Substraction,
-                precedence: 14,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__sub", strings),
-            }
-        }
+    pub const SUBSTRACTION: Binop_ = Binop_ {
+        typ: Substraction,
+        precedence: 14,
+        associativity: Ltr,
+    };
 
-        pub fn multiplication(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: Multiplication,
-                precedence: 15,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__mult", strings),
-            }
-        }
+    pub const MULTIPLICATION: Binop_ = Binop_ {
+        typ: Multiplication,
+        precedence: 15,
+        associativity: Ltr,
+    };
 
-        pub fn division(strings: &mut Strings) -> Self {
-            Binop_ {
-                typ: Division,
-                precedence: 15,
-                associativity: Ltr,
-                fn_: Identifier_::new("__op__div", strings),
-            }
-        }
-    }
+    pub const DIVISION: Binop_ = Binop_ {
+        typ: Division,
+        precedence: 15,
+        associativity: Ltr,
+    };
 }
 use binop::Binop;
 
@@ -565,8 +543,7 @@ pub struct CapitalizedIdentifier_ {
     pub name: IdentifierName,
 }
 impl CapitalizedIdentifier_ {
-    pub fn new(name: &str, strings: &mut Strings) -> Self {
-        let name_sym = strings.get_or_intern(name);
+    pub fn new(name_sym: StringSymbol) -> Self {
         Self { name: name_sym }
     }
 
@@ -582,8 +559,7 @@ pub struct Identifier_ {
 }
 
 impl Identifier_ {
-    pub fn new(name: &str, strings: &mut Strings) -> Self {
-        let name_sym = strings.get_or_intern(name);
+    pub fn new(name_sym: StringSymbol) -> Self {
         Self { name: name_sym }
     }
 

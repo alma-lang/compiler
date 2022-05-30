@@ -2,6 +2,7 @@ use crate::ast;
 use crate::compiler;
 use crate::compiler::stages::process_sources;
 use crate::compiler::types::ModuleInterfaces;
+use crate::module::Module;
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::typ::Type;
@@ -10,21 +11,23 @@ use std::process;
 
 pub fn repl() {
     let mut strings = Strings::new();
+    let module = Module::new();
     let primitive_types = Type::primitive_types(&mut strings);
 
     let module_name = ast::ModuleName::new(
         vec![ast::Node {
-            value: ast::CapitalizedIdentifier_::new("Repl", &mut strings),
+            value: {
+                let sym = strings.get_or_intern("Repl");
+                ast::CapitalizedIdentifier_::new(sym)
+            },
             start: 0,
             end: 0,
-            line: 1,
-            column: 0,
         }],
         &mut strings,
     )
     .unwrap();
 
-    let mut module = ast::Module {
+    let mut module_ast = ast::Module {
         name: module_name,
         exports: vec![],
         imports: vec![],
@@ -46,6 +49,7 @@ pub fn repl() {
                 let file = Source::new_orphan(line);
                 match compiler::compile_repl_entry(
                     &mut module,
+                    &mut module_ast,
                     &mut module_interfaces,
                     &file,
                     &mut strings,

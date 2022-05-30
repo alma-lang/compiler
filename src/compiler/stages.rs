@@ -2,6 +2,7 @@ use crate::ast::ModuleFullName;
 use crate::compiler::errors;
 use crate::compiler::types::{ModuleAsts, ModuleInterfaces, ModuleSources, Sources};
 use crate::infer;
+use crate::module::Module;
 use crate::parser;
 use crate::source::Source;
 use crate::strings::Strings;
@@ -82,7 +83,8 @@ fn parse_file<'source>(
     module_sources: &mut ModuleSources<'source>,
     strings: &mut Strings,
 ) -> Result<Vec<ModuleFullName>, Vec<String>> {
-    let tokens = tokenizer::parse(source).map_err(|errors| {
+    let mut module = Module::new();
+    tokenizer::parse(source, strings, &mut module).map_err(|errors| {
         errors
             .iter()
             .map(|e| e.to_string(source))
@@ -91,8 +93,8 @@ fn parse_file<'source>(
 
     let mut module_names = vec![];
 
-    let (module, submodules) = parser::parse(source, &tokens, strings)
-        .map_err(|error| vec![error.to_string(source, strings)])?;
+    let (module, submodules) = parser::parse(source, &module.tokens, strings)
+        .map_err(|error| vec![error.to_string(source, &module.tokens, strings)])?;
 
     for module in submodules {
         // Add all submodules to queue
@@ -279,9 +281,7 @@ pub fn infer(
                 }
                 let module = module_asts.get(&module_name).unwrap_or_else(|| {
                     let module_name = strings.resolve(module_name);
-                    panic!(
-                        "Couldn't find module {module_name} in the ASTs"
-                    )
+                    panic!("Couldn't find module {module_name} in the ASTs")
                 });
 
                 // Check dependencies and skip back to queue if there are any that need processing

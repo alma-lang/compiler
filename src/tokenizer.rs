@@ -1,7 +1,9 @@
 use std::iter::Peekable;
 use std::str::CharIndices;
 
+use crate::module::Module;
 use crate::source::Source;
+use crate::strings::{self, Strings};
 use crate::token::{self, Token};
 
 #[derive(PartialEq, Debug)]
@@ -38,11 +40,12 @@ enum Status {
     IdentifierToken(bool, bool),
 }
 
-struct State<'source> {
+struct State<'source, 'strings> {
     status: Status,
+    strings: &'strings mut Strings,
     source: &'source Source,
     chars: Peekable<CharIndices<'source>>,
-    tokens: Vec<Token<'source>>,
+    tokens: Vec<Token>,
     errors: Vec<Error>,
     start: usize,
     start_line: u32,
@@ -53,11 +56,11 @@ struct State<'source> {
     indent: u32,
 }
 
-impl<'source> State<'source> {
-    fn new(source: &'source Source) -> State<'source> {
+impl<'source, 'strings> State<'source, 'strings> {
+    fn new(source: &'source Source, strings: &'strings mut Strings) -> State<'source, 'strings> {
         State {
             status: Status::SingleToken,
-            tokens: vec![],
+            tokens: Vec::new(),
             errors: vec![],
             start: 0,
             start_line: 1,
@@ -68,6 +71,7 @@ impl<'source> State<'source> {
             line_start_position: 0,
             indent: 0,
             source,
+            strings,
             chars: source.char_indices().peekable(),
         }
     }
@@ -76,25 +80,32 @@ impl<'source> State<'source> {
         self.chars.peek().map(|(_i, c)| *c)
     }
 
+    fn lexeme(&self) -> strings::Symbol {
+        let start = self.start;
+        let end = self.current + self.current_char.len_utf8();
+        self.strings.get_or_intern(
+            self.source
+                .text_at(start..end)
+                .expect("Couldn't extract lexeme from token"),
+        )
+    }
+
     fn add_token(&mut self, kind: token::Type) {
-        let position = self.start;
-        let end_position = self.current + self.current_char.len_utf8();
+        let start = self.start;
+        let end = self.current + self.current_char.len_utf8();
 
         let lexeme = match kind {
             token::Type::Eof => "[End of file]",
             _ => self
                 .source
-                .text_at(position..end_position)
+                .text_at(start..end)
                 .expect("Couldn't extract lexeme from token"),
         };
 
         self.push_token(Token {
             kind,
-
-            position,
-            end_position,
-            lexeme,
-
+            start,
+            end,
             line: self.line,
             column: self.start as u32 - self.line_start_position as u32,
             indent: self.indent,
@@ -144,7 +155,7 @@ impl<'source> State<'source> {
         self.line_start_position = self.current + 1;
     }
 
-    fn push_token(&mut self, token: Token<'source>) {
+    fn push_token(&mut self, token: Token) {
         self.tokens.push(token);
     }
 
@@ -253,7 +264,7 @@ impl<'source> State<'source> {
 
             Status::StringToken(prev_was_backslash) => match ch {
                 Some('\\') => self.status = Status::StringToken(true),
-                Some('"') if !prev_was_backslash => self.add_token(String_),
+                Some('"') if !prev_was_backslash => self.add_token(String_(self.lexeme())),
                 None => self.add_error("Unclosed string.", true),
                 _ => {
                     if prev_was_backslash {
@@ -282,7 +293,7 @@ impl<'source> State<'source> {
                     Some(c) if c.is_digit(10) => (),
 
                     // Anything else we find ends the number token
-                    _ => self.add_token(Float),
+                    _ => self.add_token(Float(self.lexeme())),
                 },
 
                 _ => panic!("Got to the number tokenizer without a valid number digit."),
@@ -316,9 +327,9 @@ impl<'source> State<'source> {
                                 "type" => Type,
                                 _ => {
                                     if is_module {
-                                        CapitalizedIdentifier
+                                        CapitalizedIdentifier(self.lexeme())
                                     } else {
-                                        Identifier
+                                        Identifier(self.lexeme())
                                     }
                                 }
                             },
@@ -352,28 +363,31 @@ impl<'source> State<'source> {
 
         self.tokens.push(Token {
             kind: token::Type::Eof,
+            indent: self.indent,
+            start: self.source.len(),
+            end: self.source.len(),
             line: self.line,
             // If the last char is a \n, then line_start_position may be bigger than the last \n
             // position. Default to column 0 then.
             column: self.source.len().saturating_sub(self.line_start_position) as u32,
-            indent: self.indent,
-
-            position: self.source.len(),
-            end_position: self.source.len(),
-            lexeme: "[End of file]",
         });
     }
 }
 
-pub fn parse(source: &Source) -> Result<Vec<Token<'_>>, Vec<Error>> {
-    let mut tokenizer = State::new(source);
+pub fn parse(
+    source: &Source,
+    strings: &mut Strings,
+    module: &mut Module,
+) -> Result<(), Vec<Error>> {
+    let mut tokenizer = State::new(source, strings);
 
     tokenizer.parse();
 
     if !tokenizer.errors.is_empty() {
         Err(tokenizer.errors)
     } else {
-        Ok(tokenizer.tokens)
+        module.tokens = tokenizer.tokens;
+        Ok(())
     }
 }
 
@@ -389,7 +403,10 @@ mod tests {
 
     fn tokenize<'a>(code: &'a str) -> String {
         let source = &Source::new_orphan(code.to_string());
-        format!("{:#?}", parse(source))
+        format!(
+            "{:#?}",
+            parse(source, &mut Strings::new(), &mut Module::new())
+        )
     }
 
     #[test]
