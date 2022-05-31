@@ -1,6 +1,6 @@
 use crate::strings::{self, Strings};
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Token {
     pub kind: Type,
     pub indent: u32,
@@ -67,7 +67,8 @@ pub enum Type {
     Eof,
 }
 impl Type {
-    pub fn to_string(&self, strings: &Strings) -> &str {
+    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+        use self::Type::*;
         match self {
             LeftParen => "(",
             RightParen => ")",
@@ -95,10 +96,10 @@ impl Type {
             LessEqual => "<=",
             Arrow => "->",
 
-            Identifier(symbol) => strings.resolve(symbol),
-            CapitalizedIdentifier(symbol) => strings.resolve(symbol),
-            String_(symbol) => strings.resolve(symbol),
-            Float(symbol) => strings.resolve(symbol),
+            Identifier(symbol) => strings.resolve(*symbol),
+            CapitalizedIdentifier(symbol) => strings.resolve(*symbol),
+            String_(symbol) => strings.resolve(*symbol),
+            Float(symbol) => strings.resolve(*symbol),
 
             And => "and",
             Or => "or",

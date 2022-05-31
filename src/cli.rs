@@ -11,7 +11,7 @@ use std::process;
 
 pub fn repl() {
     let mut strings = Strings::new();
-    let module = Module::new();
+    let mut module = Module::new();
     let primitive_types = Type::primitive_types(&mut strings);
 
     let module_name = ast::ModuleName::new(
@@ -27,13 +27,13 @@ pub fn repl() {
     )
     .unwrap();
 
-    let mut module_ast = ast::Module {
+    module.ast = Some(ast::Module {
         name: module_name,
         exports: vec![],
         imports: vec![],
         definitions: vec![],
         type_definitions: vec![],
-    };
+    });
     let mut module_interfaces = ModuleInterfaces::new();
 
     let mut rl = Editor::<()>::new();
@@ -49,7 +49,6 @@ pub fn repl() {
                 let file = Source::new_orphan(line);
                 match compiler::compile_repl_entry(
                     &mut module,
-                    &mut module_ast,
                     &mut module_interfaces,
                     &file,
                     &mut strings,

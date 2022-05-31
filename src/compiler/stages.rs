@@ -1,6 +1,6 @@
 use crate::ast::ModuleFullName;
 use crate::compiler::errors;
-use crate::compiler::types::{ModuleAsts, ModuleInterfaces, ModuleSources, Sources};
+use crate::compiler::types::{ModuleInterfaces, ModuleSources, Modules, Sources};
 use crate::infer;
 use crate::module::Module;
 use crate::parser;
@@ -25,10 +25,10 @@ pub fn parse_files<'sources>(
     entry_files: &[String],
     sources: &'sources Sources,
     strings: &mut Strings,
-) -> Result<(Vec<ModuleFullName>, ModuleSources<'sources>, ModuleAsts), String> {
+) -> Result<(Vec<ModuleFullName>, ModuleSources<'sources>, Modules), String> {
     let mut errors: Vec<String> = vec![];
     let mut module_sources = ModuleSources::default();
-    let mut module_asts = ModuleAsts::default();
+    let mut modules = Modules::default();
     let mut entry_modules = vec![];
 
     for file in entry_files {
@@ -39,27 +39,27 @@ pub fn parse_files<'sources>(
         let parse_result = parse_file(
             source,
             &mut parse_queue,
-            &mut module_asts,
+            &mut modules,
             &mut module_sources,
             strings,
         );
 
         match parse_result {
-            Ok(modules) => {
-                entry_modules.extend(modules);
+            Ok(module_asts) => {
+                entry_modules.extend(module_asts);
 
                 loop {
                     match parse_queue.pop() {
                         None => break,
                         Some(module_name) => {
-                            if !module_asts.contains_key(&module_name) {
+                            if !modules.contains_key(&module_name) {
                                 // Unparsed module.
 
                                 // Resolve module to file path and parse it or error
                                 // Maybe not error since infer will error with the import not
                                 // found?
                                 // TODO
-                                // parse_file(&resolved_source, &mut parse_queue, &mut module_asts)?;
+                                // parse_file(&resolved_source, &mut parse_queue, &mut modules)?;
                             }
                         }
                     }
@@ -70,7 +70,7 @@ pub fn parse_files<'sources>(
     }
 
     if errors.is_empty() {
-        Ok((entry_modules, module_sources, module_asts))
+        Ok((entry_modules, module_sources, modules))
     } else {
         Err(errors::to_string(errors))
     }
@@ -79,7 +79,7 @@ pub fn parse_files<'sources>(
 fn parse_file<'source>(
     source: &'source Source,
     parse_queue: &mut Vec<ModuleFullName>,
-    module_asts: &mut ModuleAsts,
+    modules: &mut Modules,
     module_sources: &mut ModuleSources<'source>,
     strings: &mut Strings,
 ) -> Result<Vec<ModuleFullName>, Vec<String>> {
@@ -93,46 +93,57 @@ fn parse_file<'source>(
 
     let mut module_names = vec![];
 
-    let (module, submodules) = parser::parse(source, &module.tokens, strings)
+    let (module_ast, submodules) = parser::parse(source, &module.tokens, strings)
         .map_err(|error| vec![error.to_string(source, &module.tokens, strings)])?;
 
-    for module in submodules {
+    let module_full_name = module_ast.name.full_name;
+    module.ast = Some(module_ast);
+
+    for submodule_ast in submodules {
+        let submodule_full_name = submodule_ast.name.full_name;
+        let mut submodule = Module::new();
+        // TODO: We shouldn't be cloning the tokens just for fun, the tokens should be unique in
+        // some structure global to the compilation db. need to rethink how module::Module works
+        // and if I should make a global DB
+        submodule.tokens = module.tokens.clone();
+        submodule.ast = Some(submodule_ast);
         // Add all submodules to queue
-        parse_queue.push(module.name.full_name);
-        module_names.push(module.name.full_name);
-        module_sources.insert(module.name.full_name, source);
+        parse_queue.push(submodule_full_name);
+        module_names.push(submodule_full_name);
+        module_sources.insert(submodule_full_name, source);
 
         // Queue dependencies
-        let dependencies = module.dependencies();
+        let dependencies = submodule.ast().dependencies();
         for dependency in dependencies {
             let name = &dependency.full_name;
-            if !module_asts.contains_key(name) {
+            if !modules.contains_key(name) {
                 parse_queue.push(*name);
             }
         }
 
-        module_asts.insert(module.name.full_name, module);
+        // TODO: Move the module name from the AST to the Module data structure
+        modules.insert(submodule_full_name, submodule);
     }
     // And put the top level one last to start with it
-    parse_queue.push(module.name.full_name);
-    module_names.push(module.name.full_name);
-    module_sources.insert(module.name.full_name, source);
+    parse_queue.push(module_full_name);
+    module_names.push(module_full_name);
+    module_sources.insert(module_full_name, source);
     // Queue dependencies
-    let dependencies = module.dependencies();
+    let dependencies = module.ast().dependencies();
     for dependency in dependencies {
         let name = &dependency.full_name;
-        if !module_asts.contains_key(name) {
+        if !modules.contains_key(name) {
             parse_queue.push(*name);
         }
     }
-    module_asts.insert(module.name.full_name, module);
+    modules.insert(module_full_name, module);
 
     Ok(module_names)
 }
 
 pub fn check_cycles(
     entry_modules: &[ModuleFullName],
-    module_asts: &ModuleAsts,
+    modules: &Modules,
     strings: &Strings,
 ) -> Result<Vec<ModuleFullName>, String> {
     let mut sorted_modules = vec![];
@@ -163,21 +174,22 @@ pub fn check_cycles(
                             // Place it in the queue of modules to check it, in the visited modules
                             // path, and add its dependencies to check after it to the modules
                             // queue
-                            let module = module_asts.get(&module_name).unwrap();
+                            let module = modules.get(&module_name).unwrap();
+                            let module_ast = module.ast();
                             modules_queue.push(module_name);
                             visited_modules.insert(module_name);
                             visited_path.push(module_name);
                             sorted_modules.push(module_name);
 
-                            if !module.imports.is_empty() {
-                                for module in module.dependencies() {
+                            if !module_ast.imports.is_empty() {
+                                for module_ast in module_ast.dependencies() {
                                     // Check for direct cycles before adding it to the queue since
                                     // this disrupts the popping of elements from visited_path when
                                     // the module directly references itself, because we check by
                                     // name. Instead report the error here if it exists and bail
                                     // out.
-                                    if module.full_name != module_name {
-                                        modules_queue.push(module.full_name);
+                                    if module_ast.full_name != module_name {
+                                        modules_queue.push(module_ast.full_name);
                                     } else {
                                         let name = strings.resolve(module_name);
                                         errors.push(cycle_error(&[name, name]));
@@ -262,7 +274,7 @@ fn cycle_error(cycle_names: &[&str]) -> String {
 pub fn infer(
     entry_modules: Vec<ModuleFullName>,
     module_sources: &ModuleSources,
-    module_asts: &ModuleAsts,
+    modules: &Modules,
     primitive_types: &PolyTypeEnv,
     strings: &mut Strings,
 ) -> Result<ModuleInterfaces, String> {
@@ -279,23 +291,23 @@ pub fn infer(
                 if module_interfaces.map().contains_key(&module_name) {
                     continue;
                 }
-                let module = module_asts.get(&module_name).unwrap_or_else(|| {
+                let module = modules.get(&module_name).unwrap_or_else(|| {
                     let module_name = strings.resolve(module_name);
                     panic!("Couldn't find module {module_name} in the ASTs")
                 });
+                let module_ast = module.ast();
 
                 // Check dependencies and skip back to queue if there are any that need processing
                 // before this module.
                 {
-                    let dependencies = module.dependencies();
+                    let dependencies = module_ast.dependencies();
                     let mut skip = false;
                     for dependency in dependencies {
                         let name = &dependency.full_name;
                         // If not inferred but parsed, ready for inference.
                         // If not parsed, it means it couldn't be found, and the module who
                         // imported it will report the error. Don't add it to the infer queue.
-                        if !module_interfaces.map().contains_key(name)
-                            && module_asts.contains_key(name)
+                        if !module_interfaces.map().contains_key(name) && modules.contains_key(name)
                         {
                             if !skip {
                                 // At least one dependency to be proccessed first,
@@ -319,7 +331,11 @@ pub fn infer(
                             &mut module_errors
                                 .iter()
                                 .map(|e| {
-                                    e.to_string(module_sources.get(&module_name).unwrap(), strings)
+                                    e.to_string(
+                                        module_sources.get(&module_name).unwrap(),
+                                        strings,
+                                        module,
+                                    )
                                 })
                                 .collect::<Vec<String>>(),
                         );

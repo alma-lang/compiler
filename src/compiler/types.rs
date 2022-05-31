@@ -1,4 +1,4 @@
-use crate::ast::Module;
+use crate::module::Module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::type_env::{PolyTypeEnv, TypeEnv};
@@ -12,7 +12,7 @@ pub type Sources = HashMap<String, Source>;
 
 pub type ModuleSources<'source> = HashMap<StringSymbol, &'source Source>;
 
-pub type ModuleAsts = HashMap<StringSymbol, Module>;
+pub type Modules = HashMap<StringSymbol, Module>;
 
 #[derive(Debug)]
 pub struct ModuleInterface {

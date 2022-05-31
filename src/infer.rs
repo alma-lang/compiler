@@ -1,8 +1,9 @@
 use crate::ast::{
     self, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import,
-    Lambda, Module, Node, Pattern_ as P, TypeSignature, TypedDefinition, Unary_ as U,
+    Lambda, Node, Pattern_ as P, TypeSignature, TypedDefinition, Unary_ as U,
 };
 use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
+use crate::module::Module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::typ::{Type::*, TypeVar::*, *};
@@ -37,26 +38,36 @@ pub enum Error<'ast> {
 }
 
 impl<'ast> Error<'ast> {
-    pub fn to_string(&self, source: &Source, strings: &Strings) -> String {
+    pub fn to_string(&self, source: &Source, strings: &Strings, module: &Module) -> String {
         use Error::*;
 
         let mut s = String::new();
 
-        let (position, line_number, column, end) = match self {
-            UndefinedIdentifier(_, node) => (node.start, node.line, node.column, node.end),
-            DuplicateField(node, _) => (node.start, node.line, node.column, node.end),
-            TypeMismatch(node, ..) => (node.start, node.line, node.column, node.end),
-            WrongArity(node, ..) => (node.start, node.line, node.column, node.end),
-            SignatureMismatch(node, ..) => (node.start, node.line, node.column, node.end),
-            SignatureTooGeneral(node, ..) => (node.start, node.line, node.column, node.end),
-            InfiniteType(node, _) => (node.start, node.line, node.column, node.end),
-            UndefinedExport(node) => (node.start, node.line, node.column, node.end),
-            UndefinedExportConstructor(node) => (node.start, node.line, node.column, node.end),
-            UnknownImport(node) => (node.start, node.line, node.column, node.end),
-            UnknownImportDefinition(node, _) => (node.start, node.line, node.column, node.end),
-            UnknownImportConstructor(node, _) => (node.start, node.line, node.column, node.end),
-            UnknownType(node) => (node.start, node.line, node.column, node.end),
-            UnknownTypeVar(node) => (node.start, node.line, node.column, node.end),
+        let (position, line_number, column, end) = {
+            let location = match self {
+                UndefinedIdentifier(_, node) => node.unit(),
+                DuplicateField(node, _) => node.unit(),
+                TypeMismatch(node, ..) => node.unit(),
+                WrongArity(node, ..) => node.unit(),
+                SignatureMismatch(node, ..) => node.unit(),
+                SignatureTooGeneral(node, ..) => node.unit(),
+                InfiniteType(node, _) => node.unit(),
+                UndefinedExport(node) => node.unit(),
+                UndefinedExportConstructor(node) => node.unit(),
+                UnknownImport(node) => node.unit(),
+                UnknownImportDefinition(node, _) => node.unit(),
+                UnknownImportConstructor(node, _) => node.unit(),
+                UnknownType(node) => node.unit(),
+                UnknownTypeVar(node) => node.unit(),
+            };
+            let start_token = module.tokens[location.start];
+            let end_token = module.tokens[location.end];
+            (
+                start_token.start,
+                start_token.line,
+                start_token.column,
+                end_token.end,
+            )
         };
 
         s.push_str(&source.to_string_with_line_and_col(line_number, column));
@@ -75,8 +86,15 @@ impl<'ast> Error<'ast> {
             }
 
             DuplicateField(identifier, expr) => {
+                let expr_token = module.tokens[expr.start];
+                let expr_end_token = module.tokens[expr.end];
                 let record_code = source
-                    .lines_report_at_position(expr.start, Some(expr.end), expr.line, false)
+                    .lines_report_at_position(
+                        expr_token.start,
+                        Some(expr_end_token.end),
+                        expr_token.line,
+                        false,
+                    )
                     .unwrap();
                 let identifier = identifier.value.to_string(strings);
 
@@ -116,8 +134,14 @@ but seems to be
             }
 
             TypeMismatch(_, typ, Some(node), typ2) => {
+                let node_token = module.tokens[node.start];
+                let node_end_token = module.tokens[node.end];
                 let code2 = source
-                    .lines_report_at_position_with_pointer(node.start, Some(node.end), node.line)
+                    .lines_report_at_position_with_pointer(
+                        node_token.start,
+                        Some(node_end_token.end),
+                        node_token.line,
+                    )
                     .unwrap();
                 let typ = typ.to_string(strings);
                 let typ2 = typ2.to_string(strings);
@@ -949,6 +973,7 @@ pub fn infer<'interfaces, 'ast>(
     primitive_types: &PolyTypeEnv,
     strings: &mut Strings,
 ) -> Result<ModuleInterface, (ModuleInterface, Vec<Error<'ast>>)> {
+    let module_ast = module.ast();
     let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = primitive_types.clone();
@@ -960,7 +985,7 @@ pub fn infer<'interfaces, 'ast>(
     let mut module_type_constructors = HashMap::default();
 
     // Check imports and add them to the env to type check this module
-    for import in &module.imports {
+    for import in &module_ast.imports {
         let module_full_name = &import.value.module_name.full_name;
         match module_interfaces.get(module_full_name) {
             Some(imported) => {
@@ -1030,7 +1055,7 @@ pub fn infer<'interfaces, 'ast>(
     }
 
     // Add local module types to environment
-    for type_def in &module.type_definitions {
+    for type_def in &module_ast.type_definitions {
         let mut type_vars = Vec::new();
         let mut type_vars_env = TypeEnv::new();
         state.enter_level();
@@ -1045,7 +1070,7 @@ pub fn infer<'interfaces, 'ast>(
         match &type_def.value.typ {
             ast::types::TypeDefinitionType::Union(constructors) => {
                 let type_def_type = Rc::new(Type::Named(
-                    module.name.full_name,
+                    module_ast.name.full_name,
                     name,
                     type_vars.iter().map(|(_, t)| Rc::clone(t)).collect(),
                 ));
@@ -1096,7 +1121,7 @@ pub fn infer<'interfaces, 'ast>(
                         state.new_type_var()
                     }
                 };
-                let typ = Rc::new(Alias(module.name.full_name, name, type_vars, typ));
+                let typ = Rc::new(Alias(module_ast.name.full_name, name, type_vars, typ));
                 types_env.insert(name, state.generalize(&typ));
             }
         }
@@ -1104,7 +1129,7 @@ pub fn infer<'interfaces, 'ast>(
 
     // Type check the definitions in the module
     infer_definitions(
-        &module.definitions,
+        &module_ast.definitions,
         &mut state,
         &mut env,
         &types_env,
@@ -1113,7 +1138,7 @@ pub fn infer<'interfaces, 'ast>(
     );
 
     // Check exports against this module type to see everything exists and is valid
-    for export in &module.exports {
+    for export in &module_ast.exports {
         match &export.value {
             ast::Export_::Identifier(identifier) => {
                 let name = &identifier.value.name;
@@ -1775,6 +1800,8 @@ mod tests {
     }
 
     mod test_infer_expression {
+        use crate::module;
+
         use super::*;
         use insta::assert_snapshot;
 
@@ -1899,8 +1926,9 @@ add 5"
         fn infer(code: &str) -> String {
             let mut strings = Strings::new();
             let source = Source::new_orphan(code.to_string());
+            let mut module = module::Module::new();
 
-            let tokens = tokenizer::parse(&source)
+            let tokens = tokenizer::parse(&source, &mut strings, &mut module)
                 .map_err(|errors| {
                     errors
                         .iter()
@@ -1910,8 +1938,8 @@ add 5"
                 })
                 .unwrap();
 
-            let ast = parser::tests::parse_expression(&source, &tokens, &mut strings)
-                .map_err(|error| error.to_string(&source, &strings))
+            let ast = parser::tests::parse_expression(&source, &module.tokens, &mut strings)
+                .map_err(|error| error.to_string(&source, &module.tokens, &strings))
                 .unwrap();
 
             let mut state = State::new();
@@ -1928,7 +1956,7 @@ add 5"
                 Ok(typ) => typ.to_string(&strings),
                 Err(errs) => errs
                     .iter()
-                    .map(|e| e.to_string(&source, &strings))
+                    .map(|e| e.to_string(&source, &strings, &module))
                     .collect::<Vec<String>>()
                     .join("\n\n"),
             };

@@ -166,7 +166,7 @@ impl ErrorType {
         tokens: &'tokens [Token],
         strings: &'strings Strings,
     ) -> String {
-        let get_lexeme = |token: module::tokens::Index| tokens[error.token].kind.to_string(strings);
+        let get_lexeme = |token: module::tokens::Index| tokens[token].kind.to_string(strings);
         let expected_but_found = |message: &str| {
             let lexeme = get_lexeme(error.token);
             format!("{message}, but instead found: `{lexeme}`")
@@ -506,10 +506,10 @@ impl Error {
         tokens: &'tokens [Token],
         strings: &'strings Strings,
     ) -> String {
-        let token = tokens[self.token];
+        let token = &tokens[self.token];
         let message = {
             let message = self.kind.to_string(self, tokens, strings);
-            let point_at_token = tokens[self.kind.get_code_pointer().unwrap_or(self.token)];
+            let point_at_token = &tokens[self.kind.get_code_pointer().unwrap_or(self.token)];
 
             let lines_report = source
                 .lines_report_at_position_with_pointer(
@@ -671,9 +671,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             let constructors = constructors.unwrap_or_else(|| vec![]);
 
+            let start = export.start;
             Ok(Some(Node {
                 value: Export_::Type(export, constructors),
-                start: export.start,
+                start,
                 end: self.prev_token_index(),
             }))
         } else {
@@ -719,7 +720,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_def(&mut self) -> ParseResult<Option<TypeDefinition>> {
-        let (type_token_index, type_token) = self.get_token();
+        let (type_token_index, _) = self.get_token();
 
         if self.match_token(TT::Type).is_none() {
             return Ok(None);
@@ -914,10 +915,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if let Some(type_) = self.type_parens()? {
             Ok(Some(type_))
         } else if let Some(ident) = self.capitalized_identifier() {
+            let (start, end) = (ident.start, ident.end);
             Ok(Some(Type::App(Node {
                 value: types::Constructor_::new(ident, vec![]),
-                start: ident.start,
-                end: ident.end,
+                start,
+                end,
             })))
         } else if let Some(ident) = self.identifier() {
             Ok(Some(Type::Var(ident)))
@@ -929,7 +931,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_parens(&mut self) -> ParseResult<Option<Type>> {
-        let (token_index, token) = self.get_token();
+        let (token_index, _) = self.get_token();
         if self.match_token(LeftParen).is_none() {
             return Ok(None);
         }
@@ -1110,10 +1112,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Error::new(self_.get_token_index(), InvalidLetBodyExpression)
         })?;
 
+        let end = body.end;
         Ok(Some(Node {
             value: E::untyped(Let(bindings, Box::new(body))),
             start: let_token_index,
-            end: body.end,
+            end,
         }))
     }
 
@@ -1250,10 +1253,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Error::new(self_.get_token_index(), InvalidIfElseBranch)
         })?;
 
+        let end = else_.end;
         Ok(Some(Node {
             value: E::untyped(If(Box::new(condition), Box::new(then), Box::new(else_))),
             start: token_index,
-            end: else_.end,
+            end,
         }))
     }
 
@@ -1276,13 +1280,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Error::new(self_.get_token_index(), InvalidLambdaBody)
         })?;
 
+        let end = body.end;
         Ok(Some(Node {
             value: E::untyped(ET::Lambda(Lambda {
                 parameters: params,
                 body: Box::new(body),
             })),
             start: token_index,
-            end: body.end,
+            end,
         }))
     }
 
@@ -1373,10 +1378,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         match (u, self.call()?) {
             (Some(u), Some(expr)) => {
                 let op = Node::new(u, token_index, token_index);
+                let (start, end) = (op.start, expr.end);
                 Ok(Some(Node {
                     value: E::untyped(Unary(op, Box::new(expr))),
-                    start: op.start,
-                    end: expr.end,
+                    start,
+                    end,
                 }))
             }
             (None, Some(expr)) => Ok(Some(expr)),
@@ -1399,10 +1405,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else {
                 let last_arg = &args[args.len() - 1];
 
+                let (start, end) = (expr.start, last_arg.end);
                 Ok(Some(Node {
                     value: E::untyped(FnCall(Box::new(expr), args)),
-                    start: expr.start,
-                    end: last_arg.end,
+                    start,
+                    end,
                 }))
             }
         } else {
@@ -1437,8 +1444,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let end = identifier.end;
                 Node {
                     value: E::untyped(PropAccess(Box::new(expr), identifier)),
-                    start: expr.start,
-                    end: identifier.end,
+                    start,
+                    end,
                 }
             };
         }
@@ -1569,14 +1576,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             TT::String_(string) => {
                 self.advance();
-
-                let lexeme = self.strings.resolve(string);
-                // TODO: This here means we are storing the full string with quotes in the
-                // interner, and then now again without quotes. Quite a waste
-                // Remove the wrapper quotes from the value
-                let value = &lexeme[1..(lexeme.len() - 1)];
                 Ok(Some(Node::new(
-                    E::untyped(String_(self.strings.get_or_intern(value))),
+                    E::untyped(String_(string)),
                     token_index,
                     token_index,
                 )))
@@ -2114,6 +2115,7 @@ fn organize_binops(
 
                     let right = organize_binops(strings, rhs, binops, current, next_min_precedence);
 
+                    let (start, end) = (left.start, right.end);
                     left = Node {
                         value: E::untyped(Binary(
                             Box::new(op.with_value(E::untyped(ET::Identifier(
@@ -2125,8 +2127,8 @@ fn organize_binops(
                             op,
                             Box::new([left, right]),
                         )),
-                        start: left.start,
-                        end: right.end,
+                        start,
+                        end,
                     }
                 } else {
                     break;
@@ -3183,7 +3185,7 @@ main =
             let source = Source::new_orphan(code.to_string());
             let mut strings = Strings::new();
             let mut module = module::Module::new();
-            let tokens = tokenizer::parse(&source, &mut strings, &mut module).unwrap();
+            tokenizer::parse(&source, &mut strings, &mut module).unwrap();
             let result = match &super::parse(&source, &module.tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {

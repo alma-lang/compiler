@@ -3,7 +3,7 @@ use crate::ast::{
     Definition, Export_, Expression, ExpressionType as ET, Lambda, Module, ModuleFullName,
     ModuleName, Pattern, Pattern_ as P, TypedDefinition, Unary_ as U,
 };
-use crate::compiler::types::{ModuleAsts, ModuleInterface, ModuleInterfaces};
+use crate::compiler::types::{ModuleInterface, ModuleInterfaces, Modules};
 use crate::strings::Strings;
 use std::cmp::min;
 use std::fmt::Write;
@@ -22,7 +22,7 @@ fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
 
 pub fn generate(
     sorted_modules: &[ModuleFullName],
-    module_asts: &ModuleAsts,
+    modules: &Modules,
     module_interfaces: &ModuleInterfaces,
     strings: &Strings,
 ) -> String {
@@ -42,17 +42,18 @@ pub fn generate(
     // }
 
     for module_name in sorted_modules {
-        let module = module_asts
+        let module = modules
             .get(module_name)
             .unwrap_or_else(|| panic!("Couldn't get module {}", strings.resolve(*module_name)));
+        let module_ast = module.ast();
 
         code.push_str("\nlet ");
-        module_full_name(&mut code, &module.name, strings);
+        module_full_name(&mut code, &module_ast.name, strings);
         code.push_str(" = function () {\n");
 
         generate_file(
             &mut code,
-            module,
+            module_ast,
             module_interfaces.get(module_name).unwrap(),
             strings,
         );
@@ -61,9 +62,9 @@ pub fn generate(
     }
 
     code.push_str("\nreturn {\n");
-    for module in module_asts.values() {
+    for module in modules.values() {
         indented(&mut code, add_indent(0), "");
-        module_full_name(&mut code, &module.name, strings);
+        module_full_name(&mut code, &module.ast().name, strings);
         code.push_str(",\n");
     }
     code.push_str("};\n");

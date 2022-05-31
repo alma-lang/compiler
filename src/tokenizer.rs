@@ -80,7 +80,7 @@ impl<'source, 'strings> State<'source, 'strings> {
         self.chars.peek().map(|(_i, c)| *c)
     }
 
-    fn lexeme(&self) -> strings::Symbol {
+    fn lexeme(&mut self) -> strings::Symbol {
         let start = self.start;
         let end = self.current + self.current_char.len_utf8();
         self.strings.get_or_intern(
@@ -93,14 +93,6 @@ impl<'source, 'strings> State<'source, 'strings> {
     fn add_token(&mut self, kind: token::Type) {
         let start = self.start;
         let end = self.current + self.current_char.len_utf8();
-
-        let lexeme = match kind {
-            token::Type::Eof => "[End of file]",
-            _ => self
-                .source
-                .text_at(start..end)
-                .expect("Couldn't extract lexeme from token"),
-        };
 
         self.push_token(Token {
             kind,
@@ -264,7 +256,23 @@ impl<'source, 'strings> State<'source, 'strings> {
 
             Status::StringToken(prev_was_backslash) => match ch {
                 Some('\\') => self.status = Status::StringToken(true),
-                Some('"') if !prev_was_backslash => self.add_token(String_(self.lexeme())),
+                Some('"') if !prev_was_backslash => {
+                    let lexeme = {
+                        let start = self.start;
+                        let end = self.current + self.current_char.len_utf8();
+                        self.strings.get_or_intern(
+                            self.source
+                                .text_at(start..end)
+                                .expect("Couldn't extract lexeme from token"),
+                        )
+                    };
+                    self.add_token(String_(lexeme))
+                }
+
+                // // TODO: This here means we are storing the full string with quotes in the
+                // // interner, and then now again without quotes. Quite a waste
+                // // Remove the wrapper quotes from the value
+                // &lexeme[1..(lexeme.len() - 1)]
                 None => self.add_error("Unclosed string.", true),
                 _ => {
                     if prev_was_backslash {
@@ -293,7 +301,10 @@ impl<'source, 'strings> State<'source, 'strings> {
                     Some(c) if c.is_digit(10) => (),
 
                     // Anything else we find ends the number token
-                    _ => self.add_token(Float(self.lexeme())),
+                    _ => {
+                        let lexeme = self.lexeme();
+                        self.add_token(Float(lexeme))
+                    }
                 },
 
                 _ => panic!("Got to the number tokenizer without a valid number digit."),
@@ -308,32 +319,35 @@ impl<'source, 'strings> State<'source, 'strings> {
                         Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => (),
 
                         // Anything else we find ends the identifier token
-                        _ => self.add_token(
-                            match self.source.text_at(self.start..=self.current).unwrap() {
-                                "and" => And,
-                                "or" => Or,
-                                "not" => Not,
-                                "if" => If,
-                                "then" => Then,
-                                "else" => Else,
-                                "True" => True,
-                                "False" => False,
-                                "let" => Let,
-                                "in" => In,
-                                "import" => Import,
-                                "as" => As,
-                                "exposing" => Exposing,
-                                "module" => Module,
-                                "type" => Type,
-                                _ => {
-                                    if is_module {
-                                        CapitalizedIdentifier(self.lexeme())
-                                    } else {
-                                        Identifier(self.lexeme())
+                        _ => {
+                            let token =
+                                match self.source.text_at(self.start..=self.current).unwrap() {
+                                    "and" => And,
+                                    "or" => Or,
+                                    "not" => Not,
+                                    "if" => If,
+                                    "then" => Then,
+                                    "else" => Else,
+                                    "True" => True,
+                                    "False" => False,
+                                    "let" => Let,
+                                    "in" => In,
+                                    "import" => Import,
+                                    "as" => As,
+                                    "exposing" => Exposing,
+                                    "module" => Module,
+                                    "type" => Type,
+                                    _ => {
+                                        if is_module {
+                                            CapitalizedIdentifier(self.lexeme())
+                                        } else {
+                                            Identifier(self.lexeme())
+                                        }
                                     }
-                                }
-                            },
-                        ),
+                                };
+
+                            self.add_token(token)
+                        }
                     }
                 }
 

@@ -44,7 +44,6 @@ pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, St
 
 pub fn compile_repl_entry(
     module: &mut Module,
-    module_ast: &mut ast::Module,
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     strings: &mut Strings,
@@ -67,9 +66,9 @@ pub fn compile_repl_entry(
     // print the type of it
     match entry {
         ReplEntry::Import(import) => {
-            module_ast.imports.push(import);
+            module.ast_mut().imports.push(import);
             let result = compile_repl_entry_helper(
-                module_ast,
+                &module,
                 module_interfaces,
                 source,
                 &mut errors,
@@ -77,16 +76,17 @@ pub fn compile_repl_entry(
                 primitive_types,
             );
             if result.is_err() {
-                module_ast.imports.pop();
+                module.ast_mut().imports.pop();
             }
             result
         }
         ReplEntry::Definition(definition) => {
-            module_ast
+            module
+                .ast_mut()
                 .definitions
                 .push(TypedDefinition::Untyped(definition));
             let result = compile_repl_entry_helper(
-                module_ast,
+                module,
                 module_interfaces,
                 source,
                 &mut errors,
@@ -94,12 +94,13 @@ pub fn compile_repl_entry(
                 primitive_types,
             );
             if result.is_err() {
-                module_ast.definitions.pop();
+                module.ast_mut().definitions.pop();
             }
             result
         }
         ReplEntry::Expression(expression) => {
-            module_ast
+            module
+                .ast_mut()
                 .definitions
                 .push(TypedDefinition::Untyped(ast::Definition::Pattern(
                     ast::Node {
@@ -110,14 +111,14 @@ pub fn compile_repl_entry(
                     expression,
                 )));
             let result = compile_repl_entry_helper(
-                module_ast,
+                module,
                 module_interfaces,
                 source,
                 &mut errors,
                 strings,
                 primitive_types,
             );
-            module_ast.definitions.pop();
+            module.ast_mut().definitions.pop();
             result
         }
     }
@@ -126,7 +127,7 @@ pub fn compile_repl_entry(
 
 // Encapsulate the compiler logic regardless of repl entry type
 fn compile_repl_entry_helper<'ast>(
-    module: &'ast ast::Module,
+    module: &'ast Module,
     module_interfaces: &mut ModuleInterfaces,
     source: &Source,
     errors: &mut Vec<infer::Error<'ast>>,
@@ -136,7 +137,7 @@ fn compile_repl_entry_helper<'ast>(
     let result = infer::infer(module_interfaces, module, primitive_types, strings);
     match result {
         Ok(typ) => {
-            module_interfaces.insert(module.name.full_name, typ);
+            module_interfaces.insert(module.ast().name.full_name, typ);
         }
         Err((_, mut module_errors)) => {
             errors.append(&mut module_errors);
@@ -148,7 +149,7 @@ fn compile_repl_entry_helper<'ast>(
     } else {
         Err(errors
             .iter()
-            .map(|e| e.to_string(source, strings))
+            .map(|e| e.to_string(source, strings, module))
             .collect::<Vec<String>>()
             .join("\n\n"))
     }
