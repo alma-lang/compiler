@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2312
+assertion_line: 2311
 expression: "parse(\"\\\nlet\n  x = a\n    x\n b = 5\nin\nx\")"
 ---
 Input:
@@ -15,8 +15,12 @@ x
 Result:
 
 Node {
-    start: 0,
-    end: 9,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        9,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -26,12 +30,20 @@ Node {
                 Untyped(
                     Pattern(
                         Node {
-                            start: 1,
-                            end: 1,
+                            start: Idx(
+                                1,
+                            ),
+                            end: Idx(
+                                1,
+                            ),
                             value: Identifier(
                                 Node {
-                                    start: 1,
-                                    end: 1,
+                                    start: Idx(
+                                        1,
+                                    ),
+                                    end: Idx(
+                                        1,
+                                    ),
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 1,
@@ -41,16 +53,24 @@ Node {
                             ),
                         },
                         Node {
-                            start: 3,
-                            end: 4,
+                            start: Idx(
+                                3,
+                            ),
+                            end: Idx(
+                                4,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
                                 },
                                 expr: FnCall(
                                     Node {
-                                        start: 3,
-                                        end: 3,
+                                        start: Idx(
+                                            3,
+                                        ),
+                                        end: Idx(
+                                            3,
+                                        ),
                                         value: Expression_ {
                                             typ: RefCell {
                                                 value: None,
@@ -59,8 +79,12 @@ Node {
                                                 None,
                                                 Identifier(
                                                     Node {
-                                                        start: 3,
-                                                        end: 3,
+                                                        start: Idx(
+                                                            3,
+                                                        ),
+                                                        end: Idx(
+                                                            3,
+                                                        ),
                                                         value: Identifier_ {
                                                             name: SymbolU32 {
                                                                 value: 2,
@@ -73,8 +97,12 @@ Node {
                                     },
                                     [
                                         Node {
-                                            start: 4,
-                                            end: 4,
+                                            start: Idx(
+                                                4,
+                                            ),
+                                            end: Idx(
+                                                4,
+                                            ),
                                             value: Expression_ {
                                                 typ: RefCell {
                                                     value: None,
@@ -83,8 +111,12 @@ Node {
                                                     None,
                                                     Identifier(
                                                         Node {
-                                                            start: 4,
-                                                            end: 4,
+                                                            start: Idx(
+                                                                4,
+                                                            ),
+                                                            end: Idx(
+                                                                4,
+                                                            ),
                                                             value: Identifier_ {
                                                                 name: SymbolU32 {
                                                                     value: 1,
@@ -104,12 +136,20 @@ Node {
                 Untyped(
                     Pattern(
                         Node {
-                            start: 5,
-                            end: 5,
+                            start: Idx(
+                                5,
+                            ),
+                            end: Idx(
+                                5,
+                            ),
                             value: Identifier(
                                 Node {
-                                    start: 5,
-                                    end: 5,
+                                    start: Idx(
+                                        5,
+                                    ),
+                                    end: Idx(
+                                        5,
+                                    ),
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 3,
@@ -119,8 +159,12 @@ Node {
                             ),
                         },
                         Node {
-                            start: 7,
-                            end: 7,
+                            start: Idx(
+                                7,
+                            ),
+                            end: Idx(
+                                7,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -134,8 +178,12 @@ Node {
                 ),
             ],
             Node {
-                start: 9,
-                end: 9,
+                start: Idx(
+                    9,
+                ),
+                end: Idx(
+                    9,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -144,8 +192,12 @@ Node {
                         None,
                         Identifier(
                             Node {
-                                start: 9,
-                                end: 9,
+                                start: Idx(
+                                    9,
+                                ),
+                                end: Idx(
+                                    9,
+                                ),
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 1,

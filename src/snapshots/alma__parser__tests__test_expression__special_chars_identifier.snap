@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2163
+assertion_line: 2162
 expression: "parse(\"espaÆàʥñÑol\")"
 ---
 Input:
@@ -10,8 +10,12 @@ espaÆàʥñÑol
 Result:
 
 Node {
-    start: 0,
-    end: 0,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        0,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -20,8 +24,12 @@ Node {
             None,
             Identifier(
                 Node {
-                    start: 0,
-                    end: 0,
+                    start: Idx(
+                        0,
+                    ),
+                    end: Idx(
+                        0,
+                    ),
                     value: Identifier_ {
                         name: SymbolU32 {
                             value: 1,

@@ -105,8 +105,8 @@ pub fn compile_repl_entry(
                 .push(TypedDefinition::Untyped(ast::Definition::Pattern(
                     ast::Node {
                         value: ast::Pattern_::Hole,
-                        start: 0,
-                        end: 0,
+                        start: 0.into(),
+                        end: 0.into(),
                     },
                     expression,
                 )));

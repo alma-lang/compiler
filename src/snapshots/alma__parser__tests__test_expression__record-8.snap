@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2369
+assertion_line: 2368
 expression: "parse(\"{ x : 5 , y : 10 }\")"
 ---
 Input:
@@ -10,8 +10,12 @@ Input:
 Result:
 
 Node {
-    start: 0,
-    end: 8,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        8,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -20,8 +24,12 @@ Node {
             [
                 (
                     Node {
-                        start: 1,
-                        end: 1,
+                        start: Idx(
+                            1,
+                        ),
+                        end: Idx(
+                            1,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -29,8 +37,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 3,
-                        end: 3,
+                        start: Idx(
+                            3,
+                        ),
+                        end: Idx(
+                            3,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -43,8 +55,12 @@ Node {
                 ),
                 (
                     Node {
-                        start: 5,
-                        end: 5,
+                        start: Idx(
+                            5,
+                        ),
+                        end: Idx(
+                            5,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 3,
@@ -52,8 +68,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 7,
-                        end: 7,
+                        start: Idx(
+                            7,
+                        ),
+                        end: Idx(
+                            7,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

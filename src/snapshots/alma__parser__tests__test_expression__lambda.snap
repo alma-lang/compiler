@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2226
+assertion_line: 2225
 expression: "parse(\"\\\\a -> a\")"
 ---
 Input:
@@ -10,8 +10,12 @@ Input:
 Result:
 
 Node {
-    start: 0,
-    end: 3,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        3,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -20,12 +24,20 @@ Node {
             Lambda {
                 parameters: [
                     Node {
-                        start: 1,
-                        end: 1,
+                        start: Idx(
+                            1,
+                        ),
+                        end: Idx(
+                            1,
+                        ),
                         value: Identifier(
                             Node {
-                                start: 1,
-                                end: 1,
+                                start: Idx(
+                                    1,
+                                ),
+                                end: Idx(
+                                    1,
+                                ),
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 1,
@@ -36,8 +48,12 @@ Node {
                     },
                 ],
                 body: Node {
-                    start: 3,
-                    end: 3,
+                    start: Idx(
+                        3,
+                    ),
+                    end: Idx(
+                        3,
+                    ),
                     value: Expression_ {
                         typ: RefCell {
                             value: None,
@@ -46,8 +62,12 @@ Node {
                             None,
                             Identifier(
                                 Node {
-                                    start: 3,
-                                    end: 3,
+                                    start: Idx(
+                                        3,
+                                    ),
+                                    end: Idx(
+                                        3,
+                                    ),
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 1,

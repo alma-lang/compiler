@@ -1,18 +1,20 @@
-use crate::ast::{
-    binop::*,
-    types::{self, Type, TypeDefinition},
-    CapitalizedIdentifier, Expression,
-    ExpressionType::{self as ET, Float, If, Let, String_, *},
-    Expression_ as E, Identifier, Import, Lambda, Module, Node, Pattern, Pattern_,
-    Unary_::{Minus, Not},
-    *,
-};
-use crate::module;
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
     self, Token,
     Type::{self as TT, *},
+};
+use crate::{
+    ast::{
+        binop::*,
+        types::{self, Type, TypeDefinition},
+        CapitalizedIdentifier, Expression,
+        ExpressionType::{self as ET, Float, If, Let, String_, *},
+        Expression_ as E, Identifier, Import, Lambda, Module, Node, Pattern, Pattern_,
+        Unary_::{Minus, Not},
+        *,
+    },
+    index::Idx,
 };
 
 /* Grammar draft (●○):
@@ -529,7 +531,7 @@ struct State<'source, 'strings, 'tokens> {
     strings: &'strings mut Strings,
     source: &'source Source,
     tokens: &'tokens [Token],
-    current: usize,
+    current: Idx<Token>,
 }
 
 impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
@@ -1388,11 +1390,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         Ok(expr)
     }
-    fn property(&mut self, prev_end: usize) -> ParseResult<Option<Identifier>> {
+    fn property(&mut self, prev_end_token_position: usize) -> ParseResult<Option<Identifier>> {
         let (_, dot_token) = self.get_token();
         match dot_token.kind {
             // Dot token without whitespace between the prev token is a record access
-            Dot if dot_token.start == prev_end => {
+            Dot if dot_token.start == prev_end_token_position => {
                 self.advance();
 
                 let (identifier_token_index, identifier_token) = self.get_token();
@@ -1689,11 +1691,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         debug_assert!(!identifiers.is_empty());
         let end = self.current;
-        self.build_module_name(start, &self.tokens[start..end], identifiers)
+        self.build_module_name(start, &self.tokens[start.raw..end.raw], identifiers)
     }
     fn build_module_name(
         &mut self,
-        start: usize,
+        start: Idx<Token>,
         tokens: &'tokens [Token],
         names: Vec<CapitalizedIdentifier>,
     ) -> ParseResult<ModuleName> {
@@ -1704,7 +1706,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 .position(|t| t.start == self.tokens[name.start].start)
                 .unwrap();
             Error::new(
-                self.tokens[start + token_relative_index],
+                self.tokens[start.raw + token_relative_index],
                 InvalidModuleNameSegment,
             )
         })
@@ -1754,18 +1756,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     // Utilities
 
-    fn prev_token(&self) -> (module::tokens::Index, &'tokens Token) {
+    fn prev_token(&self) -> (Idx<Token>, &'tokens Token) {
         self.prev_non_comment_token(self.current)
     }
-    fn prev_token_index(&self) -> module::tokens::Index {
+    fn prev_token_index(&self) -> Idx<Token> {
         let (idx, _) = self.prev_non_comment_token(self.current);
         idx
     }
 
-    fn get_token(&self) -> (module::tokens::Index, &'tokens Token) {
+    fn get_token(&self) -> (Idx<Token>, &'tokens Token) {
         self.next_non_comment_token(self.current)
     }
-    fn get_token_index(&self) -> module::tokens::Index {
+    fn get_token_index(&self) -> Idx<Token> {
         let (idx, _) = self.next_non_comment_token(self.current);
         idx
     }
@@ -1775,7 +1777,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         match token.kind {
             Eof => token,
             _ => {
-                let (_, token) = self.next_non_comment_token(first + 1);
+                let (_, token) = self.next_non_comment_token((first.raw + 1).into());
                 token
             }
         }
@@ -1785,18 +1787,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let (i, token) = self.next_non_comment_token(self.current);
         match token.kind {
             Eof => (),
-            _ => self.current = i + 1,
+            _ => self.current = (i.raw + 1).into(),
         };
     }
 
-    fn next_non_comment_token(&self, start: usize) -> (usize, &'tokens Token) {
-        let mut i = start;
+    fn next_non_comment_token(&self, start: Idx<Token>) -> (Idx<Token>, &'tokens Token) {
+        let mut i = start.raw;
         let mut token;
         loop {
-            token = self
-                .tokens
-                .get(i)
-                .expect("Internal parser error: Out of bounds access to tokens array");
+            token = &self.tokens[i];
             match token.kind {
                 Eof => break,
                 Comment => {
@@ -1808,11 +1807,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }
             };
         }
-        (i, token)
+        (i.into(), token)
     }
 
-    fn prev_non_comment_token(&self, start: usize) -> (usize, &'tokens Token) {
-        let mut i = start - 1;
+    fn prev_non_comment_token(&self, start: Idx<Token>) -> (Idx<Token>, &'tokens Token) {
+        let mut i = start.raw - 1;
         let mut token;
         loop {
             token = self
@@ -1830,7 +1829,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }
             };
         }
-        (i, token)
+        (i.into(), token)
     }
 
     fn is_token_in_same_indent_and_column_as(&self, parent_token: &Token) -> bool {
@@ -1993,7 +1992,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn match_token(&mut self, typ: token::Type) -> Option<(module::tokens::Index, &'tokens Token)> {
+    fn match_token(&mut self, typ: token::Type) -> Option<(Idx<Token>, &'tokens Token)> {
         let (token_index, token) = self.get_token();
         if std::mem::discriminant(&token.kind) == std::mem::discriminant(&typ) {
             self.advance();
@@ -2078,7 +2077,7 @@ pub fn parse<'source, 'strings, 'tokens>(
         strings,
         source,
         tokens,
-        current: 0,
+        current: 0.into(),
     };
 
     parser.file()
@@ -2093,7 +2092,7 @@ pub fn parse_repl<'source, 'strings, 'tokens>(
         strings,
         source,
         tokens,
-        current: 0,
+        current: 0.into(),
     };
 
     parser.repl_entry()
@@ -2113,7 +2112,7 @@ pub mod tests {
             strings,
             source,
             tokens,
-            current: 0,
+            current: 0.into(),
         };
 
         let result = parser.required(State::expression, |self_| {
@@ -2124,6 +2123,7 @@ pub mod tests {
 
     mod test_expression {
         use super::*;
+        use crate::module;
         use insta::assert_snapshot;
 
         #[test]
@@ -2426,6 +2426,7 @@ add 5"
 
     mod test_module_parser {
         use super::*;
+        use crate::module;
         use insta::assert_snapshot;
 
         #[test]

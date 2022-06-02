@@ -20,8 +20,8 @@ pub fn repl() {
                 let sym = strings.get_or_intern("Repl");
                 ast::CapitalizedIdentifier_::new(sym)
             },
-            start: 0,
-            end: 0,
+            start: 0.into(),
+            end: 0.into(),
         }],
         &mut strings,
     )

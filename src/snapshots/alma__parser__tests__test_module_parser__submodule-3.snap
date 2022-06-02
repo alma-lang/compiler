@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2573
+assertion_line: 2498
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1\n\na = 1\n\")"
 ---
 Input:
@@ -21,8 +21,12 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 1,
-                    end: 1,
+                    start: Idx(
+                        1,
+                    ),
+                    end: Idx(
+                        1,
+                    ),
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -40,12 +44,20 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: 9,
-                        end: 9,
+                        start: Idx(
+                            9,
+                        ),
+                        end: Idx(
+                            9,
+                        ),
                         value: Identifier(
                             Node {
-                                start: 9,
-                                end: 9,
+                                start: Idx(
+                                    9,
+                                ),
+                                end: Idx(
+                                    9,
+                                ),
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 3,
@@ -55,8 +67,12 @@ Result:
                         ),
                     },
                     Node {
-                        start: 11,
-                        end: 11,
+                        start: Idx(
+                            11,
+                        ),
+                        end: Idx(
+                            11,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -76,8 +92,12 @@ Result:
             name: ModuleName {
                 parts: [
                     Node {
-                        start: 3,
-                        end: 3,
+                        start: Idx(
+                            3,
+                        ),
+                        end: Idx(
+                            3,
+                        ),
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -85,8 +105,12 @@ Result:
                         },
                     },
                     Node {
-                        start: 5,
-                        end: 5,
+                        start: Idx(
+                            5,
+                        ),
+                        end: Idx(
+                            5,
+                        ),
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -104,12 +128,20 @@ Result:
                 Untyped(
                     Pattern(
                         Node {
-                            start: 6,
-                            end: 6,
+                            start: Idx(
+                                6,
+                            ),
+                            end: Idx(
+                                6,
+                            ),
                             value: Identifier(
                                 Node {
-                                    start: 6,
-                                    end: 6,
+                                    start: Idx(
+                                        6,
+                                    ),
+                                    end: Idx(
+                                        6,
+                                    ),
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 3,
@@ -119,8 +151,12 @@ Result:
                             ),
                         },
                         Node {
-                            start: 8,
-                            end: 8,
+                            start: Idx(
+                                8,
+                            ),
+                            end: Idx(
+                                8,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,

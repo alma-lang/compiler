@@ -18,8 +18,12 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 1,
-                    end: 1,
+                    start: Idx(
+                        1,
+                    ),
+                    end: Idx(
+                        1,
+                    ),
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -36,12 +40,20 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: 2,
-                end: 7,
+                start: Idx(
+                    2,
+                ),
+                end: Idx(
+                    7,
+                ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: 3,
-                        end: 3,
+                        start: Idx(
+                            3,
+                        ),
+                        end: Idx(
+                            3,
+                        ),
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -50,8 +62,12 @@ Result:
                     },
                     vars: [
                         Node {
-                            start: 4,
-                            end: 4,
+                            start: Idx(
+                                4,
+                            ),
+                            end: Idx(
+                                4,
+                            ),
                             value: Identifier_ {
                                 name: SymbolU32 {
                                     value: 3,
@@ -62,12 +78,20 @@ Result:
                     typ: Union(
                         [
                             Node {
-                                start: 6,
-                                end: 7,
+                                start: Idx(
+                                    6,
+                                ),
+                                end: Idx(
+                                    7,
+                                ),
                                 value: Constructor_ {
                                     name: Node {
-                                        start: 6,
-                                        end: 6,
+                                        start: Idx(
+                                            6,
+                                        ),
+                                        end: Idx(
+                                            6,
+                                        ),
                                         value: CapitalizedIdentifier_ {
                                             name: SymbolU32 {
                                                 value: 4,
@@ -77,8 +101,12 @@ Result:
                                     params: [
                                         Var(
                                             Node {
-                                                start: 7,
-                                                end: 7,
+                                                start: Idx(
+                                                    7,
+                                                ),
+                                                end: Idx(
+                                                    7,
+                                                ),
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 3,

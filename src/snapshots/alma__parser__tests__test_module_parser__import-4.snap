@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2611
+assertion_line: 2612
 expression: "parse(\"\\\nmodule Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
 ---
 Input:
@@ -21,8 +21,12 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 1,
-                    end: 1,
+                    start: Idx(
+                        1,
+                    ),
+                    end: Idx(
+                        1,
+                    ),
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -37,14 +41,22 @@ Result:
         exports: [],
         imports: [
             Node {
-                start: 2,
-                end: 5,
+                start: Idx(
+                    2,
+                ),
+                end: Idx(
+                    5,
+                ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: 3,
-                                end: 3,
+                                start: Idx(
+                                    3,
+                                ),
+                                end: Idx(
+                                    3,
+                                ),
                                 value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 2,
@@ -58,8 +70,12 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: 5,
-                            end: 5,
+                            start: Idx(
+                                5,
+                            ),
+                            end: Idx(
+                                5,
+                            ),
                             value: CapitalizedIdentifier_ {
                                 name: SymbolU32 {
                                     value: 3,
@@ -71,14 +87,22 @@ Result:
                 },
             },
             Node {
-                start: 6,
-                end: 11,
+                start: Idx(
+                    6,
+                ),
+                end: Idx(
+                    11,
+                ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: 7,
-                                end: 7,
+                                start: Idx(
+                                    7,
+                                ),
+                                end: Idx(
+                                    7,
+                                ),
                                 value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 4,
@@ -93,12 +117,20 @@ Result:
                     alias: None,
                     exposing: [
                         Node {
-                            start: 10,
-                            end: 10,
+                            start: Idx(
+                                10,
+                            ),
+                            end: Idx(
+                                10,
+                            ),
                             value: Identifier(
                                 Node {
-                                    start: 10,
-                                    end: 10,
+                                    start: Idx(
+                                        10,
+                                    ),
+                                    end: Idx(
+                                        10,
+                                    ),
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 5,
@@ -111,14 +143,22 @@ Result:
                 },
             },
             Node {
-                start: 12,
-                end: 19,
+                start: Idx(
+                    12,
+                ),
+                end: Idx(
+                    19,
+                ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: 13,
-                                end: 13,
+                                start: Idx(
+                                    13,
+                                ),
+                                end: Idx(
+                                    13,
+                                ),
                                 value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 6,
@@ -132,8 +172,12 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: 15,
-                            end: 15,
+                            start: Idx(
+                                15,
+                            ),
+                            end: Idx(
+                                15,
+                            ),
                             value: CapitalizedIdentifier_ {
                                 name: SymbolU32 {
                                     value: 7,
@@ -143,12 +187,20 @@ Result:
                     ),
                     exposing: [
                         Node {
-                            start: 18,
-                            end: 18,
+                            start: Idx(
+                                18,
+                            ),
+                            end: Idx(
+                                18,
+                            ),
                             value: Identifier(
                                 Node {
-                                    start: 18,
-                                    end: 18,
+                                    start: Idx(
+                                        18,
+                                    ),
+                                    end: Idx(
+                                        18,
+                                    ),
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 8,

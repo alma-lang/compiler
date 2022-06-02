@@ -10,16 +10,24 @@ if True then 1 else 2
 Result:
 
 Node {
-    start: 0,
-    end: 5,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        5,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: If(
             Node {
-                start: 1,
-                end: 1,
+                start: Idx(
+                    1,
+                ),
+                end: Idx(
+                    1,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -30,8 +38,12 @@ Node {
                 },
             },
             Node {
-                start: 3,
-                end: 3,
+                start: Idx(
+                    3,
+                ),
+                end: Idx(
+                    3,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -42,8 +54,12 @@ Node {
                 },
             },
             Node {
-                start: 5,
-                end: 5,
+                start: Idx(
+                    5,
+                ),
+                end: Idx(
+                    5,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,

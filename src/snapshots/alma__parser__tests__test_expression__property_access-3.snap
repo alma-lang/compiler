@@ -10,32 +10,48 @@ a.b.c.d
 Result:
 
 Node {
-    start: 0,
-    end: 6,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        6,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: PropAccess(
             Node {
-                start: 0,
-                end: 4,
+                start: Idx(
+                    0,
+                ),
+                end: Idx(
+                    4,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
                     },
                     expr: PropAccess(
                         Node {
-                            start: 0,
-                            end: 2,
+                            start: Idx(
+                                0,
+                            ),
+                            end: Idx(
+                                2,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
                                 },
                                 expr: PropAccess(
                                     Node {
-                                        start: 0,
-                                        end: 0,
+                                        start: Idx(
+                                            0,
+                                        ),
+                                        end: Idx(
+                                            0,
+                                        ),
                                         value: Expression_ {
                                             typ: RefCell {
                                                 value: None,
@@ -44,8 +60,12 @@ Node {
                                                 None,
                                                 Identifier(
                                                     Node {
-                                                        start: 0,
-                                                        end: 0,
+                                                        start: Idx(
+                                                            0,
+                                                        ),
+                                                        end: Idx(
+                                                            0,
+                                                        ),
                                                         value: Identifier_ {
                                                             name: SymbolU32 {
                                                                 value: 1,
@@ -57,8 +77,12 @@ Node {
                                         },
                                     },
                                     Node {
-                                        start: 2,
-                                        end: 2,
+                                        start: Idx(
+                                            2,
+                                        ),
+                                        end: Idx(
+                                            2,
+                                        ),
                                         value: Identifier_ {
                                             name: SymbolU32 {
                                                 value: 2,
@@ -69,8 +93,12 @@ Node {
                             },
                         },
                         Node {
-                            start: 4,
-                            end: 4,
+                            start: Idx(
+                                4,
+                            ),
+                            end: Idx(
+                                4,
+                            ),
                             value: Identifier_ {
                                 name: SymbolU32 {
                                     value: 3,
@@ -81,8 +109,12 @@ Node {
                 },
             },
             Node {
-                start: 6,
-                end: 6,
+                start: Idx(
+                    6,
+                ),
+                end: Idx(
+                    6,
+                ),
                 value: Identifier_ {
                     name: SymbolU32 {
                         value: 4,

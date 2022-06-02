@@ -1,6 +1,8 @@
+use crate::index::Idx;
 use crate::module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::token::Token;
 use crate::typ;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -9,17 +11,13 @@ use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
 pub struct Node<V> {
-    pub start: module::tokens::Index,
-    pub end: module::tokens::Index,
+    pub start: Idx<Token>,
+    pub end: Idx<Token>,
     pub value: V,
 }
 
 impl<V> Node<V> {
-    pub fn new(
-        value: V,
-        first_token: module::tokens::Index,
-        last_token: module::tokens::Index,
-    ) -> Self {
+    pub fn new(value: V, first_token: Idx<Token>, last_token: Idx<Token>) -> Self {
         Node {
             value,
             start: first_token,
@@ -124,7 +122,7 @@ impl ModuleName {
         true
     }
 
-    pub fn end(&self) -> module::tokens::Index {
+    pub fn end(&self) -> Idx<Token> {
         self.parts
             .last()
             .expect("Module names should never be empty")

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2241
+assertion_line: 2242
 expression: "parse(\"if True then if False then 1 else 3 else 2\")"
 ---
 Input:
@@ -10,16 +10,24 @@ if True then if False then 1 else 3 else 2
 Result:
 
 Node {
-    start: 0,
-    end: 10,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        10,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: If(
             Node {
-                start: 1,
-                end: 1,
+                start: Idx(
+                    1,
+                ),
+                end: Idx(
+                    1,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -30,16 +38,24 @@ Node {
                 },
             },
             Node {
-                start: 3,
-                end: 8,
+                start: Idx(
+                    3,
+                ),
+                end: Idx(
+                    8,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
                     },
                     expr: If(
                         Node {
-                            start: 4,
-                            end: 4,
+                            start: Idx(
+                                4,
+                            ),
+                            end: Idx(
+                                4,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -50,8 +66,12 @@ Node {
                             },
                         },
                         Node {
-                            start: 6,
-                            end: 6,
+                            start: Idx(
+                                6,
+                            ),
+                            end: Idx(
+                                6,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -62,8 +82,12 @@ Node {
                             },
                         },
                         Node {
-                            start: 8,
-                            end: 8,
+                            start: Idx(
+                                8,
+                            ),
+                            end: Idx(
+                                8,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -77,8 +101,12 @@ Node {
                 },
             },
             Node {
-                start: 10,
-                end: 10,
+                start: Idx(
+                    10,
+                ),
+                end: Idx(
+                    10,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,

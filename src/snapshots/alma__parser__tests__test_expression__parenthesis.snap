@@ -10,8 +10,12 @@ Input:
 Result:
 
 Node {
-    start: 1,
-    end: 1,
+    start: Idx(
+        1,
+    ),
+    end: Idx(
+        1,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,

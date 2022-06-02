@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2393
+assertion_line: 2392
 expression: "parse(\"{ 5 | x = 1, y = 3 }\")"
 ---
 Input:
@@ -10,16 +10,24 @@ Input:
 Result:
 
 Node {
-    start: 0,
-    end: 10,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        10,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: RecordUpdate(
             Node {
-                start: 1,
-                end: 1,
+                start: Idx(
+                    1,
+                ),
+                end: Idx(
+                    1,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -32,8 +40,12 @@ Node {
             [
                 (
                     Node {
-                        start: 3,
-                        end: 3,
+                        start: Idx(
+                            3,
+                        ),
+                        end: Idx(
+                            3,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -41,8 +53,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 5,
-                        end: 5,
+                        start: Idx(
+                            5,
+                        ),
+                        end: Idx(
+                            5,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -55,8 +71,12 @@ Node {
                 ),
                 (
                     Node {
-                        start: 7,
-                        end: 7,
+                        start: Idx(
+                            7,
+                        ),
+                        end: Idx(
+                            7,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 4,
@@ -64,8 +84,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 9,
-                        end: 9,
+                        start: Idx(
+                            9,
+                        ),
+                        end: Idx(
+                            9,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

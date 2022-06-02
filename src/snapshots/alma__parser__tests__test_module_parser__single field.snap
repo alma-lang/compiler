@@ -18,8 +18,12 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 1,
-                    end: 1,
+                    start: Idx(
+                        1,
+                    ),
+                    end: Idx(
+                        1,
+                    ),
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -36,12 +40,20 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: 2,
-                end: 9,
+                start: Idx(
+                    2,
+                ),
+                end: Idx(
+                    9,
+                ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: 3,
-                        end: 3,
+                        start: Idx(
+                            3,
+                        ),
+                        end: Idx(
+                            3,
+                        ),
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -52,14 +64,22 @@ Result:
                     typ: Record(
                         Record(
                             Node {
-                                start: 5,
-                                end: 9,
+                                start: Idx(
+                                    5,
+                                ),
+                                end: Idx(
+                                    9,
+                                ),
                                 value: Record_ {
                                     fields: [
                                         (
                                             Node {
-                                                start: 6,
-                                                end: 6,
+                                                start: Idx(
+                                                    6,
+                                                ),
+                                                end: Idx(
+                                                    6,
+                                                ),
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 3,
@@ -68,12 +88,20 @@ Result:
                                             },
                                             App(
                                                 Node {
-                                                    start: 8,
-                                                    end: 8,
+                                                    start: Idx(
+                                                        8,
+                                                    ),
+                                                    end: Idx(
+                                                        8,
+                                                    ),
                                                     value: Constructor_ {
                                                         name: Node {
-                                                            start: 8,
-                                                            end: 8,
+                                                            start: Idx(
+                                                                8,
+                                                            ),
+                                                            end: Idx(
+                                                                8,
+                                                            ),
                                                             value: CapitalizedIdentifier_ {
                                                                 name: SymbolU32 {
                                                                     value: 4,

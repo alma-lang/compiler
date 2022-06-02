@@ -18,8 +18,12 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 1,
-                    end: 1,
+                    start: Idx(
+                        1,
+                    ),
+                    end: Idx(
+                        1,
+                    ),
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -33,12 +37,20 @@ Result:
         },
         exports: [
             Node {
-                start: 4,
-                end: 4,
+                start: Idx(
+                    4,
+                ),
+                end: Idx(
+                    4,
+                ),
                 value: Identifier(
                     Node {
-                        start: 4,
-                        end: 4,
+                        start: Idx(
+                            4,
+                        ),
+                        end: Idx(
+                            4,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -48,12 +60,20 @@ Result:
                 ),
             },
             Node {
-                start: 6,
-                end: 6,
+                start: Idx(
+                    6,
+                ),
+                end: Idx(
+                    6,
+                ),
                 value: Identifier(
                     Node {
-                        start: 6,
-                        end: 6,
+                        start: Idx(
+                            6,
+                        ),
+                        end: Idx(
+                            6,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 3,
@@ -68,12 +88,20 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: 8,
-                        end: 8,
+                        start: Idx(
+                            8,
+                        ),
+                        end: Idx(
+                            8,
+                        ),
                         value: Identifier(
                             Node {
-                                start: 8,
-                                end: 8,
+                                start: Idx(
+                                    8,
+                                ),
+                                end: Idx(
+                                    8,
+                                ),
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 2,
@@ -83,8 +111,12 @@ Result:
                         ),
                     },
                     Node {
-                        start: 10,
-                        end: 10,
+                        start: Idx(
+                            10,
+                        ),
+                        end: Idx(
+                            10,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -99,12 +131,20 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: 11,
-                        end: 11,
+                        start: Idx(
+                            11,
+                        ),
+                        end: Idx(
+                            11,
+                        ),
                         value: Identifier(
                             Node {
-                                start: 11,
-                                end: 11,
+                                start: Idx(
+                                    11,
+                                ),
+                                end: Idx(
+                                    11,
+                                ),
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 3,
@@ -114,8 +154,12 @@ Result:
                         ),
                     },
                     Node {
-                        start: 13,
-                        end: 13,
+                        start: Idx(
+                            13,
+                        ),
+                        end: Idx(
+                            13,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

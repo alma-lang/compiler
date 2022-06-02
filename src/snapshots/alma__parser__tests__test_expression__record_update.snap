@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2391
+assertion_line: 2390
 expression: "parse(\"{ 5 | x = 1 }\")"
 ---
 Input:
@@ -10,16 +10,24 @@ Input:
 Result:
 
 Node {
-    start: 0,
-    end: 6,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        6,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: RecordUpdate(
             Node {
-                start: 1,
-                end: 1,
+                start: Idx(
+                    1,
+                ),
+                end: Idx(
+                    1,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -32,8 +40,12 @@ Node {
             [
                 (
                     Node {
-                        start: 3,
-                        end: 3,
+                        start: Idx(
+                            3,
+                        ),
+                        end: Idx(
+                            3,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -41,8 +53,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 5,
-                        end: 5,
+                        start: Idx(
+                            5,
+                        ),
+                        end: Idx(
+                            5,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

@@ -10,24 +10,36 @@ Input:
 Result:
 
 Node {
-    start: 0,
-    end: 17,
+    start: Idx(
+        0,
+    ),
+    end: Idx(
+        17,
+    ),
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: RecordUpdate(
             Node {
-                start: 1,
-                end: 8,
+                start: Idx(
+                    1,
+                ),
+                end: Idx(
+                    8,
+                ),
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
                     },
                     expr: If(
                         Node {
-                            start: 2,
-                            end: 2,
+                            start: Idx(
+                                2,
+                            ),
+                            end: Idx(
+                                2,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -38,8 +50,12 @@ Node {
                             },
                         },
                         Node {
-                            start: 4,
-                            end: 5,
+                            start: Idx(
+                                4,
+                            ),
+                            end: Idx(
+                                5,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -50,8 +66,12 @@ Node {
                             },
                         },
                         Node {
-                            start: 7,
-                            end: 8,
+                            start: Idx(
+                                7,
+                            ),
+                            end: Idx(
+                                8,
+                            ),
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -67,8 +87,12 @@ Node {
             [
                 (
                     Node {
-                        start: 10,
-                        end: 10,
+                        start: Idx(
+                            10,
+                        ),
+                        end: Idx(
+                            10,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -76,8 +100,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 12,
-                        end: 12,
+                        start: Idx(
+                            12,
+                        ),
+                        end: Idx(
+                            12,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -90,8 +118,12 @@ Node {
                 ),
                 (
                     Node {
-                        start: 14,
-                        end: 14,
+                        start: Idx(
+                            14,
+                        ),
+                        end: Idx(
+                            14,
+                        ),
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 3,
@@ -99,8 +131,12 @@ Node {
                         },
                     },
                     Node {
-                        start: 16,
-                        end: 16,
+                        start: Idx(
+                            16,
+                        ),
+                        end: Idx(
+                            16,
+                        ),
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
