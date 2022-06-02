@@ -258,8 +258,8 @@ impl<'source, 'strings> State<'source, 'strings> {
                 Some('\\') => self.status = Status::StringToken(true),
                 Some('"') if !prev_was_backslash => {
                     let lexeme = {
-                        let start = self.start;
-                        let end = self.current + self.current_char.len_utf8();
+                        let start = self.start + 1;
+                        let end = self.current + self.current_char.len_utf8() - 1;
                         self.strings.get_or_intern(
                             self.source
                                 .text_at(start..end)
