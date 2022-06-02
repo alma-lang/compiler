@@ -94,7 +94,7 @@ fn parse_file<'source>(
     let mut module_names = vec![];
 
     let (module_ast, submodules) = parser::parse(source, &module.tokens, strings)
-        .map_err(|error| vec![error.to_string(source, &module.tokens, strings)])?;
+        .map_err(|error| vec![error.to_string(source, strings)])?;
 
     let module_full_name = module_ast.name.full_name;
     module.ast = Some(module_ast);

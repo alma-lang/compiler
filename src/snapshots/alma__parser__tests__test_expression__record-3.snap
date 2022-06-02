@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2398
+assertion_line: 2361
 expression: "parse(\"{ 1 : 5 }\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidRecordFieldsOrExtensibleRecordExpression,
     token: Token {
         kind: Colon,
-        position: 4,
-        end_position: 5,
-        lexeme: ":",
+        indent: 0,
+        start: 4,
+        end: 5,
         line: 1,
         column: 4,
-        indent: 0,
     },
 }

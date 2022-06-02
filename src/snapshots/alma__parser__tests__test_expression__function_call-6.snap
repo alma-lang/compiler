@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2042
+assertion_line: 2205
 expression: "parse(\"hello ()\")"
-
 ---
 Input:
 
@@ -12,9 +11,7 @@ Result:
 
 Node {
     start: 0,
-    end: 8,
-    line: 1,
-    column: 0,
+    end: 2,
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -22,9 +19,7 @@ Node {
         expr: FnCall(
             Node {
                 start: 0,
-                end: 5,
-                line: 1,
-                column: 0,
+                end: 0,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -34,9 +29,7 @@ Node {
                         Identifier(
                             Node {
                                 start: 0,
-                                end: 5,
-                                line: 1,
-                                column: 0,
+                                end: 0,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 1,
@@ -49,10 +42,8 @@ Node {
             },
             [
                 Node {
-                    start: 6,
-                    end: 8,
-                    line: 1,
-                    column: 6,
+                    start: 1,
+                    end: 2,
                     value: Expression_ {
                         typ: RefCell {
                             value: None,

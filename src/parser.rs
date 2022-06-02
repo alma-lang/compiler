@@ -102,16 +102,14 @@ enum ErrorType {
     InvalidTypeDefinitionTypeVarsOrEqualSeparator,
     InvalidUnionTypeDefinitionConstructor,
     MissingUnionTypeDefinitionConstructors,
-    InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
-        /* First delimiter of the record */ module::tokens::Index,
-    ),
+    InvalidRecordTypeFieldTypeOrLastRecordDelimiter(/* First delimiter of the record */ Token),
     InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
     MissingRecordTypeFields,
     InvalidRecordTypeFieldKey,
     InvalidRecordTypeFieldType,
     InvalidRecordTypeFieldSeparator,
-    InvalidParenthesizedTypeDelimiter(/* First delimiter */ module::tokens::Index),
+    InvalidParenthesizedTypeDelimiter(/* First delimiter */ Token),
     InvalidFunctionParameterType,
     InvalidParenthesizedTypeType,
     InvalidTypeSignatureType,
@@ -131,16 +129,16 @@ enum ErrorType {
     MissingLambdaParamaters,
     InvalidLambdaArrow,
     InvalidLambdaBody,
-    InvalidBinopRhs(/* Binop token */ module::tokens::Index),
-    InvalidUnaryRhs(/* Unary op token */ module::tokens::Index),
+    InvalidBinopRhs(/* Binop token */ Token),
+    InvalidUnaryRhs(/* Unary op token */ Token),
     InvalidPropertyAccessSeparator,
     InvalidPropertyAccessIdentifier,
-    InvalidFloat(module::tokens::Index),
+    InvalidFloat(Token),
     InvalidRecordFieldSeparatorOrLastDelimiter,
     InvalidRecordFieldsOrExtensibleRecordExpression,
     InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
     InvalidParenthesizedExpression,
-    InvalidParenthesizedExpressionLastDelimiter(/* First delimiter */ module::tokens::Index),
+    InvalidParenthesizedExpressionLastDelimiter(/* First delimiter */ Token),
     InvalidPropertyAccessLambdaWhitespace,
     InvalidPropertyAccessLambdaIdentifier,
     MissingRecordFields,
@@ -152,7 +150,7 @@ enum ErrorType {
 use ErrorType::*;
 
 impl ErrorType {
-    pub fn get_code_pointer(&self) -> Option<module::tokens::Index> {
+    pub fn get_code_pointer(&self) -> Option<Token> {
         match self {
             InvalidRecordTypeFieldTypeOrLastRecordDelimiter(first_brace) => Some(*first_brace),
             InvalidParenthesizedTypeDelimiter(first_paren) => Some(*first_paren),
@@ -163,12 +161,11 @@ impl ErrorType {
     pub fn to_string<'tokens, 'strings>(
         &self,
         error: &Error,
-        tokens: &'tokens [Token],
         strings: &'strings Strings,
     ) -> String {
-        let get_lexeme = |token: module::tokens::Index| tokens[token].kind.to_string(strings);
+        let get_lexeme = |token: &Token| token.kind.to_string(strings);
         let expected_but_found = |message: &str| {
-            let lexeme = get_lexeme(error.token);
+            let lexeme = get_lexeme(&error.token);
             format!("{message}, but instead found: `{lexeme}`")
         };
 
@@ -210,7 +207,7 @@ impl ErrorType {
                 and also not have extraneous characters, \
                 because they need to match the file name \
                 in the file system.",
-                lexeme = get_lexeme(error.token)
+                lexeme = get_lexeme(&error.token)
             ),
 
             NotEnoughModuleExports => expected_but_found(
@@ -413,12 +410,12 @@ impl ErrorType {
 
             InvalidBinopRhs(op) => expected_but_found(&format!(
                 "Expected an expression after the binary operator `{lexeme}`",
-                lexeme = get_lexeme(*op)
+                lexeme = get_lexeme(op)
             )),
 
             InvalidUnaryRhs(op) => expected_but_found(&format!(
                 "Expected an expression after the unary operator `{lexeme}`",
-                lexeme = get_lexeme(*op)
+                lexeme = get_lexeme(op)
             )),
 
             InvalidPropertyAccessSeparator => "A property access must have the dot \
@@ -432,7 +429,7 @@ impl ErrorType {
 
             InvalidFloat(token) => format!(
                 "Failed to parse number token `{lexeme}`",
-                lexeme = get_lexeme(*token)
+                lexeme = get_lexeme(token)
             ),
 
             InvalidRecordFieldSeparatorOrLastDelimiter => {
@@ -492,24 +489,22 @@ impl ErrorType {
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorType,
-    pub token: module::tokens::Index,
+    pub token: Token,
 }
 
 impl Error {
-    fn new(token: module::tokens::Index, kind: ErrorType) -> Self {
+    fn new(token: Token, kind: ErrorType) -> Self {
         Self { token, kind }
     }
 
     pub fn to_string<'source, 'strings, 'tokens>(
         &self,
         source: &'source Source,
-        tokens: &'tokens [Token],
         strings: &'strings Strings,
     ) -> String {
-        let token = &tokens[self.token];
         let message = {
-            let message = self.kind.to_string(self, tokens, strings);
-            let point_at_token = &tokens[self.kind.get_code_pointer().unwrap_or(self.token)];
+            let message = self.kind.to_string(self, strings);
+            let point_at_token = self.kind.get_code_pointer().unwrap_or(self.token);
 
             let lines_report = source
                 .lines_report_at_position_with_pointer(
@@ -521,8 +516,8 @@ impl Error {
             format!("{message}\n\n{lines_report}")
         };
         let source_name = source.name();
-        let line = token.line;
-        let column = token.column;
+        let line = self.token.line;
+        let column = self.token.column;
         format!("{source_name}:{line}:{column}\n\n{message}")
     }
 }
@@ -542,7 +537,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let module = self.module(None)?;
         match module {
             Some(mut modules) => self.eof((modules.pop().unwrap(), modules)),
-            None => Err(Error::new(self.get_token_index(), MissingTopLevelModule)),
+            None => Err(self.error(MissingTopLevelModule)),
         }
     }
 
@@ -551,9 +546,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Some(import) => ReplEntry::Import(import),
             None => match self.binding()? {
                 Some(definition) => ReplEntry::Definition(definition),
-                None => ReplEntry::Expression(self.required(Self::expression, |self_| {
-                    Error::new(self_.get_token_index(), InvalidReplEntry)
-                })?),
+                None => ReplEntry::Expression(
+                    self.required(Self::expression, |self_| self_.error(InvalidReplEntry))?,
+                ),
             },
         };
 
@@ -564,19 +559,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let (_, eof_token) = self.get_token();
         match eof_token.kind {
             TT::Eof => Ok(result),
-            _ => Err(Error::new(self.get_token_index(), InvalidEndOfInput)),
+            _ => Err(self.error(InvalidEndOfInput)),
         }
     }
 
     fn module(&mut self, parent_module: Option<&ModuleName>) -> ParseResult<Option<Vec<Module>>> {
-        let top_level = !matches!(parent_module, Some(_));
+        let top_level = matches!(parent_module, None);
 
-        if let Some((module_token_idx, module_token)) = self.match_token(TT::Module) {
+        if let Some((_, module_token)) = self.match_token(TT::Module) {
             let name = self.module_name(|| MissingModuleName)?;
 
             if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                 return Err(Error::new(
-                    module_token_idx,
+                    *module_token,
                     ErrorType::ModuleAndFileNameMismatch(name),
                 ));
             } else if parent_module
@@ -584,7 +579,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 .unwrap_or(false)
             {
                 return Err(Error::new(
-                    module_token_idx,
+                    *module_token,
                     ErrorType::SubmoduleAndParentModuleNameMismatch(name),
                 ));
             }
@@ -619,22 +614,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             TT::Comma,
             (TT::LeftParen, TT::RightParen),
             Self::export,
-            |self_| Error::new(self_.get_token_index(), NotEnoughModuleExports),
-            |self_| {
-                Error::new(
-                    self_.get_token_index(),
-                    InvalidModuleExportsSeparatorOrLastDelimiter,
-                )
-            },
+            |self_| self_.error(NotEnoughModuleExports),
+            |self_| self_.error(InvalidModuleExportsSeparatorOrLastDelimiter),
         )?;
 
         if let Some(exports) = exports {
             Ok(exports)
         } else {
-            Err(Error::new(
-                self.get_token_index(),
-                InvalidModuleExportsDelimiter,
-            ))
+            Err(self.error(InvalidModuleExportsDelimiter))
         }
     }
 
@@ -646,7 +633,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         } else if let Some(export) = self.export_type()? {
             Ok(export)
         } else {
-            Err(Error::new(self.get_token_index(), InvalidModuleExport))
+            Err(self.error(InvalidModuleExport))
         }
     }
     fn export_type(&mut self) -> ParseResult<Option<Export>> {
@@ -657,16 +644,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 |self_| {
                     self_.required(
                         |self_| Ok(self_.capitalized_identifier()),
-                        |self_| Error::new(self_.get_token_index(), InvalidModuleExportConstructor),
+                        |self_| self_.error(InvalidModuleExportConstructor),
                     )
                 },
-                |self_| Error::new(self_.get_token_index(), MissingModuleExportConstructors),
-                |self_| {
-                    Error::new(
-                        self_.get_token_index(),
-                        InvalidModuleExportConstructorsSeparatorOrLastDelimiter,
-                    )
-                },
+                |self_| self_.error(MissingModuleExportConstructors),
+                |self_| self_.error(InvalidModuleExportConstructorsSeparatorOrLastDelimiter),
             )?;
 
             let constructors = constructors.unwrap_or_else(|| vec![]);
@@ -689,7 +671,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let alias = if self.match_token(TT::As).is_some() {
                 Some(self.required(
                     |self_| Ok(self_.capitalized_identifier()),
-                    |self_| Error::new(self_.get_token_index(), InvalidImportModuleAlias),
+                    |self_| self_.error(InvalidImportModuleAlias),
                 )?)
             } else {
                 None
@@ -728,7 +710,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let name = self.required(
             |self_| Ok(self_.capitalized_identifier()),
-            |self_| Error::new(self_.get_token_index(), InvalidTypeDefinitionName),
+            |self_| self_.error(InvalidTypeDefinitionName),
         )?;
 
         let vars = self.many(|self_| match self_.identifier() {
@@ -739,10 +721,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     self_.advance();
                     Ok(None)
                 } else {
-                    Err(Error::new(
-                        self_.get_token_index(),
-                        InvalidTypeDefinitionTypeVarsOrEqualSeparator,
-                    ))
+                    Err(self_.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator))
                 }
             }
         })?;
@@ -770,18 +749,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Pipe)),
             |self_| {
                 self_.required(Self::type_constructor, |self_| {
-                    Error::new(
-                        self_.get_token_index(),
-                        InvalidUnionTypeDefinitionConstructor,
-                    )
+                    self_.error(InvalidUnionTypeDefinitionConstructor)
                 })
             },
-            |self_| {
-                Error::new(
-                    self_.get_token_index(),
-                    MissingUnionTypeDefinitionConstructors,
-                )
-            },
+            |self_| self_.error(MissingUnionTypeDefinitionConstructors),
         )?;
 
         Ok(branches)
@@ -813,7 +784,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_record(&mut self) -> ParseResult<Option<types::RecordType>> {
-        let left_brace_token_index = self.get_token_index();
+        let (left_brace_token_index, left_brace_token) = self.get_token();
         if self.match_token(LeftBrace).is_none() {
             return Ok(None);
         }
@@ -843,10 +814,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         last_token_index,
                     ))))
                 } else {
-                    Err(Error::new(
-                        self.get_token_index(),
-                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token_index),
-                    ))
+                    Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
+                        *left_brace_token,
+                    )))
                 }
             }
 
@@ -854,27 +824,22 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let extension = if let Some(identifier) = self.identifier() {
                     identifier
                 } else {
-                    return Err(Error::new(
-                        self.get_token_index(),
-                        InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
-                    ));
+                    return Err(self.error(InvalidRecordTypeFieldKeyOrExtensibleRecordVariable));
                 };
 
                 if self.match_token(TT::Pipe).is_none() {
-                    return Err(Error::new(
-                        self.get_token_index(),
-                        InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
-                    ));
+                    return Err(
+                        self.error(InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator)
+                    );
                 }
 
                 let fields = self.type_record_fields()?;
                 let (last_token_index, _) = self.get_token();
 
                 if self.match_token(RightBrace).is_none() {
-                    return Err(Error::new(
-                        self.get_token_index(),
-                        InvalidRecordTypeFieldTypeOrLastRecordDelimiter(left_brace_token_index),
-                    ));
+                    return Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
+                        *left_brace_token,
+                    )));
                 }
 
                 Ok(Some(types::RecordType::RecordExt(Node::new(
@@ -890,21 +855,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::type_record_field,
-            |self_| Error::new(self_.get_token_index(), MissingRecordTypeFields),
+            |self_| self_.error(MissingRecordTypeFields),
         )
     }
 
     fn type_record_field(&mut self) -> ParseResult<(Identifier, Type)> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
-            |self_| Error::new(self_.get_token_index(), InvalidRecordTypeFieldKey),
+            |self_| self_.error(InvalidRecordTypeFieldKey),
         )?;
 
         if self.match_token(TT::Colon).is_none() {
-            return Err(Error::new(
-                self.get_token_index(),
-                InvalidRecordTypeFieldSeparator,
-            ));
+            return Err(self.error(InvalidRecordTypeFieldSeparator));
         }
 
         let typ = self.type_function(|| InvalidRecordTypeFieldType)?;
@@ -931,7 +893,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn type_parens(&mut self) -> ParseResult<Option<Type>> {
-        let (token_index, _) = self.get_token();
+        let (_, token) = self.get_token();
         if self.match_token(LeftParen).is_none() {
             return Ok(None);
         }
@@ -941,10 +903,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if self.match_token(RightParen).is_some() {
             Ok(Some(type_))
         } else {
-            Err(Error::new(
-                self.get_token_index(),
-                InvalidParenthesizedTypeDelimiter(token_index),
-            ))
+            Err(self.error(InvalidParenthesizedTypeDelimiter(*token)))
         }
     }
 
@@ -960,10 +919,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| Ok(self_.match_token(TT::Arrow)),
             |self_| {
                 self_.required(Self::type_, |self_| {
-                    Error::new(self_.get_token_index(), InvalidFunctionParameterType)
+                    self_.error(InvalidFunctionParameterType)
                 })
             },
-            |self_| Error::new(self_.get_token_index(), on_type_parse_error()),
+            |self_| self_.error(on_type_parse_error()),
         )?;
 
         if params.len() == 1 {
@@ -1034,17 +993,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else if self.match_token(TT::Eof).is_some() {
                 Ok((modules, definitions, type_definitions))
             } else {
-                Err(Error::new(
-                    self.get_token_index(),
-                    InvalidModuleDefinitionLhs,
-                ))
+                Err(self.error(InvalidModuleDefinitionLhs))
             }
         } else if self.match_token(TT::Eof).is_some()
             || self.current_token_outside_indent_for_module_definitions(top_level, module_token)
         {
             Ok((modules, definitions, type_definitions))
         } else {
-            Err(Error::new(self.get_token_index(), InvalidModuleDefinition))
+            Err(self.error(InvalidModuleDefinition))
         }
     }
 
@@ -1099,17 +1055,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     Ok(None)
                 }
             },
-            |self_| Error::new(self_.get_token_index(), MissingLetBindings),
+            |self_| self_.error(MissingLetBindings),
         )?;
 
         if self.match_token(TT::In).is_none()
             && !self.is_token_after_line_and_same_indent_as(let_token)
         {
-            return Err(Error::new(self.get_token_index(), InvalidLetBodyIndent));
+            return Err(self.error(InvalidLetBodyIndent));
         }
 
         let body = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidLetBodyExpression)
+            self_.error(InvalidLetBodyExpression)
         })?;
 
         let end = body.end;
@@ -1190,10 +1146,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
-                        Error::new(
-                            self_.get_token_index(),
-                            InvalidLetBindingParametersOrEqualSeparator(identifier.value.clone()),
-                        )
+                        self_.error(InvalidLetBindingParametersOrEqualSeparator(
+                            identifier.value.clone(),
+                        ))
                     })?;
 
                     let expr = self.binding_rhs()?;
@@ -1215,15 +1170,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
     fn binding_rhs(&mut self) -> ParseResult<Expression> {
         if self.match_token(TT::Equal).is_none() {
-            return Err(Error::new(
-                self.get_token_index(),
-                InvalidLetBindingSeparator,
-            ));
+            return Err(self.error(InvalidLetBindingSeparator));
         }
 
-        self.required(Self::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidLetBindingRhs)
-        })
+        self.required(Self::expression, |self_| self_.error(InvalidLetBindingRhs))
     }
 
     fn if_(&mut self) -> ParseResult<Option<Expression>> {
@@ -1233,25 +1183,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             return Ok(None);
         }
 
-        let condition = self.required(Self::binary, |self_| {
-            Error::new(self_.get_token_index(), InvalidIfCondition)
-        })?;
+        let condition = self.required(Self::binary, |self_| self_.error(InvalidIfCondition))?;
 
         if self.match_token(TT::Then).is_none() {
-            return Err(Error::new(self.get_token_index(), InvalidIfThen));
+            return Err(self.error(InvalidIfThen));
         }
 
-        let then = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidThenBranch)
-        })?;
+        let then = self.required(Self::expression, |self_| self_.error(InvalidThenBranch))?;
 
         if self.match_token(TT::Else).is_none() {
-            return Err(Error::new(self.get_token_index(), InvalidIfElse));
+            return Err(self.error(InvalidIfElse));
         }
 
-        let else_ = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidIfElseBranch)
-        })?;
+        let else_ = self.required(Self::expression, |self_| self_.error(InvalidIfElseBranch))?;
 
         let end = else_.end;
         Ok(Some(Node {
@@ -1268,17 +1212,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             return Ok(None);
         }
 
-        let params = self.one_or_many(Self::pattern, |self_| {
-            Error::new(self_.get_token_index(), MissingLambdaParamaters)
-        })?;
+        let params =
+            self.one_or_many(Self::pattern, |self_| self_.error(MissingLambdaParamaters))?;
 
         if self.match_token(Arrow).is_none() {
-            return Err(Error::new(self.get_token_index(), InvalidLambdaArrow));
+            return Err(self.error(InvalidLambdaArrow));
         }
 
-        let body = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidLambdaBody)
-        })?;
+        let body = self.required(Self::expression, |self_| self_.error(InvalidLambdaBody))?;
 
         let end = body.end;
         Ok(Some(Node {
@@ -1350,9 +1291,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             let op_node = Node::new(op, token_index, token_index);
 
-            let right = self.required(Self::unary, |self_| {
-                Error::new(self_.get_token_index(), InvalidBinopRhs(token_index))
-            })?;
+            let right = self.required(Self::unary, |self_| self_.error(InvalidBinopRhs(*token)))?;
 
             Ok(Some((op_node, right)))
         } else {
@@ -1386,10 +1325,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }))
             }
             (None, Some(expr)) => Ok(Some(expr)),
-            (Some(_), None) => Err(Error::new(
-                self.get_token_index(),
-                InvalidUnaryRhs(token_index),
-            )),
+            (Some(_), None) => Err(self.error(InvalidUnaryRhs(*token))),
             (None, None) => Ok(None),
         }
     }
@@ -1438,7 +1374,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
     fn properties(&mut self, expr: Expression) -> ParseResult<Expression> {
         let mut expr = expr;
-        while let Some(identifier) = self.property(expr.end)? {
+        while let Some(identifier) = self.property(self.tokens[expr.end].end)? {
             expr = {
                 let start = expr.start;
                 let end = identifier.end;
@@ -1453,7 +1389,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         Ok(expr)
     }
     fn property(&mut self, prev_end: usize) -> ParseResult<Option<Identifier>> {
-        let (dot_token_index, dot_token) = self.get_token();
+        let (_, dot_token) = self.get_token();
         match dot_token.kind {
             // Dot token without whitespace between the prev token is a record access
             Dot if dot_token.start == prev_end => {
@@ -1472,10 +1408,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
 
                     TT::Identifier(_) => {
-                        Err(Error::new(dot_token_index, InvalidPropertyAccessSeparator))
+                        Err(Error::new(*dot_token, InvalidPropertyAccessSeparator))
                     }
 
-                    _ => Err(Error::new(dot_token_index, InvalidPropertyAccessIdentifier)),
+                    _ => Err(Error::new(*dot_token, InvalidPropertyAccessIdentifier)),
                 }
             }
             _ => Ok(None),
@@ -1508,7 +1444,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     .strings
                     .resolve(lexeme)
                     .parse::<f64>()
-                    .map_err(|_| Error::new(token_index, InvalidFloat(token_index)))?;
+                    .map_err(|_| Error::new(*token, InvalidFloat(*token)))?;
 
                 self.advance();
 
@@ -1542,7 +1478,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let (module, identifier) = if module.parts.len() == 1 {
                     // Is there a normal identifier afterwards? If so it is a Module.ident, if not,
                     // the module's only part is a capitalized identifier.
-                    if let Some(ident) = self.property(module.end())? {
+                    let module_end_position = self.tokens[module.end()].end;
+                    if let Some(ident) = self.property(module_end_position)? {
                         (Some(module), AnyIdentifier::Identifier(ident))
                     } else {
                         let first = module.parts.swap_remove(0);
@@ -1551,7 +1488,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     // Is there a normal identifier afterwards? If so the whole module is fine, if
                     // not, the module's last part is a capitalized identifier.
-                    if let Some(ident) = self.property(module.end())? {
+                    let module_end_position = self.tokens[module.end()].end;
+                    if let Some(ident) = self.property(module_end_position)? {
                         (Some(module), AnyIdentifier::Identifier(ident))
                     } else {
                         let ident = module.parts.pop().unwrap();
@@ -1611,27 +1549,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 right_brace_token_index,
                             )))
                         } else {
-                            Err(Error::new(
-                                self.get_token_index(),
-                                InvalidRecordFieldSeparatorOrLastDelimiter,
-                            ))
+                            Err(self.error(InvalidRecordFieldSeparatorOrLastDelimiter))
                         }
                     }
 
                     // Record update
                     _ => {
                         let record = self.required(Self::expression, |self_| {
-                            Error::new(
-                                self_.get_token_index(),
-                                InvalidRecordFieldsOrExtensibleRecordExpression,
-                            )
+                            self_.error(InvalidRecordFieldsOrExtensibleRecordExpression)
                         })?;
 
                         if self.match_token(Pipe).is_none() {
-                            return Err(Error::new(
-                                self.get_token_index(),
-                                InvalidRecordFieldsOrExtensibleRecordExpression,
-                            ));
+                            return Err(self.error(InvalidRecordFieldsOrExtensibleRecordExpression));
                         }
 
                         let fields = self.record_fields()?;
@@ -1643,10 +1572,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                                 right_brace_token_index,
                             )))
                         } else {
-                            Err(Error::new(
-                                self.get_token_index(),
-                                InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
-                            ))
+                            Err(self.error(InvalidExtensibleRecordFieldSeparatorOrLastDelimiter))
                         }
                     }
                 }
@@ -1666,16 +1592,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 // Parenthesized expression
                 let expr = self.required(Self::expression, |self_| {
-                    Error::new(self_.get_token_index(), InvalidParenthesizedExpression)
+                    self_.error(InvalidParenthesizedExpression)
                 })?;
 
                 if self.match_token(RightParen).is_some() {
                     Ok(Some(expr))
                 } else {
-                    Err(Error::new(
-                        self.get_token_index(),
-                        InvalidParenthesizedExpressionLastDelimiter(token_index),
-                    ))
+                    Err(self.error(InvalidParenthesizedExpressionLastDelimiter(*token)))
                 }
             }
 
@@ -1702,15 +1625,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }
 
                     // Dot with whitespace and an identifier afterwards
-                    TT::Identifier(_) => Err(Error::new(
-                        token_index,
-                        InvalidPropertyAccessLambdaWhitespace,
-                    )),
+                    TT::Identifier(_) => {
+                        Err(Error::new(*token, InvalidPropertyAccessLambdaWhitespace))
+                    }
 
-                    _ => Err(Error::new(
-                        token_index,
-                        InvalidPropertyAccessLambdaIdentifier,
-                    )),
+                    _ => Err(Error::new(*token, InvalidPropertyAccessLambdaIdentifier)),
                 }
             }
 
@@ -1722,27 +1641,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             Self::record_field,
-            |self_| Error::new(self_.get_token_index(), MissingRecordFields),
+            |self_| self_.error(MissingRecordFields),
         )
     }
 
     fn record_field(&mut self) -> ParseResult<(Identifier, Expression)> {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
-            |self_| Error::new(self_.get_token_index(), InvalidRecordFieldKey),
+            |self_| self_.error(InvalidRecordFieldKey),
         )?;
 
         let (_, separator) = self.get_token();
         if !matches!(separator.kind, Colon | Equal) {
-            return Err(Error::new(
-                self.get_token_index(),
-                InvalidRecordFieldKeyValueSeparator,
-            ));
+            return Err(self.error(InvalidRecordFieldKeyValueSeparator));
         }
         self.advance();
 
         let expr = self.required(Self::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidRecordFieldValue)
+            self_.error(InvalidRecordFieldValue)
         })?;
 
         Ok((identifier, expr))
@@ -1765,10 +1681,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             |self_| {
                 self_.required(
                     |self_| Ok(self_.capitalized_identifier()),
-                    |self_| Error::new(self_.get_token_index(), InvalidModuleNameSegment),
+                    |self_| self_.error(InvalidModuleNameSegment),
                 )
             },
-            |self_| Error::new(self_.get_token_index(), on_name_parse_error()),
+            |self_| self_.error(on_name_parse_error()),
         )?;
 
         debug_assert!(!identifiers.is_empty());
@@ -1783,9 +1699,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     ) -> ParseResult<ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
             let name = &names[i];
-            let token_relative_index = tokens.iter().position(|t| t.start == name.start).unwrap();
-            // TODO: get the token indexes here somehow
-            Error::new(start + token_relative_index, InvalidModuleNameSegment)
+            let token_relative_index = tokens
+                .iter()
+                .position(|t| t.start == self.tokens[name.start].start)
+                .unwrap();
+            Error::new(
+                self.tokens[start + token_relative_index],
+                InvalidModuleNameSegment,
+            )
         })
     }
 
@@ -1798,6 +1719,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             },
         ) = self.get_token()
         {
+            self.advance();
             let name_identifier = Identifier_::new(*lexeme);
             Some(Node::new(
                 name_identifier,
@@ -1818,6 +1740,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             },
         ) = self.get_token()
         {
+            self.advance();
             let name_identifier = CapitalizedIdentifier_::new(*lexeme);
             Some(Node::new(
                 name_identifier,
@@ -2079,6 +2002,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             None
         }
     }
+
+    fn error(&self, error_type: ErrorType) -> Error {
+        let (_, token) = self.get_token();
+        Error::new(*token, error_type)
+    }
 }
 
 fn organize_binops(
@@ -2189,7 +2117,7 @@ pub mod tests {
         };
 
         let result = parser.required(State::expression, |self_| {
-            Error::new(self_.get_token_index(), InvalidModuleDefinitionLhs)
+            self_.error(InvalidModuleDefinitionLhs)
         })?;
         parser.eof(Box::new(result))
     }
@@ -2488,7 +2416,7 @@ add 5"
             let result = match &parse_expression(&source, &module.tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
-                    let error_str = error.to_string(&source, &module.tokens, &strings);
+                    let error_str = error.to_string(&source, &strings);
                     format!("{error_str}\n\n{error:#?}")
                 }
             };
@@ -3189,7 +3117,7 @@ main =
             let result = match &super::parse(&source, &module.tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
-                    let error_str = error.to_string(&source, &module.tokens, &strings);
+                    let error_str = error.to_string(&source, &strings);
                     format!("{error_str}\n\n{error:#?}")
                 }
             };

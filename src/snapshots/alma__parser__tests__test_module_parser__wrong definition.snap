@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2730
+assertion_line: 2695
 expression: "parse(\"\nmodule Test\n\ntype Banana : asdf\n\")"
-
 ---
 Input:
 
@@ -27,11 +26,10 @@ Error {
     kind: InvalidTypeDefinitionTypeVarsOrEqualSeparator,
     token: Token {
         kind: Colon,
-        position: 26,
-        end_position: 27,
-        lexeme: ":",
+        indent: 0,
+        start: 26,
+        end: 27,
         line: 4,
         column: 12,
-        indent: 0,
     },
 }

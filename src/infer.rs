@@ -1939,7 +1939,7 @@ add 5"
                 .unwrap();
 
             let ast = parser::tests::parse_expression(&source, &module.tokens, &mut strings)
-                .map_err(|error| error.to_string(&source, &module.tokens, &strings))
+                .map_err(|error| error.to_string(&source, &strings))
                 .unwrap();
 
             let mut state = State::new();

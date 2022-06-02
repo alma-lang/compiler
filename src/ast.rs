@@ -429,18 +429,18 @@ pub mod binop {
     impl Binop_ {
         pub fn get_function_identifier(&self, strings: &mut Strings) -> Identifier_ {
             let name_sym = strings.get_or_intern(match self.typ {
-                Or => "__op_or",
-                And => "__op_and",
-                Equal => "__op_eq",
-                NotEqual => "__op_ne",
-                GreaterThan => "__op_gt",
-                GreaterEqualThan => "__op_ge",
-                LessThan => "__op_lt",
-                LessEqualThan => "__op_le",
-                Addition => "__op_add",
-                Substraction => "__op_sub",
-                Multiplication => "__op_mult",
-                Division => "__op_div",
+                Or => "__op__or",
+                And => "__op__and",
+                Equal => "__op__eq",
+                NotEqual => "__op__ne",
+                GreaterThan => "__op__gt",
+                GreaterEqualThan => "__op__ge",
+                LessThan => "__op__lt",
+                LessEqualThan => "__op__le",
+                Addition => "__op__add",
+                Substraction => "__op__sub",
+                Multiplication => "__op__mult",
+                Division => "__op__div",
             });
             Identifier_::new(name_sym)
         }

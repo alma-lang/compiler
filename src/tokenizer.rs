@@ -417,10 +417,9 @@ mod tests {
 
     fn tokenize<'a>(code: &'a str) -> String {
         let source = &Source::new_orphan(code.to_string());
-        format!(
-            "{:#?}",
-            parse(source, &mut Strings::new(), &mut Module::new())
-        )
+        let mut module = Module::new();
+        let result = parse(source, &mut Strings::new(), &mut module);
+        format!("{:#?}", result.map(|_| module.tokens))
     }
 
     #[test]

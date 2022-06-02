@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2078
+assertion_line: 2317
 expression: "parse(\"if True then incr 1 else 2\")"
-
 ---
 Input:
 
@@ -12,19 +11,15 @@ Result:
 
 Node {
     start: 0,
-    end: 26,
-    line: 1,
-    column: 0,
+    end: 6,
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: If(
             Node {
-                start: 3,
-                end: 7,
-                line: 1,
-                column: 3,
+                start: 1,
+                end: 1,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -35,20 +30,16 @@ Node {
                 },
             },
             Node {
-                start: 13,
-                end: 19,
-                line: 1,
-                column: 13,
+                start: 3,
+                end: 4,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
                     },
                     expr: FnCall(
                         Node {
-                            start: 13,
-                            end: 17,
-                            line: 1,
-                            column: 13,
+                            start: 3,
+                            end: 3,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -57,10 +48,8 @@ Node {
                                     None,
                                     Identifier(
                                         Node {
-                                            start: 13,
-                                            end: 17,
-                                            line: 1,
-                                            column: 13,
+                                            start: 3,
+                                            end: 3,
                                             value: Identifier_ {
                                                 name: SymbolU32 {
                                                     value: 1,
@@ -73,10 +62,8 @@ Node {
                         },
                         [
                             Node {
-                                start: 18,
-                                end: 19,
-                                line: 1,
-                                column: 18,
+                                start: 4,
+                                end: 4,
                                 value: Expression_ {
                                     typ: RefCell {
                                         value: None,
@@ -91,10 +78,8 @@ Node {
                 },
             },
             Node {
-                start: 25,
-                end: 26,
-                line: 1,
-                column: 25,
+                start: 6,
+                end: 6,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,

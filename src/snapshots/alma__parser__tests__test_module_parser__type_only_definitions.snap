@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2834
+assertion_line: 3073
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit\n\")"
-
 ---
 Input:
 
@@ -18,10 +17,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 7,
-                    end: 11,
-                    line: 1,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -35,16 +32,12 @@ Result:
         },
         exports: [
             Node {
-                start: 22,
-                end: 26,
-                line: 1,
-                column: 22,
+                start: 4,
+                end: 4,
                 value: Identifier(
                     Node {
-                        start: 22,
-                        end: 26,
-                        line: 1,
-                        column: 22,
+                        start: 4,
+                        end: 4,
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -59,10 +52,8 @@ Result:
             TypeSignature(
                 TypeSignature {
                     name: Node {
-                        start: 29,
-                        end: 33,
-                        line: 3,
-                        column: 0,
+                        start: 6,
+                        end: 6,
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -71,16 +62,12 @@ Result:
                     },
                     typ: App(
                         Node {
-                            start: 36,
-                            end: 41,
-                            line: 3,
-                            column: 7,
+                            start: 8,
+                            end: 8,
                             value: Constructor_ {
                                 name: Node {
-                                    start: 36,
-                                    end: 41,
-                                    line: 3,
-                                    column: 7,
+                                    start: 8,
+                                    end: 8,
                                     value: CapitalizedIdentifier_ {
                                         name: SymbolU32 {
                                             value: 3,

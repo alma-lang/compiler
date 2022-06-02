@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2079
+assertion_line: 2241
 expression: "parse(\"if True then if False then 1 else 3 else 2\")"
-
 ---
 Input:
 
@@ -12,19 +11,15 @@ Result:
 
 Node {
     start: 0,
-    end: 42,
-    line: 1,
-    column: 0,
+    end: 10,
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: If(
             Node {
-                start: 3,
-                end: 7,
-                line: 1,
-                column: 3,
+                start: 1,
+                end: 1,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -35,20 +30,16 @@ Node {
                 },
             },
             Node {
-                start: 13,
-                end: 35,
-                line: 1,
-                column: 13,
+                start: 3,
+                end: 8,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
                     },
                     expr: If(
                         Node {
-                            start: 16,
-                            end: 21,
-                            line: 1,
-                            column: 16,
+                            start: 4,
+                            end: 4,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -59,10 +50,8 @@ Node {
                             },
                         },
                         Node {
-                            start: 27,
-                            end: 28,
-                            line: 1,
-                            column: 27,
+                            start: 6,
+                            end: 6,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -73,10 +62,8 @@ Node {
                             },
                         },
                         Node {
-                            start: 34,
-                            end: 35,
-                            line: 1,
-                            column: 34,
+                            start: 8,
+                            end: 8,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -90,10 +77,8 @@ Node {
                 },
             },
             Node {
-                start: 41,
-                end: 42,
-                line: 1,
-                column: 41,
+                start: 10,
+                end: 10,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,

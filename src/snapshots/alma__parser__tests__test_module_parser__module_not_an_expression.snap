@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2492
+assertion_line: 2432
 expression: "parse(\"True\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: MissingTopLevelModule,
     token: Token {
         kind: True,
-        position: 0,
-        end_position: 4,
-        lexeme: "True",
+        indent: 0,
+        start: 0,
+        end: 4,
         line: 1,
         column: 0,
-        indent: 0,
     },
 }

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2664
+assertion_line: 2828
 expression: "parse(\"\nmodule Test\n\ntype Fruit = { name : String }\n\")"
-
 ---
 Input:
 
@@ -19,10 +18,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 8,
-                    end: 12,
-                    line: 2,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -39,16 +36,12 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: 14,
-                end: 44,
-                line: 4,
-                column: 0,
+                start: 2,
+                end: 9,
                 value: TypeDefinition_ {
                     name: Node {
-                        start: 19,
-                        end: 24,
-                        line: 4,
-                        column: 5,
+                        start: 3,
+                        end: 3,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -59,18 +52,14 @@ Result:
                     typ: Record(
                         Record(
                             Node {
-                                start: 27,
-                                end: 44,
-                                line: 4,
-                                column: 13,
+                                start: 5,
+                                end: 9,
                                 value: Record_ {
                                     fields: [
                                         (
                                             Node {
-                                                start: 29,
-                                                end: 33,
-                                                line: 4,
-                                                column: 15,
+                                                start: 6,
+                                                end: 6,
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 3,
@@ -79,16 +68,12 @@ Result:
                                             },
                                             App(
                                                 Node {
-                                                    start: 36,
-                                                    end: 42,
-                                                    line: 4,
-                                                    column: 22,
+                                                    start: 8,
+                                                    end: 8,
                                                     value: Constructor_ {
                                                         name: Node {
-                                                            start: 36,
-                                                            end: 42,
-                                                            line: 4,
-                                                            column: 22,
+                                                            start: 8,
+                                                            end: 8,
                                                             value: CapitalizedIdentifier_ {
                                                                 name: SymbolU32 {
                                                                     value: 4,

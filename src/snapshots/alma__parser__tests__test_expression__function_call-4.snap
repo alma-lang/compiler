@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2257
+assertion_line: 2198
 expression: "parse(\"fun\\narg\")"
-
 ---
 Input:
 
@@ -22,12 +21,15 @@ Expected the end of input, but instead found: `arg`
 Error {
     kind: InvalidEndOfInput,
     token: Token {
-        kind: Identifier,
-        position: 4,
-        end_position: 7,
-        lexeme: "arg",
+        kind: Identifier(
+            SymbolU32 {
+                value: 2,
+            },
+        ),
+        indent: 0,
+        start: 4,
+        end: 7,
         line: 2,
         column: 0,
-        indent: 0,
     },
 }

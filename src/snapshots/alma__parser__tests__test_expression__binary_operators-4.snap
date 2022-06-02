@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2057
+assertion_line: 2221
 expression: "parse(\"1 == 2 / 3\")"
-
 ---
 Input:
 
@@ -12,19 +11,15 @@ Result:
 
 Node {
     start: 0,
-    end: 10,
-    line: 1,
-    column: 0,
+    end: 4,
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: Binary(
             Node {
-                start: 2,
-                end: 4,
-                line: 1,
-                column: 2,
+                start: 1,
+                end: 1,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -33,13 +28,11 @@ Node {
                         None,
                         Identifier(
                             Node {
-                                start: 2,
-                                end: 4,
-                                line: 1,
-                                column: 2,
+                                start: 1,
+                                end: 1,
                                 value: Identifier_ {
                                     name: SymbolU32 {
-                                        value: 1,
+                                        value: 5,
                                     },
                                 },
                             },
@@ -48,27 +41,18 @@ Node {
                 },
             },
             Node {
-                start: 2,
-                end: 4,
-                line: 1,
-                column: 2,
+                start: 1,
+                end: 1,
                 value: Binop_ {
                     typ: Equal,
                     precedence: 11,
                     associativity: Ltr,
-                    fn_: Identifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                    },
                 },
             },
             [
                 Node {
                     start: 0,
-                    end: 1,
-                    line: 1,
-                    column: 0,
+                    end: 0,
                     value: Expression_ {
                         typ: RefCell {
                             value: None,
@@ -79,20 +63,16 @@ Node {
                     },
                 },
                 Node {
-                    start: 5,
-                    end: 10,
-                    line: 1,
-                    column: 5,
+                    start: 2,
+                    end: 4,
                     value: Expression_ {
                         typ: RefCell {
                             value: None,
                         },
                         expr: Binary(
                             Node {
-                                start: 7,
-                                end: 8,
-                                line: 1,
-                                column: 7,
+                                start: 3,
+                                end: 3,
                                 value: Expression_ {
                                     typ: RefCell {
                                         value: None,
@@ -101,13 +81,11 @@ Node {
                                         None,
                                         Identifier(
                                             Node {
-                                                start: 7,
-                                                end: 8,
-                                                line: 1,
-                                                column: 7,
+                                                start: 3,
+                                                end: 3,
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
-                                                        value: 2,
+                                                        value: 4,
                                                     },
                                                 },
                                             },
@@ -116,27 +94,18 @@ Node {
                                 },
                             },
                             Node {
-                                start: 7,
-                                end: 8,
-                                line: 1,
-                                column: 7,
+                                start: 3,
+                                end: 3,
                                 value: Binop_ {
                                     typ: Division,
                                     precedence: 15,
                                     associativity: Ltr,
-                                    fn_: Identifier_ {
-                                        name: SymbolU32 {
-                                            value: 2,
-                                        },
-                                    },
                                 },
                             },
                             [
                                 Node {
-                                    start: 5,
-                                    end: 6,
-                                    line: 1,
-                                    column: 5,
+                                    start: 2,
+                                    end: 2,
                                     value: Expression_ {
                                         typ: RefCell {
                                             value: None,
@@ -147,10 +116,8 @@ Node {
                                     },
                                 },
                                 Node {
-                                    start: 9,
-                                    end: 10,
-                                    line: 1,
-                                    column: 9,
+                                    start: 4,
+                                    end: 4,
                                     value: Expression_ {
                                         typ: RefCell {
                                             value: None,

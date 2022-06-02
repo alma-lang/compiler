@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2529
+assertion_line: 2469
 expression: "parse(\"\\\nmodule Test\n\na = 1 + 2 + 3\n\nb = * add\n  5\")"
-
 ---
 Input:
 
@@ -29,11 +28,10 @@ Error {
     kind: InvalidLetBindingRhs,
     token: Token {
         kind: Star,
-        position: 32,
-        end_position: 33,
-        lexeme: "*",
+        indent: 0,
+        start: 32,
+        end: 33,
         line: 5,
         column: 4,
-        indent: 0,
     },
 }

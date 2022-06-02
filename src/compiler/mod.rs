@@ -58,7 +58,7 @@ pub fn compile_repl_entry(
     })?;
 
     let entry = parser::parse_repl(source, &module.tokens, strings)
-        .map_err(|error| error.to_string(source, &module.tokens, strings))?;
+        .map_err(|error| error.to_string(source, strings))?;
 
     let mut errors = vec![];
 

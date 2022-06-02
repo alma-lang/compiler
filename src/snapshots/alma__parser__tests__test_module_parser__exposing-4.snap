@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2632
+assertion_line: 2574
 expression: "parse(\"\\\nmodule Test exposing (a b)\n\na = 1\n\nb = True\")"
-
 ---
 Input:
 
@@ -26,12 +25,15 @@ Parsing the module exports expected a comma separated list of exports inside par
 Error {
     kind: InvalidModuleExportsSeparatorOrLastDelimiter,
     token: Token {
-        kind: Identifier,
-        position: 24,
-        end_position: 25,
-        lexeme: "b",
+        kind: Identifier(
+            SymbolU32 {
+                value: 3,
+            },
+        ),
+        indent: 0,
+        start: 24,
+        end: 25,
         line: 1,
         column: 24,
-        indent: 0,
     },
 }

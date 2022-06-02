@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2004
+assertion_line: 2167
 expression: "parse(\"\\\"😄\\\"\")"
-
 ---
 Input:
 
@@ -12,9 +11,7 @@ Result:
 
 Node {
     start: 0,
-    end: 6,
-    line: 1,
-    column: 0,
+    end: 0,
     value: Expression_ {
         typ: RefCell {
             value: None,

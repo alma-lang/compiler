@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2386
+assertion_line: 2327
 expression: "parse(\"\\\nlet\n  IAmNotCamelCase = 1\nin\nIAmNotCamelCase\n\")"
-
 ---
 Input:
 
@@ -27,12 +26,15 @@ Expected a pattern for the left side of the let expression, but instead found: `
 Error {
     kind: MissingLetBindings,
     token: Token {
-        kind: CapitalizedIdentifier,
-        position: 6,
-        end_position: 21,
-        lexeme: "IAmNotCamelCase",
+        kind: CapitalizedIdentifier(
+            SymbolU32 {
+                value: 1,
+            },
+        ),
+        indent: 2,
+        start: 6,
+        end: 21,
         line: 2,
         column: 2,
-        indent: 2,
     },
 }

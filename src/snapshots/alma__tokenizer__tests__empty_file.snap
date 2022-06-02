@@ -1,18 +1,17 @@
 ---
 source: src/tokenizer.rs
+assertion_line: 427
 expression: "tokenize(\"\")"
-
 ---
 Ok(
     [
         Token {
             kind: Eof,
-            position: 0,
-            end_position: 0,
-            lexeme: "[End of file]",
+            indent: 0,
+            start: 0,
+            end: 0,
             line: 1,
             column: 0,
-            indent: 0,
         },
     ],
 )

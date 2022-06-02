@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2733
+assertion_line: 2675
 expression: "parse(\"\nmodule Test.Something\n\nmodule Test.Banana\n\")"
-
 ---
 Input:
 
@@ -38,10 +37,8 @@ Error {
         ModuleName {
             parts: [
                 Node {
-                    start: 31,
-                    end: 35,
-                    line: 4,
-                    column: 7,
+                    start: 5,
+                    end: 5,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -49,13 +46,11 @@ Error {
                     },
                 },
                 Node {
-                    start: 36,
-                    end: 42,
-                    line: 4,
-                    column: 12,
+                    start: 7,
+                    end: 7,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
-                            value: 4,
+                            value: 3,
                         },
                     },
                 },
@@ -67,11 +62,10 @@ Error {
     ),
     token: Token {
         kind: Module,
-        position: 24,
-        end_position: 30,
-        lexeme: "module",
+        indent: 0,
+        start: 24,
+        end: 30,
         line: 4,
         column: 0,
-        indent: 0,
     },
 }

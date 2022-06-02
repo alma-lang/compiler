@@ -1,27 +1,29 @@
 ---
 source: src/tokenizer.rs
+assertion_line: 457
 expression: "tokenize(r#\"\"asdf\\\"asdf\"\"#)"
-
 ---
 Ok(
     [
         Token {
-            kind: String_,
-            position: 0,
-            end_position: 12,
-            lexeme: "\"asdf\\\"asdf\"",
+            kind: String_(
+                SymbolU32 {
+                    value: 1,
+                },
+            ),
+            indent: 0,
+            start: 0,
+            end: 12,
             line: 1,
             column: 0,
-            indent: 0,
         },
         Token {
             kind: Eof,
-            position: 12,
-            end_position: 12,
-            lexeme: "[End of file]",
+            indent: 0,
+            start: 12,
+            end: 12,
             line: 1,
             column: 12,
-            indent: 0,
         },
     ],
 )

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 1994
+assertion_line: 2158
 expression: "parse(\"variable_one\")"
-
 ---
 Input:
 
@@ -12,9 +11,7 @@ Result:
 
 Node {
     start: 0,
-    end: 12,
-    line: 1,
-    column: 0,
+    end: 0,
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -24,9 +21,7 @@ Node {
             Identifier(
                 Node {
                     start: 0,
-                    end: 12,
-                    line: 1,
-                    column: 0,
+                    end: 0,
                     value: Identifier_ {
                         name: SymbolU32 {
                             value: 1,

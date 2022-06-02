@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2916
+assertion_line: 3079
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit a -> Fruit b -> Fruit c\n\nsignature : Fruit d -> Fruit e -> Fruit f\n\ntest = 5\n\")"
-
 ---
 Input:
 
@@ -22,10 +21,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 7,
-                    end: 11,
-                    line: 1,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -39,16 +36,12 @@ Result:
         },
         exports: [
             Node {
-                start: 22,
-                end: 26,
-                line: 1,
-                column: 22,
+                start: 4,
+                end: 4,
                 value: Identifier(
                     Node {
-                        start: 22,
-                        end: 26,
-                        line: 1,
-                        column: 22,
+                        start: 4,
+                        end: 4,
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -63,10 +56,8 @@ Result:
             TypeSignature(
                 TypeSignature {
                     name: Node {
-                        start: 29,
-                        end: 33,
-                        line: 3,
-                        column: 0,
+                        start: 6,
+                        end: 6,
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -77,16 +68,12 @@ Result:
                         [
                             App(
                                 Node {
-                                    start: 36,
-                                    end: 43,
-                                    line: 3,
-                                    column: 7,
+                                    start: 8,
+                                    end: 9,
                                     value: Constructor_ {
                                         name: Node {
-                                            start: 36,
-                                            end: 41,
-                                            line: 3,
-                                            column: 7,
+                                            start: 8,
+                                            end: 8,
                                             value: CapitalizedIdentifier_ {
                                                 name: SymbolU32 {
                                                     value: 3,
@@ -96,10 +83,8 @@ Result:
                                         params: [
                                             Var(
                                                 Node {
-                                                    start: 42,
-                                                    end: 43,
-                                                    line: 3,
-                                                    column: 13,
+                                                    start: 9,
+                                                    end: 9,
                                                     value: Identifier_ {
                                                         name: SymbolU32 {
                                                             value: 4,
@@ -113,16 +98,12 @@ Result:
                             ),
                             App(
                                 Node {
-                                    start: 47,
-                                    end: 54,
-                                    line: 3,
-                                    column: 18,
+                                    start: 11,
+                                    end: 12,
                                     value: Constructor_ {
                                         name: Node {
-                                            start: 47,
-                                            end: 52,
-                                            line: 3,
-                                            column: 18,
+                                            start: 11,
+                                            end: 11,
                                             value: CapitalizedIdentifier_ {
                                                 name: SymbolU32 {
                                                     value: 3,
@@ -132,10 +113,8 @@ Result:
                                         params: [
                                             Var(
                                                 Node {
-                                                    start: 53,
-                                                    end: 54,
-                                                    line: 3,
-                                                    column: 24,
+                                                    start: 12,
+                                                    end: 12,
                                                     value: Identifier_ {
                                                         name: SymbolU32 {
                                                             value: 5,
@@ -150,16 +129,12 @@ Result:
                         ],
                         App(
                             Node {
-                                start: 58,
-                                end: 65,
-                                line: 3,
-                                column: 29,
+                                start: 14,
+                                end: 15,
                                 value: Constructor_ {
                                     name: Node {
-                                        start: 58,
-                                        end: 63,
-                                        line: 3,
-                                        column: 29,
+                                        start: 14,
+                                        end: 14,
                                         value: CapitalizedIdentifier_ {
                                             name: SymbolU32 {
                                                 value: 3,
@@ -169,10 +144,8 @@ Result:
                                     params: [
                                         Var(
                                             Node {
-                                                start: 64,
-                                                end: 65,
-                                                line: 3,
-                                                column: 35,
+                                                start: 15,
+                                                end: 15,
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 6,
@@ -190,10 +163,8 @@ Result:
             TypeSignature(
                 TypeSignature {
                     name: Node {
-                        start: 67,
-                        end: 76,
-                        line: 5,
-                        column: 0,
+                        start: 16,
+                        end: 16,
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 7,
@@ -204,16 +175,12 @@ Result:
                         [
                             App(
                                 Node {
-                                    start: 79,
-                                    end: 86,
-                                    line: 5,
-                                    column: 12,
+                                    start: 18,
+                                    end: 19,
                                     value: Constructor_ {
                                         name: Node {
-                                            start: 79,
-                                            end: 84,
-                                            line: 5,
-                                            column: 12,
+                                            start: 18,
+                                            end: 18,
                                             value: CapitalizedIdentifier_ {
                                                 name: SymbolU32 {
                                                     value: 3,
@@ -223,10 +190,8 @@ Result:
                                         params: [
                                             Var(
                                                 Node {
-                                                    start: 85,
-                                                    end: 86,
-                                                    line: 5,
-                                                    column: 18,
+                                                    start: 19,
+                                                    end: 19,
                                                     value: Identifier_ {
                                                         name: SymbolU32 {
                                                             value: 8,
@@ -240,16 +205,12 @@ Result:
                             ),
                             App(
                                 Node {
-                                    start: 90,
-                                    end: 97,
-                                    line: 5,
-                                    column: 23,
+                                    start: 21,
+                                    end: 22,
                                     value: Constructor_ {
                                         name: Node {
-                                            start: 90,
-                                            end: 95,
-                                            line: 5,
-                                            column: 23,
+                                            start: 21,
+                                            end: 21,
                                             value: CapitalizedIdentifier_ {
                                                 name: SymbolU32 {
                                                     value: 3,
@@ -259,10 +220,8 @@ Result:
                                         params: [
                                             Var(
                                                 Node {
-                                                    start: 96,
-                                                    end: 97,
-                                                    line: 5,
-                                                    column: 29,
+                                                    start: 22,
+                                                    end: 22,
                                                     value: Identifier_ {
                                                         name: SymbolU32 {
                                                             value: 9,
@@ -277,16 +236,12 @@ Result:
                         ],
                         App(
                             Node {
-                                start: 101,
-                                end: 108,
-                                line: 5,
-                                column: 34,
+                                start: 24,
+                                end: 25,
                                 value: Constructor_ {
                                     name: Node {
-                                        start: 101,
-                                        end: 106,
-                                        line: 5,
-                                        column: 34,
+                                        start: 24,
+                                        end: 24,
                                         value: CapitalizedIdentifier_ {
                                             name: SymbolU32 {
                                                 value: 3,
@@ -296,10 +251,8 @@ Result:
                                     params: [
                                         Var(
                                             Node {
-                                                start: 107,
-                                                end: 108,
-                                                line: 5,
-                                                column: 40,
+                                                start: 25,
+                                                end: 25,
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 10,
@@ -317,16 +270,12 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: 110,
-                        end: 114,
-                        line: 7,
-                        column: 0,
+                        start: 26,
+                        end: 26,
                         value: Identifier(
                             Node {
-                                start: 110,
-                                end: 114,
-                                line: 7,
-                                column: 0,
+                                start: 26,
+                                end: 26,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 11,
@@ -336,10 +285,8 @@ Result:
                         ),
                     },
                     Node {
-                        start: 117,
-                        end: 118,
-                        line: 7,
-                        column: 7,
+                        start: 28,
+                        end: 28,
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2708
+assertion_line: 2649
 expression: "parse(\"\\\nmodule Test\n\nIAmNotCamelCase = 1\n\")"
-
 ---
 Input:
 
@@ -25,12 +24,15 @@ Expected the left side of a definition like `n = 5` or `add x y = x + y` or a ty
 Error {
     kind: InvalidModuleDefinitionLhs,
     token: Token {
-        kind: CapitalizedIdentifier,
-        position: 13,
-        end_position: 28,
-        lexeme: "IAmNotCamelCase",
+        kind: CapitalizedIdentifier(
+            SymbolU32 {
+                value: 2,
+            },
+        ),
+        indent: 0,
+        start: 13,
+        end: 28,
         line: 3,
         column: 0,
-        indent: 0,
     },
 }

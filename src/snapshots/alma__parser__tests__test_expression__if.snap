@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2069
+assertion_line: 2232
 expression: "parse(\"if True then 1 else 2\")"
-
 ---
 Input:
 
@@ -12,19 +11,15 @@ Result:
 
 Node {
     start: 0,
-    end: 21,
-    line: 1,
-    column: 0,
+    end: 5,
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: If(
             Node {
-                start: 3,
-                end: 7,
-                line: 1,
-                column: 3,
+                start: 1,
+                end: 1,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -35,10 +30,8 @@ Node {
                 },
             },
             Node {
-                start: 13,
-                end: 14,
-                line: 1,
-                column: 13,
+                start: 3,
+                end: 3,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -49,10 +42,8 @@ Node {
                 },
             },
             Node {
-                start: 20,
-                end: 21,
-                line: 1,
-                column: 20,
+                start: 5,
+                end: 5,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,

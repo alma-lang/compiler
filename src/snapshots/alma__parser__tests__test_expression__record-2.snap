@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2397
+assertion_line: 2363
 expression: "parse(\"let a = { in 5\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidRecordFieldsOrExtensibleRecordExpression,
     token: Token {
         kind: In,
-        position: 10,
-        end_position: 12,
-        lexeme: "in",
+        indent: 0,
+        start: 10,
+        end: 12,
         line: 1,
         column: 10,
-        indent: 0,
     },
 }

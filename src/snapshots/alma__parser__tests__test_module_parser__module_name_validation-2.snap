@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2731
+assertion_line: 2673
 expression: "parse(\"module Test.Te_st\")"
-
 ---
 Input:
 
@@ -22,12 +21,15 @@ Module names have to be `PascalCase` and also not have extraneous characters, be
 Error {
     kind: InvalidModuleNameSegment,
     token: Token {
-        kind: CapitalizedIdentifier,
-        position: 12,
-        end_position: 17,
-        lexeme: "Te_st",
+        kind: CapitalizedIdentifier(
+            SymbolU32 {
+                value: 2,
+            },
+        ),
+        indent: 0,
+        start: 12,
+        end: 17,
         line: 1,
         column: 12,
-        indent: 0,
     },
 }

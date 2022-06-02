@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2520
+assertion_line: 2460
 expression: "parse(\"\\\nmodule Test\n\na = 1 + 2) + 3\n\nb = * add\n  5\")"
-
 ---
 Input:
 
@@ -30,11 +29,10 @@ Error {
     kind: InvalidModuleDefinition,
     token: Token {
         kind: RightParen,
-        position: 22,
-        end_position: 23,
-        lexeme: ")",
+        indent: 0,
+        start: 22,
+        end: 23,
         line: 3,
         column: 9,
-        indent: 0,
     },
 }

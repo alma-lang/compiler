@@ -1,27 +1,29 @@
 ---
 source: src/tokenizer.rs
+assertion_line: 437
 expression: "tokenize(\"123.345\")"
-
 ---
 Ok(
     [
         Token {
-            kind: Float,
-            position: 0,
-            end_position: 7,
-            lexeme: "123.345",
+            kind: Float(
+                SymbolU32 {
+                    value: 1,
+                },
+            ),
+            indent: 0,
+            start: 0,
+            end: 7,
             line: 1,
             column: 0,
-            indent: 0,
         },
         Token {
             kind: Eof,
-            position: 7,
-            end_position: 7,
-            lexeme: "[End of file]",
+            indent: 0,
+            start: 7,
+            end: 7,
             line: 1,
             column: 7,
-            indent: 0,
         },
     ],
 )

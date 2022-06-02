@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2400
+assertion_line: 2365
 expression: "parse(\"{ Sneaky : 5 }\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidRecordFieldsOrExtensibleRecordExpression,
     token: Token {
         kind: Colon,
-        position: 9,
-        end_position: 10,
-        lexeme: ":",
+        indent: 0,
+        start: 9,
+        end: 10,
         line: 1,
         column: 9,
-        indent: 0,
     },
 }

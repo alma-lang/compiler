@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2244
+assertion_line: 2408
 expression: "parse(\"function record.access\")"
-
 ---
 Input:
 
@@ -12,9 +11,7 @@ Result:
 
 Node {
     start: 0,
-    end: 22,
-    line: 1,
-    column: 0,
+    end: 3,
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -22,9 +19,7 @@ Node {
         expr: FnCall(
             Node {
                 start: 0,
-                end: 8,
-                line: 1,
-                column: 0,
+                end: 0,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -34,9 +29,7 @@ Node {
                         Identifier(
                             Node {
                                 start: 0,
-                                end: 8,
-                                line: 1,
-                                column: 0,
+                                end: 0,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 1,
@@ -49,20 +42,16 @@ Node {
             },
             [
                 Node {
-                    start: 9,
-                    end: 22,
-                    line: 1,
-                    column: 9,
+                    start: 1,
+                    end: 3,
                     value: Expression_ {
                         typ: RefCell {
                             value: None,
                         },
                         expr: PropAccess(
                             Node {
-                                start: 9,
-                                end: 15,
-                                line: 1,
-                                column: 9,
+                                start: 1,
+                                end: 1,
                                 value: Expression_ {
                                     typ: RefCell {
                                         value: None,
@@ -71,10 +60,8 @@ Node {
                                         None,
                                         Identifier(
                                             Node {
-                                                start: 9,
-                                                end: 15,
-                                                line: 1,
-                                                column: 9,
+                                                start: 1,
+                                                end: 1,
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 2,
@@ -86,10 +73,8 @@ Node {
                                 },
                             },
                             Node {
-                                start: 16,
-                                end: 22,
-                                line: 1,
-                                column: 16,
+                                start: 3,
+                                end: 3,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 3,

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2023
+assertion_line: 2262
 expression: "parse(\"(\n  ((1))\n)\")"
-
 ---
 Input:
 
@@ -13,10 +12,8 @@ Input:
 Result:
 
 Node {
-    start: 6,
-    end: 7,
-    line: 2,
-    column: 4,
+    start: 3,
+    end: 3,
     value: Expression_ {
         typ: RefCell {
             value: None,

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2866
+assertion_line: 2808
 expression: "parse(\"\nmodule Test\n\ntype Fruit = {\n\")"
-
 ---
 Input:
 
@@ -27,11 +26,10 @@ Error {
     kind: InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     token: Token {
         kind: Eof,
-        position: 29,
-        end_position: 29,
-        lexeme: "[End of file]",
+        indent: 0,
+        start: 29,
+        end: 29,
         line: 5,
         column: 0,
-        indent: 0,
     },
 }

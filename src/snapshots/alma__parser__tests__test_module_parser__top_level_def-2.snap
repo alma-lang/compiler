@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2286
+assertion_line: 2450
 expression: "parse(\"\\\nmodule Test\n\na = 1\n\nb = True\")"
-
 ---
 Input:
 
@@ -19,10 +18,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 7,
-                    end: 11,
-                    line: 1,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -40,16 +37,12 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: 13,
-                        end: 14,
-                        line: 3,
-                        column: 0,
+                        start: 2,
+                        end: 2,
                         value: Identifier(
                             Node {
-                                start: 13,
-                                end: 14,
-                                line: 3,
-                                column: 0,
+                                start: 2,
+                                end: 2,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 2,
@@ -59,10 +52,8 @@ Result:
                         ),
                     },
                     Node {
-                        start: 17,
-                        end: 18,
-                        line: 3,
-                        column: 4,
+                        start: 4,
+                        end: 4,
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -77,29 +68,23 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: 20,
-                        end: 21,
-                        line: 5,
-                        column: 0,
+                        start: 5,
+                        end: 5,
                         value: Identifier(
                             Node {
-                                start: 20,
-                                end: 21,
-                                line: 5,
-                                column: 0,
+                                start: 5,
+                                end: 5,
                                 value: Identifier_ {
                                     name: SymbolU32 {
-                                        value: 3,
+                                        value: 4,
                                     },
                                 },
                             },
                         ),
                     },
                     Node {
-                        start: 24,
-                        end: 28,
-                        line: 5,
-                        column: 4,
+                        start: 7,
+                        end: 7,
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

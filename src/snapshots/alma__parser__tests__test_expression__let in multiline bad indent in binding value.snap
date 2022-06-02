@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2348
+assertion_line: 2289
 expression: "parse(\"\\\nlet\n  x = a\n  x\nin\nx\")"
-
 ---
 Input:
 
@@ -34,11 +33,10 @@ Error {
     ),
     token: Token {
         kind: In,
-        position: 16,
-        end_position: 18,
-        lexeme: "in",
+        indent: 0,
+        start: 16,
+        end: 18,
         line: 4,
         column: 0,
-        indent: 0,
     },
 }

@@ -1,45 +1,49 @@
 ---
 source: src/tokenizer.rs
+assertion_line: 462
 expression: "tokenize(\"123\\n--Banana\\n321\")"
-
 ---
 Ok(
     [
         Token {
-            kind: Float,
-            position: 0,
-            end_position: 3,
-            lexeme: "123",
+            kind: Float(
+                SymbolU32 {
+                    value: 1,
+                },
+            ),
+            indent: 0,
+            start: 0,
+            end: 3,
             line: 1,
             column: 0,
-            indent: 0,
         },
         Token {
             kind: Comment,
-            position: 4,
-            end_position: 12,
-            lexeme: "--Banana",
+            indent: 0,
+            start: 4,
+            end: 12,
             line: 2,
             column: 0,
-            indent: 0,
         },
         Token {
-            kind: Float,
-            position: 13,
-            end_position: 16,
-            lexeme: "321",
+            kind: Float(
+                SymbolU32 {
+                    value: 2,
+                },
+            ),
+            indent: 0,
+            start: 13,
+            end: 16,
             line: 3,
             column: 0,
-            indent: 0,
         },
         Token {
             kind: Eof,
-            position: 16,
-            end_position: 16,
-            lexeme: "[End of file]",
+            indent: 0,
+            start: 16,
+            end: 16,
             line: 3,
             column: 3,
-            indent: 0,
         },
     ],
 )

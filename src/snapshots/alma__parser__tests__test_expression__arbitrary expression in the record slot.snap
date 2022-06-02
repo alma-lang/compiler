@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2230
+assertion_line: 2393
 expression: "parse(\"{ if True then {} else {} | x = 1, y = 3 }\")"
-
 ---
 Input:
 
@@ -12,29 +11,23 @@ Result:
 
 Node {
     start: 0,
-    end: 42,
-    line: 1,
-    column: 0,
+    end: 17,
     value: Expression_ {
         typ: RefCell {
             value: None,
         },
         expr: RecordUpdate(
             Node {
-                start: 2,
-                end: 25,
-                line: 1,
-                column: 2,
+                start: 1,
+                end: 8,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
                     },
                     expr: If(
                         Node {
-                            start: 5,
-                            end: 9,
-                            line: 1,
-                            column: 5,
+                            start: 2,
+                            end: 2,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -45,10 +38,8 @@ Node {
                             },
                         },
                         Node {
-                            start: 15,
-                            end: 17,
-                            line: 1,
-                            column: 15,
+                            start: 4,
+                            end: 5,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -59,10 +50,8 @@ Node {
                             },
                         },
                         Node {
-                            start: 23,
-                            end: 25,
-                            line: 1,
-                            column: 23,
+                            start: 7,
+                            end: 8,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -78,10 +67,8 @@ Node {
             [
                 (
                     Node {
-                        start: 28,
-                        end: 29,
-                        line: 1,
-                        column: 28,
+                        start: 10,
+                        end: 10,
                         value: Identifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -89,10 +76,8 @@ Node {
                         },
                     },
                     Node {
-                        start: 32,
-                        end: 33,
-                        line: 1,
-                        column: 32,
+                        start: 12,
+                        end: 12,
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,
@@ -105,21 +90,17 @@ Node {
                 ),
                 (
                     Node {
-                        start: 35,
-                        end: 36,
-                        line: 1,
-                        column: 35,
+                        start: 14,
+                        end: 14,
                         value: Identifier_ {
                             name: SymbolU32 {
-                                value: 2,
+                                value: 3,
                             },
                         },
                     },
                     Node {
-                        start: 39,
-                        end: 40,
-                        line: 1,
-                        column: 39,
+                        start: 16,
+                        end: 16,
                         value: Expression_ {
                             typ: RefCell {
                                 value: None,

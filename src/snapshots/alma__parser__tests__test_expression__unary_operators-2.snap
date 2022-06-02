@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2048
+assertion_line: 2212
 expression: "parse(\"- 5\")"
-
 ---
 Input:
 
@@ -12,9 +11,7 @@ Result:
 
 Node {
     start: 0,
-    end: 3,
-    line: 1,
-    column: 0,
+    end: 1,
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -22,16 +19,12 @@ Node {
         expr: Unary(
             Node {
                 start: 0,
-                end: 1,
-                line: 1,
-                column: 0,
+                end: 0,
                 value: Minus,
             },
             Node {
-                start: 2,
-                end: 3,
-                line: 1,
-                column: 2,
+                start: 1,
+                end: 1,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,

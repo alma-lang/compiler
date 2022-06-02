@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2032
+assertion_line: 2195
 expression: "parse(\"fun arg\")"
-
 ---
 Input:
 
@@ -12,9 +11,7 @@ Result:
 
 Node {
     start: 0,
-    end: 7,
-    line: 1,
-    column: 0,
+    end: 1,
     value: Expression_ {
         typ: RefCell {
             value: None,
@@ -22,9 +19,7 @@ Node {
         expr: FnCall(
             Node {
                 start: 0,
-                end: 3,
-                line: 1,
-                column: 0,
+                end: 0,
                 value: Expression_ {
                     typ: RefCell {
                         value: None,
@@ -34,9 +29,7 @@ Node {
                         Identifier(
                             Node {
                                 start: 0,
-                                end: 3,
-                                line: 1,
-                                column: 0,
+                                end: 0,
                                 value: Identifier_ {
                                     name: SymbolU32 {
                                         value: 1,
@@ -49,10 +42,8 @@ Node {
             },
             [
                 Node {
-                    start: 4,
-                    end: 7,
-                    line: 1,
-                    column: 4,
+                    start: 1,
+                    end: 1,
                     value: Expression_ {
                         typ: RefCell {
                             value: None,
@@ -61,10 +52,8 @@ Node {
                             None,
                             Identifier(
                                 Node {
-                                    start: 4,
-                                    end: 7,
-                                    line: 1,
-                                    column: 4,
+                                    start: 1,
+                                    end: 1,
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 2,

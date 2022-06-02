@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2788
+assertion_line: 2730
 expression: "parse(\"\nmodule Test\n\ntype Fruit = Banana / Apple\n\")"
-
 ---
 Input:
 
@@ -27,11 +26,10 @@ Error {
     kind: InvalidModuleDefinition,
     token: Token {
         kind: Slash,
-        position: 34,
-        end_position: 35,
-        lexeme: "/",
+        indent: 0,
+        start: 34,
+        end: 35,
         line: 4,
         column: 20,
-        indent: 0,
     },
 }

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2292
+assertion_line: 2257
 expression: "parse(\"\\\nlet x = a\n  x\")"
-
 ---
 Input:
 
@@ -23,11 +22,10 @@ Error {
     kind: InvalidLetBodyIndent,
     token: Token {
         kind: Eof,
-        position: 13,
-        end_position: 13,
-        lexeme: "[End of file]",
+        indent: 2,
+        start: 13,
+        end: 13,
         line: 2,
         column: 3,
-        indent: 2,
     },
 }

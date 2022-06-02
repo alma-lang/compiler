@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2368
+assertion_line: 2530
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test1\n  a = 1\n\n  module Parent.Test1.Test1Test\n    b = 1\n\nmodule Parent.Test2\n    c = 5\n    \")"
-
 ---
 Input:
 
@@ -25,10 +24,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 7,
-                    end: 13,
-                    line: 1,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -50,10 +47,8 @@ Result:
             name: ModuleName {
                 parts: [
                     Node {
-                        start: 53,
-                        end: 59,
-                        line: 6,
-                        column: 9,
+                        start: 10,
+                        end: 10,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -61,10 +56,8 @@ Result:
                         },
                     },
                     Node {
-                        start: 60,
-                        end: 65,
-                        line: 6,
-                        column: 16,
+                        start: 12,
+                        end: 12,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -72,10 +65,8 @@ Result:
                         },
                     },
                     Node {
-                        start: 66,
-                        end: 75,
-                        line: 6,
-                        column: 22,
+                        start: 14,
+                        end: 14,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 5,
@@ -84,7 +75,7 @@ Result:
                     },
                 ],
                 full_name: SymbolU32 {
-                    value: 6,
+                    value: 11,
                 },
             },
             exports: [],
@@ -93,29 +84,23 @@ Result:
                 Untyped(
                     Pattern(
                         Node {
-                            start: 80,
-                            end: 81,
-                            line: 7,
-                            column: 4,
+                            start: 15,
+                            end: 15,
                             value: Identifier(
                                 Node {
-                                    start: 80,
-                                    end: 81,
-                                    line: 7,
-                                    column: 4,
+                                    start: 15,
+                                    end: 15,
                                     value: Identifier_ {
                                         name: SymbolU32 {
-                                            value: 7,
+                                            value: 6,
                                         },
                                     },
                                 },
                             ),
                         },
                         Node {
-                            start: 84,
-                            end: 85,
-                            line: 7,
-                            column: 8,
+                            start: 17,
+                            end: 17,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -134,10 +119,8 @@ Result:
             name: ModuleName {
                 parts: [
                     Node {
-                        start: 22,
-                        end: 28,
-                        line: 3,
-                        column: 7,
+                        start: 3,
+                        end: 3,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -145,10 +128,8 @@ Result:
                         },
                     },
                     Node {
-                        start: 29,
-                        end: 34,
-                        line: 3,
-                        column: 14,
+                        start: 5,
+                        end: 5,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -157,7 +138,7 @@ Result:
                     },
                 ],
                 full_name: SymbolU32 {
-                    value: 3,
+                    value: 10,
                 },
             },
             exports: [],
@@ -166,29 +147,23 @@ Result:
                 Untyped(
                     Pattern(
                         Node {
-                            start: 37,
-                            end: 38,
-                            line: 4,
-                            column: 2,
+                            start: 6,
+                            end: 6,
                             value: Identifier(
                                 Node {
-                                    start: 37,
-                                    end: 38,
-                                    line: 4,
-                                    column: 2,
+                                    start: 6,
+                                    end: 6,
                                     value: Identifier_ {
                                         name: SymbolU32 {
-                                            value: 4,
+                                            value: 3,
                                         },
                                     },
                                 },
                             ),
                         },
                         Node {
-                            start: 41,
-                            end: 42,
-                            line: 4,
-                            column: 6,
+                            start: 8,
+                            end: 8,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,
@@ -207,10 +182,8 @@ Result:
             name: ModuleName {
                 parts: [
                     Node {
-                        start: 94,
-                        end: 100,
-                        line: 9,
-                        column: 7,
+                        start: 19,
+                        end: 19,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 1,
@@ -218,19 +191,17 @@ Result:
                         },
                     },
                     Node {
-                        start: 101,
-                        end: 106,
-                        line: 9,
-                        column: 14,
+                        start: 21,
+                        end: 21,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
-                                value: 8,
+                                value: 7,
                             },
                         },
                     },
                 ],
                 full_name: SymbolU32 {
-                    value: 9,
+                    value: 12,
                 },
             },
             exports: [],
@@ -239,29 +210,23 @@ Result:
                 Untyped(
                     Pattern(
                         Node {
-                            start: 111,
-                            end: 112,
-                            line: 10,
-                            column: 4,
+                            start: 22,
+                            end: 22,
                             value: Identifier(
                                 Node {
-                                    start: 111,
-                                    end: 112,
-                                    line: 10,
-                                    column: 4,
+                                    start: 22,
+                                    end: 22,
                                     value: Identifier_ {
                                         name: SymbolU32 {
-                                            value: 10,
+                                            value: 8,
                                         },
                                     },
                                 },
                             ),
                         },
                         Node {
-                            start: 115,
-                            end: 116,
-                            line: 10,
-                            column: 8,
+                            start: 24,
+                            end: 24,
                             value: Expression_ {
                                 typ: RefCell {
                                     value: None,

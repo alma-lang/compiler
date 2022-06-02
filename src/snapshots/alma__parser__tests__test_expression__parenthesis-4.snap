@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2244
+assertion_line: 2185
 expression: "parse(\"(((1))))\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidEndOfInput,
     token: Token {
         kind: RightParen,
-        position: 7,
-        end_position: 8,
-        lexeme: ")",
+        indent: 0,
+        start: 7,
+        end: 8,
         line: 1,
         column: 7,
-        indent: 0,
     },
 }

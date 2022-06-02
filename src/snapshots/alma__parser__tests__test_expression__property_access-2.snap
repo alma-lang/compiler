@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2435
+assertion_line: 2377
 expression: "parse(\"a. b\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidPropertyAccessSeparator,
     token: Token {
         kind: Dot,
-        position: 1,
-        end_position: 2,
-        lexeme: ".",
+        indent: 0,
+        start: 1,
+        end: 2,
         line: 1,
         column: 1,
-        indent: 0,
     },
 }

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2279
+assertion_line: 2243
 expression: "parse(\"if True then 1\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidIfElse,
     token: Token {
         kind: Eof,
-        position: 14,
-        end_position: 14,
-        lexeme: "[End of file]",
+        indent: 0,
+        start: 14,
+        end: 14,
         line: 1,
         column: 14,
-        indent: 0,
     },
 }

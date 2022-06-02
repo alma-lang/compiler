@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2426
+assertion_line: 2368
 expression: "parse(\"{ x : 5 , }\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidRecordFieldKey,
     token: Token {
         kind: RightBrace,
-        position: 10,
-        end_position: 11,
-        lexeme: "}",
+        indent: 0,
+        start: 10,
+        end: 11,
         line: 1,
         column: 10,
-        indent: 0,
     },
 }

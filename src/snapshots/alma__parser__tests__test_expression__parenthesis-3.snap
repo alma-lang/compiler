@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2243
+assertion_line: 2185
 expression: "parse(\"(((1))\")"
-
 ---
 Input:
 
@@ -21,21 +20,19 @@ Error {
     kind: InvalidParenthesizedExpressionLastDelimiter(
         Token {
             kind: LeftParen,
-            position: 0,
-            end_position: 1,
-            lexeme: "(",
+            indent: 0,
+            start: 0,
+            end: 1,
             line: 1,
             column: 0,
-            indent: 0,
         },
     ),
     token: Token {
         kind: Eof,
-        position: 6,
-        end_position: 6,
-        lexeme: "[End of file]",
+        indent: 0,
+        start: 6,
+        end: 6,
         line: 1,
         column: 6,
-        indent: 0,
     },
 }

@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2448
+assertion_line: 2611
 expression: "parse(\"\\\nmodule Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
-
 ---
 Input:
 
@@ -22,10 +21,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 7,
-                    end: 11,
-                    line: 1,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -40,18 +37,14 @@ Result:
         exports: [],
         imports: [
             Node {
-                start: 13,
-                end: 31,
-                line: 3,
-                column: 0,
+                start: 2,
+                end: 5,
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: 20,
-                                end: 26,
-                                line: 3,
-                                column: 7,
+                                start: 3,
+                                end: 3,
                                 value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 2,
@@ -65,10 +58,8 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: 30,
-                            end: 31,
-                            line: 3,
-                            column: 17,
+                            start: 5,
+                            end: 5,
                             value: CapitalizedIdentifier_ {
                                 name: SymbolU32 {
                                     value: 3,
@@ -80,18 +71,14 @@ Result:
                 },
             },
             Node {
-                start: 33,
-                end: 62,
-                line: 5,
-                column: 0,
+                start: 6,
+                end: 11,
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: 40,
-                                end: 45,
-                                line: 5,
-                                column: 7,
+                                start: 7,
+                                end: 7,
                                 value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 4,
@@ -106,16 +93,12 @@ Result:
                     alias: None,
                     exposing: [
                         Node {
-                            start: 56,
-                            end: 61,
-                            line: 5,
-                            column: 23,
+                            start: 10,
+                            end: 10,
                             value: Identifier(
                                 Node {
-                                    start: 56,
-                                    end: 61,
-                                    line: 5,
-                                    column: 23,
+                                    start: 10,
+                                    end: 10,
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 5,
@@ -128,18 +111,14 @@ Result:
                 },
             },
             Node {
-                start: 64,
-                end: 99,
-                line: 7,
-                column: 0,
+                start: 12,
+                end: 19,
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: 71,
-                                end: 76,
-                                line: 7,
-                                column: 7,
+                                start: 13,
+                                end: 13,
                                 value: CapitalizedIdentifier_ {
                                     name: SymbolU32 {
                                         value: 6,
@@ -153,10 +132,8 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: 80,
-                            end: 81,
-                            line: 7,
-                            column: 16,
+                            start: 15,
+                            end: 15,
                             value: CapitalizedIdentifier_ {
                                 name: SymbolU32 {
                                     value: 7,
@@ -166,16 +143,12 @@ Result:
                     ),
                     exposing: [
                         Node {
-                            start: 92,
-                            end: 98,
-                            line: 7,
-                            column: 28,
+                            start: 18,
+                            end: 18,
                             value: Identifier(
                                 Node {
-                                    start: 92,
-                                    end: 98,
-                                    line: 7,
-                                    column: 28,
+                                    start: 18,
+                                    end: 18,
                                     value: Identifier_ {
                                         name: SymbolU32 {
                                             value: 8,

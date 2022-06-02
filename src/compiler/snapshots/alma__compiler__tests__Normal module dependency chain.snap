@@ -1,7 +1,7 @@
 ---
 source: src/compiler/mod.rs
+assertion_line: 181
 expression: "compile(&[r\"\nmodule Modules exposing (main)\n\nimport Modules.WeirdMath exposing (weirdAdd)\n\nmain = weirdAdd\n\n\n\nmodule Modules.Constants exposing (five)\n\n    five = 5\n\n\n\nmodule Modules.WeirdMath exposing (weirdAdd)\n\n    import Modules.Constants exposing (five)\n\n    weirdAdd = \\x y -> x * y + five\n        \"])"
-
 ---
 /*
 
@@ -63,8 +63,8 @@ let Modules = function () {
 
 return {
     Modules,
-    Modules__WeirdMath,
     Modules__Constants,
+    Modules__WeirdMath,
 };
 
 }());

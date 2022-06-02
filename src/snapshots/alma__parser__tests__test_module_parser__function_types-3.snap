@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2816
+assertion_line: 2980
 expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = { f : (a -> b) }\n\")"
-
 ---
 Input:
 
@@ -18,10 +17,8 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: 7,
-                    end: 11,
-                    line: 1,
-                    column: 7,
+                    start: 1,
+                    end: 1,
                     value: CapitalizedIdentifier_ {
                         name: SymbolU32 {
                             value: 1,
@@ -35,16 +32,12 @@ Result:
         },
         exports: [
             Node {
-                start: 22,
-                end: 27,
-                line: 1,
-                column: 22,
+                start: 4,
+                end: 4,
                 value: Type(
                     Node {
-                        start: 22,
-                        end: 27,
-                        line: 1,
-                        column: 22,
+                        start: 4,
+                        end: 4,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -59,16 +52,12 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: 30,
-                end: 63,
-                line: 3,
-                column: 0,
+                start: 6,
+                end: 19,
                 value: TypeDefinition_ {
                     name: Node {
-                        start: 35,
-                        end: 40,
-                        line: 3,
-                        column: 5,
+                        start: 7,
+                        end: 7,
                         value: CapitalizedIdentifier_ {
                             name: SymbolU32 {
                                 value: 2,
@@ -77,10 +66,8 @@ Result:
                     },
                     vars: [
                         Node {
-                            start: 41,
-                            end: 42,
-                            line: 3,
-                            column: 11,
+                            start: 8,
+                            end: 8,
                             value: Identifier_ {
                                 name: SymbolU32 {
                                     value: 3,
@@ -88,10 +75,8 @@ Result:
                             },
                         },
                         Node {
-                            start: 43,
-                            end: 44,
-                            line: 3,
-                            column: 13,
+                            start: 9,
+                            end: 9,
                             value: Identifier_ {
                                 name: SymbolU32 {
                                     value: 4,
@@ -102,18 +87,14 @@ Result:
                     typ: Record(
                         Record(
                             Node {
-                                start: 47,
-                                end: 63,
-                                line: 3,
-                                column: 17,
+                                start: 11,
+                                end: 19,
                                 value: Record_ {
                                     fields: [
                                         (
                                             Node {
-                                                start: 49,
-                                                end: 50,
-                                                line: 3,
-                                                column: 19,
+                                                start: 12,
+                                                end: 12,
                                                 value: Identifier_ {
                                                     name: SymbolU32 {
                                                         value: 5,
@@ -124,10 +105,8 @@ Result:
                                                 [
                                                     Var(
                                                         Node {
-                                                            start: 54,
-                                                            end: 55,
-                                                            line: 3,
-                                                            column: 24,
+                                                            start: 15,
+                                                            end: 15,
                                                             value: Identifier_ {
                                                                 name: SymbolU32 {
                                                                     value: 3,
@@ -138,10 +117,8 @@ Result:
                                                 ],
                                                 Var(
                                                     Node {
-                                                        start: 59,
-                                                        end: 60,
-                                                        line: 3,
-                                                        column: 29,
+                                                        start: 17,
+                                                        end: 17,
                                                         value: Identifier_ {
                                                             name: SymbolU32 {
                                                                 value: 4,

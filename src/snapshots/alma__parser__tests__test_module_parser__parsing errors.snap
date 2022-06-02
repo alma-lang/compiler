@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2567
+assertion_line: 2509
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1 + 2) + 3\n\n  b = * add\n    5\n\na = 1 + 2) + 3\n\nb = * add\n  5\")"
-
 ---
 Input:
 
@@ -37,11 +36,10 @@ Error {
     kind: InvalidModuleDefinition,
     token: Token {
         kind: RightParen,
-        position: 46,
-        end_position: 47,
-        lexeme: ")",
+        indent: 2,
+        start: 46,
+        end: 47,
         line: 5,
         column: 11,
-        indent: 2,
     },
 }

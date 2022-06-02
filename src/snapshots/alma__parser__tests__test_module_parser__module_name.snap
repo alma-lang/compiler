@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2685
+assertion_line: 2627
 expression: "parse(\"module i_am_not_PascalCase\")"
-
 ---
 Input:
 
@@ -22,12 +21,15 @@ Module names have to be `PascalCase` and also not have extraneous characters, be
 Error {
     kind: InvalidModuleNameSegment,
     token: Token {
-        kind: Identifier,
-        position: 7,
-        end_position: 26,
-        lexeme: "i_am_not_PascalCase",
+        kind: Identifier(
+            SymbolU32 {
+                value: 1,
+            },
+        ),
+        indent: 0,
+        start: 7,
+        end: 26,
         line: 1,
         column: 7,
-        indent: 0,
     },
 }

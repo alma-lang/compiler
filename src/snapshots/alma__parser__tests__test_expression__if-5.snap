@@ -1,8 +1,7 @@
 ---
 source: src/parser.rs
-assertion_line: 2302
+assertion_line: 2243
 expression: "parse(\"if True { 1 } else 2\")"
-
 ---
 Input:
 
@@ -21,11 +20,10 @@ Error {
     kind: InvalidRecordFieldsOrExtensibleRecordExpression,
     token: Token {
         kind: RightBrace,
-        position: 12,
-        end_position: 13,
-        lexeme: "}",
+        indent: 0,
+        start: 12,
+        end: 13,
         line: 1,
         column: 12,
-        indent: 0,
     },
 }
