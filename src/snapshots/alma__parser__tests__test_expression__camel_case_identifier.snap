@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2152
+assertion_line: 2149
 expression: "parse(\"variableOne\")"
 ---
 Input:
@@ -10,10 +10,10 @@ variableOne
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         0,
     ),
     value: Expression_ {
@@ -24,10 +24,10 @@ Node {
             None,
             Identifier(
                 Node {
-                    start: Idx(
+                    start: Index(
                         0,
                     ),
-                    end: Idx(
+                    end: Index(
                         0,
                     ),
                     value: Identifier_ {

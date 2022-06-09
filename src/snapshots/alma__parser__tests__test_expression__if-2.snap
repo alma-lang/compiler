@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2233
+assertion_line: 2230
 expression: "parse(\"\nif True then\n  1\n\nelse\n  2\")"
 ---
 Input:
@@ -15,10 +15,10 @@ else
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         5,
     ),
     value: Expression_ {
@@ -27,10 +27,10 @@ Node {
         },
         expr: If(
             Node {
-                start: Idx(
+                start: Index(
                     1,
                 ),
-                end: Idx(
+                end: Index(
                     1,
                 ),
                 value: Expression_ {
@@ -43,10 +43,10 @@ Node {
                 },
             },
             Node {
-                start: Idx(
+                start: Index(
                     3,
                 ),
-                end: Idx(
+                end: Index(
                     3,
                 ),
                 value: Expression_ {
@@ -59,10 +59,10 @@ Node {
                 },
             },
             Node {
-                start: Idx(
+                start: Index(
                     5,
                 ),
-                end: Idx(
+                end: Index(
                     5,
                 ),
                 value: Expression_ {

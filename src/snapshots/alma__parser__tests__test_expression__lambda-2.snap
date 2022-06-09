@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2226
+assertion_line: 2223
 expression: "parse(\"\\\\a -> \\\\b -> a\")"
 ---
 Input:
@@ -10,10 +10,10 @@ Input:
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         6,
     ),
     value: Expression_ {
@@ -24,18 +24,18 @@ Node {
             Lambda {
                 parameters: [
                     Node {
-                        start: Idx(
+                        start: Index(
                             1,
                         ),
-                        end: Idx(
+                        end: Index(
                             1,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     1,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     1,
                                 ),
                                 value: Identifier_ {
@@ -48,10 +48,10 @@ Node {
                     },
                 ],
                 body: Node {
-                    start: Idx(
+                    start: Index(
                         3,
                     ),
-                    end: Idx(
+                    end: Index(
                         6,
                     ),
                     value: Expression_ {
@@ -62,18 +62,18 @@ Node {
                             Lambda {
                                 parameters: [
                                     Node {
-                                        start: Idx(
+                                        start: Index(
                                             4,
                                         ),
-                                        end: Idx(
+                                        end: Index(
                                             4,
                                         ),
                                         value: Identifier(
                                             Node {
-                                                start: Idx(
+                                                start: Index(
                                                     4,
                                                 ),
-                                                end: Idx(
+                                                end: Index(
                                                     4,
                                                 ),
                                                 value: Identifier_ {
@@ -86,10 +86,10 @@ Node {
                                     },
                                 ],
                                 body: Node {
-                                    start: Idx(
+                                    start: Index(
                                         6,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         6,
                                     ),
                                     value: Expression_ {
@@ -100,10 +100,10 @@ Node {
                                             None,
                                             Identifier(
                                                 Node {
-                                                    start: Idx(
+                                                    start: Index(
                                                         6,
                                                     ),
-                                                    end: Idx(
+                                                    end: Index(
                                                         6,
                                                     ),
                                                     value: Identifier_ {

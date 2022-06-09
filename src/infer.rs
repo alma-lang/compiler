@@ -2,10 +2,12 @@ use crate::ast::{
     self, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import,
     Lambda, Node, Pattern_ as P, TypeSignature, TypedDefinition, Unary_ as U,
 };
-use crate::compiler::types::{HashMap, ModuleInterface, ModuleInterfaces};
-use crate::module::Module;
+use crate::compiler;
+use crate::compiler::state::ModuleIndex;
+use crate::compiler::types::{HashMap, ModuleInterface};
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::token::Tokens;
 use crate::typ::{Type::*, TypeVar::*, *};
 use crate::type_env::{PolyTypeEnv, TypeEnv};
 use indexmap::IndexSet;
@@ -20,25 +22,25 @@ use std::rc::Rc;
  */
 
 #[derive(Debug)]
-pub enum Error<'ast> {
+pub enum Error {
     UndefinedIdentifier(StringSymbol, Node<()>),
-    DuplicateField(&'ast Identifier, &'ast Expression),
+    DuplicateField(Identifier, Expression),
     TypeMismatch(Node<()>, Rc<Type>, Option<Node<()>>, Rc<Type>),
     WrongArity(Node<()>, usize, usize, Rc<Type>),
     SignatureMismatch(Node<()>, Rc<Type>, Rc<Type>),
     SignatureTooGeneral(Node<()>, Rc<Type>, Rc<Type>),
     InfiniteType(Node<()>, Rc<Type>),
-    UndefinedExport(&'ast Identifier),
-    UndefinedExportConstructor(&'ast CapitalizedIdentifier),
-    UnknownImport(&'ast Import),
-    UnknownImportDefinition(&'ast Identifier, &'ast Import),
-    UnknownImportConstructor(&'ast CapitalizedIdentifier, &'ast Import),
-    UnknownType(&'ast CapitalizedIdentifier),
-    UnknownTypeVar(&'ast Identifier),
+    UndefinedExport(Identifier),
+    UndefinedExportConstructor(CapitalizedIdentifier),
+    UnknownImport(Import),
+    UnknownImportDefinition(Identifier, Import),
+    UnknownImportConstructor(CapitalizedIdentifier, Import),
+    UnknownType(CapitalizedIdentifier),
+    UnknownTypeVar(Identifier),
 }
 
-impl<'ast> Error<'ast> {
-    pub fn to_string(&self, source: &Source, strings: &Strings, module: &Module) -> String {
+impl Error {
+    pub fn to_string(&self, source: &Source, strings: &Strings, tokens: &Tokens) -> String {
         use Error::*;
 
         let mut s = String::new();
@@ -60,8 +62,8 @@ impl<'ast> Error<'ast> {
                 UnknownType(node) => node.unit(),
                 UnknownTypeVar(node) => node.unit(),
             };
-            let start_token = module.tokens[location.start];
-            let end_token = module.tokens[location.end];
+            let start_token = tokens[location.start];
+            let end_token = tokens[location.end];
             (
                 start_token.start,
                 start_token.line,
@@ -86,8 +88,8 @@ impl<'ast> Error<'ast> {
             }
 
             DuplicateField(identifier, expr) => {
-                let expr_token = module.tokens[expr.start];
-                let expr_end_token = module.tokens[expr.end];
+                let expr_token = tokens[expr.start];
+                let expr_end_token = tokens[expr.end];
                 let record_code = source
                     .lines_report_at_position(
                         expr_token.start,
@@ -134,8 +136,8 @@ but seems to be
             }
 
             TypeMismatch(_, typ, Some(node), typ2) => {
-                let node_token = module.tokens[node.start];
-                let node_end_token = module.tokens[node.end];
+                let node_token = tokens[node.start];
+                let node_end_token = tokens[node.end];
                 let code2 = source
                     .lines_report_at_position_with_pointer(
                         node_token.start,
@@ -544,7 +546,7 @@ fn unify<'ast, T>(
     typ: &Rc<Type>,
     ast2: Option<&Node<T>>,
     typ2: &Rc<Type>,
-) -> Result<(), Error<'ast>> {
+) -> Result<(), Error> {
     unify_rec(state, typ, typ2, ast, typ, ast2, typ2)
 }
 
@@ -557,7 +559,7 @@ fn unify_var<'ast, T>(
     typ: &Rc<Type>,
     ast2: Option<&Node<T>>,
     typ2: &Rc<Type>,
-) -> Result<(), Error<'ast>> {
+) -> Result<(), Error> {
     let var_read = (**var).borrow();
     match &*var_read {
         // The 'find' in the union-find algorithm
@@ -592,7 +594,7 @@ fn unify_rec<'ast, T>(
     typ: &Rc<Type>,
     ast2: Option<&Node<T>>,
     typ2: &Rc<Type>,
-) -> Result<(), Error<'ast>> {
+) -> Result<(), Error> {
     match (&**t1, &**t2) {
         (Unit, Unit) => Ok(()),
 
@@ -967,13 +969,13 @@ fn base_env(
  *
  * Infer the types of the whole module and produce its module interface with types.
  */
-pub fn infer<'interfaces, 'ast>(
-    module_interfaces: &'interfaces ModuleInterfaces,
-    module: &'ast Module,
+pub fn infer<'state>(
+    compiler_state: &'state mut compiler::State,
+    module_idx: ModuleIndex,
     primitive_types: &PolyTypeEnv,
-    strings: &mut Strings,
-) -> Result<ModuleInterface, (ModuleInterface, Vec<Error<'ast>>)> {
-    let module_ast = module.ast();
+) -> Result<(), Vec<Error>> {
+    let strings = &mut compiler_state.strings;
+    let module_ast = &compiler_state.asts[module_idx];
     let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = primitive_types.clone();
@@ -986,8 +988,13 @@ pub fn infer<'interfaces, 'ast>(
 
     // Check imports and add them to the env to type check this module
     for import in &module_ast.imports {
-        let module_full_name = &import.value.module_name.full_name;
-        match module_interfaces.get(module_full_name) {
+        let module_full_name = import.value.module_name.full_name;
+        let import_types: Option<&ModuleInterface> = compiler_state
+            .module_name_to_module_idx
+            .get(&module_full_name)
+            .and_then(|idx| compiler_state.types.get(*idx))
+            .and_then(|maybe_types| maybe_types.as_ref());
+        match import_types {
             Some(imported) => {
                 let module_ident = if let Some(alias) = &import.value.alias {
                     alias.value.name
@@ -1018,9 +1025,10 @@ pub fn infer<'interfaces, 'ast>(
                             let name = &identifier.value.name;
                             match imported.definitions.get(name) {
                                 Some(definition) => env.insert(*name, Rc::clone(definition)),
-                                None => {
-                                    errors.push(Error::UnknownImportDefinition(identifier, import))
-                                }
+                                None => errors.push(Error::UnknownImportDefinition(
+                                    identifier.to_owned(),
+                                    import.to_owned(),
+                                )),
                             };
                         }
                         ast::Export_::Type(type_ast, constructors) => {
@@ -1038,19 +1046,19 @@ pub fn infer<'interfaces, 'ast>(
                                                 env.insert(*name, Rc::clone(definition))
                                             }
                                             None => errors.push(Error::UnknownImportConstructor(
-                                                constructor,
-                                                import,
+                                                constructor.to_owned(),
+                                                import.to_owned(),
                                             )),
                                         };
                                     }
                                 }
-                                None => errors.push(Error::UnknownType(type_ast)),
+                                None => errors.push(Error::UnknownType(type_ast.to_owned())),
                             }
                         }
                     }
                 }
             }
-            None => errors.push(Error::UnknownImport(import)),
+            None => errors.push(Error::UnknownImport(import.to_owned())),
         }
     }
 
@@ -1144,7 +1152,7 @@ pub fn infer<'interfaces, 'ast>(
                 let name = &identifier.value.name;
                 match env.get(name) {
                     Some(poly_type) => module_definitions.insert(*name, Rc::clone(poly_type)),
-                    None => errors.push(Error::UndefinedExport(identifier)),
+                    None => errors.push(Error::UndefinedExport(identifier.to_owned())),
                 }
             }
             ast::Export_::Type(type_name, constructors) => {
@@ -1159,12 +1167,13 @@ pub fn infer<'interfaces, 'ast>(
                             Some(poly_type) => {
                                 constructor_types.insert(*name, Rc::clone(poly_type));
                             }
-                            None => errors.push(Error::UndefinedExportConstructor(&constructor)),
+                            None => errors
+                                .push(Error::UndefinedExportConstructor(constructor.to_owned())),
                         }
                     }
                     module_type_constructors.insert(*name, Rc::new(constructor_types));
                 } else {
-                    errors.push(Error::UnknownType(type_name));
+                    errors.push(Error::UnknownType(type_name.to_owned()));
                 }
             }
         }
@@ -1175,20 +1184,21 @@ pub fn infer<'interfaces, 'ast>(
         type_constructors: module_type_constructors,
         definitions: Rc::new(module_definitions),
     };
+    compiler_state.types[module_idx] = Some(module_interface);
     if errors.is_empty() {
-        Ok(module_interface)
+        Ok(())
     } else {
-        Err((module_interface, errors))
+        Err(errors)
     }
 }
 
 fn ast_type_to_type<'ast>(
     ast_type: &'ast ast::types::Type,
     type_vars: &TypeEnv,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
     state: &mut State,
     types_env: &PolyTypeEnv,
-) -> Result<Rc<Type>, Error<'ast>> {
+) -> Result<Rc<Type>, Error> {
     match ast_type {
         ast::types::Type::Fun(params, ret) => {
             let mut params_types = vec![];
@@ -1251,12 +1261,12 @@ fn ast_type_to_type<'ast>(
                     _ => Err(Error::WrongArity(typ.unit(), typ.value.params.len(), 0, t)),
                 }
             }
-            None => Err(Error::UnknownType(&typ.value.name)),
+            None => Err(Error::UnknownType(typ.value.name.to_owned())),
         },
 
         ast::types::Type::Var(identifier) => match type_vars.get(&identifier.value.name) {
             Some(t) => Ok(Rc::clone(t)),
-            None => Err(Error::UnknownTypeVar(&identifier)),
+            None => Err(Error::UnknownTypeVar(identifier.to_owned())),
         },
 
         ast::types::Type::Record(record_type) => {
@@ -1267,10 +1277,10 @@ fn ast_type_to_type<'ast>(
 fn ast_record_type_to_type<'ast>(
     record_type: &'ast ast::types::RecordType,
     type_vars: &TypeEnv,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
     state: &mut State,
     types_env: &PolyTypeEnv,
-) -> Result<Rc<Type>, Error<'ast>> {
+) -> Result<Rc<Type>, Error> {
     match record_type {
         ast::types::RecordType::Record(record) => {
             let mut fields = TypeEnv::new();
@@ -1284,7 +1294,7 @@ fn ast_record_type_to_type<'ast>(
             let ext_type = if let Some(t) = type_vars.get(&record_ext.value.extension.value.name) {
                 Rc::clone(t)
             } else {
-                return Err(Error::UnknownTypeVar(&record_ext.value.extension));
+                return Err(Error::UnknownTypeVar(record_ext.value.extension.to_owned()));
             };
 
             let mut fields = TypeEnv::new();
@@ -1304,7 +1314,7 @@ fn infer_rec<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
 ) -> Rc<Type> {
     let typ = match &ast.value.expr {
         ET::Unit => Rc::new(Unit),
@@ -1321,7 +1331,7 @@ fn infer_rec<'ast>(
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, types_env, strings, errors);
                 if typed_fields.map().contains_key(&name.value.name) {
-                    errors.push(Error::DuplicateField(name, ast));
+                    errors.push(Error::DuplicateField(name.to_owned(), ast.to_owned()));
                 } else {
                     typed_fields.insert(name.value.name, t);
                 }
@@ -1335,7 +1345,7 @@ fn infer_rec<'ast>(
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, types_env, strings, errors);
                 if typed_fields.map().contains_key(&name.value.name) {
-                    errors.push(Error::DuplicateField(name, ast));
+                    errors.push(Error::DuplicateField(name.to_owned(), ast.to_owned()));
                 } else {
                     typed_fields.insert(name.value.name, t);
                 }
@@ -1577,7 +1587,7 @@ fn infer_definitions<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
 ) {
     for typed_definition in definitions {
         if let Some(definition) = typed_definition.definition() {
@@ -1627,8 +1637,8 @@ fn type_from_signature<'ast>(
     signature: &'ast TypeSignature,
     state: &mut State,
     types_env: &PolyTypeEnv,
-    errors: &mut Vec<Error<'ast>>,
-) -> Result<Rc<Type>, Error<'ast>> {
+    errors: &mut Vec<Error>,
+) -> Result<Rc<Type>, Error> {
     let mut type_vars = TypeEnv::new();
     state.enter_level();
     for var in signature.typ.vars() {
@@ -1645,7 +1655,7 @@ fn check_signature<'ast>(
     typ: &Rc<Type>,
     state: &mut State,
     types_env: &PolyTypeEnv,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
 ) -> Rc<Type> {
     if let Some(signature) = typed_definition.typ() {
         let signature_type = match type_from_signature(signature, state, types_env, errors) {
@@ -1695,7 +1705,7 @@ fn infer_lambda<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
 ) -> Rc<Type> {
     let params_with_type: Vec<(&ast::Pattern, Rc<PolyType>)> = lambda
         .parameters
@@ -1737,7 +1747,7 @@ fn infer_fn_call<'ast, Args>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    errors: &mut Vec<Error<'ast>>,
+    errors: &mut Vec<Error>,
 ) -> Rc<Type>
 where
     Args: Iterator<Item = &'ast Expression> + Clone,
@@ -1769,7 +1779,7 @@ where
     return_type
 }
 
-fn add_error<'ast>(result: Result<(), Error<'ast>>, errors: &mut Vec<Error<'ast>>) {
+fn add_error<'ast>(result: Result<(), Error>, errors: &mut Vec<Error>) {
     if let Err(e) = result {
         errors.push(e);
     }
@@ -1778,7 +1788,6 @@ fn add_error<'ast>(result: Result<(), Error<'ast>>, errors: &mut Vec<Error<'ast>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::stages as compiler;
     use crate::parser;
     use crate::tokenizer;
 
@@ -1788,8 +1797,8 @@ mod tests {
         env: &mut PolyTypeEnv,
         types_env: &PolyTypeEnv,
         strings: &mut Strings,
-    ) -> Result<Rc<Type>, Vec<Error<'ast>>> {
-        let mut errors: Vec<Error<'ast>> = vec![];
+    ) -> Result<Rc<Type>, Vec<Error>> {
+        let mut errors: Vec<Error> = vec![];
         let t = infer_rec(ast, state, env, types_env, strings, &mut errors);
 
         if errors.is_empty() {
@@ -1800,8 +1809,6 @@ mod tests {
     }
 
     mod test_infer_expression {
-        use crate::module;
-
         use super::*;
         use insta::assert_snapshot;
 
@@ -1926,9 +1933,9 @@ add 5"
         fn infer(code: &str) -> String {
             let mut strings = Strings::new();
             let source = Source::new_orphan(code.to_string());
-            let mut module = module::Module::new();
+            let mut tokens = Tokens::new();
 
-            let tokens = tokenizer::parse(&source, &mut strings, &mut module)
+            tokenizer::parse(&source, &mut strings, &mut tokens)
                 .map_err(|errors| {
                     errors
                         .iter()
@@ -1938,7 +1945,7 @@ add 5"
                 })
                 .unwrap();
 
-            let ast = parser::tests::parse_expression(&source, &module.tokens, &mut strings)
+            let ast = parser::tests::parse_expression(&source, &tokens, &mut strings)
                 .map_err(|error| error.to_string(&source, &strings))
                 .unwrap();
 
@@ -1956,7 +1963,7 @@ add 5"
                 Ok(typ) => typ.to_string(&strings),
                 Err(errs) => errs
                     .iter()
-                    .map(|e| e.to_string(&source, &strings, &module))
+                    .map(|e| e.to_string(&source, &strings, &tokens))
                     .collect::<Vec<String>>()
                     .join("\n\n"),
             };
@@ -1967,6 +1974,7 @@ add 5"
 
     mod test_infer_module {
         use super::*;
+        use crate::compiler;
         use insta::assert_snapshot;
 
         #[test]
@@ -2608,24 +2616,22 @@ main r = r.x + r.y + 1
         }
 
         fn infer(code: &str) -> String {
-            let mut strings = Strings::new();
+            let mut state = compiler::State::new();
             let source = Source::new_orphan(code.to_string());
 
-            let primitive_types = Type::primitive_types(&mut strings);
+            let primitive_types = Type::primitive_types(&mut state.strings);
 
-            let (entry_sources, sources) = compiler::process_sources(vec![source]);
+            let entry_sources = compiler::stages::process_sources(vec![source], &mut state);
 
-            let (entry_modules, module_sources, module_asts) =
-                compiler::parse_files(&entry_sources, &sources, &mut strings).unwrap();
+            let entry_modules = compiler::stages::parse_files(&entry_sources, &mut state).unwrap();
 
-            let actual = match compiler::infer(
-                entry_modules,
-                &module_sources,
-                &module_asts,
-                &primitive_types,
-                &mut strings,
-            ) {
-                Ok(module_interfaces) => module_interfaces.to_string(&strings),
+            let actual = match compiler::stages::infer(entry_modules, &mut state, &primitive_types)
+            {
+                Ok(()) => {
+                    let mut out = String::new();
+                    state.types_to_string(&mut out);
+                    out
+                }
                 Err(err) => err,
             };
 

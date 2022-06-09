@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2195
+assertion_line: 2192
 expression: "parse(\"fun arg\")"
 ---
 Input:
@@ -10,10 +10,10 @@ fun arg
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         1,
     ),
     value: Expression_ {
@@ -22,10 +22,10 @@ Node {
         },
         expr: FnCall(
             Node {
-                start: Idx(
+                start: Index(
                     0,
                 ),
-                end: Idx(
+                end: Index(
                     0,
                 ),
                 value: Expression_ {
@@ -36,10 +36,10 @@ Node {
                         None,
                         Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     0,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     0,
                                 ),
                                 value: Identifier_ {
@@ -54,10 +54,10 @@ Node {
             },
             [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: Expression_ {
@@ -68,10 +68,10 @@ Node {
                             None,
                             Identifier(
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         1,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         1,
                                     ),
                                     value: Identifier_ {

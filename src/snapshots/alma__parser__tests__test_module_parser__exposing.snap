@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2550
+assertion_line: 2546
 expression: "parse(\"\\\nmodule Test exposing (a)\n\na = 1\n\nb = True\")"
 ---
 Input:
@@ -18,10 +18,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -37,18 +37,18 @@ Result:
         },
         exports: [
             Node {
-                start: Idx(
+                start: Index(
                     4,
                 ),
-                end: Idx(
+                end: Index(
                     4,
                 ),
                 value: Identifier(
                     Node {
-                        start: Idx(
+                        start: Index(
                             4,
                         ),
-                        end: Idx(
+                        end: Index(
                             4,
                         ),
                         value: Identifier_ {
@@ -65,18 +65,18 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: Idx(
+                        start: Index(
                             6,
                         ),
-                        end: Idx(
+                        end: Index(
                             6,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     6,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     6,
                                 ),
                                 value: Identifier_ {
@@ -88,10 +88,10 @@ Result:
                         ),
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             8,
                         ),
-                        end: Idx(
+                        end: Index(
                             8,
                         ),
                         value: Expression_ {
@@ -108,18 +108,18 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: Idx(
+                        start: Index(
                             9,
                         ),
-                        end: Idx(
+                        end: Index(
                             9,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     9,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     9,
                                 ),
                                 value: Identifier_ {
@@ -131,10 +131,10 @@ Result:
                         ),
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             11,
                         ),
-                        end: Idx(
+                        end: Index(
                             11,
                         ),
                         value: Expression_ {

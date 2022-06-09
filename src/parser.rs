@@ -1,20 +1,17 @@
+use crate::ast::{
+    binop::*,
+    types::{self, Type, TypeDefinition},
+    CapitalizedIdentifier, Expression,
+    ExpressionType::{self as ET, Float, If, Let, String_, *},
+    Expression_ as E, Identifier, Import, Lambda, Module, Node, Pattern, Pattern_,
+    Unary_::{Minus, Not},
+    *,
+};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
-    self, Token,
+    self, Token, Tokens,
     Type::{self as TT, *},
-};
-use crate::{
-    ast::{
-        binop::*,
-        types::{self, Type, TypeDefinition},
-        CapitalizedIdentifier, Expression,
-        ExpressionType::{self as ET, Float, If, Let, String_, *},
-        Expression_ as E, Identifier, Import, Lambda, Module, Node, Pattern, Pattern_,
-        Unary_::{Minus, Not},
-        *,
-    },
-    index::Idx,
 };
 
 /* Grammar draft (●○):
@@ -149,6 +146,7 @@ enum ErrorType {
     InvalidRecordFieldValue,
 }
 
+use typed_index_collections::TiSlice;
 use ErrorType::*;
 
 impl ErrorType {
@@ -530,8 +528,8 @@ type ParseResult<A> = Result<A, Error>;
 struct State<'source, 'strings, 'tokens> {
     strings: &'strings mut Strings,
     source: &'source Source,
-    tokens: &'tokens [Token],
-    current: Idx<Token>,
+    tokens: &'tokens Tokens,
+    current: token::Index,
 }
 
 impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
@@ -1691,12 +1689,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         debug_assert!(!identifiers.is_empty());
         let end = self.current;
-        self.build_module_name(start, &self.tokens[start.raw..end.raw], identifiers)
+        self.build_module_name(start, &self.tokens[start..end], identifiers)
     }
     fn build_module_name(
         &mut self,
-        start: Idx<Token>,
-        tokens: &'tokens [Token],
+        start: token::Index,
+        tokens: &'tokens TiSlice<token::Index, Token>,
         names: Vec<CapitalizedIdentifier>,
     ) -> ParseResult<ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
@@ -1706,7 +1704,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 .position(|t| t.start == self.tokens[name.start].start)
                 .unwrap();
             Error::new(
-                self.tokens[start.raw + token_relative_index],
+                self.tokens[start + token_relative_index.into()],
                 InvalidModuleNameSegment,
             )
         })
@@ -1756,18 +1754,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     // Utilities
 
-    fn prev_token(&self) -> (Idx<Token>, &'tokens Token) {
+    fn prev_token(&self) -> (token::Index, &'tokens Token) {
         self.prev_non_comment_token(self.current)
     }
-    fn prev_token_index(&self) -> Idx<Token> {
+    fn prev_token_index(&self) -> token::Index {
         let (idx, _) = self.prev_non_comment_token(self.current);
         idx
     }
 
-    fn get_token(&self) -> (Idx<Token>, &'tokens Token) {
+    fn get_token(&self) -> (token::Index, &'tokens Token) {
         self.next_non_comment_token(self.current)
     }
-    fn get_token_index(&self) -> Idx<Token> {
+    fn get_token_index(&self) -> token::Index {
         let (idx, _) = self.next_non_comment_token(self.current);
         idx
     }
@@ -1777,7 +1775,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         match token.kind {
             Eof => token,
             _ => {
-                let (_, token) = self.next_non_comment_token((first.raw + 1).into());
+                let (_, token) = self.next_non_comment_token(first + 1.into());
                 token
             }
         }
@@ -1787,19 +1785,19 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let (i, token) = self.next_non_comment_token(self.current);
         match token.kind {
             Eof => (),
-            _ => self.current = (i.raw + 1).into(),
+            _ => self.current = i + 1.into(),
         };
     }
 
-    fn next_non_comment_token(&self, start: Idx<Token>) -> (Idx<Token>, &'tokens Token) {
-        let mut i = start.raw;
+    fn next_non_comment_token(&self, start: token::Index) -> (token::Index, &'tokens Token) {
+        let mut i = start;
         let mut token;
         loop {
             token = &self.tokens[i];
             match token.kind {
                 Eof => break,
                 Comment => {
-                    i += 1;
+                    i += 1.into();
                     continue;
                 }
                 _ => {
@@ -1810,8 +1808,8 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         (i.into(), token)
     }
 
-    fn prev_non_comment_token(&self, start: Idx<Token>) -> (Idx<Token>, &'tokens Token) {
-        let mut i = start.raw - 1;
+    fn prev_non_comment_token(&self, start: token::Index) -> (token::Index, &'tokens Token) {
+        let mut i = start - 1.into();
         let mut token;
         loop {
             token = self
@@ -1821,7 +1819,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             match token.kind {
                 Eof => break,
                 Comment => {
-                    i -= 1;
+                    i -= 1.into();
                     continue;
                 }
                 _ => {
@@ -1992,7 +1990,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         }
     }
 
-    fn match_token(&mut self, typ: token::Type) -> Option<(Idx<Token>, &'tokens Token)> {
+    fn match_token(&mut self, typ: token::Type) -> Option<(token::Index, &'tokens Token)> {
         let (token_index, token) = self.get_token();
         if std::mem::discriminant(&token.kind) == std::mem::discriminant(&typ) {
             self.advance();
@@ -2070,7 +2068,7 @@ fn organize_binops(
 
 pub fn parse<'source, 'strings, 'tokens>(
     source: &'source Source,
-    tokens: &'tokens [Token],
+    tokens: &'tokens Tokens,
     strings: &'strings mut Strings,
 ) -> ParseResult<(Module, Vec<Module>)> {
     let mut parser = State {
@@ -2085,7 +2083,7 @@ pub fn parse<'source, 'strings, 'tokens>(
 
 pub fn parse_repl<'source, 'strings, 'tokens>(
     source: &'source Source,
-    tokens: &'tokens [Token],
+    tokens: &'tokens Tokens,
     strings: &'strings mut Strings,
 ) -> ParseResult<ReplEntry> {
     let mut parser = State {
@@ -2105,7 +2103,7 @@ pub mod tests {
 
     pub fn parse_expression<'source, 'strings, 'tokens>(
         source: &'source Source,
-        tokens: &'tokens [Token],
+        tokens: &'tokens Tokens,
         strings: &'strings mut Strings,
     ) -> ParseResult<Box<Expression>> {
         let mut parser = State {
@@ -2123,7 +2121,6 @@ pub mod tests {
 
     mod test_expression {
         use super::*;
-        use crate::module;
         use insta::assert_snapshot;
 
         #[test]
@@ -2411,9 +2408,9 @@ add 5"
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
             let mut strings = Strings::new();
-            let mut module = module::Module::new();
-            tokenizer::parse(&source, &mut strings, &mut module).unwrap();
-            let result = match &parse_expression(&source, &module.tokens, &mut strings) {
+            let mut tokens = Tokens::new();
+            tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
+            let result = match &parse_expression(&source, &tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);
@@ -2426,7 +2423,6 @@ add 5"
 
     mod test_module_parser {
         use super::*;
-        use crate::module;
         use insta::assert_snapshot;
 
         #[test]
@@ -3113,9 +3109,9 @@ main =
         fn parse(code: &str) -> String {
             let source = Source::new_orphan(code.to_string());
             let mut strings = Strings::new();
-            let mut module = module::Module::new();
-            tokenizer::parse(&source, &mut strings, &mut module).unwrap();
-            let result = match &super::parse(&source, &module.tokens, &mut strings) {
+            let mut tokens = Tokens::new();
+            tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
+            let result = match &super::parse(&source, &tokens, &mut strings) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);

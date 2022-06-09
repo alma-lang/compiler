@@ -1,10 +1,14 @@
-use crate::ast::{
-    types::{self, TypeDefinition},
-    Definition, Export_, Expression, ExpressionType as ET, Lambda, Module, ModuleFullName,
-    ModuleName, Pattern, Pattern_ as P, TypedDefinition, Unary_ as U,
-};
-use crate::compiler::types::{ModuleInterface, ModuleInterfaces, Modules};
+use crate::compiler::state::ModuleIndex;
+use crate::compiler::types::ModuleInterface;
 use crate::strings::Strings;
+use crate::{
+    ast::{
+        types::{self, TypeDefinition},
+        Definition, Export_, Expression, ExpressionType as ET, Lambda, Module, ModuleName, Pattern,
+        Pattern_ as P, TypedDefinition, Unary_ as U,
+    },
+    compiler,
+};
 use std::cmp::min;
 use std::fmt::Write;
 
@@ -20,18 +24,15 @@ fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
     }
 }
 
-pub fn generate(
-    sorted_modules: &[ModuleFullName],
-    modules: &Modules,
-    module_interfaces: &ModuleInterfaces,
-    strings: &Strings,
-) -> String {
+pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> String {
     let mut code = String::new();
+    let strings = &state.strings;
 
     // Print types
     {
-        let module_interfaces = &module_interfaces.to_string(strings);
-        write!(&mut code, "/*\n\n{module_interfaces}\n\n*/\n\n").unwrap();
+        code.push_str("/*\n\n");
+        state.types_to_string(&mut code);
+        code.push_str("\n\n*/\n\n");
     }
 
     code.push_str("\nglobalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {\n\n");
@@ -41,11 +42,8 @@ pub fn generate(
     //     writeln!(code, "let {} = ", alias.value.to_string(strings)).unwrap();
     // }
 
-    for module_name in sorted_modules {
-        let module = modules
-            .get(module_name)
-            .unwrap_or_else(|| panic!("Couldn't get module {}", strings.resolve(*module_name)));
-        let module_ast = module.ast();
+    for module_idx in sorted_modules {
+        let module_ast = &state.asts[*module_idx];
 
         code.push_str("\nlet ");
         module_full_name(&mut code, &module_ast.name, strings);
@@ -54,7 +52,10 @@ pub fn generate(
         generate_file(
             &mut code,
             module_ast,
-            module_interfaces.get(module_name).unwrap(),
+            &state.types[*module_idx].as_ref().unwrap_or_else(|| {
+                let name = strings.resolve(module_ast.name.full_name);
+                panic!("Couldn't find the types for module {name}");
+            }),
             strings,
         );
 
@@ -62,9 +63,9 @@ pub fn generate(
     }
 
     code.push_str("\nreturn {\n");
-    for module in modules.values() {
+    for module in &state.asts {
         indented(&mut code, add_indent(0), "");
-        module_full_name(&mut code, &module.ast().name, strings);
+        module_full_name(&mut code, &module.name, strings);
         code.push_str(",\n");
     }
     code.push_str("};\n");

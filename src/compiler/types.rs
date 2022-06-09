@@ -1,5 +1,3 @@
-use crate::module::Module;
-use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::type_env::{PolyTypeEnv, TypeEnv};
 use fnv::FnvHashMap;
@@ -7,12 +5,6 @@ use std::fmt::Write;
 use std::rc::Rc;
 
 pub type HashMap<K, V> = FnvHashMap<K, V>;
-
-pub type Sources = HashMap<String, Source>;
-
-pub type ModuleSources<'source> = HashMap<StringSymbol, &'source Source>;
-
-pub type Modules = HashMap<StringSymbol, Module>;
 
 #[derive(Debug)]
 pub struct ModuleInterface {
@@ -22,6 +14,14 @@ pub struct ModuleInterface {
 }
 
 impl ModuleInterface {
+    pub fn new() -> Self {
+        Self {
+            types: Rc::new(TypeEnv::new()),
+            type_constructors: HashMap::default(),
+            definitions: Rc::new(PolyTypeEnv::new()),
+        }
+    }
+
     pub fn to_string(&self, strings: &Strings) -> String {
         let mut out = String::new();
 

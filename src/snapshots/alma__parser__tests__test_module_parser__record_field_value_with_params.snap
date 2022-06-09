@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2881
+assertion_line: 2877
 expression: "parse(\"\nmodule Test\n\ntype Fruit a = { test : Banana a (Phone a) }\n\")"
 ---
 Input:
@@ -18,10 +18,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -40,18 +40,18 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: Idx(
+                start: Index(
                     2,
                 ),
-                end: Idx(
+                end: Index(
                     15,
                 ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             3,
                         ),
-                        end: Idx(
+                        end: Index(
                             3,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -62,10 +62,10 @@ Result:
                     },
                     vars: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 4,
                             ),
-                            end: Idx(
+                            end: Index(
                                 4,
                             ),
                             value: Identifier_ {
@@ -78,20 +78,20 @@ Result:
                     typ: Record(
                         Record(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     6,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     15,
                                 ),
                                 value: Record_ {
                                     fields: [
                                         (
                                             Node {
-                                                start: Idx(
+                                                start: Index(
                                                     7,
                                                 ),
-                                                end: Idx(
+                                                end: Index(
                                                     7,
                                                 ),
                                                 value: Identifier_ {
@@ -102,18 +102,18 @@ Result:
                                             },
                                             App(
                                                 Node {
-                                                    start: Idx(
+                                                    start: Index(
                                                         9,
                                                     ),
-                                                    end: Idx(
+                                                    end: Index(
                                                         14,
                                                     ),
                                                     value: Constructor_ {
                                                         name: Node {
-                                                            start: Idx(
+                                                            start: Index(
                                                                 9,
                                                             ),
-                                                            end: Idx(
+                                                            end: Index(
                                                                 9,
                                                             ),
                                                             value: CapitalizedIdentifier_ {
@@ -125,10 +125,10 @@ Result:
                                                         params: [
                                                             Var(
                                                                 Node {
-                                                                    start: Idx(
+                                                                    start: Index(
                                                                         10,
                                                                     ),
-                                                                    end: Idx(
+                                                                    end: Index(
                                                                         10,
                                                                     ),
                                                                     value: Identifier_ {
@@ -140,18 +140,18 @@ Result:
                                                             ),
                                                             App(
                                                                 Node {
-                                                                    start: Idx(
+                                                                    start: Index(
                                                                         12,
                                                                     ),
-                                                                    end: Idx(
+                                                                    end: Index(
                                                                         13,
                                                                     ),
                                                                     value: Constructor_ {
                                                                         name: Node {
-                                                                            start: Idx(
+                                                                            start: Index(
                                                                                 12,
                                                                             ),
-                                                                            end: Idx(
+                                                                            end: Index(
                                                                                 12,
                                                                             ),
                                                                             value: CapitalizedIdentifier_ {
@@ -163,10 +163,10 @@ Result:
                                                                         params: [
                                                                             Var(
                                                                                 Node {
-                                                                                    start: Idx(
+                                                                                    start: Index(
                                                                                         13,
                                                                                     ),
-                                                                                    end: Idx(
+                                                                                    end: Index(
                                                                                         13,
                                                                                     ),
                                                                                     value: Identifier_ {

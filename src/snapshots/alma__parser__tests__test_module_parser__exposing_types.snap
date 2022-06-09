@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2912
+assertion_line: 2908
 expression: "parse(\"\\\nmodule Test exposing (Fruit(Banana))\n\ntype Fruit = Banana\n\")"
 ---
 Input:
@@ -17,10 +17,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -36,18 +36,18 @@ Result:
         },
         exports: [
             Node {
-                start: Idx(
+                start: Index(
                     4,
                 ),
-                end: Idx(
+                end: Index(
                     7,
                 ),
                 value: Type(
                     Node {
-                        start: Idx(
+                        start: Index(
                             4,
                         ),
-                        end: Idx(
+                        end: Index(
                             4,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -58,10 +58,10 @@ Result:
                     },
                     [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 6,
                             ),
-                            end: Idx(
+                            end: Index(
                                 6,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -78,18 +78,18 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: Idx(
+                start: Index(
                     9,
                 ),
-                end: Idx(
+                end: Index(
                     12,
                 ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             10,
                         ),
-                        end: Idx(
+                        end: Index(
                             10,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -102,18 +102,18 @@ Result:
                     typ: Union(
                         [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     12,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     12,
                                 ),
                                 value: Constructor_ {
                                     name: Node {
-                                        start: Idx(
+                                        start: Index(
                                             12,
                                         ),
-                                        end: Idx(
+                                        end: Index(
                                             12,
                                         ),
                                         value: CapitalizedIdentifier_ {

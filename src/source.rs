@@ -1,4 +1,5 @@
 use crate::ast::ModuleName;
+use derive_more::{From, Into};
 use std::cmp::{max, min};
 use std::fmt;
 use std::fs;
@@ -7,6 +8,12 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::slice::SliceIndex;
 use std::str::CharIndices;
+use typed_index_collections::TiVec;
+
+#[derive(Debug, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+pub struct Index(usize);
+
+pub type Sources = TiVec<Index, Source>;
 
 pub enum Error {
     InvalidExtension(String),
@@ -46,7 +53,18 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new_file(file: String) -> Result<Self, Error> {
+    pub fn from_path(file: &str) -> Source {
+        match Source::new_file(file) {
+            Ok(source) => source,
+            Err(err) => {
+                eprintln!("There was a problem with the file '{file}'");
+                eprintln!("{err}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    pub fn new_file(file: &str) -> Result<Self, Error> {
         let path = Path::new(&file).to_path_buf();
 
         Source::validate_file_name(&path)?;
@@ -73,6 +91,7 @@ impl Source {
         if extension != "alma" {
             Err(Error::InvalidExtension(extension.to_string()))
         } else if !ModuleName::valid_part(file_name) {
+            // TODO: Validate all the parts of the path?
             Err(Error::InvalidFileName(file_name.to_string()))
         } else {
             Ok(())

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2212
+assertion_line: 2209
 expression: "parse(\"incr (-5)\")"
 ---
 Input:
@@ -10,10 +10,10 @@ incr (-5)
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         3,
     ),
     value: Expression_ {
@@ -22,10 +22,10 @@ Node {
         },
         expr: FnCall(
             Node {
-                start: Idx(
+                start: Index(
                     0,
                 ),
-                end: Idx(
+                end: Index(
                     0,
                 ),
                 value: Expression_ {
@@ -36,10 +36,10 @@ Node {
                         None,
                         Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     0,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     0,
                                 ),
                                 value: Identifier_ {
@@ -54,10 +54,10 @@ Node {
             },
             [
                 Node {
-                    start: Idx(
+                    start: Index(
                         2,
                     ),
-                    end: Idx(
+                    end: Index(
                         3,
                     ),
                     value: Expression_ {
@@ -66,19 +66,19 @@ Node {
                         },
                         expr: Unary(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     2,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     2,
                                 ),
                                 value: Minus,
                             },
                             Node {
-                                start: Idx(
+                                start: Index(
                                     3,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     3,
                                 ),
                                 value: Expression_ {

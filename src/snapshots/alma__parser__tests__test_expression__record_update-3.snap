@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2392
+assertion_line: 2389
 expression: "parse(\"{ 5 | x = 1, y = 3 }\")"
 ---
 Input:
@@ -10,10 +10,10 @@ Input:
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         10,
     ),
     value: Expression_ {
@@ -22,10 +22,10 @@ Node {
         },
         expr: RecordUpdate(
             Node {
-                start: Idx(
+                start: Index(
                     1,
                 ),
-                end: Idx(
+                end: Index(
                     1,
                 ),
                 value: Expression_ {
@@ -40,10 +40,10 @@ Node {
             [
                 (
                     Node {
-                        start: Idx(
+                        start: Index(
                             3,
                         ),
-                        end: Idx(
+                        end: Index(
                             3,
                         ),
                         value: Identifier_ {
@@ -53,10 +53,10 @@ Node {
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             5,
                         ),
-                        end: Idx(
+                        end: Index(
                             5,
                         ),
                         value: Expression_ {
@@ -71,10 +71,10 @@ Node {
                 ),
                 (
                     Node {
-                        start: Idx(
+                        start: Index(
                             7,
                         ),
-                        end: Idx(
+                        end: Index(
                             7,
                         ),
                         value: Identifier_ {
@@ -84,10 +84,10 @@ Node {
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             9,
                         ),
-                        end: Idx(
+                        end: Index(
                             9,
                         ),
                         value: Expression_ {

@@ -4,8 +4,10 @@ assertion_line: 447
 expression: "tokenize(\"123\\n or \\\"abc\\\"\")"
 ---
 Ok(
-    [
-        Token {
+    {
+        Index(
+            0,
+        ): Token {
             kind: Float(
                 SymbolU32 {
                     value: 1,
@@ -17,7 +19,9 @@ Ok(
             line: 1,
             column: 0,
         },
-        Token {
+        Index(
+            1,
+        ): Token {
             kind: Or,
             indent: 1,
             start: 5,
@@ -25,7 +29,9 @@ Ok(
             line: 2,
             column: 1,
         },
-        Token {
+        Index(
+            2,
+        ): Token {
             kind: String_(
                 SymbolU32 {
                     value: 2,
@@ -37,7 +43,9 @@ Ok(
             line: 2,
             column: 4,
         },
-        Token {
+        Index(
+            3,
+        ): Token {
             kind: Eof,
             indent: 1,
             start: 13,
@@ -45,5 +53,5 @@ Ok(
             line: 2,
             column: 9,
         },
-    ],
+    },
 )

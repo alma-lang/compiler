@@ -1,23 +1,21 @@
-use crate::index::Idx;
-use crate::module;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
-use crate::token::Token;
+use crate::token;
 use crate::typ;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Node<V> {
-    pub start: Idx<Token>,
-    pub end: Idx<Token>,
+    pub start: token::Index,
+    pub end: token::Index,
     pub value: V,
 }
 
 impl<V> Node<V> {
-    pub fn new(value: V, first_token: Idx<Token>, last_token: Idx<Token>) -> Self {
+    pub fn new(value: V, first_token: token::Index, last_token: token::Index) -> Self {
         Node {
             value,
             start: first_token,
@@ -51,7 +49,7 @@ pub enum ReplEntry {
 
 pub type ModuleFullName = StringSymbol;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ModuleName {
     pub parts: Vec<CapitalizedIdentifier>,
     pub full_name: ModuleFullName,
@@ -122,7 +120,7 @@ impl ModuleName {
         true
     }
 
-    pub fn end(&self) -> Idx<Token> {
+    pub fn end(&self) -> token::Index {
         self.parts
             .last()
             .expect("Module names should never be empty")
@@ -154,7 +152,7 @@ impl Module {
 }
 
 pub type Import = Node<Import_>;
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Import_ {
     pub module_name: ModuleName,
     pub alias: Option<CapitalizedIdentifier>,
@@ -162,13 +160,13 @@ pub struct Import_ {
 }
 
 pub type Export = Node<Export_>;
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Export_ {
     Identifier(Identifier),
     Type(CapitalizedIdentifier, Vec<CapitalizedIdentifier>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypedDefinition {
     TypeSignature(TypeSignature),
     Typed(TypeSignature, Definition),
@@ -192,13 +190,13 @@ impl TypedDefinition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeSignature {
     pub name: Identifier,
     pub typ: types::Type,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Definition {
     Lambda(Identifier, Lambda),
     Pattern(Pattern, Expression),
@@ -234,7 +232,7 @@ pub mod types {
     }
 
     pub type Constructor = Node<Constructor_>;
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct Constructor_ {
         pub name: CapitalizedIdentifier,
         pub params: Vec<Type>,
@@ -245,7 +243,7 @@ pub mod types {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum Type {
         Fun(Vec<Type>, Box<Type>),
         App(Constructor),
@@ -278,7 +276,7 @@ pub mod types {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum RecordType {
         Record(Record),
         RecordExt(RecordExt),
@@ -294,7 +292,7 @@ pub mod types {
     }
 
     pub type Record = Node<Record_>;
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct Record_ {
         pub fields: Vec<(Identifier, Type)>,
     }
@@ -311,7 +309,7 @@ pub mod types {
     }
 
     pub type RecordExt = Node<RecordExt_>;
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct RecordExt_ {
         pub extension: Identifier,
         pub fields: Vec<(Identifier, Type)>,
@@ -334,7 +332,7 @@ pub mod types {
 
 pub type Expression = Node<Expression_>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expression_ {
     pub typ: RefCell<Option<Rc<typ::Type>>>,
     pub expr: ExpressionType,
@@ -353,7 +351,7 @@ impl Expression_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExpressionType {
     Unit,
     Bool(bool),
@@ -372,7 +370,7 @@ pub enum ExpressionType {
     If(Box<Expression>, Box<Expression>, Box<Expression>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Lambda {
     pub parameters: Vec<Pattern>,
     pub body: Box<Expression>,
@@ -525,7 +523,7 @@ use binop::Binop;
 
 pub type Pattern = Node<Pattern_>;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Pattern_ {
     Hole,
     Identifier(Identifier),
@@ -566,7 +564,7 @@ impl Identifier_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AnyIdentifier {
     Identifier(Identifier),
     CapitalizedIdentifier(CapitalizedIdentifier),

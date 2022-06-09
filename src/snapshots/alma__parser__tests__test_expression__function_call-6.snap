@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2205
+assertion_line: 2202
 expression: "parse(\"hello ()\")"
 ---
 Input:
@@ -10,10 +10,10 @@ hello ()
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         2,
     ),
     value: Expression_ {
@@ -22,10 +22,10 @@ Node {
         },
         expr: FnCall(
             Node {
-                start: Idx(
+                start: Index(
                     0,
                 ),
-                end: Idx(
+                end: Index(
                     0,
                 ),
                 value: Expression_ {
@@ -36,10 +36,10 @@ Node {
                         None,
                         Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     0,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     0,
                                 ),
                                 value: Identifier_ {
@@ -54,10 +54,10 @@ Node {
             },
             [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         2,
                     ),
                     value: Expression_ {

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2408
+assertion_line: 2405
 expression: "parse(\"A.b\")"
 ---
 Input:
@@ -10,10 +10,10 @@ A.b
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         2,
     ),
     value: Expression_ {
@@ -25,10 +25,10 @@ Node {
                 ModuleName {
                     parts: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 0,
                             ),
-                            end: Idx(
+                            end: Index(
                                 0,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -45,10 +45,10 @@ Node {
             ),
             Identifier(
                 Node {
-                    start: Idx(
+                    start: Index(
                         2,
                     ),
-                    end: Idx(
+                    end: Index(
                         2,
                     ),
                     value: Identifier_ {

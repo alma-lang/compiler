@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2798
+assertion_line: 2794
 expression: "parse(\"\nmodule Test\n\ntype Fruit = {}\n\")"
 ---
 Input:
@@ -18,10 +18,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -40,18 +40,18 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: Idx(
+                start: Index(
                     2,
                 ),
-                end: Idx(
+                end: Index(
                     6,
                 ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             3,
                         ),
-                        end: Idx(
+                        end: Index(
                             3,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -64,10 +64,10 @@ Result:
                     typ: Record(
                         Record(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     5,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     6,
                                 ),
                                 value: Record_ {

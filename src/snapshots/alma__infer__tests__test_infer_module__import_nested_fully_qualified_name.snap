@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 2162
+assertion_line: 2193
 expression: "infer(\"\\\nmodule User exposing (new)\n\nimport User.Attributes\nimport User.Attributes.Id\n\nnew = { id = User.Attributes.Id.new }\n\nmodule User.Attributes\n    module User.Attributes.Id exposing (new)\n        new = 42\n\")"
-
 ---
 Input:
 
@@ -26,11 +25,11 @@ module User
 new : ∀ ∅ . { id : Float }
 
 
-module User.Attributes
-
-
-
-
 module User.Attributes.Id
 
 new : ∀ ∅ . Float
+
+
+module User.Attributes
+
+

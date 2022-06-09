@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2675
+assertion_line: 2671
 expression: "parse(\"\nmodule Test.Something\n\nmodule Test.Banana\n\")"
 ---
 Input:
@@ -37,10 +37,10 @@ Error {
         ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         5,
                     ),
-                    end: Idx(
+                    end: Index(
                         5,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -50,10 +50,10 @@ Error {
                     },
                 },
                 Node {
-                    start: Idx(
+                    start: Index(
                         7,
                     ),
-                    end: Idx(
+                    end: Index(
                         7,
                     ),
                     value: CapitalizedIdentifier_ {

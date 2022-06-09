@@ -4,8 +4,10 @@ assertion_line: 427
 expression: "tokenize(\"\")"
 ---
 Ok(
-    [
-        Token {
+    {
+        Index(
+            0,
+        ): Token {
             kind: Eof,
             indent: 0,
             start: 0,
@@ -13,5 +15,5 @@ Ok(
             line: 1,
             column: 0,
         },
-    ],
+    },
 )

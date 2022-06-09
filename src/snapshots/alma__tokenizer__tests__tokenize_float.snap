@@ -4,8 +4,10 @@ assertion_line: 437
 expression: "tokenize(\"123.345\")"
 ---
 Ok(
-    [
-        Token {
+    {
+        Index(
+            0,
+        ): Token {
             kind: Float(
                 SymbolU32 {
                     value: 1,
@@ -17,7 +19,9 @@ Ok(
             line: 1,
             column: 0,
         },
-        Token {
+        Index(
+            1,
+        ): Token {
             kind: Eof,
             indent: 0,
             start: 7,
@@ -25,5 +29,5 @@ Ok(
             line: 1,
             column: 7,
         },
-    ],
+    },
 )

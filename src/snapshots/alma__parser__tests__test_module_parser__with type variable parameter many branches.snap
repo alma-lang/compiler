@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2760
+assertion_line: 2756
 expression: "parse(\"\nmodule Test\n\ntype Fruit a = Banana a | Phone\n\")"
 ---
 Input:
@@ -18,10 +18,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -40,18 +40,18 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: Idx(
+                start: Index(
                     2,
                 ),
-                end: Idx(
+                end: Index(
                     9,
                 ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             3,
                         ),
-                        end: Idx(
+                        end: Index(
                             3,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -62,10 +62,10 @@ Result:
                     },
                     vars: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 4,
                             ),
-                            end: Idx(
+                            end: Index(
                                 4,
                             ),
                             value: Identifier_ {
@@ -78,18 +78,18 @@ Result:
                     typ: Union(
                         [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     6,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     7,
                                 ),
                                 value: Constructor_ {
                                     name: Node {
-                                        start: Idx(
+                                        start: Index(
                                             6,
                                         ),
-                                        end: Idx(
+                                        end: Index(
                                             6,
                                         ),
                                         value: CapitalizedIdentifier_ {
@@ -101,10 +101,10 @@ Result:
                                     params: [
                                         Var(
                                             Node {
-                                                start: Idx(
+                                                start: Index(
                                                     7,
                                                 ),
-                                                end: Idx(
+                                                end: Index(
                                                     7,
                                                 ),
                                                 value: Identifier_ {
@@ -118,18 +118,18 @@ Result:
                                 },
                             },
                             Node {
-                                start: Idx(
+                                start: Index(
                                     9,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     9,
                                 ),
                                 value: Constructor_ {
                                     name: Node {
-                                        start: Idx(
+                                        start: Index(
                                             9,
                                         ),
-                                        end: Idx(
+                                        end: Index(
                                             9,
                                         ),
                                         value: CapitalizedIdentifier_ {

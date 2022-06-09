@@ -1,54 +1,43 @@
 pub mod errors;
 pub mod stages;
+pub mod state;
 pub mod types;
 
-use crate::ast::{self, ReplEntry, TypedDefinition};
+use self::state::ModuleIndex;
+pub use self::state::State;
+use crate::ast::{self /*, ReplEntry, TypedDefinition*/};
 use crate::compiler::stages::{check_cycles, infer, parse_files};
-use crate::compiler::types::{ModuleInterfaces, Sources};
-use crate::infer;
+use crate::compiler::types::ModuleInterfaces;
 use crate::javascript;
-use crate::module::Module;
-use crate::parser;
+// use crate::parser;
 use crate::source::Source;
 use crate::strings::Strings;
-use crate::tokenizer;
+// use crate::tokenizer;
 use crate::typ::Type;
 use crate::type_env::PolyTypeEnv;
+use crate::{infer, source};
 
-pub fn compile(entry_sources: &[String], sources: &Sources) -> Result<String, String> {
-    let mut strings = Strings::new();
+pub fn compile(entry_sources: &[source::Index], state: &mut State) -> Result<String, String> {
+    let entry_modules = parse_files(entry_sources, state)?;
 
-    let (entry_modules, module_sources, module_asts) =
-        parse_files(entry_sources, sources, &mut strings)?;
-
-    let mut sorted_modules = check_cycles(&entry_modules, &module_asts, &strings)?;
+    let mut sorted_modules = check_cycles(&entry_modules, &state)?;
     sorted_modules.reverse();
 
-    let primitive_types = Type::primitive_types(&mut strings);
+    let primitive_types = Type::primitive_types(&mut state.strings);
 
-    let module_interfaces = infer(
-        entry_modules,
-        &module_sources,
-        &module_asts,
-        &primitive_types,
-        &mut strings,
-    )?;
+    infer(entry_modules, state, &primitive_types)?;
 
-    Ok(javascript::generate(
-        &sorted_modules,
-        &module_asts,
-        &module_interfaces,
-        &strings,
-    ))
+    Ok(javascript::generate(&sorted_modules, &state))
 }
 
 pub fn compile_repl_entry(
-    module: &mut Module,
-    module_interfaces: &mut ModuleInterfaces,
-    source: &Source,
-    strings: &mut Strings,
-    primitive_types: &PolyTypeEnv,
+    _module_idx: &ModuleIndex,
+    _source: Source,
+    _state: &mut State,
+    _primitive_types: &PolyTypeEnv,
 ) -> Result<String, String> {
+    unimplemented!();
+    /*
     tokenizer::parse(source, strings, module).map_err(|errors| {
         errors
             .iter()
@@ -123,17 +112,20 @@ pub fn compile_repl_entry(
         }
     }
     .map(|()| "ok.".to_string())
+    */
 }
 
 // Encapsulate the compiler logic regardless of repl entry type
 fn compile_repl_entry_helper<'ast>(
-    module: &'ast Module,
-    module_interfaces: &mut ModuleInterfaces,
-    source: &Source,
-    errors: &mut Vec<infer::Error<'ast>>,
-    strings: &mut Strings,
-    primitive_types: &PolyTypeEnv,
+    _module: &'ast ast::Module,
+    _module_interfaces: &mut ModuleInterfaces,
+    _source: &Source,
+    _errors: &mut Vec<infer::Error>,
+    _strings: &mut Strings,
+    _primitive_types: &PolyTypeEnv,
 ) -> Result<(), String> {
+    unimplemented!();
+    /*
     let result = infer::infer(module_interfaces, module, primitive_types, strings);
     match result {
         Ok(typ) => {
@@ -153,10 +145,12 @@ fn compile_repl_entry_helper<'ast>(
             .collect::<Vec<String>>()
             .join("\n\n"))
     }
+    */
 }
 
 #[cfg(test)]
 pub mod tests {
+    use crate::compiler;
     use crate::compiler::stages::process_sources;
     use crate::source::Source;
     use insta::assert_snapshot;
@@ -164,13 +158,15 @@ pub mod tests {
     #[test]
     pub fn test_compile() {
         fn compile(source_codes: &[&'static str]) -> String {
-            let (entry_sources, sources) = process_sources(
+            let mut state = compiler::State::new();
+            let entry_sources = process_sources(
                 source_codes
                     .iter()
                     .map(|s| Source::new_orphan(s.to_string()))
                     .collect(),
+                &mut state,
             );
-            match super::compile(&entry_sources, &sources) {
+            match super::compile(&entry_sources, &mut state) {
                 Ok(s) => s,
                 Err(e) => e,
             }

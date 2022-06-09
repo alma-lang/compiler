@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2439
+assertion_line: 2435
 expression: "parse(\"module Test\")"
 ---
 Input:
@@ -14,10 +14,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {

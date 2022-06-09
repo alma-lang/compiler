@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2600
+assertion_line: 2596
 expression: "parse(\"\\\nmodule Test\n\nimport Banana as B\")"
 ---
 Input:
@@ -16,10 +16,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -36,20 +36,20 @@ Result:
         exports: [],
         imports: [
             Node {
-                start: Idx(
+                start: Index(
                     2,
                 ),
-                end: Idx(
+                end: Index(
                     5,
                 ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     3,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     3,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -65,10 +65,10 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 5,
                             ),
-                            end: Idx(
+                            end: Index(
                                 5,
                             ),
                             value: CapitalizedIdentifier_ {

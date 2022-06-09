@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2265
+assertion_line: 2262
 expression: "parse(\"\\\nlet x = a\n  x\nx\")"
 ---
 Input:
@@ -12,10 +12,10 @@ x
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         5,
     ),
     value: Expression_ {
@@ -27,18 +27,18 @@ Node {
                 Untyped(
                     Pattern(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 1,
                             ),
-                            end: Idx(
+                            end: Index(
                                 1,
                             ),
                             value: Identifier(
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         1,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         1,
                                     ),
                                     value: Identifier_ {
@@ -50,10 +50,10 @@ Node {
                             ),
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 3,
                             ),
-                            end: Idx(
+                            end: Index(
                                 4,
                             ),
                             value: Expression_ {
@@ -62,10 +62,10 @@ Node {
                                 },
                                 expr: FnCall(
                                     Node {
-                                        start: Idx(
+                                        start: Index(
                                             3,
                                         ),
-                                        end: Idx(
+                                        end: Index(
                                             3,
                                         ),
                                         value: Expression_ {
@@ -76,10 +76,10 @@ Node {
                                                 None,
                                                 Identifier(
                                                     Node {
-                                                        start: Idx(
+                                                        start: Index(
                                                             3,
                                                         ),
-                                                        end: Idx(
+                                                        end: Index(
                                                             3,
                                                         ),
                                                         value: Identifier_ {
@@ -94,10 +94,10 @@ Node {
                                     },
                                     [
                                         Node {
-                                            start: Idx(
+                                            start: Index(
                                                 4,
                                             ),
-                                            end: Idx(
+                                            end: Index(
                                                 4,
                                             ),
                                             value: Expression_ {
@@ -108,10 +108,10 @@ Node {
                                                     None,
                                                     Identifier(
                                                         Node {
-                                                            start: Idx(
+                                                            start: Index(
                                                                 4,
                                                             ),
-                                                            end: Idx(
+                                                            end: Index(
                                                                 4,
                                                             ),
                                                             value: Identifier_ {
@@ -132,10 +132,10 @@ Node {
                 ),
             ],
             Node {
-                start: Idx(
+                start: Index(
                     5,
                 ),
-                end: Idx(
+                end: Index(
                     5,
                 ),
                 value: Expression_ {
@@ -146,10 +146,10 @@ Node {
                         None,
                         Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     5,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     5,
                                 ),
                                 value: Identifier_ {

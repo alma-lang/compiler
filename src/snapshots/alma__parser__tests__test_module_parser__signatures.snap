@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3043
+assertion_line: 3039
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit a b\n\nsignature : Fruit b\n\ntest = 5\n\")"
 ---
 Input:
@@ -21,10 +21,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -40,18 +40,18 @@ Result:
         },
         exports: [
             Node {
-                start: Idx(
+                start: Index(
                     4,
                 ),
-                end: Idx(
+                end: Index(
                     4,
                 ),
                 value: Identifier(
                     Node {
-                        start: Idx(
+                        start: Index(
                             4,
                         ),
-                        end: Idx(
+                        end: Index(
                             4,
                         ),
                         value: Identifier_ {
@@ -68,10 +68,10 @@ Result:
             TypeSignature(
                 TypeSignature {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             6,
                         ),
-                        end: Idx(
+                        end: Index(
                             6,
                         ),
                         value: Identifier_ {
@@ -82,18 +82,18 @@ Result:
                     },
                     typ: App(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 8,
                             ),
-                            end: Idx(
+                            end: Index(
                                 10,
                             ),
                             value: Constructor_ {
                                 name: Node {
-                                    start: Idx(
+                                    start: Index(
                                         8,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         8,
                                     ),
                                     value: CapitalizedIdentifier_ {
@@ -105,10 +105,10 @@ Result:
                                 params: [
                                     Var(
                                         Node {
-                                            start: Idx(
+                                            start: Index(
                                                 9,
                                             ),
-                                            end: Idx(
+                                            end: Index(
                                                 9,
                                             ),
                                             value: Identifier_ {
@@ -120,10 +120,10 @@ Result:
                                     ),
                                     Var(
                                         Node {
-                                            start: Idx(
+                                            start: Index(
                                                 10,
                                             ),
-                                            end: Idx(
+                                            end: Index(
                                                 10,
                                             ),
                                             value: Identifier_ {
@@ -142,10 +142,10 @@ Result:
             TypeSignature(
                 TypeSignature {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             11,
                         ),
-                        end: Idx(
+                        end: Index(
                             11,
                         ),
                         value: Identifier_ {
@@ -156,18 +156,18 @@ Result:
                     },
                     typ: App(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 13,
                             ),
-                            end: Idx(
+                            end: Index(
                                 14,
                             ),
                             value: Constructor_ {
                                 name: Node {
-                                    start: Idx(
+                                    start: Index(
                                         13,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         13,
                                     ),
                                     value: CapitalizedIdentifier_ {
@@ -179,10 +179,10 @@ Result:
                                 params: [
                                     Var(
                                         Node {
-                                            start: Idx(
+                                            start: Index(
                                                 14,
                                             ),
-                                            end: Idx(
+                                            end: Index(
                                                 14,
                                             ),
                                             value: Identifier_ {
@@ -201,18 +201,18 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: Idx(
+                        start: Index(
                             15,
                         ),
-                        end: Idx(
+                        end: Index(
                             15,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     15,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     15,
                                 ),
                                 value: Identifier_ {
@@ -224,10 +224,10 @@ Result:
                         ),
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             17,
                         ),
-                        end: Idx(
+                        end: Index(
                             17,
                         ),
                         value: Expression_ {

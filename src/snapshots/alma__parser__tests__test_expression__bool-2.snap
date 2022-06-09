@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2132
+assertion_line: 2129
 expression: "parse(\"False\")"
 ---
 Input:
@@ -10,10 +10,10 @@ False
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         0,
     ),
     value: Expression_ {

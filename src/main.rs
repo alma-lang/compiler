@@ -1,10 +1,8 @@
 mod ast;
 mod cli;
 mod compiler;
-mod index;
 mod infer;
 mod javascript;
-mod module;
 mod parser;
 mod source;
 mod strings;

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2612
+assertion_line: 2608
 expression: "parse(\"\\\nmodule Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
 ---
 Input:
@@ -21,10 +21,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -41,20 +41,20 @@ Result:
         exports: [],
         imports: [
             Node {
-                start: Idx(
+                start: Index(
                     2,
                 ),
-                end: Idx(
+                end: Index(
                     5,
                 ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     3,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     3,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -70,10 +70,10 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 5,
                             ),
-                            end: Idx(
+                            end: Index(
                                 5,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -87,20 +87,20 @@ Result:
                 },
             },
             Node {
-                start: Idx(
+                start: Index(
                     6,
                 ),
-                end: Idx(
+                end: Index(
                     11,
                 ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     7,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     7,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -117,18 +117,18 @@ Result:
                     alias: None,
                     exposing: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 10,
                             ),
-                            end: Idx(
+                            end: Index(
                                 10,
                             ),
                             value: Identifier(
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         10,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         10,
                                     ),
                                     value: Identifier_ {
@@ -143,20 +143,20 @@ Result:
                 },
             },
             Node {
-                start: Idx(
+                start: Index(
                     12,
                 ),
-                end: Idx(
+                end: Index(
                     19,
                 ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     13,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     13,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -172,10 +172,10 @@ Result:
                     },
                     alias: Some(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 15,
                             ),
-                            end: Idx(
+                            end: Index(
                                 15,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -187,18 +187,18 @@ Result:
                     ),
                     exposing: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 18,
                             ),
-                            end: Idx(
+                            end: Index(
                                 18,
                             ),
                             value: Identifier(
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         18,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         18,
                                     ),
                                     value: Identifier_ {

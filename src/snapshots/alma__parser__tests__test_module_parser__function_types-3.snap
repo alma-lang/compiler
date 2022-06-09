@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2980
+assertion_line: 2976
 expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = { f : (a -> b) }\n\")"
 ---
 Input:
@@ -17,10 +17,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -36,18 +36,18 @@ Result:
         },
         exports: [
             Node {
-                start: Idx(
+                start: Index(
                     4,
                 ),
-                end: Idx(
+                end: Index(
                     4,
                 ),
                 value: Type(
                     Node {
-                        start: Idx(
+                        start: Index(
                             4,
                         ),
-                        end: Idx(
+                        end: Index(
                             4,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -64,18 +64,18 @@ Result:
         definitions: [],
         type_definitions: [
             Node {
-                start: Idx(
+                start: Index(
                     6,
                 ),
-                end: Idx(
+                end: Index(
                     19,
                 ),
                 value: TypeDefinition_ {
                     name: Node {
-                        start: Idx(
+                        start: Index(
                             7,
                         ),
-                        end: Idx(
+                        end: Index(
                             7,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -86,10 +86,10 @@ Result:
                     },
                     vars: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 8,
                             ),
-                            end: Idx(
+                            end: Index(
                                 8,
                             ),
                             value: Identifier_ {
@@ -99,10 +99,10 @@ Result:
                             },
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 9,
                             ),
-                            end: Idx(
+                            end: Index(
                                 9,
                             ),
                             value: Identifier_ {
@@ -115,20 +115,20 @@ Result:
                     typ: Record(
                         Record(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     11,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     19,
                                 ),
                                 value: Record_ {
                                     fields: [
                                         (
                                             Node {
-                                                start: Idx(
+                                                start: Index(
                                                     12,
                                                 ),
-                                                end: Idx(
+                                                end: Index(
                                                     12,
                                                 ),
                                                 value: Identifier_ {
@@ -141,10 +141,10 @@ Result:
                                                 [
                                                     Var(
                                                         Node {
-                                                            start: Idx(
+                                                            start: Index(
                                                                 15,
                                                             ),
-                                                            end: Idx(
+                                                            end: Index(
                                                                 15,
                                                             ),
                                                             value: Identifier_ {
@@ -157,10 +157,10 @@ Result:
                                                 ],
                                                 Var(
                                                     Node {
-                                                        start: Idx(
+                                                        start: Index(
                                                             17,
                                                         ),
-                                                        end: Idx(
+                                                        end: Index(
                                                             17,
                                                         ),
                                                         value: Identifier_ {

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2393
+assertion_line: 2390
 expression: "parse(\"{ if True then {} else {} | x = 1, y = 3 }\")"
 ---
 Input:
@@ -10,10 +10,10 @@ Input:
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         17,
     ),
     value: Expression_ {
@@ -22,10 +22,10 @@ Node {
         },
         expr: RecordUpdate(
             Node {
-                start: Idx(
+                start: Index(
                     1,
                 ),
-                end: Idx(
+                end: Index(
                     8,
                 ),
                 value: Expression_ {
@@ -34,10 +34,10 @@ Node {
                     },
                     expr: If(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 2,
                             ),
-                            end: Idx(
+                            end: Index(
                                 2,
                             ),
                             value: Expression_ {
@@ -50,10 +50,10 @@ Node {
                             },
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 4,
                             ),
-                            end: Idx(
+                            end: Index(
                                 5,
                             ),
                             value: Expression_ {
@@ -66,10 +66,10 @@ Node {
                             },
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 7,
                             ),
-                            end: Idx(
+                            end: Index(
                                 8,
                             ),
                             value: Expression_ {
@@ -87,10 +87,10 @@ Node {
             [
                 (
                     Node {
-                        start: Idx(
+                        start: Index(
                             10,
                         ),
-                        end: Idx(
+                        end: Index(
                             10,
                         ),
                         value: Identifier_ {
@@ -100,10 +100,10 @@ Node {
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             12,
                         ),
-                        end: Idx(
+                        end: Index(
                             12,
                         ),
                         value: Expression_ {
@@ -118,10 +118,10 @@ Node {
                 ),
                 (
                     Node {
-                        start: Idx(
+                        start: Index(
                             14,
                         ),
-                        end: Idx(
+                        end: Index(
                             14,
                         ),
                         value: Identifier_ {
@@ -131,10 +131,10 @@ Node {
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             16,
                         ),
-                        end: Idx(
+                        end: Index(
                             16,
                         ),
                         value: Expression_ {

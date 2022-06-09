@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2406
+assertion_line: 2403
 expression: "parse(\"A.B.C.d\")"
 ---
 Input:
@@ -10,10 +10,10 @@ A.B.C.d
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         6,
     ),
     value: Expression_ {
@@ -25,10 +25,10 @@ Node {
                 ModuleName {
                     parts: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 0,
                             ),
-                            end: Idx(
+                            end: Index(
                                 0,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -38,10 +38,10 @@ Node {
                             },
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 2,
                             ),
-                            end: Idx(
+                            end: Index(
                                 2,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -51,10 +51,10 @@ Node {
                             },
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 4,
                             ),
-                            end: Idx(
+                            end: Index(
                                 4,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -71,10 +71,10 @@ Node {
             ),
             Identifier(
                 Node {
-                    start: Idx(
+                    start: Index(
                         6,
                     ),
-                    end: Idx(
+                    end: Index(
                         6,
                     ),
                     value: Identifier_ {

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2444
+assertion_line: 2440
 expression: "parse(\"\\\nmodule Test\n\na = 1\")"
 ---
 Input:
@@ -16,10 +16,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -39,18 +39,18 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: Idx(
+                        start: Index(
                             2,
                         ),
-                        end: Idx(
+                        end: Index(
                             2,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     2,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     2,
                                 ),
                                 value: Identifier_ {
@@ -62,10 +62,10 @@ Result:
                         ),
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             4,
                         ),
-                        end: Idx(
+                        end: Index(
                             4,
                         ),
                         value: Expression_ {

@@ -1,10 +1,9 @@
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use crate::module::Module;
 use crate::source::Source;
 use crate::strings::{self, Strings};
-use crate::token::{self, Token};
+use crate::token::{self, Token, Tokens};
 
 #[derive(PartialEq, Debug)]
 pub struct Error {
@@ -391,16 +390,17 @@ impl<'source, 'strings> State<'source, 'strings> {
 pub fn parse(
     source: &Source,
     strings: &mut Strings,
-    module: &mut Module,
+    tokens: &mut Tokens,
 ) -> Result<(), Vec<Error>> {
     let mut tokenizer = State::new(source, strings);
 
     tokenizer.parse();
 
+    tokens.extend(tokenizer.tokens);
+
     if !tokenizer.errors.is_empty() {
         Err(tokenizer.errors)
     } else {
-        module.tokens = tokenizer.tokens;
         Ok(())
     }
 }
@@ -417,9 +417,9 @@ mod tests {
 
     fn tokenize<'a>(code: &'a str) -> String {
         let source = &Source::new_orphan(code.to_string());
-        let mut module = Module::new();
-        let result = parse(source, &mut Strings::new(), &mut module);
-        format!("{:#?}", result.map(|_| module.tokens))
+        let mut tokens = Tokens::new();
+        let result = parse(source, &mut Strings::new(), &mut tokens);
+        format!("{:#?}", result.map(|_| tokens))
     }
 
     #[test]

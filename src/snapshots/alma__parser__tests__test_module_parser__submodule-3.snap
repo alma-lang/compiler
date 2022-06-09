@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2498
+assertion_line: 2494
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1\n\na = 1\n\")"
 ---
 Input:
@@ -21,10 +21,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -44,18 +44,18 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: Idx(
+                        start: Index(
                             9,
                         ),
-                        end: Idx(
+                        end: Index(
                             9,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     9,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     9,
                                 ),
                                 value: Identifier_ {
@@ -67,10 +67,10 @@ Result:
                         ),
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             11,
                         ),
-                        end: Idx(
+                        end: Index(
                             11,
                         ),
                         value: Expression_ {
@@ -92,10 +92,10 @@ Result:
             name: ModuleName {
                 parts: [
                     Node {
-                        start: Idx(
+                        start: Index(
                             3,
                         ),
-                        end: Idx(
+                        end: Index(
                             3,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -105,10 +105,10 @@ Result:
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             5,
                         ),
-                        end: Idx(
+                        end: Index(
                             5,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -128,18 +128,18 @@ Result:
                 Untyped(
                     Pattern(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 6,
                             ),
-                            end: Idx(
+                            end: Index(
                                 6,
                             ),
                             value: Identifier(
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         6,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         6,
                                     ),
                                     value: Identifier_ {
@@ -151,10 +151,10 @@ Result:
                             ),
                         },
                         Node {
-                            start: Idx(
+                            start: Index(
                                 8,
                             ),
-                            end: Idx(
+                            end: Index(
                                 8,
                             ),
                             value: Expression_ {

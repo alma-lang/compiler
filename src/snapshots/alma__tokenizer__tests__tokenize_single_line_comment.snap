@@ -4,8 +4,10 @@ assertion_line: 462
 expression: "tokenize(\"123\\n--Banana\\n321\")"
 ---
 Ok(
-    [
-        Token {
+    {
+        Index(
+            0,
+        ): Token {
             kind: Float(
                 SymbolU32 {
                     value: 1,
@@ -17,7 +19,9 @@ Ok(
             line: 1,
             column: 0,
         },
-        Token {
+        Index(
+            1,
+        ): Token {
             kind: Comment,
             indent: 0,
             start: 4,
@@ -25,7 +29,9 @@ Ok(
             line: 2,
             column: 0,
         },
-        Token {
+        Index(
+            2,
+        ): Token {
             kind: Float(
                 SymbolU32 {
                     value: 2,
@@ -37,7 +43,9 @@ Ok(
             line: 3,
             column: 0,
         },
-        Token {
+        Index(
+            3,
+        ): Token {
             kind: Eof,
             indent: 0,
             start: 16,
@@ -45,5 +53,5 @@ Ok(
             line: 3,
             column: 3,
         },
-    ],
+    },
 )

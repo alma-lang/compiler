@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2368
+assertion_line: 2365
 expression: "parse(\"{ x : 5 , y : 10 }\")"
 ---
 Input:
@@ -10,10 +10,10 @@ Input:
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         8,
     ),
     value: Expression_ {
@@ -24,10 +24,10 @@ Node {
             [
                 (
                     Node {
-                        start: Idx(
+                        start: Index(
                             1,
                         ),
-                        end: Idx(
+                        end: Index(
                             1,
                         ),
                         value: Identifier_ {
@@ -37,10 +37,10 @@ Node {
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             3,
                         ),
-                        end: Idx(
+                        end: Index(
                             3,
                         ),
                         value: Expression_ {
@@ -55,10 +55,10 @@ Node {
                 ),
                 (
                     Node {
-                        start: Idx(
+                        start: Index(
                             5,
                         ),
-                        end: Idx(
+                        end: Index(
                             5,
                         ),
                         value: Identifier_ {
@@ -68,10 +68,10 @@ Node {
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             7,
                         ),
-                        end: Idx(
+                        end: Index(
                             7,
                         ),
                         value: Expression_ {

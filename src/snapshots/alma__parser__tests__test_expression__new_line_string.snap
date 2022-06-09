@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2172
+assertion_line: 2169
 expression: "parse(\"\\\"\\n\\\"\")"
 ---
 Input:
@@ -11,10 +11,10 @@ Input:
 Result:
 
 Node {
-    start: Idx(
+    start: Index(
         0,
     ),
-    end: Idx(
+    end: Index(
         0,
     ),
     value: Expression_ {

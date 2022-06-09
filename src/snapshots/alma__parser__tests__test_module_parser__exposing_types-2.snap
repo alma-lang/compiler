@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2919
+assertion_line: 2915
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nimport Test.Fruits exposing (Fruit(Banana))\n\nmain = 1\n\nmodule Test.Fruits exposing (Fruit(Banana))\n    type Fruit = Banana\n\")"
 ---
 Input:
@@ -22,10 +22,10 @@ Result:
         name: ModuleName {
             parts: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         1,
                     ),
-                    end: Idx(
+                    end: Index(
                         1,
                     ),
                     value: CapitalizedIdentifier_ {
@@ -41,18 +41,18 @@ Result:
         },
         exports: [
             Node {
-                start: Idx(
+                start: Index(
                     4,
                 ),
-                end: Idx(
+                end: Index(
                     4,
                 ),
                 value: Identifier(
                     Node {
-                        start: Idx(
+                        start: Index(
                             4,
                         ),
-                        end: Idx(
+                        end: Index(
                             4,
                         ),
                         value: Identifier_ {
@@ -66,20 +66,20 @@ Result:
         ],
         imports: [
             Node {
-                start: Idx(
+                start: Index(
                     6,
                 ),
-                end: Idx(
+                end: Index(
                     16,
                 ),
                 value: Import_ {
                     module_name: ModuleName {
                         parts: [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     7,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     7,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -89,10 +89,10 @@ Result:
                                 },
                             },
                             Node {
-                                start: Idx(
+                                start: Index(
                                     9,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     9,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -109,18 +109,18 @@ Result:
                     alias: None,
                     exposing: [
                         Node {
-                            start: Idx(
+                            start: Index(
                                 12,
                             ),
-                            end: Idx(
+                            end: Index(
                                 15,
                             ),
                             value: Type(
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         12,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         12,
                                     ),
                                     value: CapitalizedIdentifier_ {
@@ -131,10 +131,10 @@ Result:
                                 },
                                 [
                                     Node {
-                                        start: Idx(
+                                        start: Index(
                                             14,
                                         ),
-                                        end: Idx(
+                                        end: Index(
                                             14,
                                         ),
                                         value: CapitalizedIdentifier_ {
@@ -154,18 +154,18 @@ Result:
             Untyped(
                 Pattern(
                     Node {
-                        start: Idx(
+                        start: Index(
                             17,
                         ),
-                        end: Idx(
+                        end: Index(
                             17,
                         ),
                         value: Identifier(
                             Node {
-                                start: Idx(
+                                start: Index(
                                     17,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     17,
                                 ),
                                 value: Identifier_ {
@@ -177,10 +177,10 @@ Result:
                         ),
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             19,
                         ),
-                        end: Idx(
+                        end: Index(
                             19,
                         ),
                         value: Expression_ {
@@ -202,10 +202,10 @@ Result:
             name: ModuleName {
                 parts: [
                     Node {
-                        start: Idx(
+                        start: Index(
                             21,
                         ),
-                        end: Idx(
+                        end: Index(
                             21,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -215,10 +215,10 @@ Result:
                         },
                     },
                     Node {
-                        start: Idx(
+                        start: Index(
                             23,
                         ),
-                        end: Idx(
+                        end: Index(
                             23,
                         ),
                         value: CapitalizedIdentifier_ {
@@ -234,18 +234,18 @@ Result:
             },
             exports: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         26,
                     ),
-                    end: Idx(
+                    end: Index(
                         29,
                     ),
                     value: Type(
                         Node {
-                            start: Idx(
+                            start: Index(
                                 26,
                             ),
-                            end: Idx(
+                            end: Index(
                                 26,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -256,10 +256,10 @@ Result:
                         },
                         [
                             Node {
-                                start: Idx(
+                                start: Index(
                                     28,
                                 ),
-                                end: Idx(
+                                end: Index(
                                     28,
                                 ),
                                 value: CapitalizedIdentifier_ {
@@ -276,18 +276,18 @@ Result:
             definitions: [],
             type_definitions: [
                 Node {
-                    start: Idx(
+                    start: Index(
                         31,
                     ),
-                    end: Idx(
+                    end: Index(
                         34,
                     ),
                     value: TypeDefinition_ {
                         name: Node {
-                            start: Idx(
+                            start: Index(
                                 32,
                             ),
-                            end: Idx(
+                            end: Index(
                                 32,
                             ),
                             value: CapitalizedIdentifier_ {
@@ -300,18 +300,18 @@ Result:
                         typ: Union(
                             [
                                 Node {
-                                    start: Idx(
+                                    start: Index(
                                         34,
                                     ),
-                                    end: Idx(
+                                    end: Index(
                                         34,
                                     ),
                                     value: Constructor_ {
                                         name: Node {
-                                            start: Idx(
+                                            start: Index(
                                                 34,
                                             ),
-                                            end: Idx(
+                                            end: Index(
                                                 34,
                                             ),
                                             value: CapitalizedIdentifier_ {
