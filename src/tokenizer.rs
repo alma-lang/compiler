@@ -33,10 +33,19 @@ enum Status {
     SingleToken,
     DoubleToken(token::Type),
     LineCommentToken,
-    WhitespaceToken(bool),
-    StringToken(bool),
-    NumberToken(bool),
-    IdentifierToken(bool, bool),
+    WhitespaceToken {
+        line_started: bool,
+    },
+    StringToken {
+        prev_was_backslash: bool,
+    },
+    NumberToken {
+        seen_dot: bool,
+    },
+    IdentifierToken {
+        lexing_first_char: bool,
+        is_capitalized: bool,
+    },
 }
 
 struct State<'source, 'strings> {
@@ -198,22 +207,31 @@ impl<'source, 'strings> State<'source, 'strings> {
                         _ => self.add_token(Greater),
                     },
 
-                    '"' => self.status = Status::StringToken(false),
+                    '"' => {
+                        self.status = Status::StringToken {
+                            prev_was_backslash: false,
+                        }
+                    }
 
                     ' ' | '\n' => {
-                        self.status = Status::WhitespaceToken(false);
+                        self.status = Status::WhitespaceToken {
+                            line_started: false,
+                        };
                         self.parse_token(Some(ch));
                     }
 
                     '\r' | '\t' => self.status = Status::Reset,
 
                     ch if ch.is_digit(10) => {
-                        self.status = Status::NumberToken(false);
+                        self.status = Status::NumberToken { seen_dot: false };
                         self.parse_token(Some(ch));
                     }
 
                     ch if ch.is_alphabetic() => {
-                        self.status = Status::IdentifierToken(true, ch.is_uppercase());
+                        self.status = Status::IdentifierToken {
+                            lexing_first_char: true,
+                            is_capitalized: ch.is_uppercase(),
+                        };
                         self.parse_token(Some(ch));
                     }
 
@@ -228,17 +246,17 @@ impl<'source, 'strings> State<'source, 'strings> {
                 _ => (),
             },
 
-            Status::WhitespaceToken(line_started) => {
+            Status::WhitespaceToken { line_started } => {
                 match ch {
                     Some(' ') => {
                         if line_started {
                             self.indent += 1;
                         }
-                        self.status = Status::WhitespaceToken(line_started);
+                        self.status = Status::WhitespaceToken { line_started };
                     }
 
                     Some('\n') => {
-                        self.status = Status::WhitespaceToken(true);
+                        self.status = Status::WhitespaceToken { line_started: true };
                         self.new_line();
                     }
 
@@ -253,8 +271,12 @@ impl<'source, 'strings> State<'source, 'strings> {
                 }
             }
 
-            Status::StringToken(prev_was_backslash) => match ch {
-                Some('\\') => self.status = Status::StringToken(true),
+            Status::StringToken { prev_was_backslash } => match ch {
+                Some('\\') => {
+                    self.status = Status::StringToken {
+                        prev_was_backslash: true,
+                    }
+                }
                 Some('"') if !prev_was_backslash => {
                     let lexeme = {
                         let start = self.start + 1;
@@ -275,17 +297,19 @@ impl<'source, 'strings> State<'source, 'strings> {
                 None => self.add_error("Unclosed string.", true),
                 _ => {
                     if prev_was_backslash {
-                        self.status = Status::StringToken(false);
+                        self.status = Status::StringToken {
+                            prev_was_backslash: false,
+                        };
                     }
                 }
             },
 
-            Status::NumberToken(seen_dot) => match ch {
+            Status::NumberToken { seen_dot } => match ch {
                 Some('.') => {
                     if seen_dot {
                         self.add_error("Multiple dots while parsing a number.", false);
                     } else {
-                        self.status = Status::NumberToken(true);
+                        self.status = Status::NumberToken { seen_dot: true };
                     }
 
                     match self.peek() {
@@ -309,13 +333,24 @@ impl<'source, 'strings> State<'source, 'strings> {
                 _ => panic!("Got to the number tokenizer without a valid number digit."),
             },
 
-            Status::IdentifierToken(is_start, is_module) => match ch {
-                Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => {
-                    let is_start = false;
-                    self.status = Status::IdentifierToken(is_start, is_module);
+            Status::IdentifierToken {
+                lexing_first_char,
+                is_capitalized,
+            } => match ch {
+                Some(c) if (lexing_first_char && c.is_alphabetic()) || is_identifier_rest(c) => {
+                    let lexing_first_char = false;
+                    self.status = Status::IdentifierToken {
+                        lexing_first_char,
+                        is_capitalized,
+                    };
 
                     match self.peek() {
-                        Some(c) if (is_start && c.is_alphabetic()) || is_identifier_rest(c) => (),
+                        Some(c)
+                            if (lexing_first_char && c.is_alphabetic())
+                                || is_identifier_rest(c) =>
+                        {
+                            ()
+                        }
 
                         // Anything else we find ends the identifier token
                         _ => {
@@ -337,7 +372,7 @@ impl<'source, 'strings> State<'source, 'strings> {
                                     "module" => Module,
                                     "type" => Type,
                                     _ => {
-                                        if is_module {
+                                        if is_capitalized {
                                             CapitalizedIdentifier(self.lexeme())
                                         } else {
                                             Identifier(self.lexeme())
