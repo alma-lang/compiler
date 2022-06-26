@@ -23,18 +23,51 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum Error {
-    UndefinedIdentifier(StringSymbol, Node<()>),
-    DuplicateField(Identifier, Expression),
-    TypeMismatch(Node<()>, Rc<Type>, Option<Node<()>>, Rc<Type>),
-    WrongArity(Node<()>, usize, usize, Rc<Type>),
-    SignatureMismatch(Node<()>, Rc<Type>, Rc<Type>),
-    SignatureTooGeneral(Node<()>, Rc<Type>, Rc<Type>),
-    InfiniteType(Node<()>, Rc<Type>),
+    UndefinedIdentifier {
+        identifier: StringSymbol,
+        location: Node<()>,
+    },
+    DuplicateField {
+        field: Identifier,
+        expr: Expression,
+    },
+    TypeMismatch {
+        actual_type_location: Node<()>,
+        actual_type: Rc<Type>,
+        expected_type_location: Option<Node<()>>,
+        expected_type: Rc<Type>,
+    },
+    WrongArity {
+        location: Node<()>,
+        num_params_applied: usize,
+        num_params: usize,
+        typ: Rc<Type>,
+    },
+    SignatureMismatch {
+        signature_type_location: Node<()>,
+        signature_type: Rc<Type>,
+        inferred_type: Rc<Type>,
+    },
+    SignatureTooGeneral {
+        signature_type_location: Node<()>,
+        signature_type: Rc<Type>,
+        inferred_type: Rc<Type>,
+    },
+    InfiniteType {
+        location: Node<()>,
+        typ: Rc<Type>,
+    },
     UndefinedExport(Identifier),
     UndefinedExportConstructor(CapitalizedIdentifier),
     UnknownImport(Import),
-    UnknownImportDefinition(Identifier, Import),
-    UnknownImportConstructor(CapitalizedIdentifier, Import),
+    UnknownImportDefinition {
+        export: Identifier,
+        import: Import,
+    },
+    UnknownImportConstructor {
+        constructor: CapitalizedIdentifier,
+        import: Import,
+    },
     UnknownType(CapitalizedIdentifier),
     UnknownTypeVar(Identifier),
 }
@@ -47,18 +80,27 @@ impl Error {
 
         let (position, line_number, column, end) = {
             let location = match self {
-                UndefinedIdentifier(_, node) => node.unit(),
-                DuplicateField(node, _) => node.unit(),
-                TypeMismatch(node, ..) => node.unit(),
-                WrongArity(node, ..) => node.unit(),
-                SignatureMismatch(node, ..) => node.unit(),
-                SignatureTooGeneral(node, ..) => node.unit(),
-                InfiniteType(node, _) => node.unit(),
+                UndefinedIdentifier { location, .. } => location.unit(),
+                DuplicateField { field, .. } => field.unit(),
+                TypeMismatch {
+                    actual_type_location,
+                    ..
+                } => actual_type_location.unit(),
+                WrongArity { location, .. } => location.unit(),
+                SignatureMismatch {
+                    signature_type_location,
+                    ..
+                } => signature_type_location.unit(),
+                SignatureTooGeneral {
+                    signature_type_location,
+                    ..
+                } => signature_type_location.unit(),
+                InfiniteType { location, .. } => location.unit(),
                 UndefinedExport(node) => node.unit(),
                 UndefinedExportConstructor(node) => node.unit(),
                 UnknownImport(node) => node.unit(),
-                UnknownImportDefinition(node, _) => node.unit(),
-                UnknownImportConstructor(node, _) => node.unit(),
+                UnknownImportDefinition { export, .. } => export.unit(),
+                UnknownImportConstructor { constructor, .. } => constructor.unit(),
                 UnknownType(node) => node.unit(),
                 UnknownTypeVar(node) => node.unit(),
             };
@@ -80,14 +122,14 @@ impl Error {
             .unwrap();
 
         match self {
-            UndefinedIdentifier(identifier, _) => {
+            UndefinedIdentifier { identifier, .. } => {
                 s.push_str(&format!(
                     "Undefined identifier `{identifier}`\n\n{code}",
                     identifier = strings.resolve(*identifier),
                 ));
             }
 
-            DuplicateField(identifier, expr) => {
+            DuplicateField { field, expr } => {
                 let expr_token = tokens[expr.start];
                 let expr_end_token = tokens[expr.end];
                 let record_code = source
@@ -98,7 +140,7 @@ impl Error {
                         false,
                     )
                     .unwrap();
-                let identifier = identifier.value.to_string(strings);
+                let identifier = field.value.to_string(strings);
 
                 s.push_str(&format!(
                     "Duplicate field `{identifier}`
@@ -111,12 +153,17 @@ in record
                 ));
             }
 
-            InfiniteType(_, _) => {
+            InfiniteType { .. } => {
                 s.push_str(&format!("Infinite type\n\n{code}"));
             }
 
-            TypeMismatch(_, typ, None, typ2) => {
-                let typ = typ.to_string(strings);
+            TypeMismatch {
+                actual_type,
+                expected_type_location: None,
+                expected_type: typ2,
+                ..
+            } => {
+                let typ = actual_type.to_string(strings);
                 let typ2 = typ2.to_string(strings);
                 s.push_str(&format!(
                     "Type mismatch:  {typ}  ≠  {typ2}
@@ -135,9 +182,14 @@ but seems to be
                 ));
             }
 
-            TypeMismatch(_, typ, Some(node), typ2) => {
-                let node_token = tokens[node.start];
-                let node_end_token = tokens[node.end];
+            TypeMismatch {
+                actual_type,
+                expected_type_location: Some(expected_type_location),
+                expected_type,
+                ..
+            } => {
+                let node_token = tokens[expected_type_location.start];
+                let node_end_token = tokens[expected_type_location.end];
                 let code2 = source
                     .lines_report_at_position_with_pointer(
                         node_token.start,
@@ -145,11 +197,11 @@ but seems to be
                         node_token.line,
                     )
                     .unwrap();
-                let typ = typ.to_string(strings);
-                let typ2 = typ2.to_string(strings);
+                let actual_type = actual_type.to_string(strings);
+                let expected_type = expected_type.to_string(strings);
 
                 s.push_str(&format!(
-                    "Type mismatch:  {typ}  ≠  {typ2}
+                    "Type mismatch:  {actual_type}  ≠  {expected_type}
 
 Expected
 
@@ -157,7 +209,7 @@ Expected
 
 with type
 
-{typ}
+{actual_type}
 
 to have the same type as
 
@@ -165,11 +217,16 @@ to have the same type as
 
 with type
 
-{typ2}",
+{expected_type}",
                 ));
             }
 
-            WrongArity(_, num_params_applied, num_params, typ) => {
+            WrongArity {
+                num_params_applied,
+                num_params,
+                typ,
+                ..
+            } => {
                 let plural = if *num_params == 1 { "" } else { "s" };
                 let typ = typ.to_string(strings);
                 s.push_str(&format!(
@@ -179,9 +236,13 @@ with type
                 ));
             }
 
-            SignatureMismatch(_, typ, typ2) => {
-                let typ = typ.to_string(strings);
-                let typ2 = typ2.to_string(strings);
+            SignatureMismatch {
+                signature_type,
+                inferred_type,
+                ..
+            } => {
+                let signature_type = signature_type.to_string(strings);
+                let inferred_type = inferred_type.to_string(strings);
                 s.push_str(&format!(
                     "The type signature and inferred type don't match
 
@@ -189,17 +250,21 @@ with type
 
 The type signature says the type is
 
-{typ}
+{signature_type}
 
 but it seems to be
 
-{typ2}",
+{inferred_type}",
                 ));
             }
 
-            SignatureTooGeneral(_, typ, typ2) => {
-                let typ = typ.to_string(strings);
-                let typ2 = typ2.to_string(strings);
+            SignatureTooGeneral {
+                signature_type,
+                inferred_type,
+                ..
+            } => {
+                let signature_type = signature_type.to_string(strings);
+                let inferred_type = inferred_type.to_string(strings);
                 s.push_str(&format!(
                     "The type signature is more generic than the inferred type:
 
@@ -207,11 +272,11 @@ but it seems to be
 
 The type signature says the type is
 
-{typ}
+{signature_type}
 
 which it is more general than
 
-{typ2}
+{inferred_type}
 
 which was inferred from the code.
 
@@ -234,7 +299,7 @@ Change the signature to be more specific or try to make your code more generic."
                 s.push_str(&format!("Couldn't find module `{module}`\n\n{code}"));
             }
 
-            UnknownImportDefinition(export, import) => {
+            UnknownImportDefinition { export, import } => {
                 let module = import.value.module_name.to_string(strings);
                 let export = export.value.to_string(strings);
                 s.push_str(&format!(
@@ -242,9 +307,12 @@ Change the signature to be more specific or try to make your code more generic."
                 ));
             }
 
-            UnknownImportConstructor(export, import) => {
+            UnknownImportConstructor {
+                constructor,
+                import,
+            } => {
                 let module = import.value.module_name.to_string(strings);
-                let export = export.value.to_string(strings);
+                let export = constructor.value.to_string(strings);
                 s.push_str(&format!(
                     "Module `{module}` doesn't appear to expose `{export}`\n\n{code}"
                 ));
@@ -576,7 +644,10 @@ fn unify_var<'ast, T>(
                 Ok(())
             } else if occurs(a_id, a_level, other_type) {
                 // a = a, but dont create a recursive binding to itself
-                Err(Error::InfiniteType(ast.unit(), Rc::clone(t)))
+                Err(Error::InfiniteType {
+                    location: ast.unit(),
+                    typ: Rc::clone(t),
+                })
             } else {
                 let mut var = var.borrow_mut();
                 *var = Bound(Rc::clone(other_type));
@@ -603,12 +674,12 @@ fn unify_rec<'ast, T>(
             // could make unify_rec get the ast and original types to pass around and improve many
             // error messages around the whole function.
             if module != module2 || name != name2 || args.len() != args2.len() {
-                Err(Error::TypeMismatch(
-                    ast.unit(),
-                    Rc::clone(typ),
-                    ast2.map(|ast2| ast2.unit()),
-                    Rc::clone(typ2),
-                ))
+                Err(Error::TypeMismatch {
+                    actual_type_location: ast.unit(),
+                    actual_type: Rc::clone(typ),
+                    expected_type_location: ast2.map(|ast2| ast2.unit()),
+                    expected_type: Rc::clone(typ2),
+                })
             } else {
                 for (a1, a2) in args.iter().zip(args2.iter()) {
                     unify_rec(state, a1, a2, ast, typ, ast2, typ2)?;
@@ -623,12 +694,12 @@ fn unify_rec<'ast, T>(
 
         (Fn(args, body), Fn(args2, body2)) => {
             if args.len() != args2.len() {
-                Err(Error::TypeMismatch(
-                    ast.unit(),
-                    Rc::clone(typ),
-                    ast2.map(|ast2| ast2.unit()),
-                    Rc::clone(typ2),
-                ))
+                Err(Error::TypeMismatch {
+                    actual_type_location: ast.unit(),
+                    actual_type: Rc::clone(typ),
+                    expected_type_location: ast2.map(|ast2| ast2.unit()),
+                    expected_type: Rc::clone(typ2),
+                })
             } else {
                 for (a1, a2) in args.iter().zip(args2.iter()) {
                     unify_rec(state, a1, a2, ast, typ, ast2, typ2)?;
@@ -653,12 +724,12 @@ fn unify_rec<'ast, T>(
                         typ2,
                     )?;
                 } else {
-                    return Err(Error::TypeMismatch(
-                        ast.unit(),
-                        Rc::clone(typ),
-                        ast2.map(|ast2| ast2.unit()),
-                        Rc::clone(typ2),
-                    ));
+                    return Err(Error::TypeMismatch {
+                        actual_type_location: ast.unit(),
+                        actual_type: Rc::clone(typ),
+                        expected_type_location: ast2.map(|ast2| ast2.unit()),
+                        expected_type: Rc::clone(typ2),
+                    });
                 }
             }
             for (key, value) in fields2.map() {
@@ -673,12 +744,12 @@ fn unify_rec<'ast, T>(
                         typ2,
                     )?;
                 } else {
-                    return Err(Error::TypeMismatch(
-                        ast.unit(),
-                        Rc::clone(typ),
-                        ast2.map(|ast2| ast2.unit()),
-                        Rc::clone(typ2),
-                    ));
+                    return Err(Error::TypeMismatch {
+                        actual_type_location: ast.unit(),
+                        actual_type: Rc::clone(typ),
+                        expected_type_location: ast2.map(|ast2| ast2.unit()),
+                        expected_type: Rc::clone(typ2),
+                    });
                 }
             }
 
@@ -693,12 +764,12 @@ fn unify_rec<'ast, T>(
                 if fields.map().contains_key(key) {
                     unify_rec(state, value, fields.get(key).unwrap(), ast, typ, ast2, typ2)?;
                 } else {
-                    return Err(Error::TypeMismatch(
-                        ast.unit(),
-                        Rc::clone(typ),
-                        ast2.map(|ast2| ast2.unit()),
-                        Rc::clone(typ2),
-                    ));
+                    return Err(Error::TypeMismatch {
+                        actual_type_location: ast.unit(),
+                        actual_type: Rc::clone(typ),
+                        expected_type_location: ast2.map(|ast2| ast2.unit()),
+                        expected_type: Rc::clone(typ2),
+                    });
                 }
             }
 
@@ -763,12 +834,12 @@ fn unify_rec<'ast, T>(
         (_, Alias(_module, _name, _params, t)) => unify_rec(state, t1, t, ast, typ, ast2, typ2),
 
         (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => {
-            Err(Error::TypeMismatch(
-                ast.unit(),
-                Rc::clone(typ),
-                ast2.map(|ast2| ast2.unit()),
-                Rc::clone(typ2),
-            ))
+            Err(Error::TypeMismatch {
+                actual_type_location: ast.unit(),
+                actual_type: Rc::clone(typ),
+                expected_type_location: ast2.map(|ast2| ast2.unit()),
+                expected_type: Rc::clone(typ2),
+            })
         }
     }
 }
@@ -1025,10 +1096,10 @@ pub fn infer<'state>(
                             let name = &identifier.value.name;
                             match imported.definitions.get(name) {
                                 Some(definition) => env.insert(*name, Rc::clone(definition)),
-                                None => errors.push(Error::UnknownImportDefinition(
-                                    identifier.to_owned(),
-                                    import.to_owned(),
-                                )),
+                                None => errors.push(Error::UnknownImportDefinition {
+                                    export: identifier.to_owned(),
+                                    import: import.to_owned(),
+                                }),
                             };
                         }
                         ast::Export_::Type(type_ast, constructors) => {
@@ -1045,10 +1116,10 @@ pub fn infer<'state>(
                                             Some(definition) => {
                                                 env.insert(*name, Rc::clone(definition))
                                             }
-                                            None => errors.push(Error::UnknownImportConstructor(
-                                                constructor.to_owned(),
-                                                import.to_owned(),
-                                            )),
+                                            None => errors.push(Error::UnknownImportConstructor {
+                                                constructor: constructor.to_owned(),
+                                                import: import.to_owned(),
+                                            }),
                                         };
                                     }
                                 }
@@ -1233,12 +1304,12 @@ fn ast_type_to_type<'ast>(
                     }
                     Alias(module, name, params, dest_typ) => {
                         if params.len() != typ.value.params.len() {
-                            return Err(Error::WrongArity(
-                                typ.unit(),
-                                typ.value.params.len(),
-                                params.len(),
-                                t,
-                            ));
+                            return Err(Error::WrongArity {
+                                location: typ.unit(),
+                                num_params_applied: typ.value.params.len(),
+                                num_params: params.len(),
+                                typ: t,
+                            });
                         }
 
                         let mut params_types = vec![];
@@ -1258,7 +1329,12 @@ fn ast_type_to_type<'ast>(
                             Rc::clone(dest_typ),
                         )))
                     }
-                    _ => Err(Error::WrongArity(typ.unit(), typ.value.params.len(), 0, t)),
+                    _ => Err(Error::WrongArity {
+                        location: typ.unit(),
+                        num_params_applied: typ.value.params.len(),
+                        num_params: 0,
+                        typ: t,
+                    }),
                 }
             }
             None => Err(Error::UnknownType(typ.value.name.to_owned())),
@@ -1331,7 +1407,10 @@ fn infer_rec<'ast>(
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, types_env, strings, errors);
                 if typed_fields.map().contains_key(&name.value.name) {
-                    errors.push(Error::DuplicateField(name.to_owned(), ast.to_owned()));
+                    errors.push(Error::DuplicateField {
+                        field: name.to_owned(),
+                        expr: ast.to_owned(),
+                    });
                 } else {
                     typed_fields.insert(name.value.name, t);
                 }
@@ -1345,7 +1424,10 @@ fn infer_rec<'ast>(
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, types_env, strings, errors);
                 if typed_fields.map().contains_key(&name.value.name) {
-                    errors.push(Error::DuplicateField(name.to_owned(), ast.to_owned()));
+                    errors.push(Error::DuplicateField {
+                        field: name.to_owned(),
+                        expr: ast.to_owned(),
+                    });
                 } else {
                     typed_fields.insert(name.value.name, t);
                 }
@@ -1500,7 +1582,13 @@ fn infer_rec<'ast>(
             match env.get(&name) {
                 Some(s) => state.instantiate(s),
                 None => {
-                    add_error(Err(Error::UndefinedIdentifier(name, ast.unit())), errors);
+                    add_error(
+                        Err(Error::UndefinedIdentifier {
+                            identifier: name,
+                            location: ast.unit(),
+                        }),
+                        errors,
+                    );
                     state.new_type_var()
                 }
             }
@@ -1676,21 +1764,24 @@ fn check_signature<'ast>(
 
         if let Err(e) = unify(state, &signature.name, &typ, None, &signature_type_to_unify) {
             errors.push(match e {
-                Error::TypeMismatch(ast, _, _, _) => Error::SignatureMismatch(
-                    ast,
-                    Rc::clone(&signature_type_to_unify),
-                    Rc::clone(typ),
-                ),
+                Error::TypeMismatch {
+                    actual_type_location,
+                    ..
+                } => Error::SignatureMismatch {
+                    signature_type_location: actual_type_location,
+                    signature_type: Rc::clone(&signature_type_to_unify),
+                    inferred_type: Rc::clone(typ),
+                },
                 _ => e,
             });
             Rc::clone(typ)
         } else {
             if signature_is_too_generic(&signature_type, &typ) {
-                errors.push(Error::SignatureTooGeneral(
-                    signature.name.unit(),
-                    Rc::clone(&signature_type),
-                    Rc::clone(&typ),
-                ));
+                errors.push(Error::SignatureTooGeneral {
+                    signature_type_location: signature.name.unit(),
+                    signature_type: Rc::clone(&signature_type),
+                    inferred_type: Rc::clone(&typ),
+                });
             }
             signature_type_to_unify
         }
