@@ -384,13 +384,18 @@ impl State {
             match &**t {
                 Unit => Rc::clone(t),
 
-                Named(module, name, args) => Rc::new(Named(
-                    *module,
-                    *name,
-                    args.iter()
+                Named {
+                    module,
+                    name,
+                    params,
+                } => Rc::new(Named {
+                    module: *module,
+                    name: *name,
+                    params: params
+                        .iter()
                         .map(|arg| replace_type_vars(vars_to_replace, arg))
                         .collect(),
-                )),
+                }),
 
                 Var(var) => match &*((**var).borrow()) {
                     Bound(t) => replace_type_vars(vars_to_replace, t),
@@ -400,48 +405,56 @@ impl State {
                     },
                 },
 
-                Fn(args, b) => Rc::new(Fn(
-                    {
+                Fn { params, ret } => Rc::new(Fn {
+                    params: {
                         let mut new_args = vec![];
-                        for arg in args {
-                            new_args.push(replace_type_vars(vars_to_replace, arg));
+                        for param in params {
+                            new_args.push(replace_type_vars(vars_to_replace, param));
                         }
                         new_args
                     },
-                    replace_type_vars(vars_to_replace, b),
-                )),
+                    ret: replace_type_vars(vars_to_replace, ret),
+                }),
 
-                Record(fields) => {
+                Record { fields } => {
                     let mut new_fields = fields.clone();
                     for (key, value) in fields.map() {
                         new_fields.insert(*key, replace_type_vars(vars_to_replace, value));
                     }
-                    Rc::new(Record(new_fields))
+                    Rc::new(Record { fields: new_fields })
                 }
 
-                RecordExt(fields, ext) => {
+                RecordExt {
+                    fields,
+                    base_record,
+                } => {
                     let mut new_fields = fields.clone();
                     for (key, value) in fields.map() {
                         new_fields.insert(*key, replace_type_vars(vars_to_replace, value));
                     }
-                    Rc::new(RecordExt(
-                        new_fields,
-                        replace_type_vars(vars_to_replace, ext),
-                    ))
+                    Rc::new(RecordExt {
+                        fields: new_fields,
+                        base_record: replace_type_vars(vars_to_replace, base_record),
+                    })
                 }
 
-                Alias(module, name, params, typ) => Rc::new(Alias(
-                    *module,
-                    *name,
-                    {
+                Alias {
+                    module,
+                    name,
+                    params,
+                    destination,
+                } => Rc::new(Alias {
+                    module: *module,
+                    name: *name,
+                    params: {
                         let mut new_params = Vec::new();
                         for (name, param) in params.iter() {
                             new_params.push((*name, replace_type_vars(vars_to_replace, param)));
                         }
                         new_params
                     },
-                    replace_type_vars(vars_to_replace, typ),
-                )),
+                    destination: replace_type_vars(vars_to_replace, destination),
+                }),
             }
         }
 
@@ -463,9 +476,9 @@ impl State {
             match &**t {
                 Unit => (),
 
-                Named(_, _, args) => {
-                    for arg in args.iter() {
-                        find_all_tvs(current_level, vars, arg);
+                Named { params, .. } => {
+                    for param in params.iter() {
+                        find_all_tvs(current_level, vars, param);
                     }
                 }
 
@@ -478,31 +491,38 @@ impl State {
                     }
                 },
 
-                Fn(args, b) => {
-                    for arg in args {
-                        find_all_tvs(current_level, vars, arg);
+                Fn { params, ret } => {
+                    for param in params {
+                        find_all_tvs(current_level, vars, param);
                     }
-                    find_all_tvs(current_level, vars, b);
+                    find_all_tvs(current_level, vars, ret);
                 }
 
-                Record(fields) => {
+                Record { fields } => {
                     for t in fields.map().values() {
                         find_all_tvs(current_level, vars, t);
                     }
                 }
 
-                RecordExt(fields, ext) => {
+                RecordExt {
+                    fields,
+                    base_record,
+                } => {
                     for t in fields.map().values() {
                         find_all_tvs(current_level, vars, t);
                     }
-                    find_all_tvs(current_level, vars, ext);
+                    find_all_tvs(current_level, vars, base_record);
                 }
 
-                Alias(_module, _name, params, typ) => {
+                Alias {
+                    params,
+                    destination,
+                    ..
+                } => {
                     for (_name, param) in params.iter() {
                         find_all_tvs(current_level, vars, param);
                     }
-                    find_all_tvs(current_level, vars, typ)
+                    find_all_tvs(current_level, vars, destination)
                 }
             }
         }
@@ -519,7 +539,7 @@ impl State {
 fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
     match &**t {
         Unit => false,
-        Named(..) => false,
+        Named { .. } => false,
 
         Var(var) => {
             let var_read = (**var).borrow();
@@ -540,49 +560,58 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: &Rc<Type>) -> bool {
             }
         }
 
-        Fn(args, ret) => {
-            args.iter().any(|arg| occurs(a_id, a_level, arg)) || occurs(a_id, a_level, ret)
+        Fn { params, ret } => {
+            params.iter().any(|param| occurs(a_id, a_level, param)) || occurs(a_id, a_level, ret)
         }
 
-        Record(fields) => fields.map().values().any(|tv| occurs(a_id, a_level, tv)),
+        Record { fields } => fields.map().values().any(|tv| occurs(a_id, a_level, tv)),
 
-        RecordExt(fields, record_t) => {
+        RecordExt {
+            fields,
+            base_record,
+        } => {
             if fields.map().values().any(|tv| occurs(a_id, a_level, tv)) {
                 true
             } else {
-                occurs(a_id, a_level, record_t)
+                occurs(a_id, a_level, base_record)
             }
         }
 
-        Alias(_module, _name, _params, typ) => occurs(a_id, a_level, typ),
+        Alias { destination, .. } => occurs(a_id, a_level, destination),
     }
 }
 
 fn flatten_record(typ: &Rc<Type>) -> Option<Rc<Type>> {
     let typ = find(typ);
-    if let RecordExt(_, _) = &*typ {
+    if let RecordExt { .. } = &*typ {
         let mut all_fields = TypeEnv::new();
         let mut typ = typ;
 
         loop {
             match &*typ {
-                Record(fields) => {
+                Record { fields } => {
                     for (k, v) in fields.map() {
                         all_fields.insert(*k, Rc::clone(v));
                     }
-                    return Some(Rc::new(Record(all_fields)));
+                    return Some(Rc::new(Record { fields: all_fields }));
                 }
-                RecordExt(fields, ext) => {
+                RecordExt {
+                    fields,
+                    base_record,
+                } => {
                     for (k, v) in fields.map() {
                         all_fields.insert(*k, Rc::clone(v));
                     }
-                    typ = find(ext);
+                    typ = find(base_record);
                 }
                 Var(var) => {
                     let var_read = (**var).borrow();
                     match &*var_read {
                         Unbound(_, _) => {
-                            return Some(Rc::new(RecordExt(all_fields, Rc::clone(&typ))))
+                            return Some(Rc::new(RecordExt {
+                                fields: all_fields,
+                                base_record: Rc::clone(&typ),
+                            }))
                         }
                         Bound(_) => unreachable!(),
                     };
@@ -669,11 +698,22 @@ fn unify_rec<'ast, T>(
     match (&**t1, &**t2) {
         (Unit, Unit) => Ok(()),
 
-        (Named(module, name, args), Named(module2, name2, args2)) => {
+        (
+            Named {
+                module,
+                name,
+                params,
+            },
+            Named {
+                module: module2,
+                name: name2,
+                params: params2,
+            },
+        ) => {
             // TODO: Specialize the arity error message instead of the generic TypeMismatch. We
             // could make unify_rec get the ast and original types to pass around and improve many
             // error messages around the whole function.
-            if module != module2 || name != name2 || args.len() != args2.len() {
+            if module != module2 || name != name2 || params.len() != params2.len() {
                 Err(Error::TypeMismatch {
                     actual_type_location: ast.unit(),
                     actual_type: Rc::clone(typ),
@@ -681,8 +721,8 @@ fn unify_rec<'ast, T>(
                     expected_type: Rc::clone(typ2),
                 })
             } else {
-                for (a1, a2) in args.iter().zip(args2.iter()) {
-                    unify_rec(state, a1, a2, ast, typ, ast2, typ2)?;
+                for (p1, p2) in params.iter().zip(params2.iter()) {
+                    unify_rec(state, p1, p2, ast, typ, ast2, typ2)?;
                 }
                 Ok(())
             }
@@ -692,8 +732,14 @@ fn unify_rec<'ast, T>(
 
         (_, Var(var)) => unify_var(state, t2, var, t1, ast, typ, ast2, typ2),
 
-        (Fn(args, body), Fn(args2, body2)) => {
-            if args.len() != args2.len() {
+        (
+            Fn { params, ret },
+            Fn {
+                params: params2,
+                ret: ret2,
+            },
+        ) => {
+            if params.len() != params2.len() {
                 Err(Error::TypeMismatch {
                     actual_type_location: ast.unit(),
                     actual_type: Rc::clone(typ),
@@ -701,14 +747,14 @@ fn unify_rec<'ast, T>(
                     expected_type: Rc::clone(typ2),
                 })
             } else {
-                for (a1, a2) in args.iter().zip(args2.iter()) {
-                    unify_rec(state, a1, a2, ast, typ, ast2, typ2)?;
+                for (p1, p2) in params.iter().zip(params2.iter()) {
+                    unify_rec(state, p1, p2, ast, typ, ast2, typ2)?;
                 }
-                unify_rec(state, body, body2, ast, typ, ast2, typ2)
+                unify_rec(state, ret, ret2, ast, typ, ast2, typ2)
             }
         }
 
-        (Record(fields1), Record(fields2)) => {
+        (Record { fields: fields1 }, Record { fields: fields2 }) => {
             // Check fields on each record, and unify types of the values against the other
             // record. If the field doesn't exist then it is a type mismatch.
 
@@ -756,8 +802,20 @@ fn unify_rec<'ast, T>(
             Ok(())
         }
 
-        (Record(fields), RecordExt(ext_fields, ext))
-        | (RecordExt(ext_fields, ext), Record(fields)) => {
+        (
+            Record { fields },
+            RecordExt {
+                fields: ext_fields,
+                base_record,
+            },
+        )
+        | (
+            RecordExt {
+                fields: ext_fields,
+                base_record,
+            },
+            Record { fields },
+        ) => {
             // Check the fields on the open record and match them against the fixed record. If
             // a field doesn't exist it is a mismatch
             for (key, value) in ext_fields.map() {
@@ -781,11 +839,20 @@ fn unify_rec<'ast, T>(
                     rem_fields.insert(*key, Rc::clone(value));
                 }
             }
-            let rem_rec = Rc::new(Record(rem_fields));
-            unify_rec(state, ext, &rem_rec, ast, typ, ast2, typ2)
+            let rem_rec = Rc::new(Record { fields: rem_fields });
+            unify_rec(state, base_record, &rem_rec, ast, typ, ast2, typ2)
         }
 
-        (RecordExt(fields1, var1), RecordExt(fields2, var2)) => {
+        (
+            RecordExt {
+                fields: fields1,
+                base_record: base_record1,
+            },
+            RecordExt {
+                fields: fields2,
+                base_record: base_record2,
+            },
+        ) => {
             // Check common fields on the records, and unify types
             for (key, value) in fields1.map() {
                 if fields2.map().contains_key(key) {
@@ -811,8 +878,11 @@ fn unify_rec<'ast, T>(
                         rem_fields1.insert(*key, Rc::clone(value));
                     }
                 }
-                let rem_rec1 = Rc::new(RecordExt(rem_fields1, Rc::clone(&var)));
-                unify_rec(state, var2, &rem_rec1, ast, typ, ast2, typ2)?;
+                let rem_rec1 = Rc::new(RecordExt {
+                    fields: rem_fields1,
+                    base_record: Rc::clone(&var),
+                });
+                unify_rec(state, base_record2, &rem_rec1, ast, typ, ast2, typ2)?;
             }
 
             // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
@@ -823,24 +893,29 @@ fn unify_rec<'ast, T>(
                         rem_fields2.insert(*key, Rc::clone(value));
                     }
                 }
-                let rem_rec2 = Rc::new(RecordExt(rem_fields2, Rc::clone(&var)));
-                unify_rec(state, var1, &rem_rec2, ast, typ, ast2, typ2)?;
+                let rem_rec2 = Rc::new(RecordExt {
+                    fields: rem_fields2,
+                    base_record: Rc::clone(&var),
+                });
+                unify_rec(state, base_record1, &rem_rec2, ast, typ, ast2, typ2)?;
             }
 
             Ok(())
         }
 
-        (Alias(_module, _name, _params, t), _) => unify_rec(state, t, t2, ast, typ, ast2, typ2),
-        (_, Alias(_module, _name, _params, t)) => unify_rec(state, t1, t, ast, typ, ast2, typ2),
+        (Alias { destination: t, .. }, _) => unify_rec(state, t, t2, ast, typ, ast2, typ2),
+        (_, Alias { destination: t, .. }) => unify_rec(state, t1, t, ast, typ, ast2, typ2),
 
-        (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => {
-            Err(Error::TypeMismatch {
-                actual_type_location: ast.unit(),
-                actual_type: Rc::clone(typ),
-                expected_type_location: ast2.map(|ast2| ast2.unit()),
-                expected_type: Rc::clone(typ2),
-            })
-        }
+        (Unit, _)
+        | (Named { .. }, _)
+        | (Fn { .. }, _)
+        | (Record { .. }, _)
+        | (RecordExt { .. }, _) => Err(Error::TypeMismatch {
+            actual_type_location: ast.unit(),
+            actual_type: Rc::clone(typ),
+            expected_type_location: ast2.map(|ast2| ast2.unit()),
+            expected_type: Rc::clone(typ2),
+        }),
     }
 }
 
@@ -854,9 +929,14 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
     let inferred = flatten_record(&inferred).unwrap_or(inferred);
 
     match (&*signature, &*inferred) {
-        (Named(_, _, args), Named(_, _, args2)) => {
-            for (a1, a2) in args.iter().zip(args2.iter()) {
-                if signature_is_too_generic(a1, a2) {
+        (
+            Named { params, .. },
+            Named {
+                params: params2, ..
+            },
+        ) => {
+            for (p1, p2) in params.iter().zip(params2.iter()) {
+                if signature_is_too_generic(p1, p2) {
                     return true;
                 }
             }
@@ -869,16 +949,22 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
         // something more specific, hence the signature is too general
         (Var(_), _) => true,
 
-        (Fn(args, ret), Fn(args2, ret2)) => {
-            for (a1, a2) in args.iter().zip(args2.iter()) {
-                if signature_is_too_generic(a1, a2) {
+        (
+            Fn { params, ret },
+            Fn {
+                params: params2,
+                ret: ret2,
+            },
+        ) => {
+            for (p1, p2) in params.iter().zip(params2.iter()) {
+                if signature_is_too_generic(p1, p2) {
                     return true;
                 }
             }
             signature_is_too_generic(ret, ret2)
         }
 
-        (Record(fields1), Record(fields2)) => {
+        (Record { fields: fields1 }, Record { fields: fields2 }) => {
             for (key, value) in fields1.map() {
                 if signature_is_too_generic(value, fields2.get(key).unwrap()) {
                     return true;
@@ -887,7 +973,12 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
             false
         }
 
-        (Record(fields), RecordExt(ext_fields, _ext)) => {
+        (
+            Record { fields },
+            RecordExt {
+                fields: ext_fields, ..
+            },
+        ) => {
             for (key, value) in fields.map() {
                 if signature_is_too_generic(value, ext_fields.get(key).unwrap()) {
                     return true;
@@ -896,9 +987,18 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
             false
         }
 
-        (RecordExt(_ext_fields, _ext), Record(_fields)) => true,
+        (RecordExt { .. }, Record { .. }) => true,
 
-        (RecordExt(signature_fields, signature_ext), RecordExt(inferred_fields, inferred_ext)) => {
+        (
+            RecordExt {
+                fields: signature_fields,
+                base_record: signature_base_record,
+            },
+            RecordExt {
+                fields: inferred_fields,
+                base_record: inferred_base_record,
+            },
+        ) => {
             for (key, signature_field_value) in signature_fields.map() {
                 if signature_is_too_generic(
                     signature_field_value,
@@ -907,14 +1007,18 @@ fn signature_is_too_generic(signature: &Rc<Type>, inferred: &Rc<Type>) -> bool {
                     return true;
                 }
             }
-            signature_is_too_generic(signature_ext, inferred_ext)
+            signature_is_too_generic(signature_base_record, inferred_base_record)
         }
 
-        (Alias(_module, _name, _params, typ), _) => signature_is_too_generic(typ, &inferred),
+        (Alias { destination, .. }, _) => signature_is_too_generic(destination, &inferred),
 
-        (_, Alias(_module, _name, _params, typ)) => signature_is_too_generic(&signature, typ),
+        (_, Alias { destination, .. }) => signature_is_too_generic(&signature, destination),
 
-        (Unit, _) | (Named(..), _) | (Fn(..), _) | (Record(_), _) | (RecordExt(..), _) => false,
+        (Unit, _)
+        | (Named { .. }, _)
+        | (Fn { .. }, _)
+        | (Record { .. }, _)
+        | (RecordExt { .. }, _) => false,
     }
 }
 
@@ -943,95 +1047,95 @@ fn base_env(
 
     env.insert(
         strings.get_or_intern("__op__or"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&bool_), Rc::clone(&bool_)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&bool_), Rc::clone(&bool_)],
+            ret: Rc::clone(&bool_),
+        })),
     );
 
     env.insert(
         strings.get_or_intern("__op__or"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&bool_), Rc::clone(&bool_)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&bool_), Rc::clone(&bool_)],
+            ret: Rc::clone(&bool_),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__and"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&bool_), Rc::clone(&bool_)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&bool_), Rc::clone(&bool_)],
+            ret: Rc::clone(&bool_),
+        })),
     );
     env.insert(strings.get_or_intern("__op__eq"), {
         let a = state.new_type_var();
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&a), Rc::clone(&a)],
-            Rc::clone(&bool_),
-        )))
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&a), Rc::clone(&a)],
+            ret: Rc::clone(&bool_),
+        }))
     });
     env.insert(strings.get_or_intern("__op__ne"), {
         let a = state.new_type_var();
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&a), Rc::clone(&a)],
-            Rc::clone(&bool_),
-        )))
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&a), Rc::clone(&a)],
+            ret: Rc::clone(&bool_),
+        }))
     });
     env.insert(
         strings.get_or_intern("__op__gt"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&bool_),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__ge"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&bool_),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__lt"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&bool_),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__le"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&bool_),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&bool_),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__add"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&float),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&float),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__sub"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&float),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&float),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__mult"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&float),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&float),
+        })),
     );
     env.insert(
         strings.get_or_intern("__op__div"),
-        state.generalize(&Rc::new(Type::Fn(
-            vec![Rc::clone(&float), Rc::clone(&float)],
-            Rc::clone(&float),
-        ))),
+        state.generalize(&Rc::new(Type::Fn {
+            params: vec![Rc::clone(&float), Rc::clone(&float)],
+            ret: Rc::clone(&float),
+        })),
     );
 }
 
@@ -1148,11 +1252,11 @@ pub fn infer<'state>(
 
         match &type_def.value.typ {
             ast::types::TypeDefinitionType::Union(constructors) => {
-                let type_def_type = Rc::new(Type::Named(
-                    module_ast.name.full_name,
+                let type_def_type = Rc::new(Type::Named {
+                    module: module_ast.name.full_name,
                     name,
-                    type_vars.iter().map(|(_, t)| Rc::clone(t)).collect(),
-                ));
+                    params: type_vars.iter().map(|(_, t)| Rc::clone(t)).collect(),
+                });
                 types_env.insert(name, state.generalize(&type_def_type));
 
                 for constructor in constructors {
@@ -1180,7 +1284,10 @@ pub fn infer<'state>(
                     let typ = if param_types.is_empty() {
                         Rc::clone(&type_def_type)
                     } else {
-                        Rc::new(Type::Fn(param_types, Rc::clone(&type_def_type)))
+                        Rc::new(Type::Fn {
+                            params: param_types,
+                            ret: Rc::clone(&type_def_type),
+                        })
                     };
 
                     env.insert(*name, state.generalize(&typ));
@@ -1200,7 +1307,12 @@ pub fn infer<'state>(
                         state.new_type_var()
                     }
                 };
-                let typ = Rc::new(Alias(module_ast.name.full_name, name, type_vars, typ));
+                let typ = Rc::new(Alias {
+                    module: module_ast.name.full_name,
+                    name,
+                    params: type_vars,
+                    destination: typ,
+                });
                 types_env.insert(name, state.generalize(&typ));
             }
         }
@@ -1279,7 +1391,10 @@ fn ast_type_to_type<'ast>(
                 )?);
             }
             let ret_type = ast_type_to_type(&ret, type_vars, errors, state, types_env)?;
-            Ok(Rc::new(Fn(params_types, ret_type)))
+            Ok(Rc::new(Fn {
+                params: params_types,
+                ret: ret_type,
+            }))
         }
 
         ast::types::Type::App(typ) => match types_env.get(&typ.value.name.value.name) {
@@ -1288,21 +1403,32 @@ fn ast_type_to_type<'ast>(
                 let t = state.instantiate(t);
                 state.exit_level();
                 match &*t {
-                    Named(module_name, ..) => {
+                    Named {
+                        module: module_name,
+                        ..
+                    } => {
                         let mut params_types: Vec<Rc<Type>> = vec![];
                         for param in &typ.value.params {
                             params_types.push(ast_type_to_type(
                                 param, type_vars, errors, state, types_env,
                             )?);
                         }
-                        let ast_typ =
-                            Rc::new(Named(*module_name, typ.value.name.value.name, params_types));
+                        let ast_typ = Rc::new(Named {
+                            module: *module_name,
+                            name: typ.value.name.value.name,
+                            params: params_types,
+                        });
 
                         unify(state, typ, &ast_typ, None, &t)?;
 
                         Ok(ast_typ)
                     }
-                    Alias(module, name, params, dest_typ) => {
+                    Alias {
+                        module,
+                        name,
+                        params,
+                        destination: dest_typ,
+                    } => {
                         if params.len() != typ.value.params.len() {
                             return Err(Error::WrongArity {
                                 location: typ.unit(),
@@ -1322,12 +1448,12 @@ fn ast_type_to_type<'ast>(
                             params_types.push((*name, param_typ));
                         }
 
-                        Ok(Rc::new(Alias(
-                            *module,
-                            *name,
-                            params_types,
-                            Rc::clone(dest_typ),
-                        )))
+                        Ok(Rc::new(Alias {
+                            module: *module,
+                            name: *name,
+                            params: params_types,
+                            destination: Rc::clone(dest_typ),
+                        }))
                     }
                     _ => Err(Error::WrongArity {
                         location: typ.unit(),
@@ -1364,10 +1490,11 @@ fn ast_record_type_to_type<'ast>(
                 let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env)?;
                 fields.insert(name.value.name, typ);
             }
-            Ok(Rc::new(Record(fields)))
+            Ok(Rc::new(Record { fields }))
         }
         ast::types::RecordType::RecordExt(record_ext) => {
-            let ext_type = if let Some(t) = type_vars.get(&record_ext.value.extension.value.name) {
+            let base_record = if let Some(t) = type_vars.get(&record_ext.value.extension.value.name)
+            {
                 Rc::clone(t)
             } else {
                 return Err(Error::UnknownTypeVar(record_ext.value.extension.to_owned()));
@@ -1379,7 +1506,10 @@ fn ast_record_type_to_type<'ast>(
                 fields.insert(name.value.name, typ);
             }
 
-            Ok(Rc::new(RecordExt(fields, ext_type)))
+            Ok(Rc::new(RecordExt {
+                fields,
+                base_record,
+            }))
         }
     }
 }
@@ -1416,7 +1546,9 @@ fn infer_rec<'ast>(
                 }
             }
 
-            Rc::new(Record(typed_fields))
+            Rc::new(Record {
+                fields: typed_fields,
+            })
         }
 
         ET::RecordUpdate(record, fields) => {
@@ -1433,7 +1565,10 @@ fn infer_rec<'ast>(
                 }
             }
 
-            let inferred_type = Rc::new(RecordExt(typed_fields, Rc::clone(&state.new_type_var())));
+            let inferred_type = Rc::new(RecordExt {
+                fields: typed_fields,
+                base_record: Rc::clone(&state.new_type_var()),
+            });
 
             let record_type = infer_rec(record, state, env, types_env, strings, errors);
 
@@ -1449,14 +1584,14 @@ fn infer_rec<'ast>(
         ET::PropAccess(expr, field) => {
             let field_type = state.new_type_var();
             let remaining_fields_type = state.new_type_var();
-            let record_type = Rc::new(RecordExt(
-                {
+            let record_type = Rc::new(RecordExt {
+                fields: {
                     let mut fields = TypeEnv::new();
                     fields.insert(field.value.name, Rc::clone(&field_type));
                     fields
                 },
-                remaining_fields_type,
-            ));
+                base_record: remaining_fields_type,
+            });
 
             let expr_type = infer_rec(expr, state, env, types_env, strings, errors);
 
@@ -1469,17 +1604,17 @@ fn infer_rec<'ast>(
             let field_type = state.new_type_var();
             let remaining_fields_type = state.new_type_var();
 
-            Rc::new(Fn(
-                vec![Rc::new(RecordExt(
-                    {
+            Rc::new(Fn {
+                params: vec![Rc::new(RecordExt {
+                    fields: {
                         let mut fields = TypeEnv::new();
                         fields.insert(field.value.name, Rc::clone(&field_type));
                         fields
                     },
-                    remaining_fields_type,
-                ))],
-                field_type,
-            ))
+                    base_record: remaining_fields_type,
+                })],
+                ret: field_type,
+            })
         }
 
         ET::Unary(op, e) => {
@@ -1821,13 +1956,13 @@ fn infer_lambda<'ast>(
 
     let return_type = infer_rec(&lambda.body, state, &mut env, types_env, strings, errors);
 
-    Rc::new(Fn(
-        params_with_type
+    Rc::new(Fn {
+        params: params_with_type
             .iter()
             .map(|(_, param_type)| Rc::clone(&param_type.typ))
             .collect(),
-        return_type,
-    ))
+        ret: return_type,
+    })
 }
 
 fn infer_fn_call<'ast, Args>(
@@ -1853,7 +1988,10 @@ where
 
     let return_type = state.new_type_var();
 
-    let call_type: Rc<Type> = Rc::new(Fn(arg_types.clone(), Rc::clone(&return_type)));
+    let call_type: Rc<Type> = Rc::new(Fn {
+        params: arg_types.clone(),
+        ret: Rc::clone(&return_type),
+    });
 
     // Unify the arguments separately for nicer error messages
     let res = arg_types

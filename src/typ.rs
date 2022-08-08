@@ -25,7 +25,11 @@ pub enum Type {
     Unit,
 
     // Named type (Int, Bool, List a, ...)
-    Named(ModuleFullName, StringSymbol, Vec<Rc<Type>>),
+    Named {
+        module: ModuleFullName,
+        name: StringSymbol,
+        params: Vec<Rc<Type>>,
+    },
 
     /* a, b, etc.
      *
@@ -44,27 +48,35 @@ pub enum Type {
      *
      * e.g. \a b c -> c
      */
-    Fn(Vec<Rc<Type>>, Rc<Type>),
+    Fn {
+        params: Vec<Rc<Type>>,
+        ret: Rc<Type>,
+    },
 
     /* Records with field value pairs
      *
      * e.g. { x: Float, y: Float }
      */
-    Record(TypeEnv),
+    Record {
+        fields: TypeEnv,
+    },
 
     /* Extensible record with at least these field value pairs
      *
      * e.g. { a | x: Float, y: Float }
      */
-    RecordExt(TypeEnv, Rc<Type>),
+    RecordExt {
+        fields: TypeEnv,
+        base_record: Rc<Type>,
+    },
 
     // Alias to another type. Used when defining a record type with a name
-    Alias(
-        ModuleFullName,
-        StringSymbol,
-        Vec<(StringSymbol, Rc<Type>)>,
-        Rc<Type>,
-    ),
+    Alias {
+        module: ModuleFullName,
+        name: StringSymbol,
+        params: Vec<(StringSymbol, Rc<Type>)>,
+        destination: Rc<Type>,
+    },
 }
 
 impl Type {
@@ -79,21 +91,21 @@ impl Type {
                 TypeVar::Bound(t) => t.should_parenthesize(),
                 _ => false,
             },
-            Fn(..) => true,
+            Fn { .. } => true,
             _ => false,
         }
     }
 
     pub fn parameters(&self) -> Vec<&Rc<Type>> {
-        fn parameters_rec<'a>(mut params: Vec<&'a Rc<Type>>, t: &'a Type) -> Vec<&'a Rc<Type>> {
+        fn parameters_rec<'a>(mut all_params: Vec<&'a Rc<Type>>, t: &'a Type) -> Vec<&'a Rc<Type>> {
             match t {
-                Type::Fn(args, body) => {
-                    for arg in args {
-                        params.push(arg);
+                Type::Fn { params, ret, .. } => {
+                    for param in params {
+                        all_params.push(param);
                     }
-                    parameters_rec(params, body)
+                    parameters_rec(all_params, ret)
                 }
-                _ => params,
+                _ => all_params,
             }
         }
 
@@ -142,7 +154,7 @@ impl Type {
         match self {
             Unit => s.push_str("()"),
 
-            Named(_module, name, params) => {
+            Named { name, params, .. } => {
                 s.push_str(strings.resolve(*name));
                 for param in params.iter() {
                     s.push(' ');
@@ -166,8 +178,8 @@ impl Type {
                 },
             },
 
-            Fn(args, body) => {
-                for (i, arg) in args.iter().enumerate() {
+            Fn { params, ret } => {
+                for (i, arg) in params.iter().enumerate() {
                     if i > 0 {
                         s.push_str(" -> ");
                     }
@@ -186,10 +198,10 @@ impl Type {
                 }
                 s.push_str(" -> ");
 
-                body.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+                ret.to_string_rec(cur_type_var_name, type_var_names, s, strings);
             }
 
-            Record(fields) => {
+            Record { fields } => {
                 s.push('{');
 
                 if !fields.map().is_empty() {
@@ -204,22 +216,25 @@ impl Type {
                 s.push('}');
             }
 
-            RecordExt(_, ext) => {
+            RecordExt { base_record, .. } => {
                 let fields = get_extensible_record_fields(TypeEnv::new(), self);
 
                 fn get_extensible_record_fields(mut all_fields: TypeEnv, typ: &Type) -> TypeEnv {
                     match typ {
-                        Record(fields) => {
+                        Record { fields } => {
                             for (k, v) in fields.map() {
                                 all_fields.insert(*k, Rc::clone(v));
                             }
                             all_fields
                         }
-                        RecordExt(fields, ext) => {
+                        RecordExt {
+                            fields,
+                            base_record,
+                        } => {
                             for (k, v) in fields.map() {
                                 all_fields.insert(*k, Rc::clone(v));
                             }
-                            get_extensible_record_fields(all_fields, ext)
+                            get_extensible_record_fields(all_fields, base_record)
                         }
                         Var(var) => {
                             let var_read = (**var).borrow();
@@ -242,9 +257,9 @@ impl Type {
                     strings: &Strings,
                 ) -> bool {
                     match typ {
-                        Record(_) => false,
-                        RecordExt(_, ext) => extensible_record_base_to_string(
-                            ext,
+                        Record { .. } => false,
+                        RecordExt { base_record, .. } => extensible_record_base_to_string(
+                            base_record,
                             cur_type_var_name,
                             type_var_names,
                             s,
@@ -281,7 +296,7 @@ impl Type {
                 s.push_str("{ ");
 
                 let printed_extension = extensible_record_base_to_string(
-                    ext,
+                    base_record,
                     cur_type_var_name,
                     type_var_names,
                     s,
@@ -298,14 +313,19 @@ impl Type {
                 s.push_str(" }");
             }
 
-            Alias(_module, name, params, typ) => {
+            Alias {
+                name,
+                params,
+                destination,
+                ..
+            } => {
                 s.push_str(strings.resolve(*name));
                 for (_name, param) in params.iter() {
                     s.push(' ');
                     param.to_string_rec(cur_type_var_name, type_var_names, s, strings);
                 }
                 s.push_str(" (alias of ");
-                typ.to_string_rec(cur_type_var_name, type_var_names, s, strings);
+                destination.to_string_rec(cur_type_var_name, type_var_names, s, strings);
                 s.push(')');
             }
         }
@@ -321,21 +341,33 @@ impl Type {
             float,
             Rc::new(PolyType::new(
                 IndexSet::new(),
-                Rc::new(Type::Named(module, float, vec![])),
+                Rc::new(Type::Named {
+                    module,
+                    name: float,
+                    params: vec![],
+                }),
             )),
         );
         env.insert(
             bool_,
             Rc::new(PolyType::new(
                 IndexSet::new(),
-                Rc::new(Type::Named(module, bool_, vec![])),
+                Rc::new(Type::Named {
+                    module,
+                    name: bool_,
+                    params: vec![],
+                }),
             )),
         );
         env.insert(
             string,
             Rc::new(PolyType::new(
                 IndexSet::new(),
-                Rc::new(Type::Named(module, string, vec![])),
+                Rc::new(Type::Named {
+                    module,
+                    name: string,
+                    params: vec![],
+                }),
             )),
         );
         env
@@ -421,14 +453,18 @@ mod test {
         let tests = vec![
             (Type::Unit, "()"),
             (
-                Type::Named(module, strings.get_or_intern("Float"), vec![]),
+                Type::Named {
+                    module,
+                    name: strings.get_or_intern("Float"),
+                    params: vec![],
+                },
                 "Float",
             ),
             (
-                Type::Named(
+                Type::Named {
                     module,
-                    strings.get_or_intern("Result"),
-                    vec![
+                    name: strings.get_or_intern("Result"),
+                    params: vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
@@ -438,14 +474,14 @@ mod test {
                             Level(0),
                         ))))),
                     ],
-                ),
+                },
                 "Result a a",
             ),
             (
-                Type::Named(
+                Type::Named {
                     module,
-                    strings.get_or_intern("Result"),
-                    vec![
+                    name: strings.get_or_intern("Result"),
+                    params: vec![
                         Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
@@ -455,7 +491,7 @@ mod test {
                             Level(0),
                         ))))),
                     ],
-                ),
+                },
                 "Result a b",
             ),
             (
@@ -474,122 +510,120 @@ mod test {
                 "()",
             ),
             (
-                Type::Fn(
-                    vec![Rc::new(Type::Named(
+                Type::Fn {
+                    params: vec![Rc::new(Type::Named {
                         module,
-                        strings.get_or_intern("Float"),
-                        vec![],
-                    ))],
-                    Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-                ),
+                        name: strings.get_or_intern("Float"),
+                        params: vec![],
+                    })],
+                    ret: Rc::new(Type::Named {
+                        module,
+                        name: strings.get_or_intern("String"),
+                        params: vec![],
+                    }),
+                },
                 "Float -> String",
             ),
             (
-                Type::Fn(
-                    vec![Rc::new(Type::Fn(
-                        vec![Rc::new(Type::Named(
+                Type::Fn {
+                    params: vec![Rc::new(Type::Fn {
+                        params: vec![Rc::new(Type::Named {
                             module,
-                            strings.get_or_intern("Float"),
-                            vec![],
-                        ))],
-                        Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-                    ))],
-                    Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-                ),
+                            name: strings.get_or_intern("Float"),
+                            params: vec![],
+                        })],
+                        ret: Rc::new(Type::Named {
+                            module,
+                            name: strings.get_or_intern("String"),
+                            params: vec![],
+                        }),
+                    })],
+                    ret: Rc::new(Type::Named {
+                        module,
+                        name: strings.get_or_intern("String"),
+                        params: vec![],
+                    }),
+                },
                 "(Float -> String) -> String",
             ),
             (
-                Type::Fn(
-                    vec![Rc::new(Type::Named(
+                Type::Fn {
+                    params: vec![Rc::new(Type::Named {
                         module,
-                        strings.get_or_intern("String"),
-                        vec![],
-                    ))],
-                    Rc::new(Type::Fn(
-                        vec![Rc::new(Type::Named(
+                        name: strings.get_or_intern("String"),
+                        params: vec![],
+                    })],
+                    ret: Rc::new(Type::Fn {
+                        params: vec![Rc::new(Type::Named {
                             module,
-                            strings.get_or_intern("Float"),
-                            vec![],
-                        ))],
-                        Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-                    )),
-                ),
+                            name: strings.get_or_intern("Float"),
+                            params: vec![],
+                        })],
+                        ret: Rc::new(Type::Named {
+                            module,
+                            name: strings.get_or_intern("String"),
+                            params: vec![],
+                        }),
+                    }),
+                },
                 "String -> Float -> String",
             ),
             (
-                Type::Fn(
-                    vec![
-                        Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-                        Rc::new(Type::Named(module, strings.get_or_intern("Float"), vec![])),
+                Type::Fn {
+                    params: vec![
+                        Rc::new(Type::Named {
+                            module,
+                            name: strings.get_or_intern("String"),
+                            params: vec![],
+                        }),
+                        Rc::new(Type::Named {
+                            module,
+                            name: strings.get_or_intern("Float"),
+                            params: vec![],
+                        }),
                     ],
-                    Rc::new(Type::Named(module, strings.get_or_intern("String"), vec![])),
-                ),
+                    ret: Rc::new(Type::Named {
+                        module,
+                        name: strings.get_or_intern("String"),
+                        params: vec![],
+                    }),
+                },
                 "String -> Float -> String",
             ),
-            (Type::Record(TypeEnv::new()), "{}"),
             (
-                Type::Record({
-                    let mut fields = TypeEnv::new();
-                    fields.insert(
-                        strings.get_or_intern("a"),
-                        Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
-                    );
-                    fields
-                }),
-                "{ a : Int }",
+                Type::Record {
+                    fields: TypeEnv::new(),
+                },
+                "{}",
             ),
             (
-                Type::Record({
-                    let mut fields = TypeEnv::new();
-                    fields.insert(
-                        strings.get_or_intern("age"),
-                        Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
-                    );
-                    fields.insert(
-                        strings.get_or_intern("extra"),
-                        Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                            TypeVarId(0),
-                            Level(0),
-                        ))))),
-                    );
-                    fields
-                }),
-                "{ age : Int, extra : a }",
-            ),
-            (
-                Type::RecordExt(
-                    TypeEnv::new(),
-                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                        TypeVarId(0),
-                        Level(0),
-                    ))))),
-                ),
-                "{ a }",
-            ),
-            (
-                Type::RecordExt(
-                    {
+                Type::Record {
+                    fields: {
                         let mut fields = TypeEnv::new();
                         fields.insert(
-                            strings.get_or_intern("age"),
-                            Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
+                            strings.get_or_intern("a"),
+                            Rc::new(Type::Named {
+                                module,
+                                name: strings.get_or_intern("Int"),
+                                params: vec![],
+                            }),
                         );
                         fields
                     },
-                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
-                        TypeVarId(0),
-                        Level(0),
-                    ))))),
-                ),
-                "{ a | age : Int }",
+                },
+                "{ a : Int }",
             ),
             (
-                Type::RecordExt(
-                    {
+                Type::Record {
+                    fields: {
                         let mut fields = TypeEnv::new();
                         fields.insert(
                             strings.get_or_intern("age"),
-                            Rc::new(Type::Named(module, strings.get_or_intern("Int"), vec![])),
+                            Rc::new(Type::Named {
+                                module,
+                                name: strings.get_or_intern("Int"),
+                                params: vec![],
+                            }),
                         );
                         fields.insert(
                             strings.get_or_intern("extra"),
@@ -600,11 +634,66 @@ mod test {
                         );
                         fields
                     },
-                    Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                },
+                "{ age : Int, extra : a }",
+            ),
+            (
+                Type::RecordExt {
+                    fields: TypeEnv::new(),
+                    base_record: Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(0),
+                        Level(0),
+                    ))))),
+                },
+                "{ a }",
+            ),
+            (
+                Type::RecordExt {
+                    fields: {
+                        let mut fields = TypeEnv::new();
+                        fields.insert(
+                            strings.get_or_intern("age"),
+                            Rc::new(Type::Named {
+                                module,
+                                name: strings.get_or_intern("Int"),
+                                params: vec![],
+                            }),
+                        );
+                        fields
+                    },
+                    base_record: Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        TypeVarId(0),
+                        Level(0),
+                    ))))),
+                },
+                "{ a | age : Int }",
+            ),
+            (
+                Type::RecordExt {
+                    fields: {
+                        let mut fields = TypeEnv::new();
+                        fields.insert(
+                            strings.get_or_intern("age"),
+                            Rc::new(Type::Named {
+                                module,
+                                name: strings.get_or_intern("Int"),
+                                params: vec![],
+                            }),
+                        );
+                        fields.insert(
+                            strings.get_or_intern("extra"),
+                            Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                                TypeVarId(0),
+                                Level(0),
+                            ))))),
+                        );
+                        fields
+                    },
+                    base_record: Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                         TypeVarId(1),
                         Level(0),
                     ))))),
-                ),
+                },
                 "{ a | age : Int, extra : b }",
             ),
         ];
@@ -644,16 +733,16 @@ mod test {
             (
                 PolyType::new(
                     IndexSet::from_iter(vec![TypeVarId(0)]),
-                    Rc::new(Type::Fn(
-                        vec![Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                    Rc::new(Type::Fn {
+                        params: vec![Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
                         )))))],
-                        Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
+                        ret: Rc::new(Type::Var(Rc::new(RefCell::new(TypeVar::Unbound(
                             TypeVarId(0),
                             Level(0),
                         ))))),
-                    )),
+                    }),
                 ),
                 "∀ a . a -> a",
             ),
