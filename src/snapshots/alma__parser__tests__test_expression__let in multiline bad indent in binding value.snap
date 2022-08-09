@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2289
+assertion_line: 2330
 expression: "parse(\"\\\nlet\n  x = a\n  x\nin\nx\")"
 ---
 Input:
@@ -24,13 +24,13 @@ Expected an `=` sign or list of parameters for the definition of `x`, but instea
   5│  x
 
 Error {
-    kind: InvalidLetBindingParametersOrEqualSeparator(
-        Identifier_ {
+    kind: InvalidLetBindingParametersOrEqualSeparator {
+        definition_identifier: Identifier_ {
             name: SymbolU32 {
                 value: 1,
             },
         },
-    ),
+    },
     token: Token {
         kind: In,
         indent: 0,

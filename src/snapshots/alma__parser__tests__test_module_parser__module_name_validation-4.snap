@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2671
+assertion_line: 2715
 expression: "parse(\"\nmodule Test.Something\n\nmodule Test.Banana\n\")"
 ---
 Input:
@@ -33,8 +33,8 @@ Like this:
    │  ↑↑↑↑↑↑
 
 Error {
-    kind: SubmoduleAndParentModuleNameMismatch(
-        ModuleName {
+    kind: SubmoduleAndParentModuleNameMismatch {
+        submodule: ModuleName {
             parts: [
                 Node {
                     start: Index(
@@ -67,7 +67,7 @@ Error {
                 value: 5,
             },
         },
-    ),
+    },
     token: Token {
         kind: Module,
         indent: 0,

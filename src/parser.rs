@@ -78,8 +78,8 @@ enum ErrorType {
     MissingModuleName,
     InvalidModuleNameSegment,
     MissingTopLevelModule,
-    ModuleAndFileNameMismatch(ModuleName),
-    SubmoduleAndParentModuleNameMismatch(ModuleName),
+    ModuleAndFileNameMismatch { module: ModuleName },
+    SubmoduleAndParentModuleNameMismatch { submodule: ModuleName },
     InvalidModuleDefinitionLhs,
     InvalidModuleDefinition,
 
@@ -101,14 +101,14 @@ enum ErrorType {
     InvalidTypeDefinitionTypeVarsOrEqualSeparator,
     InvalidUnionTypeDefinitionConstructor,
     MissingUnionTypeDefinitionConstructors,
-    InvalidRecordTypeFieldTypeOrLastRecordDelimiter(/* First delimiter of the record */ Token),
+    InvalidRecordTypeFieldTypeOrLastRecordDelimiter { first_delimiter: Token },
     InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
     MissingRecordTypeFields,
     InvalidRecordTypeFieldKey,
     InvalidRecordTypeFieldType,
     InvalidRecordTypeFieldSeparator,
-    InvalidParenthesizedTypeDelimiter(/* First delimiter */ Token),
+    InvalidParenthesizedTypeDelimiter { first_delimiter: Token },
     InvalidFunctionParameterType,
     InvalidParenthesizedTypeType,
     InvalidTypeSignatureType,
@@ -117,7 +117,7 @@ enum ErrorType {
     MissingLetBindings,
     InvalidLetBodyIndent,
     InvalidLetBodyExpression,
-    InvalidLetBindingParametersOrEqualSeparator(Identifier_),
+    InvalidLetBindingParametersOrEqualSeparator { definition_identifier: Identifier_ },
     InvalidLetBindingSeparator,
     InvalidLetBindingRhs,
     InvalidIfCondition,
@@ -128,8 +128,8 @@ enum ErrorType {
     MissingLambdaParamaters,
     InvalidLambdaArrow,
     InvalidLambdaBody,
-    InvalidBinopRhs(/* Binop token */ Token),
-    InvalidUnaryRhs(/* Unary op token */ Token),
+    InvalidBinopRhs { op: Token },
+    InvalidUnaryRhs { op: Token },
     InvalidPropertyAccessSeparator,
     InvalidPropertyAccessIdentifier,
     InvalidFloat(Token),
@@ -137,7 +137,7 @@ enum ErrorType {
     InvalidRecordFieldsOrExtensibleRecordExpression,
     InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
     InvalidParenthesizedExpression,
-    InvalidParenthesizedExpressionLastDelimiter(/* First delimiter */ Token),
+    InvalidParenthesizedExpressionLastDelimiter { first_delimiter: Token },
     InvalidPropertyAccessLambdaWhitespace,
     InvalidPropertyAccessLambdaIdentifier,
     MissingRecordFields,
@@ -152,8 +152,10 @@ use ErrorType::*;
 impl ErrorType {
     pub fn get_code_pointer(&self) -> Option<Token> {
         match self {
-            InvalidRecordTypeFieldTypeOrLastRecordDelimiter(first_brace) => Some(*first_brace),
-            InvalidParenthesizedTypeDelimiter(first_paren) => Some(*first_paren),
+            InvalidRecordTypeFieldTypeOrLastRecordDelimiter { first_delimiter } => {
+                Some(*first_delimiter)
+            }
+            InvalidParenthesizedTypeDelimiter { first_delimiter } => Some(*first_delimiter),
             _ => None,
         }
     }
@@ -170,14 +172,16 @@ impl ErrorType {
         };
 
         match self {
-            ModuleAndFileNameMismatch(name) => format!(
+            // TODO: Store the file name in the error too, to improve the error message
+            ModuleAndFileNameMismatch { module: name } => format!(
                 "The module name '{name}' differs from the name of the file.\n\n\
                 Module names need to match the folder and file names from the \
                 file system",
                 name = &name.to_string(strings)
             ),
 
-            SubmoduleAndParentModuleNameMismatch(name) => format!(
+            // TODO: Store the parent module name in the error too, to improve the error message
+            SubmoduleAndParentModuleNameMismatch { submodule: name } => format!(
                 "The sub-module name '{name}' differs from the name of the parent \
                 module.\n\nModule names need to match their parent module path \
                 names and specify their name at the end.\n\nLike this:\n\
@@ -269,7 +273,7 @@ impl ErrorType {
                 for the type like `type User = User Int`",
             ),
 
-            InvalidRecordTypeFieldTypeOrLastRecordDelimiter(_first_delimiter) => {
+            InvalidRecordTypeFieldTypeOrLastRecordDelimiter { first_delimiter: _ } => {
                 expected_but_found(
                     // TODO: This error message can be better and also be triggered when there is
                     // an issue with the , separator while adding more record fields
@@ -313,7 +317,7 @@ impl ErrorType {
                 the field name in the record",
             ),
 
-            InvalidParenthesizedTypeDelimiter(_first_paren) => expected_but_found(
+            InvalidParenthesizedTypeDelimiter { first_delimiter: _ } => expected_but_found(
                 // TODO: This error message can be better and show the whole parenthesized
                 // expression
                 "Expected `)` after parenthesized type",
@@ -361,9 +365,11 @@ impl ErrorType {
                 expected_but_found("Expected an expression for the body of the let bindings")
             }
 
-            InvalidLetBindingParametersOrEqualSeparator(name) => expected_but_found(&format!(
+            InvalidLetBindingParametersOrEqualSeparator {
+                definition_identifier,
+            } => expected_but_found(&format!(
                 "Expected an `=` sign or list of parameters for the definition of `{name}`",
-                name = name.to_string(strings)
+                name = definition_identifier.to_string(strings)
             )),
 
             InvalidLetBindingSeparator => expected_but_found(
@@ -408,12 +414,12 @@ impl ErrorType {
                 expected_but_found("Expected an expression for the body of the function")
             }
 
-            InvalidBinopRhs(op) => expected_but_found(&format!(
+            InvalidBinopRhs { op } => expected_but_found(&format!(
                 "Expected an expression after the binary operator `{lexeme}`",
                 lexeme = get_lexeme(op)
             )),
 
-            InvalidUnaryRhs(op) => expected_but_found(&format!(
+            InvalidUnaryRhs { op } => expected_but_found(&format!(
                 "Expected an expression after the unary operator `{lexeme}`",
                 lexeme = get_lexeme(op)
             )),
@@ -451,7 +457,7 @@ impl ErrorType {
                 expected_but_found("Expected an expression inside the parenthesis")
             }
 
-            InvalidParenthesizedExpressionLastDelimiter(_first_paren) =>
+            InvalidParenthesizedExpressionLastDelimiter { first_delimiter: _ } =>
             // TODO: This error message can be better
             {
                 expected_but_found("Expected `)` after parenthesized expression")
@@ -572,7 +578,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                 return Err(Error::new(
                     *module_token,
-                    ErrorType::ModuleAndFileNameMismatch(name),
+                    ErrorType::ModuleAndFileNameMismatch { module: name },
                 ));
             } else if parent_module
                 .map(|m| !name.valid_in_parent_module(m))
@@ -580,7 +586,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             {
                 return Err(Error::new(
                     *module_token,
-                    ErrorType::SubmoduleAndParentModuleNameMismatch(name),
+                    ErrorType::SubmoduleAndParentModuleNameMismatch { submodule: name },
                 ));
             }
 
@@ -819,9 +825,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         last_token_index,
                     ))))
                 } else {
-                    Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
-                        *left_brace_token,
-                    )))
+                    Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter {
+                        first_delimiter: *left_brace_token,
+                    }))
                 }
             }
 
@@ -842,9 +848,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let (last_token_index, _) = self.get_token();
 
                 if self.match_token(RightBrace).is_none() {
-                    return Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter(
-                        *left_brace_token,
-                    )));
+                    return Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter {
+                        first_delimiter: *left_brace_token,
+                    }));
                 }
 
                 Ok(Some(types::RecordType::RecordExt(Node::new(
@@ -908,7 +914,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if self.match_token(RightParen).is_some() {
             Ok(Some(type_))
         } else {
-            Err(self.error(InvalidParenthesizedTypeDelimiter(*token)))
+            Err(self.error(InvalidParenthesizedTypeDelimiter {
+                first_delimiter: *token,
+            }))
         }
     }
 
@@ -1157,9 +1165,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
-                        self_.error(InvalidLetBindingParametersOrEqualSeparator(
-                            identifier.value.clone(),
-                        ))
+                        self_.error(InvalidLetBindingParametersOrEqualSeparator {
+                            definition_identifier: identifier.value.clone(),
+                        })
                     })?;
 
                     let expr = self.binding_rhs()?;
@@ -1306,7 +1314,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             let op_node = Node::new(op, token_index, token_index);
 
-            let right = self.required(Self::unary, |self_| self_.error(InvalidBinopRhs(*token)))?;
+            let right = self.required(Self::unary, |self_| {
+                self_.error(InvalidBinopRhs { op: *token })
+            })?;
 
             Ok(Some((op_node, right)))
         } else {
@@ -1343,7 +1353,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }))
             }
             (None, Some(expr)) => Ok(Some(expr)),
-            (Some(_), None) => Err(self.error(InvalidUnaryRhs(*token))),
+            (Some(_), None) => Err(self.error(InvalidUnaryRhs { op: *token })),
             (None, None) => Ok(None),
         }
     }
@@ -1628,7 +1638,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 if self.match_token(RightParen).is_some() {
                     Ok(Some(expr))
                 } else {
-                    Err(self.error(InvalidParenthesizedExpressionLastDelimiter(*token)))
+                    Err(self.error(InvalidParenthesizedExpressionLastDelimiter {
+                        first_delimiter: *token,
+                    }))
                 }
             }
 
