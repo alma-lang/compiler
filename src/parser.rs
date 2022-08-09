@@ -655,7 +655,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             let start = export.start;
             Ok(Some(Node {
-                value: Export_::Type(export, constructors),
+                value: Export_::Type {
+                    name: export,
+                    constructors,
+                },
                 start,
                 end: self.prev_token_index(),
             }))
@@ -730,7 +733,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             types::TypeDefinitionType::Record(record)
         } else {
             let branches = self.type_union_branches()?;
-            types::TypeDefinitionType::Union(branches)
+            types::TypeDefinitionType::Union {
+                constructors: branches,
+            }
         };
 
         let (end_index, _) = self.prev_token();
@@ -929,7 +934,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             Ok(params.swap_remove(0))
         } else {
             let ret = params.pop().unwrap();
-            Ok(Type::Fun(params, Box::new(ret)))
+            Ok(Type::Fun {
+                params,
+                ret: Box::new(ret),
+            })
         }
     }
 
@@ -1070,7 +1078,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let end = body.end;
         Ok(Some(Node {
-            value: E::untyped(Let(bindings, Box::new(body))),
+            value: E::untyped(Let {
+                definitions: bindings,
+                body: Box::new(body),
+            }),
             start: let_token_index,
             end,
         }))
@@ -1199,7 +1210,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let end = else_.end;
         Ok(Some(Node {
-            value: E::untyped(If(Box::new(condition), Box::new(then), Box::new(else_))),
+            value: E::untyped(If {
+                condition: Box::new(condition),
+                then: Box::new(then),
+                else_: Box::new(else_),
+            }),
             start: token_index,
             end,
         }))
@@ -1319,7 +1334,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let op = Node::new(u, token_index, token_index);
                 let (start, end) = (op.start, expr.end);
                 Ok(Some(Node {
-                    value: E::untyped(Unary(op, Box::new(expr))),
+                    value: E::untyped(Unary {
+                        op,
+                        expression: Box::new(expr),
+                    }),
                     start,
                     end,
                 }))
@@ -1343,7 +1361,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 let (start, end) = (expr.start, last_arg.end);
                 Ok(Some(Node {
-                    value: E::untyped(FnCall(Box::new(expr), args)),
+                    value: E::untyped(FnCall {
+                        function: Box::new(expr),
+                        arguments: args,
+                    }),
                     start,
                     end,
                 }))
@@ -1379,7 +1400,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let start = expr.start;
                 let end = identifier.end;
                 Node {
-                    value: E::untyped(PropAccess(Box::new(expr), identifier)),
+                    value: E::untyped(PropertyAccess {
+                        expression: Box::new(expr),
+                        property: identifier,
+                    }),
                     start,
                     end,
                 }
@@ -1461,7 +1485,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let identifier = Node::new(Identifier_::new(lexeme), token_index, token_index);
 
                 Ok(Some(Node::new(
-                    E::untyped(ET::Identifier(None, AnyIdentifier::Identifier(identifier))),
+                    E::untyped(ET::Identifier {
+                        module: None,
+                        identifier: AnyIdentifier::Identifier(identifier),
+                    }),
                     token_index,
                     token_index,
                 )))
@@ -1506,7 +1533,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     (node.start, node.end)
                 };
                 Ok(Some(Node {
-                    value: E::untyped(ET::Identifier(module, identifier)),
+                    value: E::untyped(ET::Identifier { module, identifier }),
                     start,
                     end,
                 }))
@@ -1532,7 +1559,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         self.advance();
 
                         Ok(Some(Node::new(
-                            E::untyped(Record(vec![])),
+                            E::untyped(Record { fields: vec![] }),
                             token_index,
                             next_token_index,
                         )))
@@ -1544,7 +1571,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(Node::new(
-                                E::untyped(Record(fields)),
+                                E::untyped(Record { fields }),
                                 token_index,
                                 right_brace_token_index,
                             )))
@@ -1567,7 +1594,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(Node::new(
-                                E::untyped(RecordUpdate(Box::new(record), fields)),
+                                E::untyped(RecordUpdate {
+                                    record: Box::new(record),
+                                    fields,
+                                }),
                                 token_index,
                                 right_brace_token_index,
                             )))
@@ -1618,7 +1648,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         );
 
                         Ok(Some(Node::new(
-                            E::untyped(PropAccessLambda(name_identifier)),
+                            E::untyped(PropertyAccessLambda {
+                                property: name_identifier,
+                            }),
                             token_index,
                             identifier_token_index,
                         )))
@@ -2042,16 +2074,16 @@ fn organize_binops(
 
                     let (start, end) = (left.start, right.end);
                     left = Node {
-                        value: E::untyped(Binary(
-                            Box::new(op.with_value(E::untyped(ET::Identifier(
-                                None,
-                                AnyIdentifier::Identifier(
+                        value: E::untyped(Binary {
+                            expression: Box::new(op.with_value(E::untyped(ET::Identifier {
+                                module: None,
+                                identifier: AnyIdentifier::Identifier(
                                     op.with_value(op.value.get_function_identifier(strings)),
                                 ),
-                            )))),
+                            }))),
                             op,
-                            Box::new([left, right]),
-                        )),
+                            arguments: Box::new([left, right]),
+                        }),
                         start,
                         end,
                     }

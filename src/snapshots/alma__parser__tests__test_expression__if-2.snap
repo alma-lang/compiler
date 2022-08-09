@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2230
+assertion_line: 2262
 expression: "parse(\"\nif True then\n  1\n\nelse\n  2\")"
 ---
 Input:
@@ -25,8 +25,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: If(
-            Node {
+        expr: If {
+            condition: Node {
                 start: Index(
                     1,
                 ),
@@ -42,7 +42,7 @@ Node {
                     ),
                 },
             },
-            Node {
+            then: Node {
                 start: Index(
                     3,
                 ),
@@ -58,7 +58,7 @@ Node {
                     ),
                 },
             },
-            Node {
+            else_: Node {
                 start: Index(
                     5,
                 ),
@@ -74,6 +74,6 @@ Node {
                     ),
                 },
             },
-        ),
+        },
     },
 }

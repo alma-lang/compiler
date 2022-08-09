@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2159
+assertion_line: 2191
 expression: "parse(\"espaÆàʥñÑol\")"
 ---
 Input:
@@ -20,9 +20,9 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: Identifier(
-            None,
-            Identifier(
+        expr: Identifier {
+            module: None,
+            identifier: Identifier(
                 Node {
                     start: Index(
                         0,
@@ -37,6 +37,6 @@ Node {
                     },
                 },
             ),
-        ),
+        },
     },
 }

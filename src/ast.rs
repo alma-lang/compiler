@@ -163,7 +163,10 @@ pub type Export = Node<Export_>;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Export_ {
     Identifier(Identifier),
-    Type(CapitalizedIdentifier, Vec<CapitalizedIdentifier>),
+    Type {
+        name: CapitalizedIdentifier,
+        constructors: Vec<CapitalizedIdentifier>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -227,7 +230,7 @@ pub mod types {
 
     #[derive(Debug)]
     pub enum TypeDefinitionType {
-        Union(Vec<Constructor>),
+        Union { constructors: Vec<Constructor> },
         Record(RecordType),
     }
 
@@ -245,7 +248,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub enum Type {
-        Fun(Vec<Type>, Box<Type>),
+        Fun { params: Vec<Type>, ret: Box<Type> },
         App(Constructor),
         Var(Identifier),
         Record(RecordType),
@@ -254,7 +257,7 @@ pub mod types {
         pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
             use Type::*;
             match self {
-                Fun(params, ret) => {
+                Fun { params, ret } => {
                     for param in params {
                         param.fill_vars(vars);
                     }
@@ -357,17 +360,47 @@ pub enum ExpressionType {
     Bool(bool),
     Float(f64),
     String_(StringSymbol),
-    Identifier(Option<ModuleName>, AnyIdentifier),
-    PropAccess(Box<Expression>, Identifier),
-    PropAccessLambda(Identifier),
-    Record(Vec<(Identifier, Expression)>),
-    RecordUpdate(Box<Expression>, Vec<(Identifier, Expression)>),
-    Unary(Unary, Box<Expression>),
-    Binary(Box<Expression>, Binop, Box<[Expression; 2]>),
+    Identifier {
+        module: Option<ModuleName>,
+        identifier: AnyIdentifier,
+    },
+    PropertyAccess {
+        expression: Box<Expression>,
+        property: Identifier,
+    },
+    PropertyAccessLambda {
+        property: Identifier,
+    },
+    Record {
+        fields: Vec<(Identifier, Expression)>,
+    },
+    RecordUpdate {
+        record: Box<Expression>,
+        fields: Vec<(Identifier, Expression)>,
+    },
+    Unary {
+        op: Unary,
+        expression: Box<Expression>,
+    },
+    Binary {
+        expression: Box<Expression>,
+        op: Binop,
+        arguments: Box<[Expression; 2]>,
+    },
     Lambda(Lambda),
-    FnCall(Box<Expression>, Vec<Expression>),
-    Let(Vec<TypedDefinition>, Box<Expression>),
-    If(Box<Expression>, Box<Expression>, Box<Expression>),
+    FnCall {
+        function: Box<Expression>,
+        arguments: Vec<Expression>,
+    },
+    Let {
+        definitions: Vec<TypedDefinition>,
+        body: Box<Expression>,
+    },
+    If {
+        condition: Box<Expression>,
+        then: Box<Expression>,
+        else_: Box<Expression>,
+    },
 }
 
 #[derive(Debug, Clone)]

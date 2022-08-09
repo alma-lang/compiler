@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2379
+assertion_line: 2411
 expression: "parse(\".b\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: PropAccessLambda(
-            Node {
+        expr: PropertyAccessLambda {
+            property: Node {
                 start: Index(
                     1,
                 ),
@@ -34,6 +34,6 @@ Node {
                     },
                 },
             },
-        ),
+        },
     },
 }

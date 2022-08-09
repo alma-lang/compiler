@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2239
+assertion_line: 2271
 expression: "parse(\"if True then if False then 1 else 3 else 2\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: If(
-            Node {
+        expr: If {
+            condition: Node {
                 start: Index(
                     1,
                 ),
@@ -37,7 +37,7 @@ Node {
                     ),
                 },
             },
-            Node {
+            then: Node {
                 start: Index(
                     3,
                 ),
@@ -48,8 +48,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: If(
-                        Node {
+                    expr: If {
+                        condition: Node {
                             start: Index(
                                 4,
                             ),
@@ -65,7 +65,7 @@ Node {
                                 ),
                             },
                         },
-                        Node {
+                        then: Node {
                             start: Index(
                                 6,
                             ),
@@ -81,7 +81,7 @@ Node {
                                 ),
                             },
                         },
-                        Node {
+                        else_: Node {
                             start: Index(
                                 8,
                             ),
@@ -97,10 +97,10 @@ Node {
                                 ),
                             },
                         },
-                    ),
+                    },
                 },
             },
-            Node {
+            else_: Node {
                 start: Index(
                     10,
                 ),
@@ -116,6 +116,6 @@ Node {
                     ),
                 },
             },
-        ),
+        },
     },
 }

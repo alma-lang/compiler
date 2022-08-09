@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2208
+assertion_line: 2240
 expression: "parse(\"- 5\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: Unary(
-            Node {
+        expr: Unary {
+            op: Node {
                 start: Index(
                     0,
                 ),
@@ -30,7 +30,7 @@ Node {
                 ),
                 value: Minus,
             },
-            Node {
+            expression: Node {
                 start: Index(
                     1,
                 ),
@@ -46,6 +46,6 @@ Node {
                     ),
                 },
             },
-        ),
+        },
     },
 }

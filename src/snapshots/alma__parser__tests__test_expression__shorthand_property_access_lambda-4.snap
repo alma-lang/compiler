@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2382
+assertion_line: 2414
 expression: "parse(\".a b\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: FnCall(
-            Node {
+        expr: FnCall {
+            function: Node {
                 start: Index(
                     0,
                 ),
@@ -32,8 +32,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: PropAccessLambda(
-                        Node {
+                    expr: PropertyAccessLambda {
+                        property: Node {
                             start: Index(
                                 1,
                             ),
@@ -46,10 +46,10 @@ Node {
                                 },
                             },
                         },
-                    ),
+                    },
                 },
             },
-            [
+            arguments: [
                 Node {
                     start: Index(
                         2,
@@ -61,9 +61,9 @@ Node {
                         typ: RefCell {
                             value: None,
                         },
-                        expr: Identifier(
-                            None,
-                            Identifier(
+                        expr: Identifier {
+                            module: None,
+                            identifier: Identifier(
                                 Node {
                                     start: Index(
                                         2,
@@ -78,10 +78,10 @@ Node {
                                     },
                                 },
                             ),
-                        ),
+                        },
                     },
                 },
             ],
-        ),
+        },
     },
 }

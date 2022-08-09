@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2193
+assertion_line: 2225
 expression: "parse(\"fun\\n arg\")"
 ---
 Input:
@@ -21,8 +21,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: FnCall(
-            Node {
+        expr: FnCall {
+            function: Node {
                 start: Index(
                     0,
                 ),
@@ -33,9 +33,9 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: Identifier(
-                        None,
-                        Identifier(
+                    expr: Identifier {
+                        module: None,
+                        identifier: Identifier(
                             Node {
                                 start: Index(
                                     0,
@@ -50,10 +50,10 @@ Node {
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             },
-            [
+            arguments: [
                 Node {
                     start: Index(
                         1,
@@ -65,9 +65,9 @@ Node {
                         typ: RefCell {
                             value: None,
                         },
-                        expr: Identifier(
-                            None,
-                            Identifier(
+                        expr: Identifier {
+                            module: None,
+                            identifier: Identifier(
                                 Node {
                                     start: Index(
                                         1,
@@ -82,10 +82,10 @@ Node {
                                     },
                                 },
                             ),
-                        ),
+                        },
                     },
                 },
             ],
-        ),
+        },
     },
 }

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2983
+assertion_line: 3015
 expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = Fruit (a -> b -> c)\n\")"
 ---
 Input:
@@ -42,8 +42,8 @@ Result:
                 end: Index(
                     4,
                 ),
-                value: Type(
-                    Node {
+                value: Type {
+                    name: Node {
                         start: Index(
                             4,
                         ),
@@ -56,8 +56,8 @@ Result:
                             },
                         },
                     },
-                    [],
-                ),
+                    constructors: [],
+                },
             },
         ],
         imports: [],
@@ -112,8 +112,8 @@ Result:
                             },
                         },
                     ],
-                    typ: Union(
-                        [
+                    typ: Union {
+                        constructors: [
                             Node {
                                 start: Index(
                                     11,
@@ -136,8 +136,8 @@ Result:
                                         },
                                     },
                                     params: [
-                                        Fun(
-                                            [
+                                        Fun {
+                                            params: [
                                                 Var(
                                                     Node {
                                                         start: Index(
@@ -169,7 +169,7 @@ Result:
                                                     },
                                                 ),
                                             ],
-                                            Var(
+                                            ret: Var(
                                                 Node {
                                                     start: Index(
                                                         17,
@@ -184,12 +184,12 @@ Result:
                                                     },
                                                 },
                                             ),
-                                        ),
+                                        },
                                     ],
                                 },
                             },
                         ],
-                    ),
+                    },
                 },
             },
         ],

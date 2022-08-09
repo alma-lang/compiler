@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2374
+assertion_line: 2406
 expression: "parse(\"a.b.c.d\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: PropAccess(
-            Node {
+        expr: PropertyAccess {
+            expression: Node {
                 start: Index(
                     0,
                 ),
@@ -32,8 +32,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: PropAccess(
-                        Node {
+                    expr: PropertyAccess {
+                        expression: Node {
                             start: Index(
                                 0,
                             ),
@@ -44,8 +44,8 @@ Node {
                                 typ: RefCell {
                                     value: None,
                                 },
-                                expr: PropAccess(
-                                    Node {
+                                expr: PropertyAccess {
+                                    expression: Node {
                                         start: Index(
                                             0,
                                         ),
@@ -56,9 +56,9 @@ Node {
                                             typ: RefCell {
                                                 value: None,
                                             },
-                                            expr: Identifier(
-                                                None,
-                                                Identifier(
+                                            expr: Identifier {
+                                                module: None,
+                                                identifier: Identifier(
                                                     Node {
                                                         start: Index(
                                                             0,
@@ -73,10 +73,10 @@ Node {
                                                         },
                                                     },
                                                 ),
-                                            ),
+                                            },
                                         },
                                     },
-                                    Node {
+                                    property: Node {
                                         start: Index(
                                             2,
                                         ),
@@ -89,10 +89,10 @@ Node {
                                             },
                                         },
                                     },
-                                ),
+                                },
                             },
                         },
-                        Node {
+                        property: Node {
                             start: Index(
                                 4,
                             ),
@@ -105,10 +105,10 @@ Node {
                                 },
                             },
                         },
-                    ),
+                    },
                 },
             },
-            Node {
+            property: Node {
                 start: Index(
                     6,
                 ),
@@ -121,6 +121,6 @@ Node {
                     },
                 },
             },
-        ),
+        },
     },
 }

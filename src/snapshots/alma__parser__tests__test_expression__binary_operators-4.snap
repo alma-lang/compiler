@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2217
+assertion_line: 2249
 expression: "parse(\"1 == 2 / 3\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: Binary(
-            Node {
+        expr: Binary {
+            expression: Node {
                 start: Index(
                     1,
                 ),
@@ -32,9 +32,9 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: Identifier(
-                        None,
-                        Identifier(
+                    expr: Identifier {
+                        module: None,
+                        identifier: Identifier(
                             Node {
                                 start: Index(
                                     1,
@@ -49,10 +49,10 @@ Node {
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             },
-            Node {
+            op: Node {
                 start: Index(
                     1,
                 ),
@@ -65,7 +65,7 @@ Node {
                     associativity: Ltr,
                 },
             },
-            [
+            arguments: [
                 Node {
                     start: Index(
                         0,
@@ -93,8 +93,8 @@ Node {
                         typ: RefCell {
                             value: None,
                         },
-                        expr: Binary(
-                            Node {
+                        expr: Binary {
+                            expression: Node {
                                 start: Index(
                                     3,
                                 ),
@@ -105,9 +105,9 @@ Node {
                                     typ: RefCell {
                                         value: None,
                                     },
-                                    expr: Identifier(
-                                        None,
-                                        Identifier(
+                                    expr: Identifier {
+                                        module: None,
+                                        identifier: Identifier(
                                             Node {
                                                 start: Index(
                                                     3,
@@ -122,10 +122,10 @@ Node {
                                                 },
                                             },
                                         ),
-                                    ),
+                                    },
                                 },
                             },
-                            Node {
+                            op: Node {
                                 start: Index(
                                     3,
                                 ),
@@ -138,7 +138,7 @@ Node {
                                     associativity: Ltr,
                                 },
                             },
-                            [
+                            arguments: [
                                 Node {
                                     start: Index(
                                         2,
@@ -172,10 +172,10 @@ Node {
                                     },
                                 },
                             ],
-                        ),
+                        },
                     },
                 },
             ],
-        ),
+        },
     },
 }

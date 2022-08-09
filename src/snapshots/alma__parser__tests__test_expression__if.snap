@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2229
+assertion_line: 2261
 expression: "parse(\"if True then 1 else 2\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: If(
-            Node {
+        expr: If {
+            condition: Node {
                 start: Index(
                     1,
                 ),
@@ -37,7 +37,7 @@ Node {
                     ),
                 },
             },
-            Node {
+            then: Node {
                 start: Index(
                     3,
                 ),
@@ -53,7 +53,7 @@ Node {
                     ),
                 },
             },
-            Node {
+            else_: Node {
                 start: Index(
                     5,
                 ),
@@ -69,6 +69,6 @@ Node {
                     ),
                 },
             },
-        ),
+        },
     },
 }

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3025
+assertion_line: 3057
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit\nmain = Fruit\n\ntest = 5\n\")"
 ---
 Input:
@@ -141,9 +141,9 @@ Result:
                             typ: RefCell {
                                 value: None,
                             },
-                            expr: Identifier(
-                                None,
-                                CapitalizedIdentifier(
+                            expr: Identifier {
+                                module: None,
+                                identifier: CapitalizedIdentifier(
                                     Node {
                                         start: Index(
                                             11,
@@ -158,7 +158,7 @@ Result:
                                         },
                                     },
                                 ),
-                            ),
+                            },
                         },
                     },
                 ),

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2657
+assertion_line: 2689
 expression: "parse(\"\\\nmodule Test\n\nincr n = n + 1\n\")"
 ---
 Input:
@@ -89,8 +89,8 @@ Result:
                                 typ: RefCell {
                                     value: None,
                                 },
-                                expr: Binary(
-                                    Node {
+                                expr: Binary {
+                                    expression: Node {
                                         start: Index(
                                             6,
                                         ),
@@ -101,9 +101,9 @@ Result:
                                             typ: RefCell {
                                                 value: None,
                                             },
-                                            expr: Identifier(
-                                                None,
-                                                Identifier(
+                                            expr: Identifier {
+                                                module: None,
+                                                identifier: Identifier(
                                                     Node {
                                                         start: Index(
                                                             6,
@@ -118,10 +118,10 @@ Result:
                                                         },
                                                     },
                                                 ),
-                                            ),
+                                            },
                                         },
                                     },
-                                    Node {
+                                    op: Node {
                                         start: Index(
                                             6,
                                         ),
@@ -134,7 +134,7 @@ Result:
                                             associativity: Ltr,
                                         },
                                     },
-                                    [
+                                    arguments: [
                                         Node {
                                             start: Index(
                                                 5,
@@ -146,9 +146,9 @@ Result:
                                                 typ: RefCell {
                                                     value: None,
                                                 },
-                                                expr: Identifier(
-                                                    None,
-                                                    Identifier(
+                                                expr: Identifier {
+                                                    module: None,
+                                                    identifier: Identifier(
                                                         Node {
                                                             start: Index(
                                                                 5,
@@ -163,7 +163,7 @@ Result:
                                                             },
                                                         },
                                                     ),
-                                                ),
+                                                },
                                             },
                                         },
                                         Node {
@@ -183,7 +183,7 @@ Result:
                                             },
                                         },
                                     ],
-                                ),
+                                },
                             },
                         },
                     },

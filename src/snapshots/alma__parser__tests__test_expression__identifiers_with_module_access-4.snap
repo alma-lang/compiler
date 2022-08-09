@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2401
+assertion_line: 2433
 expression: "parse(\"A.b.c\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: PropAccess(
-            Node {
+        expr: PropertyAccess {
+            expression: Node {
                 start: Index(
                     0,
                 ),
@@ -32,8 +32,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: Identifier(
-                        Some(
+                    expr: Identifier {
+                        module: Some(
                             ModuleName {
                                 parts: [
                                     Node {
@@ -55,7 +55,7 @@ Node {
                                 },
                             },
                         ),
-                        Identifier(
+                        identifier: Identifier(
                             Node {
                                 start: Index(
                                     2,
@@ -70,10 +70,10 @@ Node {
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             },
-            Node {
+            property: Node {
                 start: Index(
                     4,
                 ),
@@ -86,6 +86,6 @@ Node {
                     },
                 },
             },
-        ),
+        },
     },
 }

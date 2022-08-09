@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2931
+assertion_line: 2963
 expression: "parse(\"\\\n-- Comment\nmodule Test\n    -- Comment\n    exposing (\n    -- Comment\n    main)\n\n-- Comment\nimport Test.Fruits exposing (Fruit(Banana))\n\n-- Comment\nmain =\n-- Comment\n    1\n\n-- Comment\nmodule Test.Fruits\n    -- Comment\n    exposing (Fruit(Banana))\n    -- Comment\n    type Fruit =\n        -- Comment\n        Banana\n\")"
 ---
 Input:
@@ -130,8 +130,8 @@ Result:
                             end: Index(
                                 19,
                             ),
-                            value: Type(
-                                Node {
+                            value: Type {
+                                name: Node {
                                     start: Index(
                                         16,
                                     ),
@@ -144,7 +144,7 @@ Result:
                                         },
                                     },
                                 },
-                                [
+                                constructors: [
                                     Node {
                                         start: Index(
                                             18,
@@ -159,7 +159,7 @@ Result:
                                         },
                                     },
                                 ],
-                            ),
+                            },
                         },
                     ],
                 },
@@ -255,8 +255,8 @@ Result:
                     end: Index(
                         37,
                     ),
-                    value: Type(
-                        Node {
+                    value: Type {
+                        name: Node {
                             start: Index(
                                 34,
                             ),
@@ -269,7 +269,7 @@ Result:
                                 },
                             },
                         },
-                        [
+                        constructors: [
                             Node {
                                 start: Index(
                                     36,
@@ -284,7 +284,7 @@ Result:
                                 },
                             },
                         ],
-                    ),
+                    },
                 },
             ],
             imports: [],
@@ -312,8 +312,8 @@ Result:
                             },
                         },
                         vars: [],
-                        typ: Union(
-                            [
+                        typ: Union {
+                            constructors: [
                                 Node {
                                     start: Index(
                                         44,
@@ -339,7 +339,7 @@ Result:
                                     },
                                 },
                             ],
-                        ),
+                        },
                     },
                 },
             ],

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2238
+assertion_line: 2270
 expression: "parse(\"if True then incr 1 else 2\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: If(
-            Node {
+        expr: If {
+            condition: Node {
                 start: Index(
                     1,
                 ),
@@ -37,7 +37,7 @@ Node {
                     ),
                 },
             },
-            Node {
+            then: Node {
                 start: Index(
                     3,
                 ),
@@ -48,8 +48,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: FnCall(
-                        Node {
+                    expr: FnCall {
+                        function: Node {
                             start: Index(
                                 3,
                             ),
@@ -60,9 +60,9 @@ Node {
                                 typ: RefCell {
                                     value: None,
                                 },
-                                expr: Identifier(
-                                    None,
-                                    Identifier(
+                                expr: Identifier {
+                                    module: None,
+                                    identifier: Identifier(
                                         Node {
                                             start: Index(
                                                 3,
@@ -77,10 +77,10 @@ Node {
                                             },
                                         },
                                     ),
-                                ),
+                                },
                             },
                         },
-                        [
+                        arguments: [
                             Node {
                                 start: Index(
                                     4,
@@ -98,10 +98,10 @@ Node {
                                 },
                             },
                         ],
-                    ),
+                    },
                 },
             },
-            Node {
+            else_: Node {
                 start: Index(
                     6,
                 ),
@@ -117,6 +117,6 @@ Node {
                     ),
                 },
             },
-        ),
+        },
     },
 }

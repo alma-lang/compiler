@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2224
+assertion_line: 2256
 expression: "parse(\"\\\\a b -> a\")"
 ---
 Input:
@@ -81,9 +81,9 @@ Node {
                         typ: RefCell {
                             value: None,
                         },
-                        expr: Identifier(
-                            None,
-                            Identifier(
+                        expr: Identifier {
+                            module: None,
+                            identifier: Identifier(
                                 Node {
                                     start: Index(
                                         4,
@@ -98,7 +98,7 @@ Node {
                                     },
                                 },
                             ),
-                        ),
+                        },
                     },
                 },
             },

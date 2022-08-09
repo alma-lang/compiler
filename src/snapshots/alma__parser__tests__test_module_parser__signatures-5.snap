@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3076
+assertion_line: 3108
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit a -> Fruit b -> Fruit c\n\nsignature : Fruit d -> Fruit e -> Fruit f\n\ntest = 5\n\")"
 ---
 Input:
@@ -80,8 +80,8 @@ Result:
                             },
                         },
                     },
-                    typ: Fun(
-                        [
+                    typ: Fun {
+                        params: [
                             App(
                                 Node {
                                     start: Index(
@@ -167,7 +167,7 @@ Result:
                                 },
                             ),
                         ],
-                        App(
+                        ret: App(
                             Node {
                                 start: Index(
                                     14,
@@ -209,7 +209,7 @@ Result:
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             ),
             TypeSignature(
@@ -227,8 +227,8 @@ Result:
                             },
                         },
                     },
-                    typ: Fun(
-                        [
+                    typ: Fun {
+                        params: [
                             App(
                                 Node {
                                     start: Index(
@@ -314,7 +314,7 @@ Result:
                                 },
                             ),
                         ],
-                        App(
+                        ret: App(
                             Node {
                                 start: Index(
                                     24,
@@ -356,7 +356,7 @@ Result:
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             ),
             Untyped(

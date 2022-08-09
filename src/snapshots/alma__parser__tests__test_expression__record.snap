@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2358
+assertion_line: 2390
 expression: "parse(\"{}\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: Record(
-            [],
-        ),
+        expr: Record {
+            fields: [],
+        },
     },
 }

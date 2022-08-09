@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2390
+assertion_line: 2422
 expression: "parse(\"{ if True then {} else {} | x = 1, y = 3 }\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: RecordUpdate(
-            Node {
+        expr: RecordUpdate {
+            record: Node {
                 start: Index(
                     1,
                 ),
@@ -32,8 +32,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: If(
-                        Node {
+                    expr: If {
+                        condition: Node {
                             start: Index(
                                 2,
                             ),
@@ -49,7 +49,7 @@ Node {
                                 ),
                             },
                         },
-                        Node {
+                        then: Node {
                             start: Index(
                                 4,
                             ),
@@ -60,12 +60,12 @@ Node {
                                 typ: RefCell {
                                     value: None,
                                 },
-                                expr: Record(
-                                    [],
-                                ),
+                                expr: Record {
+                                    fields: [],
+                                },
                             },
                         },
-                        Node {
+                        else_: Node {
                             start: Index(
                                 7,
                             ),
@@ -76,15 +76,15 @@ Node {
                                 typ: RefCell {
                                     value: None,
                                 },
-                                expr: Record(
-                                    [],
-                                ),
+                                expr: Record {
+                                    fields: [],
+                                },
                             },
                         },
-                    ),
+                    },
                 },
             },
-            [
+            fields: [
                 (
                     Node {
                         start: Index(
@@ -148,6 +148,6 @@ Node {
                     },
                 ),
             ],
-        ),
+        },
     },
 }

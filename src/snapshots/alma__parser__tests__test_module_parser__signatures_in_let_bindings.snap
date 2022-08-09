@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3091
+assertion_line: 3123
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain =\n    let\n        test : Fruit a -> Fruit b -> Fruit c\n\n        test2 : Fruit a -> Fruit b -> Fruit c\n        test2 a b = c\n\n        test3 a b = c\n\n    test\n\")"
 ---
 Input:
@@ -106,8 +106,8 @@ Result:
                             typ: RefCell {
                                 value: None,
                             },
-                            expr: Let(
-                                [
+                            expr: Let {
+                                definitions: [
                                     TypeSignature(
                                         TypeSignature {
                                             name: Node {
@@ -123,8 +123,8 @@ Result:
                                                     },
                                                 },
                                             },
-                                            typ: Fun(
-                                                [
+                                            typ: Fun {
+                                                params: [
                                                     App(
                                                         Node {
                                                             start: Index(
@@ -210,7 +210,7 @@ Result:
                                                         },
                                                     ),
                                                 ],
-                                                App(
+                                                ret: App(
                                                     Node {
                                                         start: Index(
                                                             17,
@@ -252,7 +252,7 @@ Result:
                                                         },
                                                     },
                                                 ),
-                                            ),
+                                            },
                                         },
                                     ),
                                     Typed(
@@ -270,8 +270,8 @@ Result:
                                                     },
                                                 },
                                             },
-                                            typ: Fun(
-                                                [
+                                            typ: Fun {
+                                                params: [
                                                     App(
                                                         Node {
                                                             start: Index(
@@ -357,7 +357,7 @@ Result:
                                                         },
                                                     ),
                                                 ],
-                                                App(
+                                                ret: App(
                                                     Node {
                                                         start: Index(
                                                             27,
@@ -399,7 +399,7 @@ Result:
                                                         },
                                                     },
                                                 ),
-                                            ),
+                                            },
                                         },
                                         Lambda(
                                             Node {
@@ -475,9 +475,9 @@ Result:
                                                         typ: RefCell {
                                                             value: None,
                                                         },
-                                                        expr: Identifier(
-                                                            None,
-                                                            Identifier(
+                                                        expr: Identifier {
+                                                            module: None,
+                                                            identifier: Identifier(
                                                                 Node {
                                                                     start: Index(
                                                                         33,
@@ -492,7 +492,7 @@ Result:
                                                                     },
                                                                 },
                                                             ),
-                                                        ),
+                                                        },
                                                     },
                                                 },
                                             },
@@ -573,9 +573,9 @@ Result:
                                                         typ: RefCell {
                                                             value: None,
                                                         },
-                                                        expr: Identifier(
-                                                            None,
-                                                            Identifier(
+                                                        expr: Identifier {
+                                                            module: None,
+                                                            identifier: Identifier(
                                                                 Node {
                                                                     start: Index(
                                                                         38,
@@ -590,14 +590,14 @@ Result:
                                                                     },
                                                                 },
                                                             ),
-                                                        ),
+                                                        },
                                                     },
                                                 },
                                             },
                                         ),
                                     ),
                                 ],
-                                Node {
+                                body: Node {
                                     start: Index(
                                         39,
                                     ),
@@ -608,9 +608,9 @@ Result:
                                         typ: RefCell {
                                             value: None,
                                         },
-                                        expr: Identifier(
-                                            None,
-                                            Identifier(
+                                        expr: Identifier {
+                                            module: None,
+                                            identifier: Identifier(
                                                 Node {
                                                     start: Index(
                                                         39,
@@ -625,10 +625,10 @@ Result:
                                                     },
                                                 },
                                             ),
-                                        ),
+                                        },
                                     },
                                 },
-                            ),
+                            },
                         },
                     },
                 ),

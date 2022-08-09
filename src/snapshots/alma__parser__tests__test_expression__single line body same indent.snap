@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2246
+assertion_line: 2278
 expression: "parse(\"\\\nlet x = 1\nx\")"
 ---
 Input:
@@ -21,8 +21,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: Let(
-            [
+        expr: Let {
+            definitions: [
                 Untyped(
                     Pattern(
                         Node {
@@ -67,7 +67,7 @@ Node {
                     ),
                 ),
             ],
-            Node {
+            body: Node {
                 start: Index(
                     4,
                 ),
@@ -78,9 +78,9 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: Identifier(
-                        None,
-                        Identifier(
+                    expr: Identifier {
+                        module: None,
+                        identifier: Identifier(
                             Node {
                                 start: Index(
                                     4,
@@ -95,9 +95,9 @@ Node {
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             },
-        ),
+        },
     },
 }

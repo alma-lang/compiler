@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2969
+assertion_line: 3001
 expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = { f : a -> b }\n\")"
 ---
 Input:
@@ -42,8 +42,8 @@ Result:
                 end: Index(
                     4,
                 ),
-                value: Type(
-                    Node {
+                value: Type {
+                    name: Node {
                         start: Index(
                             4,
                         ),
@@ -56,8 +56,8 @@ Result:
                             },
                         },
                     },
-                    [],
-                ),
+                    constructors: [],
+                },
             },
         ],
         imports: [],
@@ -137,8 +137,8 @@ Result:
                                                     },
                                                 },
                                             },
-                                            Fun(
-                                                [
+                                            Fun {
+                                                params: [
                                                     Var(
                                                         Node {
                                                             start: Index(
@@ -155,7 +155,7 @@ Result:
                                                         },
                                                     ),
                                                 ],
-                                                Var(
+                                                ret: Var(
                                                     Node {
                                                         start: Index(
                                                             16,
@@ -170,7 +170,7 @@ Result:
                                                         },
                                                     },
                                                 ),
-                                            ),
+                                            },
                                         ),
                                     ],
                                 },

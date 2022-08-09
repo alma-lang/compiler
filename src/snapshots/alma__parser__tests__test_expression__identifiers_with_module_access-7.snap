@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2404
+assertion_line: 2436
 expression: "parse(\"function record.access\")"
 ---
 Input:
@@ -20,8 +20,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: FnCall(
-            Node {
+        expr: FnCall {
+            function: Node {
                 start: Index(
                     0,
                 ),
@@ -32,9 +32,9 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: Identifier(
-                        None,
-                        Identifier(
+                    expr: Identifier {
+                        module: None,
+                        identifier: Identifier(
                             Node {
                                 start: Index(
                                     0,
@@ -49,10 +49,10 @@ Node {
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             },
-            [
+            arguments: [
                 Node {
                     start: Index(
                         1,
@@ -64,8 +64,8 @@ Node {
                         typ: RefCell {
                             value: None,
                         },
-                        expr: PropAccess(
-                            Node {
+                        expr: PropertyAccess {
+                            expression: Node {
                                 start: Index(
                                     1,
                                 ),
@@ -76,9 +76,9 @@ Node {
                                     typ: RefCell {
                                         value: None,
                                     },
-                                    expr: Identifier(
-                                        None,
-                                        Identifier(
+                                    expr: Identifier {
+                                        module: None,
+                                        identifier: Identifier(
                                             Node {
                                                 start: Index(
                                                     1,
@@ -93,10 +93,10 @@ Node {
                                                 },
                                             },
                                         ),
-                                    ),
+                                    },
                                 },
                             },
-                            Node {
+                            property: Node {
                                 start: Index(
                                     3,
                                 ),
@@ -109,10 +109,10 @@ Node {
                                     },
                                 },
                             },
-                        ),
+                        },
                     },
                 },
             ],
-        ),
+        },
     },
 }

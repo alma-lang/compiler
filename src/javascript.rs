@@ -127,7 +127,7 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
                     Export_::Identifier(identifier) => {
                         identifiers.push(identifier.value.to_string(strings));
                     }
-                    Export_::Type(_typ, constructors) => {
+                    Export_::Type { constructors, .. } => {
                         for constructor in constructors {
                             identifiers.push(constructor.value.to_string(strings));
                         }
@@ -150,7 +150,7 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
             code.push('\n')
         }
         match &type_def.typ {
-            types::TypeDefinitionType::Union(constructors) => {
+            types::TypeDefinitionType::Union { constructors } => {
                 let type_name = type_def.name.value.to_string(strings);
                 indented(code, indent, "");
                 writeln!(code, "// type {}\n", type_name).unwrap();
@@ -258,7 +258,7 @@ fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: 
                 indented(code, add_indent(indent), "");
                 writeln!(code, "{},", ident.value.to_string(strings)).unwrap();
             }
-            Export_::Type(_, constructors) => {
+            Export_::Type { constructors, .. } => {
                 for constructor in constructors {
                     indented(code, add_indent(indent), "");
                     writeln!(code, "{},", constructor.value.to_string(strings)).unwrap();
@@ -343,7 +343,7 @@ fn generate_expression(
             write!(code, "\"{escaped_string}\"").unwrap()
         }
 
-        ET::Identifier(module, identifier) => {
+        ET::Identifier { module, identifier } => {
             if let Some(module) = module {
                 module_full_name(code, module, strings);
                 code.push('.');
@@ -352,7 +352,7 @@ fn generate_expression(
             code.push_str(identifier.to_string(strings));
         }
 
-        ET::Record(fields) => {
+        ET::Record { fields } => {
             code.push_str("{\n");
 
             {
@@ -369,7 +369,7 @@ fn generate_expression(
             indented(code, indent, "}");
         }
 
-        ET::RecordUpdate(record, fields) => {
+        ET::RecordUpdate { record, fields } => {
             code.push_str("{\n");
 
             {
@@ -390,40 +390,44 @@ fn generate_expression(
             indented(code, indent, "}");
         }
 
-        ET::PropAccess(expr, field) => {
-            generate_expression(indent, code, expr, strings);
+        ET::PropertyAccess {
+            expression,
+            property,
+        } => {
+            generate_expression(indent, code, expression, strings);
             code.push('.');
-            code.push_str(field.value.to_string(strings));
+            code.push_str(property.value.to_string(strings));
         }
 
-        ET::PropAccessLambda(field) => {
-            let field = field.value.to_string(strings);
-            write!(code, "(r => r.{field})").unwrap()
+        ET::PropertyAccessLambda { property } => {
+            let property = property.value.to_string(strings);
+            write!(code, "(r => r.{property})").unwrap()
         }
 
-        ET::Unary(unary, expression) => {
-            code.push(match &unary.value {
+        ET::Unary { op, expression } => {
+            code.push(match &op.value {
                 U::Not => '!',
                 U::Minus => '-',
             });
             generate_expression(indent, code, expression, strings);
         }
 
-        ET::Binary(binop_expression, _binop, arg_expressions) => generate_fn_call(
-            indent,
-            code,
-            binop_expression,
-            arg_expressions.iter(),
-            strings,
-        ),
+        ET::Binary {
+            expression,
+            arguments,
+            ..
+        } => generate_fn_call(indent, code, expression, arguments.iter(), strings),
 
         ET::Lambda(lambda) => {
             generate_function(indent, code, "", lambda, strings);
         }
 
-        ET::FnCall(fun, params) => generate_fn_call(indent, code, fun, params.iter(), strings),
+        ET::FnCall {
+            function,
+            arguments,
+        } => generate_fn_call(indent, code, function, arguments.iter(), strings),
 
-        ET::Let(definitions, body) => {
+        ET::Let { definitions, body } => {
             code.push_str("function() {\n");
 
             {
@@ -438,7 +442,11 @@ fn generate_expression(
             indented(code, indent, "}()");
         }
 
-        ET::If(condition, then, else_) => {
+        ET::If {
+            condition,
+            then,
+            else_,
+        } => {
             code.push_str("function () {\n");
             {
                 let indent = add_indent(indent);

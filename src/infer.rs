@@ -1206,8 +1206,11 @@ pub fn infer<'state>(
                                 }),
                             };
                         }
-                        ast::Export_::Type(type_ast, constructors) => {
-                            let name = &type_ast.value.name;
+                        ast::Export_::Type {
+                            name: name_ast,
+                            constructors,
+                        } => {
+                            let name = &name_ast.value.name;
                             match imported.types.get(name) {
                                 Some(typ) => {
                                     types_env.insert(*name, state.generalize(&typ));
@@ -1227,7 +1230,7 @@ pub fn infer<'state>(
                                         };
                                     }
                                 }
-                                None => errors.push(Error::UnknownType(type_ast.to_owned())),
+                                None => errors.push(Error::UnknownType(name_ast.to_owned())),
                             }
                         }
                     }
@@ -1251,7 +1254,7 @@ pub fn infer<'state>(
         let name = type_def.value.name.value.name;
 
         match &type_def.value.typ {
-            ast::types::TypeDefinitionType::Union(constructors) => {
+            ast::types::TypeDefinitionType::Union { constructors } => {
                 let type_def_type = Rc::new(Type::Named {
                     module: module_ast.name.full_name,
                     name,
@@ -1338,8 +1341,11 @@ pub fn infer<'state>(
                     None => errors.push(Error::UndefinedExport(identifier.to_owned())),
                 }
             }
-            ast::Export_::Type(type_name, constructors) => {
-                let name = &type_name.value.name;
+            ast::Export_::Type {
+                name: name_ast,
+                constructors,
+            } => {
+                let name = &name_ast.value.name;
                 if let Some(typ) = types_env.get(name) {
                     module_types.insert(*name, Rc::clone(&typ.typ));
 
@@ -1356,7 +1362,7 @@ pub fn infer<'state>(
                     }
                     module_type_constructors.insert(*name, Rc::new(constructor_types));
                 } else {
-                    errors.push(Error::UnknownType(type_name.to_owned()));
+                    errors.push(Error::UnknownType(name_ast.to_owned()));
                 }
             }
         }
@@ -1383,7 +1389,7 @@ fn ast_type_to_type<'ast>(
     types_env: &PolyTypeEnv,
 ) -> Result<Rc<Type>, Error> {
     match ast_type {
-        ast::types::Type::Fun(params, ret) => {
+        ast::types::Type::Fun { params, ret } => {
             let mut params_types = vec![];
             for param in params {
                 params_types.push(ast_type_to_type(
@@ -1531,7 +1537,7 @@ fn infer_rec<'ast>(
 
         ET::String_(_) => Rc::clone(&types_env.get(&strings.get_or_intern("String")).unwrap().typ),
 
-        ET::Record(fields) => {
+        ET::Record { fields } => {
             let mut typed_fields = TypeEnv::new();
 
             for (name, value) in fields {
@@ -1551,7 +1557,7 @@ fn infer_rec<'ast>(
             })
         }
 
-        ET::RecordUpdate(record, fields) => {
+        ET::RecordUpdate { record, fields } => {
             let mut typed_fields = TypeEnv::new();
             for (name, value) in fields {
                 let t = infer_rec(value, state, env, types_env, strings, errors);
@@ -1581,26 +1587,32 @@ fn infer_rec<'ast>(
             inferred_type
         }
 
-        ET::PropAccess(expr, field) => {
+        ET::PropertyAccess {
+            expression,
+            property,
+        } => {
             let field_type = state.new_type_var();
             let remaining_fields_type = state.new_type_var();
             let record_type = Rc::new(RecordExt {
                 fields: {
                     let mut fields = TypeEnv::new();
-                    fields.insert(field.value.name, Rc::clone(&field_type));
+                    fields.insert(property.value.name, Rc::clone(&field_type));
                     fields
                 },
                 base_record: remaining_fields_type,
             });
 
-            let expr_type = infer_rec(expr, state, env, types_env, strings, errors);
+            let expr_type = infer_rec(expression, state, env, types_env, strings, errors);
 
-            add_error(unify(state, expr, &expr_type, None, &record_type), errors);
+            add_error(
+                unify(state, expression, &expr_type, None, &record_type),
+                errors,
+            );
 
             field_type
         }
 
-        ET::PropAccessLambda(field) => {
+        ET::PropertyAccessLambda { property } => {
             let field_type = state.new_type_var();
             let remaining_fields_type = state.new_type_var();
 
@@ -1608,7 +1620,7 @@ fn infer_rec<'ast>(
                 params: vec![Rc::new(RecordExt {
                     fields: {
                         let mut fields = TypeEnv::new();
-                        fields.insert(field.value.name, Rc::clone(&field_type));
+                        fields.insert(property.value.name, Rc::clone(&field_type));
                         fields
                     },
                     base_record: remaining_fields_type,
@@ -1617,21 +1629,21 @@ fn infer_rec<'ast>(
             })
         }
 
-        ET::Unary(op, e) => {
-            let t = infer_rec(e, state, env, types_env, strings, errors);
+        ET::Unary { op, expression } => {
+            let t = infer_rec(expression, state, env, types_env, strings, errors);
 
             add_error(
                 match op.value {
                     U::Not => unify(
                         state,
-                        e,
+                        expression,
                         &t,
                         None,
                         &types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
                     ),
                     U::Minus => unify(
                         state,
-                        e,
+                        expression,
                         &t,
                         None,
                         &types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
@@ -1643,11 +1655,15 @@ fn infer_rec<'ast>(
             t
         }
 
-        ET::Binary(fn_, _op, args) => {
+        ET::Binary {
+            expression: function,
+            arguments,
+            ..
+        } => {
             // Infer the binary op as a function call
             infer_fn_call(
-                fn_,
-                args.iter(),
+                function,
+                arguments.iter(),
                 ast,
                 state,
                 env,
@@ -1672,7 +1688,11 @@ fn infer_rec<'ast>(
          *
          * The final type is any of t1 or t2
          */
-        ET::If(condition, then, else_) => {
+        ET::If {
+            condition,
+            then,
+            else_,
+        } => {
             let t = infer_rec(condition, state, env, types_env, strings, errors);
             add_error(
                 unify(
@@ -1699,19 +1719,19 @@ fn infer_rec<'ast>(
          *
          *     t = inst s
          */
-        ET::Identifier(module, x) => {
+        ET::Identifier { module, identifier } => {
             let name = if let Some(module) = module {
                 // TODO: Check the module if it was imported, would make for a better error message
                 // TODO: This should be pre-computed in the identifier to avoid doing this with
                 // each node in the AST.
                 let full_name = {
                     let module = strings.resolve(module.full_name);
-                    let name = strings.resolve(x.name());
+                    let name = strings.resolve(identifier.name());
                     format!("{module}.{name}")
                 };
                 strings.get_or_intern(full_name)
             } else {
-                x.name()
+                identifier.name()
             };
 
             match env.get(&name) {
@@ -1743,9 +1763,19 @@ fn infer_rec<'ast>(
          *     t' = new_var ()
          *     unify t0 (targs -> t')
          */
-        ET::FnCall(f, args) => {
-            infer_fn_call(f, args.iter(), ast, state, env, types_env, strings, errors)
-        }
+        ET::FnCall {
+            function,
+            arguments,
+        } => infer_fn_call(
+            function,
+            arguments.iter(),
+            ast,
+            state,
+            env,
+            types_env,
+            strings,
+            errors,
+        ),
 
         /* Lambda
          *
@@ -1790,12 +1820,19 @@ fn infer_rec<'ast>(
          * They're required so we don't generalize types that escape into
          * the environment.
          */
-        ET::Let(bindings, e) => {
+        ET::Let { definitions, body } => {
             let mut new_env = env.clone();
 
-            infer_definitions(bindings, state, &mut new_env, &types_env, strings, errors);
+            infer_definitions(
+                definitions,
+                state,
+                &mut new_env,
+                &types_env,
+                strings,
+                errors,
+            );
 
-            infer_rec(e, state, &mut new_env, types_env, strings, errors)
+            infer_rec(body, state, &mut new_env, types_env, strings, errors)
         }
     };
 

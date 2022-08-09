@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3050
+assertion_line: 3082
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit -> Fruit\n\")"
 ---
 Input:
@@ -76,8 +76,8 @@ Result:
                             },
                         },
                     },
-                    typ: Fun(
-                        [
+                    typ: Fun {
+                        params: [
                             App(
                                 Node {
                                     start: Index(
@@ -105,7 +105,7 @@ Result:
                                 },
                             ),
                         ],
-                        App(
+                        ret: App(
                             Node {
                                 start: Index(
                                     10,
@@ -131,7 +131,7 @@ Result:
                                 },
                             },
                         ),
-                    ),
+                    },
                 },
             ),
         ],

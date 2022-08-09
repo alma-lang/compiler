@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2341
+assertion_line: 2373
 expression: "parse(\"\\\nlet\n  incr n = n + 1\nin\nincr 5\n\")"
 ---
 Input:
@@ -24,8 +24,8 @@ Node {
         typ: RefCell {
             value: None,
         },
-        expr: Let(
-            [
+        expr: Let {
+            definitions: [
                 Untyped(
                     Lambda(
                         Node {
@@ -78,8 +78,8 @@ Node {
                                     typ: RefCell {
                                         value: None,
                                     },
-                                    expr: Binary(
-                                        Node {
+                                    expr: Binary {
+                                        expression: Node {
                                             start: Index(
                                                 5,
                                             ),
@@ -90,9 +90,9 @@ Node {
                                                 typ: RefCell {
                                                     value: None,
                                                 },
-                                                expr: Identifier(
-                                                    None,
-                                                    Identifier(
+                                                expr: Identifier {
+                                                    module: None,
+                                                    identifier: Identifier(
                                                         Node {
                                                             start: Index(
                                                                 5,
@@ -107,10 +107,10 @@ Node {
                                                             },
                                                         },
                                                     ),
-                                                ),
+                                                },
                                             },
                                         },
-                                        Node {
+                                        op: Node {
                                             start: Index(
                                                 5,
                                             ),
@@ -123,7 +123,7 @@ Node {
                                                 associativity: Ltr,
                                             },
                                         },
-                                        [
+                                        arguments: [
                                             Node {
                                                 start: Index(
                                                     4,
@@ -135,9 +135,9 @@ Node {
                                                     typ: RefCell {
                                                         value: None,
                                                     },
-                                                    expr: Identifier(
-                                                        None,
-                                                        Identifier(
+                                                    expr: Identifier {
+                                                        module: None,
+                                                        identifier: Identifier(
                                                             Node {
                                                                 start: Index(
                                                                     4,
@@ -152,7 +152,7 @@ Node {
                                                                 },
                                                             },
                                                         ),
-                                                    ),
+                                                    },
                                                 },
                                             },
                                             Node {
@@ -172,14 +172,14 @@ Node {
                                                 },
                                             },
                                         ],
-                                    ),
+                                    },
                                 },
                             },
                         },
                     ),
                 ),
             ],
-            Node {
+            body: Node {
                 start: Index(
                     8,
                 ),
@@ -190,8 +190,8 @@ Node {
                     typ: RefCell {
                         value: None,
                     },
-                    expr: FnCall(
-                        Node {
+                    expr: FnCall {
+                        function: Node {
                             start: Index(
                                 8,
                             ),
@@ -202,9 +202,9 @@ Node {
                                 typ: RefCell {
                                     value: None,
                                 },
-                                expr: Identifier(
-                                    None,
-                                    Identifier(
+                                expr: Identifier {
+                                    module: None,
+                                    identifier: Identifier(
                                         Node {
                                             start: Index(
                                                 8,
@@ -219,10 +219,10 @@ Node {
                                             },
                                         },
                                     ),
-                                ),
+                                },
                             },
                         },
-                        [
+                        arguments: [
                             Node {
                                 start: Index(
                                     9,
@@ -240,9 +240,9 @@ Node {
                                 },
                             },
                         ],
-                    ),
+                    },
                 },
             },
-        ),
+        },
     },
 }

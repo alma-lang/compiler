@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2736
+assertion_line: 2768
 expression: "parse(\"\nmodule Test\n\ntype Fruit = Banana a\n\")"
 ---
 Input:
@@ -61,8 +61,8 @@ Result:
                         },
                     },
                     vars: [],
-                    typ: Union(
-                        [
+                    typ: Union {
+                        constructors: [
                             Node {
                                 start: Index(
                                     5,
@@ -104,7 +104,7 @@ Result:
                                 },
                             },
                         ],
-                    ),
+                    },
                 },
             },
         ],
