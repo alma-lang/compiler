@@ -1,30 +1,28 @@
-use crate::index::Index;
+use crate::index;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token;
 use crate::typ;
+use expression::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
 use typed_index_collections::TiVec;
 
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub struct Span {
-    pub start: token::Index,
-    pub end: token::Index,
-}
+pub mod span {
+    use super::*;
 
-impl Span {
-    pub fn new(first_token: token::Index, last_token: token::Index) -> Self {
-        Self {
-            start: first_token,
-            end: last_token,
-        }
+    #[derive(PartialEq, Debug, Copy, Clone)]
+    pub struct Span {
+        pub start: token::Index,
+        pub end: token::Index,
     }
-}
 
-pub type Spans = TiVec<Index<Span>, Span>;
+    pub type Index = index::Index<Span>;
+
+    pub type Spans = TiVec<Index, Span>;
+}
 
 // Repl
 
@@ -110,7 +108,7 @@ impl ModuleName {
         true
     }
 
-    pub fn last_span(&self) -> Index<Span> {
+    pub fn last_span(&self) -> span::Index {
         self.parts
             .last()
             .expect("Module names should never be empty")
@@ -143,7 +141,7 @@ impl Module {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Import {
-    pub span: Index<Span>,
+    pub span: span::Index,
     pub module_name: ModuleName,
     pub alias: Option<CapitalizedIdentifier>,
     pub exposing: Vec<Export>,
@@ -151,7 +149,7 @@ pub struct Import {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Export {
-    pub span: Index<Span>,
+    pub span: span::Index,
     pub typ: ExportType,
 }
 #[derive(Debug, PartialEq, Clone)]
@@ -206,7 +204,7 @@ pub mod types {
 
     #[derive(Debug)]
     pub struct TypeDefinition {
-        pub span: Index<Span>,
+        pub span: span::Index,
         pub name: CapitalizedIdentifier,
         pub vars: Vec<Identifier>,
         pub typ: TypeDefinitionType,
@@ -220,7 +218,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub struct Constructor {
-        pub span: Index<Span>,
+        pub span: span::Index,
         pub name: CapitalizedIdentifier,
         pub params: Vec<Type>,
     }
@@ -275,7 +273,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub struct Record {
-        pub span: Index<Span>,
+        pub span: span::Index,
         pub fields: Vec<(Identifier, Type)>,
     }
     impl Record {
@@ -288,7 +286,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub struct RecordExt {
-        pub span: Index<Span>,
+        pub span: span::Index,
         pub extension: Identifier,
         pub fields: Vec<(Identifier, Type)>,
     }
@@ -304,303 +302,307 @@ pub mod types {
 
 // Expressions
 
-pub type Expressions = TiVec<Index<Expression>, Expression>;
+pub mod expression {
+    use super::*;
+    use crate::index;
 
-#[derive(Debug, Clone)]
-pub struct Expression {
-    pub span: Index<Span>,
-    pub typ: RefCell<Option<Rc<typ::Type>>>,
-    pub expr: ExpressionType,
-}
+    pub type Index = index::Index<Expression>;
+    pub type Expressions = TiVec<Index, Expression>;
 
-impl Expression {
-    pub fn untyped(expr: ExpressionType, span: Index<Span>) -> Self {
-        Self {
-            typ: RefCell::new(None),
-            expr,
-            span,
-        }
+    #[derive(Debug, Clone)]
+    pub struct Expression {
+        pub span: span::Index,
+        pub typ: RefCell<Option<Rc<typ::Type>>>,
+        pub expr: ExpressionType,
     }
 
-    pub fn set_type(&self, typ: Rc<typ::Type>) {
-        *self.typ.borrow_mut() = Some(typ);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ExpressionType {
-    Unit,
-    Bool(bool),
-    Float(f64),
-    String_(StringSymbol),
-    Identifier {
-        module: Option<ModuleName>,
-        identifier: AnyIdentifier,
-    },
-    PropertyAccess {
-        expression: Box<Expression>,
-        property: Identifier,
-    },
-    PropertyAccessLambda {
-        property: Identifier,
-    },
-    Record {
-        fields: Vec<(Identifier, Expression)>,
-    },
-    RecordUpdate {
-        record: Box<Expression>,
-        fields: Vec<(Identifier, Expression)>,
-    },
-    Unary {
-        op: Unary,
-        expression: Box<Expression>,
-    },
-    Binary {
-        expression: Box<Expression>,
-        op: Binop,
-        arguments: Box<[Expression; 2]>,
-    },
-    Lambda(Lambda),
-    FnCall {
-        function: Box<Expression>,
-        arguments: Vec<Expression>,
-    },
-    Let {
-        definitions: Vec<TypedDefinition>,
-        body: Box<Expression>,
-    },
-    If {
-        condition: Box<Expression>,
-        then: Box<Expression>,
-        else_: Box<Expression>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct Lambda {
-    pub parameters: Vec<Pattern>,
-    pub body: Box<Expression>,
-}
-
-// Operators
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Unary {
-    pub span: Index<Span>,
-    pub typ: UnaryType,
-}
-#[derive(PartialEq, Debug, Clone)]
-pub enum UnaryType {
-    Not,
-    Minus,
-}
-
-pub mod binop {
-    use crate::strings::Strings;
-
-    use super::{Identifier, Span};
-    use crate::index::Index;
-
-    #[derive(PartialEq, Debug, Clone)]
-    pub enum Type {
-        Or,
-        And,
-        Equal,
-        NotEqual,
-        GreaterThan,
-        GreaterEqualThan,
-        LessThan,
-        LessEqualThan,
-        Addition,
-        Substraction,
-        Multiplication,
-        Division,
-    }
-
-    #[derive(PartialEq, Debug, Clone)]
-    pub enum Associativity {
-        Ltr,
-        // RTL,
-    }
-
-    #[derive(PartialEq, Debug, Clone)]
-    pub struct Binop {
-        typ: Type,
-        pub precedence: u32,
-        pub associativity: Associativity,
-    }
-
-    impl Binop {
-        pub fn get_function_identifier(
-            &self,
-            strings: &mut Strings,
-            span: Index<Span>,
-        ) -> Identifier {
-            let name_sym = strings.get_or_intern(match self.typ {
-                Or => "__op__or",
-                And => "__op__and",
-                Equal => "__op__eq",
-                NotEqual => "__op__ne",
-                GreaterThan => "__op__gt",
-                GreaterEqualThan => "__op__ge",
-                LessThan => "__op__lt",
-                LessEqualThan => "__op__le",
-                Addition => "__op__add",
-                Substraction => "__op__sub",
-                Multiplication => "__op__mult",
-                Division => "__op__div",
-            });
-            Identifier {
-                name: name_sym,
+    impl Expression {
+        pub fn untyped(expr: ExpressionType, span: span::Index) -> Self {
+            Self {
+                typ: RefCell::new(None),
+                expr,
                 span,
             }
         }
-    }
 
-    use Associativity::*;
-    use Type::*;
-
-    pub const OR: Binop = Binop {
-        typ: Or,
-        precedence: 6,
-        associativity: Ltr,
-    };
-
-    pub const AND: Binop = Binop {
-        typ: And,
-        precedence: 7,
-        associativity: Ltr,
-    };
-
-    pub const EQUAL: Binop = Binop {
-        typ: Equal,
-        precedence: 11,
-        associativity: Ltr,
-    };
-
-    pub const NOT_EQUAL: Binop = Binop {
-        typ: NotEqual,
-        precedence: 11,
-        associativity: Ltr,
-    };
-
-    pub const GREATER_THAN: Binop = Binop {
-        typ: GreaterThan,
-        precedence: 12,
-        associativity: Ltr,
-    };
-
-    pub const GREATER_EQUAL_THAN: Binop = Binop {
-        typ: GreaterEqualThan,
-        precedence: 12,
-        associativity: Ltr,
-    };
-
-    pub const LESS_THAN: Binop = Binop {
-        typ: LessThan,
-        precedence: 12,
-        associativity: Ltr,
-    };
-
-    pub const LESS_EQUAL_THAN: Binop = Binop {
-        typ: LessEqualThan,
-        precedence: 12,
-        associativity: Ltr,
-    };
-
-    pub const ADDITION: Binop = Binop {
-        typ: Addition,
-        precedence: 14,
-        associativity: Ltr,
-    };
-
-    pub const SUBSTRACTION: Binop = Binop {
-        typ: Substraction,
-        precedence: 14,
-        associativity: Ltr,
-    };
-
-    pub const MULTIPLICATION: Binop = Binop {
-        typ: Multiplication,
-        precedence: 15,
-        associativity: Ltr,
-    };
-
-    pub const DIVISION: Binop = Binop {
-        typ: Division,
-        precedence: 15,
-        associativity: Ltr,
-    };
-}
-use binop::Binop;
-
-// Patterns
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Pattern {
-    pub span: Index<Span>,
-    pub typ: PatternType,
-}
-#[derive(PartialEq, Debug, Clone)]
-pub enum PatternType {
-    Hole,
-    Identifier(Identifier),
-}
-
-// Identifiers
-
-type IdentifierName = StringSymbol;
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct CapitalizedIdentifier {
-    pub name: IdentifierName,
-    pub span: Index<Span>,
-}
-impl CapitalizedIdentifier {
-    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
-        strings.resolve(self.name)
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Identifier {
-    pub name: IdentifierName,
-    pub span: Index<Span>,
-}
-
-impl Identifier {
-    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
-        strings.resolve(self.name)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum AnyIdentifier {
-    Identifier(Identifier),
-    CapitalizedIdentifier(CapitalizedIdentifier),
-}
-impl AnyIdentifier {
-    pub fn name(&self) -> IdentifierName {
-        use AnyIdentifier::*;
-        match self {
-            Identifier(i) => i.name,
-            CapitalizedIdentifier(i) => i.name,
+        pub fn set_type(&self, typ: Rc<typ::Type>) {
+            *self.typ.borrow_mut() = Some(typ);
         }
     }
 
-    pub fn span(&self) -> Index<Span> {
-        use AnyIdentifier::*;
-        match self {
-            Identifier(i) => i.span,
-            CapitalizedIdentifier(i) => i.span,
+    #[derive(Debug, Clone)]
+    pub enum ExpressionType {
+        Unit,
+        Bool(bool),
+        Float(f64),
+        String_(StringSymbol),
+        Identifier {
+            module: Option<ModuleName>,
+            identifier: AnyIdentifier,
+        },
+        PropertyAccess {
+            expression: Box<Expression>,
+            property: Identifier,
+        },
+        PropertyAccessLambda {
+            property: Identifier,
+        },
+        Record {
+            fields: Vec<(Identifier, Expression)>,
+        },
+        RecordUpdate {
+            record: Box<Expression>,
+            fields: Vec<(Identifier, Expression)>,
+        },
+        Unary {
+            op: Unary,
+            expression: Box<Expression>,
+        },
+        Binary {
+            expression: Box<Expression>,
+            op: Binop,
+            arguments: Box<[Expression; 2]>,
+        },
+        Lambda(Lambda),
+        FnCall {
+            function: Box<Expression>,
+            arguments: Vec<Expression>,
+        },
+        Let {
+            definitions: Vec<TypedDefinition>,
+            body: Box<Expression>,
+        },
+        If {
+            condition: Box<Expression>,
+            then: Box<Expression>,
+            else_: Box<Expression>,
+        },
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Lambda {
+        pub parameters: Vec<Pattern>,
+        pub body: Box<Expression>,
+    }
+
+    // Operators
+
+    #[derive(PartialEq, Debug, Clone)]
+    pub struct Unary {
+        pub span: span::Index,
+        pub typ: UnaryType,
+    }
+    #[derive(PartialEq, Debug, Clone)]
+    pub enum UnaryType {
+        Not,
+        Minus,
+    }
+
+    pub mod binop {
+        use super::{span, Identifier};
+        use crate::strings::Strings;
+
+        #[derive(PartialEq, Debug, Clone)]
+        pub enum Type {
+            Or,
+            And,
+            Equal,
+            NotEqual,
+            GreaterThan,
+            GreaterEqualThan,
+            LessThan,
+            LessEqualThan,
+            Addition,
+            Substraction,
+            Multiplication,
+            Division,
+        }
+
+        #[derive(PartialEq, Debug, Clone)]
+        pub enum Associativity {
+            Ltr,
+            // RTL,
+        }
+
+        #[derive(PartialEq, Debug, Clone)]
+        pub struct Binop {
+            typ: Type,
+            pub precedence: u32,
+            pub associativity: Associativity,
+        }
+
+        impl Binop {
+            pub fn get_function_identifier(
+                &self,
+                strings: &mut Strings,
+                span: span::Index,
+            ) -> Identifier {
+                let name_sym = strings.get_or_intern(match self.typ {
+                    Or => "__op__or",
+                    And => "__op__and",
+                    Equal => "__op__eq",
+                    NotEqual => "__op__ne",
+                    GreaterThan => "__op__gt",
+                    GreaterEqualThan => "__op__ge",
+                    LessThan => "__op__lt",
+                    LessEqualThan => "__op__le",
+                    Addition => "__op__add",
+                    Substraction => "__op__sub",
+                    Multiplication => "__op__mult",
+                    Division => "__op__div",
+                });
+                Identifier {
+                    name: name_sym,
+                    span,
+                }
+            }
+        }
+
+        use Associativity::*;
+        use Type::*;
+
+        pub const OR: Binop = Binop {
+            typ: Or,
+            precedence: 6,
+            associativity: Ltr,
+        };
+
+        pub const AND: Binop = Binop {
+            typ: And,
+            precedence: 7,
+            associativity: Ltr,
+        };
+
+        pub const EQUAL: Binop = Binop {
+            typ: Equal,
+            precedence: 11,
+            associativity: Ltr,
+        };
+
+        pub const NOT_EQUAL: Binop = Binop {
+            typ: NotEqual,
+            precedence: 11,
+            associativity: Ltr,
+        };
+
+        pub const GREATER_THAN: Binop = Binop {
+            typ: GreaterThan,
+            precedence: 12,
+            associativity: Ltr,
+        };
+
+        pub const GREATER_EQUAL_THAN: Binop = Binop {
+            typ: GreaterEqualThan,
+            precedence: 12,
+            associativity: Ltr,
+        };
+
+        pub const LESS_THAN: Binop = Binop {
+            typ: LessThan,
+            precedence: 12,
+            associativity: Ltr,
+        };
+
+        pub const LESS_EQUAL_THAN: Binop = Binop {
+            typ: LessEqualThan,
+            precedence: 12,
+            associativity: Ltr,
+        };
+
+        pub const ADDITION: Binop = Binop {
+            typ: Addition,
+            precedence: 14,
+            associativity: Ltr,
+        };
+
+        pub const SUBSTRACTION: Binop = Binop {
+            typ: Substraction,
+            precedence: 14,
+            associativity: Ltr,
+        };
+
+        pub const MULTIPLICATION: Binop = Binop {
+            typ: Multiplication,
+            precedence: 15,
+            associativity: Ltr,
+        };
+
+        pub const DIVISION: Binop = Binop {
+            typ: Division,
+            precedence: 15,
+            associativity: Ltr,
+        };
+    }
+    use binop::Binop;
+
+    // Patterns
+
+    #[derive(PartialEq, Debug, Clone)]
+    pub struct Pattern {
+        pub span: span::Index,
+        pub typ: PatternType,
+    }
+    #[derive(PartialEq, Debug, Clone)]
+    pub enum PatternType {
+        Hole,
+        Identifier(Identifier),
+    }
+
+    // Identifiers
+
+    type IdentifierName = StringSymbol;
+
+    #[derive(PartialEq, Debug, Clone)]
+    pub struct CapitalizedIdentifier {
+        pub name: IdentifierName,
+        pub span: span::Index,
+    }
+    impl CapitalizedIdentifier {
+        pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+            strings.resolve(self.name)
         }
     }
 
-    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
-        use AnyIdentifier::*;
-        match self {
-            Identifier(i) => i.to_string(strings),
-            CapitalizedIdentifier(i) => i.to_string(strings),
+    #[derive(PartialEq, Debug, Clone)]
+    pub struct Identifier {
+        pub name: IdentifierName,
+        pub span: span::Index,
+    }
+
+    impl Identifier {
+        pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+            strings.resolve(self.name)
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum AnyIdentifier {
+        Identifier(Identifier),
+        CapitalizedIdentifier(CapitalizedIdentifier),
+    }
+    impl AnyIdentifier {
+        pub fn name(&self) -> IdentifierName {
+            use AnyIdentifier::*;
+            match self {
+                Identifier(i) => i.name,
+                CapitalizedIdentifier(i) => i.name,
+            }
+        }
+
+        pub fn span(&self) -> span::Index {
+            use AnyIdentifier::*;
+            match self {
+                Identifier(i) => i.span,
+                CapitalizedIdentifier(i) => i.span,
+            }
+        }
+
+        pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+            use AnyIdentifier::*;
+            match self {
+                Identifier(i) => i.to_string(strings),
+                CapitalizedIdentifier(i) => i.to_string(strings),
+            }
         }
     }
 }

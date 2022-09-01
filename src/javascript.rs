@@ -3,9 +3,11 @@ use crate::compiler::types::ModuleInterface;
 use crate::strings::Strings;
 use crate::{
     ast::{
+        expression::{
+            Expression, ExpressionType as ET, Lambda, Pattern, PatternType as P, UnaryType as U,
+        },
         types::{self, TypeDefinition},
-        Definition, ExportType, Expression, ExpressionType as ET, Lambda, Module, ModuleName,
-        Pattern, PatternType as P, TypedDefinition, UnaryType as U,
+        Definition, ExportType, Module, ModuleName, TypedDefinition,
     },
     compiler,
 };

@@ -1,5 +1,5 @@
 use super::types::ModuleInterface;
-use crate::ast::{self, Expressions, ModuleFullName, Spans};
+use crate::ast::{self, expression::Expressions, span::Spans, ModuleFullName};
 use crate::source::{self, Source, Sources, SourcesData};
 use crate::strings::Strings;
 use crate::token::Tokens;

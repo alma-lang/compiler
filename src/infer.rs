@@ -1,6 +1,11 @@
 use crate::ast::{
-    self, CapitalizedIdentifier, Definition, Expression, ExpressionType as ET, Identifier, Import,
-    Lambda, PatternType as P, Span, Spans, TypeSignature, TypedDefinition, UnaryType as U,
+    self,
+    expression::{
+        CapitalizedIdentifier, Expression, ExpressionType as ET, Identifier, Lambda, Pattern,
+        PatternType as P, UnaryType as U,
+    },
+    span::{Span, Spans},
+    Definition, Import, TypeSignature, TypedDefinition,
 };
 use crate::compiler;
 use crate::compiler::state::ModuleIndex;
@@ -1981,7 +1986,7 @@ fn infer_lambda<'ast>(
     strings: &mut Strings,
     errors: &mut Vec<Error>,
 ) -> Rc<Type> {
-    let params_with_type: Vec<(&ast::Pattern, Rc<PolyType>)> = lambda
+    let params_with_type: Vec<(&Pattern, Rc<PolyType>)> = lambda
         .parameters
         .iter()
         .map(|p| {
@@ -2087,7 +2092,7 @@ mod tests {
 
     mod test_infer_expression {
         use super::*;
-        use crate::ast::Expressions;
+        use crate::ast::expression::Expressions;
         use insta::assert_snapshot;
 
         #[test]

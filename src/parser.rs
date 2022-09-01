@@ -1,3 +1,6 @@
+use crate::ast::expression::{binop, AnyIdentifier, Expressions, PatternType, Unary};
+use crate::ast::span::Spans;
+use crate::ast::{Definition, Export, ExportType, TypeSignature, TypedDefinition};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
@@ -6,12 +9,15 @@ use crate::token::{
 };
 use crate::{
     ast::{
-        binop::*,
+        expression::{
+            binop::*,
+            CapitalizedIdentifier, Expression, Expression as E, ExpressionType as ET, Identifier,
+            Lambda, Pattern,
+            UnaryType::{Minus, Not},
+        },
+        span::{self, Span},
         types::{self, Type, TypeDefinition},
-        CapitalizedIdentifier, Expression, Expression as E, ExpressionType as ET, Identifier,
-        Import, Lambda, Module, Pattern, Span,
-        UnaryType::{Minus, Not},
-        *,
+        Import, Module, ModuleName, ReplEntry,
     },
     index::Index,
 };
@@ -1278,7 +1284,7 @@ impl<'a> State<'a> {
             Ok(None)
         }
     }
-    fn binary_step(&mut self) -> ParseResult<Option<(Index<Span>, Binop, Expression)>> {
+    fn binary_step(&mut self) -> ParseResult<Option<(span::Index, Binop, Expression)>> {
         let (token_index, token) = self.get_token();
 
         let op = match token.kind {
@@ -2033,7 +2039,7 @@ impl<'a> State<'a> {
     fn organize_binops(
         &mut self,
         left: Expression,
-        binops: &mut Vec<Option<(Index<Span>, Binop, Expression)>>,
+        binops: &mut Vec<Option<(span::Index, Binop, Expression)>>,
         current: &mut usize,
         min_precedence: u32,
     ) -> Expression {
