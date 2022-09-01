@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2647
+assertion_line: 2675
 expression: "parse(\"\\\nmodule Test\n\nimport Banana exposing (phone)\")"
 ---
 Input:
@@ -74,3 +74,48 @@ Result:
     },
     [],
 )
+
+{}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+}

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2653
+assertion_line: 2681
 expression: "parse(\"\\\nmodule Test\n\nimport Banana as B\n\nimport Phone exposing (raffi)\n\nimport Apple as A exposing (orange)\n\")"
 ---
 Input:
@@ -157,3 +157,118 @@ Result:
     },
     [],
 )
+
+{}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            10,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            13,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            15,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            18,
+        ),
+        end: Index(
+            18,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            19,
+        ),
+    },
+}

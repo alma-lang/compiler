@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2591
+assertion_line: 2619
 expression: "parse(\"\\\nmodule Test exposing (a)\n\na = 1\n\nb = True\")"
 ---
 Input:
@@ -66,17 +66,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            4,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
+                    Index(
+                        0,
+                    ),
                 ),
             ),
             Untyped(
@@ -96,17 +88,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            7,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Bool(
-                            true,
-                        ),
-                    },
+                    Index(
+                        1,
+                    ),
                 ),
             ),
         ],
@@ -114,3 +98,115 @@ Result:
     },
     [],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            4,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            7,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Bool(
+            true,
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+}

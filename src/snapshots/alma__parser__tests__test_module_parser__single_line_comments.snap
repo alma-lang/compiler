@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2976
+assertion_line: 3004
 expression: "parse(\"\\\n-- Comment\nmodule Test\n    -- Comment\n    exposing (\n    -- Comment\n    main)\n\n-- Comment\nimport Test.Fruits exposing (Fruit(Banana))\n\n-- Comment\nmain =\n-- Comment\n    1\n\n-- Comment\nmodule Test.Fruits\n    -- Comment\n    exposing (Fruit(Banana))\n    -- Comment\n    type Fruit =\n        -- Comment\n        Banana\n\")"
 ---
 Input:
@@ -142,17 +142,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            10,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
+                    Index(
+                        0,
+                    ),
                 ),
             ),
         ],
@@ -249,3 +241,222 @@ Result:
         },
     ],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            10,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            13,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            16,
+        ),
+        end: Index(
+            16,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            18,
+        ),
+        end: Index(
+            18,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            16,
+        ),
+        end: Index(
+            19,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            20,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            22,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            22,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            25,
+        ),
+        end: Index(
+            25,
+        ),
+    },
+    Index(
+        11,
+    ): Span {
+        start: Index(
+            28,
+        ),
+        end: Index(
+            28,
+        ),
+    },
+    Index(
+        12,
+    ): Span {
+        start: Index(
+            30,
+        ),
+        end: Index(
+            30,
+        ),
+    },
+    Index(
+        13,
+    ): Span {
+        start: Index(
+            34,
+        ),
+        end: Index(
+            34,
+        ),
+    },
+    Index(
+        14,
+    ): Span {
+        start: Index(
+            36,
+        ),
+        end: Index(
+            36,
+        ),
+    },
+    Index(
+        15,
+    ): Span {
+        start: Index(
+            34,
+        ),
+        end: Index(
+            37,
+        ),
+    },
+    Index(
+        16,
+    ): Span {
+        start: Index(
+            41,
+        ),
+        end: Index(
+            41,
+        ),
+    },
+    Index(
+        17,
+    ): Span {
+        start: Index(
+            44,
+        ),
+        end: Index(
+            44,
+        ),
+    },
+    Index(
+        18,
+    ): Span {
+        start: Index(
+            44,
+        ),
+        end: Index(
+            44,
+        ),
+    },
+    Index(
+        19,
+    ): Span {
+        start: Index(
+            40,
+        ),
+        end: Index(
+            44,
+        ),
+    },
+}

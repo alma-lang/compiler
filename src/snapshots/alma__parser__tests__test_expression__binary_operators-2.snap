@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2259
+assertion_line: 2280
 expression: "parse(\"1 - -5\")"
 ---
 Input:
@@ -9,79 +9,170 @@ Input:
 
 Result:
 
-Expression {
-    span: Index(
-        5,
-    ),
-    typ: RefCell {
-        value: None,
+Index(
+    4,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            2,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            5.0,
+        ),
     },
-    expr: Binary {
-        expression: Expression {
-            span: Index(
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            1,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier {
+            module: None,
+            identifier: Identifier(
+                Identifier {
+                    name: SymbolU32 {
+                        value: 3,
+                    },
+                    span: Index(
+                        1,
+                    ),
+                },
+            ),
+        },
+    },
+    Index(
+        2,
+    ): Expression {
+        span: Index(
+            0,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        3,
+    ): Expression {
+        span: Index(
+            4,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Unary {
+            op: Unary {
+                span: Index(
+                    3,
+                ),
+                typ: Minus,
+            },
+            expression: Index(
+                0,
+            ),
+        },
+    },
+    Index(
+        4,
+    ): Expression {
+        span: Index(
+            5,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Binary {
+            expression: Index(
                 1,
             ),
-            typ: RefCell {
-                value: None,
+            op: Binop {
+                typ: Substraction,
+                precedence: 14,
+                associativity: Ltr,
             },
-            expr: Identifier {
-                module: None,
-                identifier: Identifier(
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 3,
-                        },
-                        span: Index(
-                            1,
-                        ),
-                    },
+            arguments: [
+                Index(
+                    2,
                 ),
-            },
+                Index(
+                    3,
+                ),
+            ],
         },
-        op: Binop {
-            typ: Substraction,
-            precedence: 14,
-            associativity: Ltr,
-        },
-        arguments: [
-            Expression {
-                span: Index(
-                    0,
-                ),
-                typ: RefCell {
-                    value: None,
-                },
-                expr: Float(
-                    1.0,
-                ),
-            },
-            Expression {
-                span: Index(
-                    4,
-                ),
-                typ: RefCell {
-                    value: None,
-                },
-                expr: Unary {
-                    op: Unary {
-                        span: Index(
-                            3,
-                        ),
-                        typ: Minus,
-                    },
-                    expression: Expression {
-                        span: Index(
-                            2,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            5.0,
-                        ),
-                    },
-                },
-            },
-        ],
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            3,
+        ),
     },
 }

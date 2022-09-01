@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2960
+assertion_line: 2988
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nimport Test.Fruits exposing (Fruit(Banana))\n\nmain = 1\n\nmodule Test.Fruits exposing (Fruit(Banana))\n    type Fruit = Banana\n\")"
 ---
 Input:
@@ -127,17 +127,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            10,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
+                    Index(
+                        0,
+                    ),
                 ),
             ),
         ],
@@ -234,3 +226,222 @@ Result:
         },
     ],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            10,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            14,
+        ),
+        end: Index(
+            14,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            16,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            17,
+        ),
+        end: Index(
+            17,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            17,
+        ),
+        end: Index(
+            17,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            19,
+        ),
+        end: Index(
+            19,
+        ),
+    },
+    Index(
+        11,
+    ): Span {
+        start: Index(
+            21,
+        ),
+        end: Index(
+            21,
+        ),
+    },
+    Index(
+        12,
+    ): Span {
+        start: Index(
+            23,
+        ),
+        end: Index(
+            23,
+        ),
+    },
+    Index(
+        13,
+    ): Span {
+        start: Index(
+            26,
+        ),
+        end: Index(
+            26,
+        ),
+    },
+    Index(
+        14,
+    ): Span {
+        start: Index(
+            28,
+        ),
+        end: Index(
+            28,
+        ),
+    },
+    Index(
+        15,
+    ): Span {
+        start: Index(
+            26,
+        ),
+        end: Index(
+            29,
+        ),
+    },
+    Index(
+        16,
+    ): Span {
+        start: Index(
+            32,
+        ),
+        end: Index(
+            32,
+        ),
+    },
+    Index(
+        17,
+    ): Span {
+        start: Index(
+            34,
+        ),
+        end: Index(
+            34,
+        ),
+    },
+    Index(
+        18,
+    ): Span {
+        start: Index(
+            34,
+        ),
+        end: Index(
+            34,
+        ),
+    },
+    Index(
+        19,
+    ): Span {
+        start: Index(
+            31,
+        ),
+        end: Index(
+            34,
+        ),
+    },
+}

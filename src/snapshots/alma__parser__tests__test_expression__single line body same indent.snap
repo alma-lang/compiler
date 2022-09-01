@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2290
+assertion_line: 2311
 expression: "parse(\"\\\nlet x = 1\nx\")"
 ---
 Input:
@@ -10,66 +10,137 @@ x
 
 Result:
 
-Expression {
-    span: Index(
-        4,
-    ),
-    typ: RefCell {
-        value: None,
+Index(
+    2,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            2,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
     },
-    expr: Let {
-        definitions: [
-            Untyped(
-                Pattern(
-                    Pattern {
-                        span: Index(
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            3,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier {
+            module: None,
+            identifier: Identifier(
+                Identifier {
+                    name: SymbolU32 {
+                        value: 1,
+                    },
+                    span: Index(
+                        3,
+                    ),
+                },
+            ),
+        },
+    },
+    Index(
+        2,
+    ): Expression {
+        span: Index(
+            4,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Let {
+            definitions: [
+                Untyped(
+                    Pattern(
+                        Pattern {
+                            span: Index(
+                                0,
+                            ),
+                            typ: Identifier(
+                                Identifier {
+                                    name: SymbolU32 {
+                                        value: 1,
+                                    },
+                                    span: Index(
+                                        0,
+                                    ),
+                                },
+                            ),
+                        },
+                        Index(
                             0,
                         ),
-                        typ: Identifier(
-                            Identifier {
-                                name: SymbolU32 {
-                                    value: 1,
-                                },
-                                span: Index(
-                                    0,
-                                ),
-                            },
-                        ),
-                    },
-                    Expression {
-                        span: Index(
-                            2,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
+                    ),
                 ),
+            ],
+            body: Index(
+                1,
             ),
-        ],
-        body: Expression {
-            span: Index(
-                3,
-            ),
-            typ: RefCell {
-                value: None,
-            },
-            expr: Identifier {
-                module: None,
-                identifier: Identifier(
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                        span: Index(
-                            3,
-                        ),
-                    },
-                ),
-            },
         },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            4,
+        ),
     },
 }

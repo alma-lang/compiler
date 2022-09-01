@@ -1,16 +1,15 @@
 use crate::ast::{
     self,
     expression::{
-        CapitalizedIdentifier, Expression, ExpressionType as ET, Identifier, Lambda, Pattern,
-        PatternType as P, UnaryType as U,
+        CapitalizedIdentifier, Expression, ExpressionType as ET, Expressions, Identifier, Lambda,
+        Pattern, PatternType as P, UnaryType as U,
     },
-    span::{Span, Spans},
+    span::{self, Spans},
     Definition, Import, TypeSignature, TypedDefinition,
 };
 use crate::compiler;
 use crate::compiler::state::ModuleIndex;
 use crate::compiler::types::{HashMap, ModuleInterface};
-use crate::index::Index;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token::Tokens;
@@ -31,36 +30,36 @@ use std::rc::Rc;
 pub enum Error {
     UndefinedIdentifier {
         identifier: StringSymbol,
-        location: Index<Span>,
+        location: span::Index,
     },
     DuplicateField {
         field: Identifier,
         expr: Expression,
     },
     TypeMismatch {
-        actual_type_location: Index<Span>,
+        actual_type_location: span::Index,
         actual_type: Rc<Type>,
-        expected_type_location: Option<Index<Span>>,
+        expected_type_location: Option<span::Index>,
         expected_type: Rc<Type>,
     },
     WrongArity {
-        location: Index<Span>,
+        location: span::Index,
         num_params_applied: usize,
         num_params: usize,
         typ: Rc<Type>,
     },
     SignatureMismatch {
-        signature_type_location: Index<Span>,
+        signature_type_location: span::Index,
         signature_type: Rc<Type>,
         inferred_type: Rc<Type>,
     },
     SignatureTooGeneral {
-        signature_type_location: Index<Span>,
+        signature_type_location: span::Index,
         signature_type: Rc<Type>,
         inferred_type: Rc<Type>,
     },
     InfiniteType {
-        location: Index<Span>,
+        location: span::Index,
         typ: Rc<Type>,
     },
     UndefinedExport(Identifier),
@@ -651,9 +650,9 @@ fn find(typ: &Rc<Type>) -> Rc<Type> {
 
 fn unify(
     state: &mut State,
-    ast: Index<Span>,
+    ast: span::Index,
     typ: &Rc<Type>,
-    ast2: Option<Index<Span>>,
+    ast2: Option<span::Index>,
     typ2: &Rc<Type>,
 ) -> Result<(), Error> {
     unify_rec(state, typ, typ2, ast, typ, ast2, typ2)
@@ -664,9 +663,9 @@ fn unify_var(
     t: &Rc<Type>,
     var: &Rc<RefCell<TypeVar>>,
     other_type: &Rc<Type>,
-    span1: Index<Span>,
+    span1: span::Index,
     typ: &Rc<Type>,
-    span2: Option<Index<Span>>,
+    span2: Option<span::Index>,
     typ2: &Rc<Type>,
 ) -> Result<(), Error> {
     let var_read = (**var).borrow();
@@ -702,9 +701,9 @@ fn unify_rec(
     state: &mut State,
     t1: &Rc<Type>,
     t2: &Rc<Type>,
-    ast: Index<Span>,
+    ast: span::Index,
     typ: &Rc<Type>,
-    ast2: Option<Index<Span>>,
+    ast2: Option<span::Index>,
     typ2: &Rc<Type>,
 ) -> Result<(), Error> {
     match (&**t1, &**t2) {
@@ -1163,6 +1162,7 @@ pub fn infer<'state>(
 ) -> Result<(), Vec<Error>> {
     let strings = &mut compiler_state.strings;
     let module_ast = &compiler_state.modules[module_idx];
+    let expressions = &compiler_state.expressions[compiler_state.module_to_source_idx[module_idx]];
     let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = primitive_types.clone();
@@ -1339,6 +1339,7 @@ pub fn infer<'state>(
         &mut env,
         &types_env,
         strings,
+        expressions,
         &mut errors,
     );
 
@@ -1536,6 +1537,7 @@ fn infer_rec<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
+    expressions: &'ast Expressions,
     errors: &mut Vec<Error>,
 ) -> Rc<Type> {
     let typ = match &ast.expr {
@@ -1551,7 +1553,15 @@ fn infer_rec<'ast>(
             let mut typed_fields = TypeEnv::new();
 
             for (name, value) in fields {
-                let t = infer_rec(value, state, env, types_env, strings, errors);
+                let t = infer_rec(
+                    &expressions[*value],
+                    state,
+                    env,
+                    types_env,
+                    strings,
+                    expressions,
+                    errors,
+                );
                 if typed_fields.map().contains_key(&name.name) {
                     errors.push(Error::DuplicateField {
                         field: name.to_owned(),
@@ -1570,7 +1580,15 @@ fn infer_rec<'ast>(
         ET::RecordUpdate { record, fields } => {
             let mut typed_fields = TypeEnv::new();
             for (name, value) in fields {
-                let t = infer_rec(value, state, env, types_env, strings, errors);
+                let t = infer_rec(
+                    &expressions[*value],
+                    state,
+                    env,
+                    types_env,
+                    strings,
+                    expressions,
+                    errors,
+                );
                 if typed_fields.map().contains_key(&name.name) {
                     errors.push(Error::DuplicateField {
                         field: name.to_owned(),
@@ -1586,7 +1604,10 @@ fn infer_rec<'ast>(
                 base_record: Rc::clone(&state.new_type_var()),
             });
 
-            let record_type = infer_rec(record, state, env, types_env, strings, errors);
+            let record = &expressions[*record];
+
+            let record_type =
+                infer_rec(record, state, env, types_env, strings, expressions, errors);
 
             // Unify the base record with the extensible record represented by this update
             add_error(
@@ -1612,7 +1633,17 @@ fn infer_rec<'ast>(
                 base_record: remaining_fields_type,
             });
 
-            let expr_type = infer_rec(expression, state, env, types_env, strings, errors);
+            let expression = &expressions[*expression];
+
+            let expr_type = infer_rec(
+                expression,
+                state,
+                env,
+                types_env,
+                strings,
+                expressions,
+                errors,
+            );
 
             add_error(
                 unify(state, expression.span, &expr_type, None, &record_type),
@@ -1640,7 +1671,16 @@ fn infer_rec<'ast>(
         }
 
         ET::Unary { op, expression } => {
-            let t = infer_rec(expression, state, env, types_env, strings, errors);
+            let expression = &expressions[*expression];
+            let t = infer_rec(
+                expression,
+                state,
+                env,
+                types_env,
+                strings,
+                expressions,
+                errors,
+            );
 
             add_error(
                 match op.typ {
@@ -1672,13 +1712,14 @@ fn infer_rec<'ast>(
         } => {
             // Infer the binary op as a function call
             infer_fn_call(
-                function,
-                arguments.iter(),
+                &expressions[*function],
+                arguments.iter().map(|a| &expressions[*a]),
                 ast,
                 state,
                 env,
                 types_env,
                 strings,
+                expressions,
                 errors,
             )
         }
@@ -1703,7 +1744,19 @@ fn infer_rec<'ast>(
             then,
             else_,
         } => {
-            let t = infer_rec(condition, state, env, types_env, strings, errors);
+            let condition = &expressions[*condition];
+            let then = &expressions[*then];
+            let else_ = &expressions[*else_];
+
+            let t = infer_rec(
+                condition,
+                state,
+                env,
+                types_env,
+                strings,
+                expressions,
+                errors,
+            );
             add_error(
                 unify(
                     state,
@@ -1715,8 +1768,8 @@ fn infer_rec<'ast>(
                 errors,
             );
 
-            let t1 = infer_rec(then, state, env, types_env, strings, errors);
-            let t2 = infer_rec(else_, state, env, types_env, strings, errors);
+            let t1 = infer_rec(then, state, env, types_env, strings, expressions, errors);
+            let t2 = infer_rec(else_, state, env, types_env, strings, expressions, errors);
             add_error(unify(state, then.span, &t1, Some(else_.span), &t2), errors);
 
             t2
@@ -1777,13 +1830,14 @@ fn infer_rec<'ast>(
             function,
             arguments,
         } => infer_fn_call(
-            function,
-            arguments.iter(),
+            &expressions[*function],
+            arguments.iter().map(|a| &expressions[*a]),
             ast,
             state,
             env,
             types_env,
             strings,
+            expressions,
             errors,
         ),
 
@@ -1807,7 +1861,9 @@ fn infer_rec<'ast>(
          *
          *     tparams -> t'
          */
-        ET::Lambda(lambda) => infer_lambda(lambda, state, env, types_env, strings, errors),
+        ET::Lambda(lambda) => {
+            infer_lambda(lambda, state, env, types_env, strings, expressions, errors)
+        }
 
         /* Let
          *
@@ -1839,10 +1895,19 @@ fn infer_rec<'ast>(
                 &mut new_env,
                 &types_env,
                 strings,
+                expressions,
                 errors,
             );
 
-            infer_rec(body, state, &mut new_env, types_env, strings, errors)
+            infer_rec(
+                &expressions[*body],
+                state,
+                &mut new_env,
+                types_env,
+                strings,
+                expressions,
+                errors,
+            )
         }
     };
 
@@ -1857,6 +1922,7 @@ fn infer_definitions<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
+    expressions: &'ast Expressions,
     errors: &mut Vec<Error>,
 ) {
     for typed_definition in definitions {
@@ -1864,7 +1930,8 @@ fn infer_definitions<'ast>(
             match &definition {
                 Definition::Lambda(identifier, lambda) => {
                     state.enter_level();
-                    let t = infer_lambda(lambda, state, env, types_env, strings, errors);
+                    let t =
+                        infer_lambda(lambda, state, env, types_env, strings, expressions, errors);
                     state.exit_level();
 
                     let t = check_signature(&typed_definition, &t, state, types_env, errors);
@@ -1874,7 +1941,15 @@ fn infer_definitions<'ast>(
                 }
                 Definition::Pattern(pattern, value) => {
                     state.enter_level();
-                    let t = infer_rec(value, state, env, types_env, strings, errors);
+                    let t = infer_rec(
+                        &expressions[*value],
+                        state,
+                        env,
+                        types_env,
+                        strings,
+                        expressions,
+                        errors,
+                    );
                     state.exit_level();
 
                     let t = check_signature(&typed_definition, &t, state, types_env, errors);
@@ -1984,6 +2059,7 @@ fn infer_lambda<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
+    expressions: &'ast Expressions,
     errors: &mut Vec<Error>,
 ) -> Rc<Type> {
     let params_with_type: Vec<(&Pattern, Rc<PolyType>)> = lambda
@@ -2007,7 +2083,15 @@ fn infer_lambda<'ast>(
             env
         });
 
-    let return_type = infer_rec(&lambda.body, state, &mut env, types_env, strings, errors);
+    let return_type = infer_rec(
+        &expressions[lambda.body],
+        state,
+        &mut env,
+        types_env,
+        strings,
+        expressions,
+        errors,
+    );
 
     Rc::new(Fn {
         params: params_with_type
@@ -2026,17 +2110,18 @@ fn infer_fn_call<'ast, Args>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
+    expressions: &'ast Expressions,
     errors: &mut Vec<Error>,
 ) -> Rc<Type>
 where
     Args: Iterator<Item = &'ast Expression> + Clone,
 {
-    let fn_type = infer_rec(f, state, env, types_env, strings, errors);
+    let fn_type = infer_rec(f, state, env, types_env, strings, expressions, errors);
     let param_types = fn_type.parameters();
 
     let arg_types: Vec<Rc<Type>> = args
         .clone()
-        .map(|arg| infer_rec(arg, state, env, types_env, strings, errors))
+        .map(|arg| infer_rec(arg, state, env, types_env, strings, expressions, errors))
         .collect();
 
     let return_type = state.new_type_var();
@@ -2070,18 +2155,28 @@ fn add_error<'ast>(result: Result<(), Error>, errors: &mut Vec<Error>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::expression;
     use crate::parser;
     use crate::tokenizer;
 
     pub fn infer_expression<'ast>(
-        ast: &'ast Expression,
+        ast: &'ast expression::Index,
         state: &mut State,
         env: &mut PolyTypeEnv,
         types_env: &PolyTypeEnv,
         strings: &mut Strings,
+        expressions: &'ast Expressions,
     ) -> Result<Rc<Type>, Vec<Error>> {
         let mut errors: Vec<Error> = vec![];
-        let t = infer_rec(ast, state, env, types_env, strings, &mut errors);
+        let t = infer_rec(
+            &expressions[*ast],
+            state,
+            env,
+            types_env,
+            strings,
+            expressions,
+            &mut errors,
+        );
 
         if errors.is_empty() {
             Ok(t)
@@ -2250,6 +2345,7 @@ add 5"
                 &mut env,
                 &primitive_types,
                 &mut strings,
+                &expressions,
             ) {
                 Ok(typ) => typ.to_string(&strings),
                 Err(errs) => errs

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2491
+assertion_line: 2519
 expression: "parse(\"\\\nmodule Test\n\na = 1\n\nb = True\")"
 ---
 Input:
@@ -50,17 +50,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            3,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
+                    Index(
+                        0,
+                    ),
                 ),
             ),
             Untyped(
@@ -80,17 +72,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            6,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Bool(
-                            true,
-                        ),
-                    },
+                    Index(
+                        1,
+                    ),
                 ),
             ),
         ],
@@ -98,3 +82,105 @@ Result:
     },
     [],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            3,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            6,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Bool(
+            true,
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+}

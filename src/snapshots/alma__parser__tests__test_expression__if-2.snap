@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2274
+assertion_line: 2295
 expression: "parse(\"\nif True then\n  1\n\nelse\n  2\")"
 ---
 Input:
@@ -14,46 +14,112 @@ else
 
 Result:
 
-Expression {
-    span: Index(
-        3,
-    ),
-    typ: RefCell {
-        value: None,
+Index(
+    3,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            0,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Bool(
+            true,
+        ),
     },
-    expr: If {
-        condition: Expression {
-            span: Index(
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            1,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        2,
+    ): Expression {
+        span: Index(
+            2,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            2.0,
+        ),
+    },
+    Index(
+        3,
+    ): Expression {
+        span: Index(
+            3,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: If {
+            condition: Index(
                 0,
             ),
-            typ: RefCell {
-                value: None,
-            },
-            expr: Bool(
-                true,
-            ),
-        },
-        then: Expression {
-            span: Index(
+            then: Index(
                 1,
             ),
-            typ: RefCell {
-                value: None,
-            },
-            expr: Float(
-                1.0,
-            ),
-        },
-        else_: Expression {
-            span: Index(
+            else_: Index(
                 2,
             ),
-            typ: RefCell {
-                value: None,
-            },
-            expr: Float(
-                2.0,
-            ),
         },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            5,
+        ),
     },
 }

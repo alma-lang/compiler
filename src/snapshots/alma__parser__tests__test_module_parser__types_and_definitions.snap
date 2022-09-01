@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2940
+assertion_line: 2968
 expression: "parse(\"\\\nmodule Test exposing (main)\n\ntype Fruit = Banana\n\nmain = Banana\n\")"
 ---
 Input:
@@ -67,27 +67,9 @@ Result:
                             },
                         ),
                     },
-                    Expression {
-                        span: Index(
-                            9,
-                        ),
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Identifier {
-                            module: None,
-                            identifier: CapitalizedIdentifier(
-                                CapitalizedIdentifier {
-                                    name: SymbolU32 {
-                                        value: 4,
-                                    },
-                                    span: Index(
-                                        8,
-                                    ),
-                                },
-                            ),
-                        },
-                    },
+                    Index(
+                        0,
+                    ),
                 ),
             ),
         ],
@@ -128,3 +110,132 @@ Result:
     },
     [],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            9,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier {
+            module: None,
+            identifier: CapitalizedIdentifier(
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 4,
+                    },
+                    span: Index(
+                        8,
+                    ),
+                },
+            ),
+        },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            10,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            10,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+}

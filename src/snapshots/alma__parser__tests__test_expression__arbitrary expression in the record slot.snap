@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2434
+assertion_line: 2455
 expression: "parse(\"{ if True then {} else {} | x = 1, y = 3 }\")"
 ---
 Input:
@@ -9,100 +9,231 @@ Input:
 
 Result:
 
-Expression {
-    span: Index(
-        8,
-    ),
-    typ: RefCell {
-        value: None,
-    },
-    expr: RecordUpdate {
-        record: Expression {
-            span: Index(
-                3,
-            ),
-            typ: RefCell {
-                value: None,
-            },
-            expr: If {
-                condition: Expression {
-                    span: Index(
-                        0,
-                    ),
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Bool(
-                        true,
-                    ),
-                },
-                then: Expression {
-                    span: Index(
-                        1,
-                    ),
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Record {
-                        fields: [],
-                    },
-                },
-                else_: Expression {
-                    span: Index(
-                        2,
-                    ),
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Record {
-                        fields: [],
-                    },
-                },
-            },
+Index(
+    6,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            0,
+        ),
+        typ: RefCell {
+            value: None,
         },
-        fields: [
-            (
-                Identifier {
-                    name: SymbolU32 {
-                        value: 1,
+        expr: Bool(
+            true,
+        ),
+    },
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            1,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Record {
+            fields: [],
+        },
+    },
+    Index(
+        2,
+    ): Expression {
+        span: Index(
+            2,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Record {
+            fields: [],
+        },
+    },
+    Index(
+        3,
+    ): Expression {
+        span: Index(
+            5,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        4,
+    ): Expression {
+        span: Index(
+            7,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            3.0,
+        ),
+    },
+    Index(
+        5,
+    ): Expression {
+        span: Index(
+            3,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: If {
+            condition: Index(
+                0,
+            ),
+            then: Index(
+                1,
+            ),
+            else_: Index(
+                2,
+            ),
+        },
+    },
+    Index(
+        6,
+    ): Expression {
+        span: Index(
+            8,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: RecordUpdate {
+            record: Index(
+                5,
+            ),
+            fields: [
+                (
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                        span: Index(
+                            4,
+                        ),
                     },
-                    span: Index(
+                    Index(
+                        3,
+                    ),
+                ),
+                (
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 3,
+                        },
+                        span: Index(
+                            6,
+                        ),
+                    },
+                    Index(
                         4,
                     ),
-                },
-                Expression {
-                    span: Index(
-                        5,
-                    ),
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Float(
-                        1.0,
-                    ),
-                },
-            ),
-            (
-                Identifier {
-                    name: SymbolU32 {
-                        value: 3,
-                    },
-                    span: Index(
-                        6,
-                    ),
-                },
-                Expression {
-                    span: Index(
-                        7,
-                    ),
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Float(
-                        3.0,
-                    ),
-                },
-            ),
-        ],
+                ),
+            ],
+        },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            10,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            14,
+        ),
+        end: Index(
+            14,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            16,
+        ),
+        end: Index(
+            16,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            17,
+        ),
     },
 }

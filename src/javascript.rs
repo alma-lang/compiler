@@ -1,3 +1,4 @@
+use crate::ast::expression::Expressions;
 use crate::compiler::state::ModuleIndex;
 use crate::compiler::types::ModuleInterface;
 use crate::strings::Strings;
@@ -46,6 +47,7 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
 
     for module_idx in sorted_modules {
         let module_ast = &state.modules[*module_idx];
+        let expressions = &state.expressions[state.module_to_source_idx[*module_idx]];
 
         code.push_str("\nlet ");
         module_full_name(&mut code, &module_ast.name, strings);
@@ -59,6 +61,7 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
                 panic!("Couldn't find the types for module {name}");
             }),
             strings,
+            expressions,
         );
 
         code.push_str("\n}();\n");
@@ -82,6 +85,7 @@ fn generate_file(
     module: &Module,
     _interface: &ModuleInterface,
     strings: &Strings,
+    expressions: &Expressions,
 ) {
     let indent = add_indent(0);
     if !module.imports.is_empty() {
@@ -96,7 +100,14 @@ fn generate_file(
 
     if !module.definitions.is_empty() {
         code.push('\n');
-        generate_definitions(indent, code, true, &module.definitions, strings);
+        generate_definitions(
+            indent,
+            code,
+            true,
+            &module.definitions,
+            strings,
+            expressions,
+        );
     }
 
     if !module.exports.is_empty() {
@@ -232,6 +243,7 @@ fn generate_definitions(
     space_between: bool,
     definitions: &[TypedDefinition],
     strings: &Strings,
+    expressions: &Expressions,
 ) {
     for (i, definition) in definitions.iter().enumerate() {
         if i > 0 && space_between {
@@ -240,12 +252,24 @@ fn generate_definitions(
         match definition.definition() {
             Some(Definition::Lambda(name, lambda)) => {
                 indented(code, indent, "");
-                generate_function(indent, code, name.to_string(strings), lambda, strings);
+                generate_function(
+                    indent,
+                    code,
+                    name.to_string(strings),
+                    lambda,
+                    strings,
+                    expressions,
+                );
                 code.push('\n');
             }
-            Some(Definition::Pattern(pattern, expression)) => {
-                generate_let(indent, code, pattern, expression, strings)
-            }
+            Some(Definition::Pattern(pattern, expression)) => generate_let(
+                indent,
+                code,
+                pattern,
+                &expressions[*expression],
+                strings,
+                expressions,
+            ),
             None => (),
         }
     }
@@ -278,6 +302,7 @@ fn generate_function(
     name: &str,
     lambda: &Lambda,
     strings: &Strings,
+    expressions: &Expressions,
 ) {
     write!(code, "function {name}(").unwrap();
 
@@ -293,7 +318,13 @@ fn generate_function(
     {
         let indent = add_indent(indent);
         indented(code, indent, "return ");
-        generate_expression(indent, code, &lambda.body, strings);
+        generate_expression(
+            indent,
+            code,
+            &expressions[lambda.body],
+            strings,
+            expressions,
+        );
         code.push('\n');
     }
 
@@ -313,11 +344,12 @@ fn generate_let(
     pattern: &Pattern,
     expression: &Expression,
     strings: &Strings,
+    expressions: &Expressions,
 ) {
     indented(code, indent, "let ");
     generate_pattern(code, pattern, strings);
     code.push_str(" = ");
-    generate_expression(indent, code, expression, strings);
+    generate_expression(indent, code, expression, strings, expressions);
     code.push('\n');
 }
 
@@ -326,6 +358,7 @@ fn generate_expression(
     code: &mut String,
     expression: &Expression,
     strings: &Strings,
+    expressions: &Expressions,
 ) {
     match &expression.expr {
         ET::Unit => code.push_str("()"),
@@ -363,7 +396,7 @@ fn generate_expression(
                 for (key, value) in fields {
                     indented(code, indent, key.to_string(strings));
                     code.push_str(": ");
-                    generate_expression(indent, code, value, strings);
+                    generate_expression(indent, code, &expressions[*value], strings, expressions);
                     code.push_str(",\n");
                 }
             }
@@ -378,13 +411,13 @@ fn generate_expression(
                 let indent = add_indent(indent);
 
                 indented(code, indent, "...");
-                generate_expression(indent, code, record, strings);
+                generate_expression(indent, code, &expressions[*record], strings, expressions);
                 code.push('\n');
 
                 for (key, value) in fields {
                     indented(code, indent, key.to_string(strings));
                     code.push_str(": ");
-                    generate_expression(indent, code, value, strings);
+                    generate_expression(indent, code, &expressions[*value], strings, expressions);
                     code.push_str(",\n");
                 }
             }
@@ -396,7 +429,13 @@ fn generate_expression(
             expression,
             property,
         } => {
-            generate_expression(indent, code, expression, strings);
+            generate_expression(
+                indent,
+                code,
+                &expressions[*expression],
+                strings,
+                expressions,
+            );
             code.push('.');
             code.push_str(property.to_string(strings));
         }
@@ -411,33 +450,53 @@ fn generate_expression(
                 U::Not => '!',
                 U::Minus => '-',
             });
-            generate_expression(indent, code, expression, strings);
+            generate_expression(
+                indent,
+                code,
+                &expressions[*expression],
+                strings,
+                expressions,
+            );
         }
 
         ET::Binary {
             expression,
             arguments,
             ..
-        } => generate_fn_call(indent, code, expression, arguments.iter(), strings),
+        } => generate_fn_call(
+            indent,
+            code,
+            &expressions[*expression],
+            arguments.iter().map(|a| &expressions[*a]),
+            strings,
+            expressions,
+        ),
 
         ET::Lambda(lambda) => {
-            generate_function(indent, code, "", lambda, strings);
+            generate_function(indent, code, "", lambda, strings, expressions);
         }
 
         ET::FnCall {
             function,
             arguments,
-        } => generate_fn_call(indent, code, function, arguments.iter(), strings),
+        } => generate_fn_call(
+            indent,
+            code,
+            &expressions[*function],
+            arguments.iter().map(|a| &expressions[*a]),
+            strings,
+            expressions,
+        ),
 
         ET::Let { definitions, body } => {
             code.push_str("function() {\n");
 
             {
                 let indent = add_indent(indent);
-                generate_definitions(indent, code, false, definitions, strings);
+                generate_definitions(indent, code, false, definitions, strings, expressions);
 
                 indented(code, indent, "return ");
-                generate_expression(indent, code, body, strings);
+                generate_expression(indent, code, &expressions[*body], strings, expressions);
                 code.push('\n');
             }
 
@@ -454,13 +513,13 @@ fn generate_expression(
                 let indent = add_indent(indent);
 
                 indented(code, indent, "if (");
-                generate_expression(indent, code, condition, strings);
+                generate_expression(indent, code, &expressions[*condition], strings, expressions);
                 code.push_str(") {");
 
                 {
                     let indent = add_indent(indent);
                     indented(code, indent, "return ");
-                    generate_expression(indent, code, then, strings);
+                    generate_expression(indent, code, &expressions[*then], strings, expressions);
                 }
 
                 line(code, indent, "} else {");
@@ -468,7 +527,7 @@ fn generate_expression(
                 {
                     let indent = add_indent(indent);
                     indented(code, indent, "return ");
-                    generate_expression(indent, code, else_, strings);
+                    generate_expression(indent, code, &expressions[*else_], strings, expressions);
                 }
 
                 line(code, indent, "}");
@@ -485,16 +544,17 @@ fn generate_fn_call<'ast, Args>(
     fun: &Expression,
     params: Args,
     strings: &Strings,
+    expressions: &Expressions,
 ) where
     Args: Iterator<Item = &'ast Expression>,
 {
-    generate_expression(indent, code, fun, strings);
+    generate_expression(indent, code, fun, strings, expressions);
     code.push('(');
     for (i, param) in params.enumerate() {
         if i > 0 {
             code.push_str(", ");
         }
-        generate_expression(indent, code, param, strings);
+        generate_expression(indent, code, param, strings, expressions);
     }
     code.push(')');
 }

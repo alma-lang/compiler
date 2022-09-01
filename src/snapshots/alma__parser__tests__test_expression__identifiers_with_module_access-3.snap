@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2444
+assertion_line: 2465
 expression: "parse(\"A.B.C\")"
 ---
 Input:
@@ -9,48 +9,99 @@ A.B.C
 
 Result:
 
-Expression {
-    span: Index(
-        3,
-    ),
-    typ: RefCell {
-        value: None,
-    },
-    expr: Identifier {
-        module: Some(
-            ModuleName {
-                parts: [
-                    CapitalizedIdentifier {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                        span: Index(
-                            0,
-                        ),
-                    },
-                    CapitalizedIdentifier {
-                        name: SymbolU32 {
-                            value: 2,
-                        },
-                        span: Index(
-                            1,
-                        ),
-                    },
-                ],
-                full_name: SymbolU32 {
-                    value: 5,
-                },
-            },
+Index(
+    0,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            3,
         ),
-        identifier: CapitalizedIdentifier(
-            CapitalizedIdentifier {
-                name: SymbolU32 {
-                    value: 3,
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier {
+            module: Some(
+                ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                            span: Index(
+                                0,
+                            ),
+                        },
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                            span: Index(
+                                1,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 5,
+                    },
                 },
-                span: Index(
-                    2,
-                ),
-            },
+            ),
+            identifier: CapitalizedIdentifier(
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 3,
+                    },
+                    span: Index(
+                        2,
+                    ),
+                },
+            ),
+        },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            4,
         ),
     },
 }

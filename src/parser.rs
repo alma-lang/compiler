@@ -1,25 +1,23 @@
 use crate::ast::expression::{binop, AnyIdentifier, Expressions, PatternType, Unary};
 use crate::ast::span::Spans;
+use crate::ast::{
+    expression::{
+        self,
+        binop::*,
+        CapitalizedIdentifier, Expression, Expression as E, ExpressionType as ET, Identifier,
+        Lambda, Pattern,
+        UnaryType::{Minus, Not},
+    },
+    span::{self, Span},
+    types::{self, Type, TypeDefinition},
+    Import, Module, ModuleName, ReplEntry,
+};
 use crate::ast::{Definition, Export, ExportType, TypeSignature, TypedDefinition};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
     self, Token, Tokens,
     Type::{self as TT, *},
-};
-use crate::{
-    ast::{
-        expression::{
-            binop::*,
-            CapitalizedIdentifier, Expression, Expression as E, ExpressionType as ET, Identifier,
-            Lambda, Pattern,
-            UnaryType::{Minus, Not},
-        },
-        span::{self, Span},
-        types::{self, Type, TypeDefinition},
-        Import, Module, ModuleName, ReplEntry,
-    },
-    index::Index,
 };
 use typed_index_collections::TiSlice;
 
@@ -554,9 +552,11 @@ impl<'a> State<'a> {
             Some(import) => ReplEntry::Import(import),
             None => match self.binding()? {
                 Some(definition) => ReplEntry::Definition(definition),
-                None => ReplEntry::Expression(
-                    self.required(Self::expression, |self_| self_.error(InvalidReplEntry))?,
-                ),
+                None => {
+                    let expression =
+                        self.required(Self::expression, |self_| self_.error(InvalidReplEntry))?;
+                    ReplEntry::Expression(self.add_expression(expression))
+                }
             },
         };
 
@@ -1088,7 +1088,7 @@ impl<'a> State<'a> {
         Ok(Some(E::untyped(
             ET::Let {
                 definitions: bindings,
-                body: Box::new(body),
+                body: self.add_expression(body),
             },
             self.span(let_token_index, end),
         )))
@@ -1161,7 +1161,7 @@ impl<'a> State<'a> {
                             typ: PatternType::Identifier(identifier),
                             span,
                         },
-                        expr,
+                        self.add_expression(expr),
                     ))
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
@@ -1177,12 +1177,18 @@ impl<'a> State<'a> {
                         identifier,
                         Lambda {
                             parameters: params,
-                            body: Box::new(expr),
+                            body: self.add_expression(expr),
                         },
                     ))
                 }
             }
-            Some(pattern) => Some(Definition::Pattern(pattern, self.binding_rhs()?)),
+            Some(pattern) => {
+                let binding_rhs = self.binding_rhs()?;
+                Some(Definition::Pattern(
+                    pattern,
+                    self.add_expression(binding_rhs),
+                ))
+            }
             None => None,
         };
 
@@ -1220,9 +1226,9 @@ impl<'a> State<'a> {
         let end = self.spans[else_.span].end;
         Ok(Some(E::untyped(
             ET::If {
-                condition: Box::new(condition),
-                then: Box::new(then),
-                else_: Box::new(else_),
+                condition: self.add_expression(condition),
+                then: self.add_expression(then),
+                else_: self.add_expression(else_),
             },
             self.span(token_index, end),
         )))
@@ -1248,7 +1254,7 @@ impl<'a> State<'a> {
         Ok(Some(E::untyped(
             ET::Lambda(Lambda {
                 parameters: params,
-                body: Box::new(body),
+                body: self.add_expression(body),
             }),
             self.span(token_index, end),
         )))
@@ -1317,6 +1323,73 @@ impl<'a> State<'a> {
             Ok(None)
         }
     }
+    fn organize_binops(
+        &mut self,
+        left: Expression,
+        binops: &mut Vec<Option<(span::Index, Binop, Expression)>>,
+        current: &mut usize,
+        min_precedence: u32,
+    ) -> Expression {
+        // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+        // better than the wikipedia article for precedence climibing
+
+        let mut left = left;
+
+        loop {
+            let next = binops.get_mut(*current);
+
+            match next {
+                Some(op_and_expr) => {
+                    let keep_parsing = matches!(op_and_expr, Some((_op_span, op, _rhs)) if op.precedence >= min_precedence);
+
+                    if keep_parsing {
+                        // Take ownership of the op and rhs
+                        let (op_span, op, rhs) = op_and_expr.take().unwrap();
+
+                        *current += 1;
+
+                        let next_min_precedence = op.precedence
+                            + if op.associativity == Associativity::Ltr {
+                                1
+                            } else {
+                                0
+                            };
+
+                        let right = self.organize_binops(rhs, binops, current, next_min_precedence);
+
+                        let (start, end) =
+                            (self.spans[left.span].start, self.spans[right.span].end);
+
+                        let binary_expr = E::untyped(
+                            ET::Identifier {
+                                module: None,
+                                identifier: AnyIdentifier::Identifier(
+                                    op.get_function_identifier(self.strings, op_span),
+                                ),
+                            },
+                            op_span,
+                        );
+                        left = E::untyped(
+                            ET::Binary {
+                                expression: self.add_expression(binary_expr),
+                                op,
+                                arguments: ([
+                                    self.add_expression(left),
+                                    self.add_expression(right),
+                                ]),
+                            },
+                            self.span(start, end),
+                        )
+                    } else {
+                        break;
+                    }
+                }
+                None => break,
+            }
+        }
+
+        left
+    }
 
     fn unary(&mut self) -> ParseResult<Option<Expression>> {
         let (token_index, token) = self.get_token();
@@ -1342,7 +1415,7 @@ impl<'a> State<'a> {
                             typ: op,
                             span: self.span(token_index, token_index),
                         },
-                        expression: Box::new(expr),
+                        expression: self.add_expression(expr),
                     },
                     self.span(token_index, end),
                 )))
@@ -1367,8 +1440,8 @@ impl<'a> State<'a> {
                 let (start, end) = (self.spans[expr.span].start, self.spans[last_arg.span].end);
                 Ok(Some(E::untyped(
                     ET::FnCall {
-                        function: Box::new(expr),
-                        arguments: args,
+                        function: self.add_expression(expr),
+                        arguments: args.into_iter().map(|a| self.add_expression(a)).collect(),
                     },
                     self.span(start, end),
                 )))
@@ -1405,7 +1478,7 @@ impl<'a> State<'a> {
                 let end = self.spans[identifier.span].end;
                 E::untyped(
                     ET::PropertyAccess {
-                        expression: Box::new(expr),
+                        expression: self.add_expression(expr),
                         property: identifier,
                     },
                     self.span(start, end),
@@ -1593,7 +1666,7 @@ impl<'a> State<'a> {
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(E::untyped(
                                 ET::RecordUpdate {
-                                    record: Box::new(record),
+                                    record: self.add_expression(record),
                                     fields,
                                 },
                                 self.span(token_index, right_brace_token_index),
@@ -1665,10 +1738,13 @@ impl<'a> State<'a> {
         }
     }
 
-    fn record_fields(&mut self) -> ParseResult<Vec<(Identifier, Expression)>> {
+    fn record_fields(&mut self) -> ParseResult<Vec<(Identifier, expression::Index)>> {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
-            Self::record_field,
+            |self_| {
+                let (name, expr) = self_.record_field()?;
+                Ok((name, self_.add_expression(expr)))
+            },
             |self_| self_.error(MissingRecordFields),
         )
     }
@@ -2031,72 +2107,14 @@ impl<'a> State<'a> {
         Error::new(*token, error_type)
     }
 
-    fn span(&mut self, start: token::Index, end: token::Index) -> Index<Span> {
+    fn span(&mut self, start: token::Index, end: token::Index) -> span::Index {
         self.spans.push(Span { start, end });
         self.spans.last_key().unwrap()
     }
 
-    fn organize_binops(
-        &mut self,
-        left: Expression,
-        binops: &mut Vec<Option<(span::Index, Binop, Expression)>>,
-        current: &mut usize,
-        min_precedence: u32,
-    ) -> Expression {
-        // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
-        // better than the wikipedia article for precedence climibing
-
-        let mut left = left;
-
-        loop {
-            let next = binops.get_mut(*current);
-
-            match next {
-                Some(op_and_expr) => {
-                    let keep_parsing = matches!(op_and_expr, Some((_op_span, op, _rhs)) if op.precedence >= min_precedence);
-
-                    if keep_parsing {
-                        // Take ownership of the op and rhs
-                        let (op_span, op, rhs) = op_and_expr.take().unwrap();
-
-                        *current += 1;
-
-                        let next_min_precedence = op.precedence
-                            + if op.associativity == Associativity::Ltr {
-                                1
-                            } else {
-                                0
-                            };
-
-                        let right = self.organize_binops(rhs, binops, current, next_min_precedence);
-
-                        let (start, end) =
-                            (self.spans[left.span].start, self.spans[right.span].end);
-                        left = E::untyped(
-                            ET::Binary {
-                                expression: Box::new(E::untyped(
-                                    ET::Identifier {
-                                        module: None,
-                                        identifier: AnyIdentifier::Identifier(
-                                            op.get_function_identifier(self.strings, op_span),
-                                        ),
-                                    },
-                                    op_span,
-                                )),
-                                op,
-                                arguments: Box::new([left, right]),
-                            },
-                            self.span(start, end),
-                        )
-                    } else {
-                        break;
-                    }
-                }
-                None => break,
-            }
-        }
-
-        left
+    fn add_expression(&mut self, expression: Expression) -> expression::Index {
+        self.expressions.push(expression);
+        self.expressions.last_key().unwrap()
     }
 }
 
@@ -2149,7 +2167,7 @@ pub mod tests {
         strings: &'a mut Strings,
         spans: &'a mut Spans,
         expressions: &'a mut Expressions,
-    ) -> ParseResult<Box<Expression>> {
+    ) -> ParseResult<expression::Index> {
         let mut parser = State {
             strings,
             source,
@@ -2162,7 +2180,8 @@ pub mod tests {
         let result = parser.required(State::expression, |self_| {
             self_.error(InvalidModuleDefinitionLhs)
         })?;
-        parser.eof(Box::new(result))
+        let result = parser.add_expression(result);
+        parser.eof(result)
     }
 
     mod test_expression {
@@ -2465,7 +2484,7 @@ add 5"
                 &mut spans,
                 &mut expressions,
             ) {
-                Ok(ast) => format!("{ast:#?}"),
+                Ok(ast) => format!("{ast:#?}\n\n{expressions:#?}\n\n{spans:#?}"),
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);
                     format!("{error_str}\n\n{error:#?}")
@@ -3169,7 +3188,7 @@ main =
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
             let result =
                 match &super::parse(&source, &tokens, &mut strings, &mut spans, &mut expressions) {
-                    Ok(ast) => format!("{ast:#?}"),
+                    Ok(ast) => format!("{ast:#?}\n\n{expressions:#?}\n\n{spans:#?}"),
                     Err(error) => {
                         let error_str = error.to_string(&source, &strings);
                         format!("{error_str}\n\n{error:#?}")

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2869
+assertion_line: 2897
 expression: "parse(\"\nmodule Test\n\ntype Fruit = { name : String }\n\")"
 ---
 Input:
@@ -89,3 +89,78 @@ Result:
     },
     [],
 )
+
+{}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+}

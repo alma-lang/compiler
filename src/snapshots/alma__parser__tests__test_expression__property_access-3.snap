@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2418
+assertion_line: 2439
 expression: "parse(\"a.b.c.d\")"
 ---
 Input:
@@ -9,78 +9,174 @@ a.b.c.d
 
 Result:
 
-Expression {
-    span: Index(
-        6,
-    ),
-    typ: RefCell {
-        value: None,
-    },
-    expr: PropertyAccess {
-        expression: Expression {
-            span: Index(
-                4,
-            ),
-            typ: RefCell {
-                value: None,
-            },
-            expr: PropertyAccess {
-                expression: Expression {
-                    span: Index(
-                        2,
-                    ),
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: PropertyAccess {
-                        expression: Expression {
-                            span: Index(
-                                0,
-                            ),
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Identifier {
-                                module: None,
-                                identifier: Identifier(
-                                    Identifier {
-                                        name: SymbolU32 {
-                                            value: 1,
-                                        },
-                                        span: Index(
-                                            0,
-                                        ),
-                                    },
-                                ),
-                            },
-                        },
-                        property: Identifier {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
-                            span: Index(
-                                1,
-                            ),
-                        },
-                    },
-                },
-                property: Identifier {
+Index(
+    3,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            0,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier {
+            module: None,
+            identifier: Identifier(
+                Identifier {
                     name: SymbolU32 {
-                        value: 3,
+                        value: 1,
                     },
                     span: Index(
-                        3,
+                        0,
                     ),
                 },
-            },
-        },
-        property: Identifier {
-            name: SymbolU32 {
-                value: 4,
-            },
-            span: Index(
-                5,
             ),
         },
+    },
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            2,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: PropertyAccess {
+            expression: Index(
+                0,
+            ),
+            property: Identifier {
+                name: SymbolU32 {
+                    value: 2,
+                },
+                span: Index(
+                    1,
+                ),
+            },
+        },
+    },
+    Index(
+        2,
+    ): Expression {
+        span: Index(
+            4,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: PropertyAccess {
+            expression: Index(
+                1,
+            ),
+            property: Identifier {
+                name: SymbolU32 {
+                    value: 3,
+                },
+                span: Index(
+                    3,
+                ),
+            },
+        },
+    },
+    Index(
+        3,
+    ): Expression {
+        span: Index(
+            6,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: PropertyAccess {
+            expression: Index(
+                2,
+            ),
+            property: Identifier {
+                name: SymbolU32 {
+                    value: 4,
+                },
+                span: Index(
+                    5,
+                ),
+            },
+        },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            6,
+        ),
     },
 }

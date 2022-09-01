@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2449
+assertion_line: 2470
 expression: "parse(\"A.b\")"
 ---
 Input:
@@ -9,40 +9,81 @@ A.b
 
 Result:
 
-Expression {
-    span: Index(
-        2,
-    ),
-    typ: RefCell {
-        value: None,
-    },
-    expr: Identifier {
-        module: Some(
-            ModuleName {
-                parts: [
-                    CapitalizedIdentifier {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                        span: Index(
-                            0,
-                        ),
-                    },
-                ],
-                full_name: SymbolU32 {
-                    value: 1,
-                },
-            },
+Index(
+    0,
+)
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            2,
         ),
-        identifier: Identifier(
-            Identifier {
-                name: SymbolU32 {
-                    value: 2,
+        typ: RefCell {
+            value: None,
+        },
+        expr: Identifier {
+            module: Some(
+                ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                            span: Index(
+                                0,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 1,
+                    },
                 },
-                span: Index(
-                    1,
-                ),
-            },
+            ),
+            identifier: Identifier(
+                Identifier {
+                    name: SymbolU32 {
+                        value: 2,
+                    },
+                    span: Index(
+                        1,
+                    ),
+                },
+            ),
+        },
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            2,
         ),
     },
 }

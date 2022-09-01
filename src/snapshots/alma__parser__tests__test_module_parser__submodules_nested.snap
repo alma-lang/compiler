@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2573
+assertion_line: 2601
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test1\n  a = 1\n\n  module Parent.Test1.Test1Test\n    b = 1\n\nmodule Parent.Test2\n    c = 5\n    \")"
 ---
 Input:
@@ -94,17 +94,9 @@ Result:
                                 },
                             ),
                         },
-                        Expression {
-                            span: Index(
-                                11,
-                            ),
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
-                            ),
-                        },
+                        Index(
+                            1,
+                        ),
                     ),
                 ),
             ],
@@ -154,17 +146,9 @@ Result:
                                 },
                             ),
                         },
-                        Expression {
-                            span: Index(
-                                5,
-                            ),
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
-                            ),
-                        },
+                        Index(
+                            0,
+                        ),
                     ),
                 ),
             ],
@@ -214,17 +198,9 @@ Result:
                                 },
                             ),
                         },
-                        Expression {
-                            span: Index(
-                                16,
-                            ),
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                5.0,
-                            ),
-                        },
+                        Index(
+                            2,
+                        ),
                     ),
                 ),
             ],
@@ -232,3 +208,218 @@ Result:
         },
     ],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            5,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        1,
+    ): Expression {
+        span: Index(
+            11,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+    Index(
+        2,
+    ): Expression {
+        span: Index(
+            16,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            5.0,
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            10,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            14,
+        ),
+        end: Index(
+            14,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            15,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            15,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        11,
+    ): Span {
+        start: Index(
+            17,
+        ),
+        end: Index(
+            17,
+        ),
+    },
+    Index(
+        12,
+    ): Span {
+        start: Index(
+            19,
+        ),
+        end: Index(
+            19,
+        ),
+    },
+    Index(
+        13,
+    ): Span {
+        start: Index(
+            21,
+        ),
+        end: Index(
+            21,
+        ),
+    },
+    Index(
+        14,
+    ): Span {
+        start: Index(
+            22,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        15,
+    ): Span {
+        start: Index(
+            22,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        16,
+    ): Span {
+        start: Index(
+            24,
+        ),
+        end: Index(
+            24,
+        ),
+    },
+}

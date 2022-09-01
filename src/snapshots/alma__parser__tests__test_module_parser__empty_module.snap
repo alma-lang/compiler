@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2480
+assertion_line: 2508
 expression: "parse(\"module Test\")"
 ---
 Input:
@@ -33,3 +33,18 @@ Result:
     },
     [],
 )
+
+{}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+}

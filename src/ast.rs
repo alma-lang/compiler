@@ -30,7 +30,7 @@ pub mod span {
 pub enum ReplEntry {
     Import(Import),
     Definition(Definition),
-    Expression(Expression),
+    Expression(expression::Index),
 }
 
 // Modules
@@ -194,7 +194,7 @@ pub struct TypeSignature {
 #[derive(Debug, Clone)]
 pub enum Definition {
     Lambda(Identifier, Lambda),
-    Pattern(Pattern, Expression),
+    Pattern(Pattern, expression::Index),
 }
 
 // Types
@@ -341,48 +341,48 @@ pub mod expression {
             identifier: AnyIdentifier,
         },
         PropertyAccess {
-            expression: Box<Expression>,
+            expression: expression::Index,
             property: Identifier,
         },
         PropertyAccessLambda {
             property: Identifier,
         },
         Record {
-            fields: Vec<(Identifier, Expression)>,
+            fields: Vec<(Identifier, expression::Index)>,
         },
         RecordUpdate {
-            record: Box<Expression>,
-            fields: Vec<(Identifier, Expression)>,
+            record: expression::Index,
+            fields: Vec<(Identifier, expression::Index)>,
         },
         Unary {
             op: Unary,
-            expression: Box<Expression>,
+            expression: expression::Index,
         },
         Binary {
-            expression: Box<Expression>,
+            expression: expression::Index,
             op: Binop,
-            arguments: Box<[Expression; 2]>,
+            arguments: [expression::Index; 2],
         },
         Lambda(Lambda),
         FnCall {
-            function: Box<Expression>,
-            arguments: Vec<Expression>,
+            function: expression::Index,
+            arguments: Vec<expression::Index>,
         },
         Let {
             definitions: Vec<TypedDefinition>,
-            body: Box<Expression>,
+            body: expression::Index,
         },
         If {
-            condition: Box<Expression>,
-            then: Box<Expression>,
-            else_: Box<Expression>,
+            condition: expression::Index,
+            then: expression::Index,
+            else_: expression::Index,
         },
     }
 
     #[derive(Debug, Clone)]
     pub struct Lambda {
         pub parameters: Vec<Pattern>,
-        pub body: Box<Expression>,
+        pub body: expression::Index,
     }
 
     // Operators

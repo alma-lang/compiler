@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2525
+assertion_line: 2553
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\")"
 ---
 Input:
@@ -65,3 +65,38 @@ Result:
         },
     ],
 )
+
+{}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+}

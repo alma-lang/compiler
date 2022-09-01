@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2223
+assertion_line: 2244
 expression: "parse(\"(\\\"\\\")\")"
 ---
 Input:
@@ -9,16 +9,37 @@ Input:
 
 Result:
 
-Expression {
-    span: Index(
+Index(
+    0,
+)
+
+{
+    Index(
         0,
-    ),
-    typ: RefCell {
-        value: None,
-    },
-    expr: String_(
-        SymbolU32 {
-            value: 1,
+    ): Expression {
+        span: Index(
+            0,
+        ),
+        typ: RefCell {
+            value: None,
         },
-    ),
+        expr: String_(
+            SymbolU32 {
+                value: 1,
+            },
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
 }

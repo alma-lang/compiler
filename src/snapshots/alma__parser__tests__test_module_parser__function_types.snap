@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3007
+assertion_line: 3035
 expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = Fruit (a -> b)\n\")"
 ---
 Input:
@@ -128,3 +128,118 @@ Result:
     },
     [],
 )
+
+{}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            13,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            15,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            16,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            16,
+        ),
+    },
+}

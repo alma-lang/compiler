@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2531
+assertion_line: 2559
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1\")"
 ---
 Input:
@@ -80,17 +80,9 @@ Result:
                                 },
                             ),
                         },
-                        Expression {
-                            span: Index(
-                                5,
-                            ),
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
-                            ),
-                        },
+                        Index(
+                            0,
+                        ),
                     ),
                 ),
             ],
@@ -98,3 +90,82 @@ Result:
         },
     ],
 )
+
+{
+    Index(
+        0,
+    ): Expression {
+        span: Index(
+            5,
+        ),
+        typ: RefCell {
+            value: None,
+        },
+        expr: Float(
+            1.0,
+        ),
+    },
+}
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            3,
+        ),
+        end: Index(
+            3,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            6,
+        ),
+        end: Index(
+            6,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+}
