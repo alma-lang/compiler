@@ -1,6 +1,6 @@
 use super::types::ModuleInterface;
-use crate::ast::{self, ModuleFullName, Spans};
-use crate::source::{self, Source, Sources};
+use crate::ast::{self, Expressions, ModuleFullName, Spans};
+use crate::source::{self, Source, Sources, SourcesData};
 use crate::strings::Strings;
 use crate::token::Tokens;
 use derive_more::{From, Into};
@@ -20,9 +20,10 @@ pub struct State {
     pub module_to_source_idx: Modules<source::Index>,
     pub module_name_to_module_idx: HashMap<ModuleFullName, ModuleIndex>,
     pub sources: Sources,
-    pub tokens: TiVec<source::Index, Tokens>,
-    pub spans: TiVec<source::Index, Spans>,
-    pub asts: Modules<ast::Module>,
+    pub tokens: SourcesData<Tokens>,
+    pub spans: SourcesData<Spans>,
+    pub expressions: SourcesData<Expressions>,
+    pub modules: Modules<ast::Module>,
     pub types: Modules<Option<ModuleInterface>>,
 }
 
@@ -30,9 +31,10 @@ impl State {
     pub fn new() -> Self {
         Self {
             sources: Sources::new(),
-            tokens: TiVec::new(),
-            spans: TiVec::new(),
-            asts: Modules::new(),
+            tokens: SourcesData::new(),
+            spans: SourcesData::new(),
+            expressions: SourcesData::new(),
+            modules: Modules::new(),
             types: Modules::new(),
             strings: Strings::new(),
             module_to_source_idx: Modules::new(),
@@ -44,11 +46,13 @@ impl State {
         self.sources.push(source);
         self.tokens.push(Tokens::new());
         self.spans.push(Spans::new());
+        self.expressions.push(Expressions::new());
 
         // Return the newly created file index, sources and tokens and spans should always be in
         // sync with file indexes
         debug_assert_eq!(self.sources.len(), self.tokens.len());
         debug_assert_eq!(self.sources.len(), self.spans.len());
+        debug_assert_eq!(self.sources.len(), self.expressions.len());
         self.sources.last_key().unwrap()
     }
 
@@ -58,17 +62,17 @@ impl State {
         module_ast: ast::Module,
     ) -> ModuleIndex {
         let module_name = module_ast.name.full_name;
-        self.asts.push(module_ast);
+        self.modules.push(module_ast);
         self.types.push(None);
         self.module_to_source_idx.push(source_idx);
-        let module_idx = self.asts.last_key().unwrap();
+        let module_idx = self.modules.last_key().unwrap();
         self.module_name_to_module_idx
             .insert(module_name, module_idx);
 
         // Return the newly created module index, asts and types should always be in sync with
         // module indexes
-        debug_assert_eq!(self.asts.len(), self.types.len());
-        debug_assert_eq!(self.asts.len(), self.module_to_source_idx.len());
+        debug_assert_eq!(self.modules.len(), self.types.len());
+        debug_assert_eq!(self.modules.len(), self.module_to_source_idx.len());
         module_idx
     }
 
@@ -102,7 +106,7 @@ impl State {
             if i > 0 {
                 out.push_str("\n\n\n");
             }
-            let name_sym = self.asts[module_idx].name.full_name;
+            let name_sym = self.modules[module_idx].name.full_name;
             let name = self.strings.resolve(name_sym);
             let interface = interface
                 .as_ref()

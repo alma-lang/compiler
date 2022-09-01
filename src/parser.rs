@@ -162,11 +162,7 @@ impl ErrorType {
         }
     }
 
-    pub fn to_string<'tokens, 'strings>(
-        &self,
-        error: &Error,
-        strings: &'strings Strings,
-    ) -> String {
+    pub fn to_string<'a>(&self, error: &Error, strings: &'a Strings) -> String {
         let get_lexeme = |token: &Token| token.kind.to_string(strings);
         let expected_but_found = |message: &str| {
             let lexeme = get_lexeme(&error.token);
@@ -505,11 +501,7 @@ impl Error {
         Self { token, kind }
     }
 
-    pub fn to_string<'source, 'strings, 'tokens>(
-        &self,
-        source: &'source Source,
-        strings: &'strings Strings,
-    ) -> String {
+    pub fn to_string<'a>(&self, source: &'a Source, strings: &'a Strings) -> String {
         let message = {
             let message = self.kind.to_string(self, strings);
             let point_at_token = self.kind.get_code_pointer().unwrap_or(self.token);
@@ -533,15 +525,16 @@ impl Error {
 type ParseResult<A> = Result<A, Error>;
 
 #[derive(Debug)]
-struct State<'source, 'strings, 'tokens, 'spans> {
-    strings: &'strings mut Strings,
-    source: &'source Source,
-    tokens: &'tokens Tokens,
+struct State<'a> {
+    strings: &'a mut Strings,
+    source: &'a Source,
+    tokens: &'a Tokens,
     current: token::Index,
-    spans: &'spans mut Spans,
+    spans: &'a mut Spans,
+    expressions: &'a mut Expressions,
 }
 
-impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'spans> {
+impl<'a> State<'a> {
     fn file(&mut self) -> ParseResult<(Module, Vec<Module>)> {
         let module = self.module(None)?;
         match module {
@@ -1723,7 +1716,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
     fn build_module_name(
         &mut self,
         start: token::Index,
-        tokens: &'tokens TiSlice<token::Index, Token>,
+        tokens: &'a TiSlice<token::Index, Token>,
         names: Vec<CapitalizedIdentifier>,
     ) -> ParseResult<ModuleName> {
         ModuleName::new(names, self.strings).map_err(|(i, names)| {
@@ -1781,7 +1774,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
 
     // Utilities
 
-    fn prev_token(&self) -> (token::Index, &'tokens Token) {
+    fn prev_token(&self) -> (token::Index, &'a Token) {
         self.prev_non_comment_token(self.current)
     }
     fn prev_token_index(&self) -> token::Index {
@@ -1789,7 +1782,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
         idx
     }
 
-    fn get_token(&self) -> (token::Index, &'tokens Token) {
+    fn get_token(&self) -> (token::Index, &'a Token) {
         self.next_non_comment_token(self.current)
     }
     fn get_token_index(&self) -> token::Index {
@@ -1797,7 +1790,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
         idx
     }
 
-    fn peek_next_token(&self) -> &'tokens Token {
+    fn peek_next_token(&self) -> &'a Token {
         let (first, token) = self.next_non_comment_token(self.current);
         match token.kind {
             Eof => token,
@@ -1816,7 +1809,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
         };
     }
 
-    fn next_non_comment_token(&self, start: token::Index) -> (token::Index, &'tokens Token) {
+    fn next_non_comment_token(&self, start: token::Index) -> (token::Index, &'a Token) {
         let mut i = start;
         let mut token;
         loop {
@@ -1835,7 +1828,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
         (i.into(), token)
     }
 
-    fn prev_non_comment_token(&self, start: token::Index) -> (token::Index, &'tokens Token) {
+    fn prev_non_comment_token(&self, start: token::Index) -> (token::Index, &'a Token) {
         let mut i = start - 1.into();
         let mut token;
         loop {
@@ -2017,7 +2010,7 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
         }
     }
 
-    fn match_token(&mut self, typ: token::Type) -> Option<(token::Index, &'tokens Token)> {
+    fn match_token(&mut self, typ: token::Type) -> Option<(token::Index, &'a Token)> {
         let (token_index, token) = self.get_token();
         if std::mem::discriminant(&token.kind) == std::mem::discriminant(&typ) {
             self.advance();
@@ -2101,11 +2094,12 @@ impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'span
     }
 }
 
-pub fn parse<'source, 'strings, 'tokens, 'spans>(
-    source: &'source Source,
-    tokens: &'tokens Tokens,
-    strings: &'strings mut Strings,
-    spans: &'spans mut Spans,
+pub fn parse<'a>(
+    source: &'a Source,
+    tokens: &'a Tokens,
+    strings: &'a mut Strings,
+    spans: &'a mut Spans,
+    expressions: &'a mut Expressions,
 ) -> ParseResult<(Module, Vec<Module>)> {
     let mut parser = State {
         strings,
@@ -2113,16 +2107,18 @@ pub fn parse<'source, 'strings, 'tokens, 'spans>(
         tokens,
         current: 0.into(),
         spans,
+        expressions,
     };
 
     parser.file()
 }
 
-pub fn parse_repl<'source, 'strings, 'tokens, 'spans>(
-    source: &'source Source,
-    tokens: &'tokens Tokens,
-    strings: &'strings mut Strings,
-    spans: &'spans mut Spans,
+pub fn parse_repl<'a>(
+    source: &'a Source,
+    tokens: &'a Tokens,
+    strings: &'a mut Strings,
+    spans: &'a mut Spans,
+    expressions: &'a mut Expressions,
 ) -> ParseResult<ReplEntry> {
     let mut parser = State {
         strings,
@@ -2130,6 +2126,7 @@ pub fn parse_repl<'source, 'strings, 'tokens, 'spans>(
         tokens,
         current: 0.into(),
         spans,
+        expressions,
     };
 
     parser.repl_entry()
@@ -2140,11 +2137,12 @@ pub mod tests {
     use super::*;
     use crate::tokenizer;
 
-    pub fn parse_expression<'source, 'strings, 'tokens, 'spans>(
-        source: &'source Source,
-        tokens: &'tokens Tokens,
-        strings: &'strings mut Strings,
-        spans: &'spans mut Spans,
+    pub fn parse_expression<'a>(
+        source: &'a Source,
+        tokens: &'a Tokens,
+        strings: &'a mut Strings,
+        spans: &'a mut Spans,
+        expressions: &'a mut Expressions,
     ) -> ParseResult<Box<Expression>> {
         let mut parser = State {
             strings,
@@ -2152,6 +2150,7 @@ pub mod tests {
             tokens,
             current: 0.into(),
             spans,
+            expressions,
         };
 
         let result = parser.required(State::expression, |self_| {
@@ -2451,8 +2450,15 @@ add 5"
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
             let mut spans = Spans::new();
+            let mut expressions = Expressions::new();
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
-            let result = match &parse_expression(&source, &tokens, &mut strings, &mut spans) {
+            let result = match &parse_expression(
+                &source,
+                &tokens,
+                &mut strings,
+                &mut spans,
+                &mut expressions,
+            ) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);
@@ -3153,14 +3159,16 @@ main =
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
             let mut spans = Spans::new();
+            let mut expressions = Expressions::new();
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
-            let result = match &super::parse(&source, &tokens, &mut strings, &mut spans) {
-                Ok(ast) => format!("{ast:#?}"),
-                Err(error) => {
-                    let error_str = error.to_string(&source, &strings);
-                    format!("{error_str}\n\n{error:#?}")
-                }
-            };
+            let result =
+                match &super::parse(&source, &tokens, &mut strings, &mut spans, &mut expressions) {
+                    Ok(ast) => format!("{ast:#?}"),
+                    Err(error) => {
+                        let error_str = error.to_string(&source, &strings);
+                        format!("{error_str}\n\n{error:#?}")
+                    }
+                };
             format!("Input:\n\n{code}\n\nResult:\n\n{result}")
         }
     }

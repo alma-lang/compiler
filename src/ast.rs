@@ -304,6 +304,8 @@ pub mod types {
 
 // Expressions
 
+pub type Expressions = TiVec<Index<Expression>, Expression>;
+
 #[derive(Debug, Clone)]
 pub struct Expression {
     pub span: Index<Span>,

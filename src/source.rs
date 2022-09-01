@@ -13,6 +13,7 @@ use typed_index_collections::TiVec;
 pub type Index = index::Index<Source>;
 
 pub type Sources = TiVec<Index, Source>;
+pub type SourcesData<T> = TiVec<Index, T>;
 
 pub enum Error {
     InvalidExtension(String),

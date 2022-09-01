@@ -43,7 +43,7 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
     // }
 
     for module_idx in sorted_modules {
-        let module_ast = &state.asts[*module_idx];
+        let module_ast = &state.modules[*module_idx];
 
         code.push_str("\nlet ");
         module_full_name(&mut code, &module_ast.name, strings);
@@ -63,7 +63,7 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
     }
 
     code.push_str("\nreturn {\n");
-    for module in &state.asts {
+    for module in &state.modules {
         indented(&mut code, add_indent(0), "");
         module_full_name(&mut code, &module.name, strings);
         code.push_str(",\n");

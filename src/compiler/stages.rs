@@ -72,6 +72,7 @@ fn parse_file<'source>(
     let source = &state.sources[file];
     let tokens = &mut state.tokens[file];
     let spans = &mut state.spans[file];
+    let expressions = &mut state.expressions[file];
     tokenizer::parse(source, strings, tokens).map_err(|errors| {
         errors
             .iter()
@@ -81,7 +82,7 @@ fn parse_file<'source>(
 
     let mut module_names = vec![];
 
-    let (module_ast, submodules) = parser::parse(source, tokens, strings, spans)
+    let (module_ast, submodules) = parser::parse(source, tokens, strings, spans, expressions)
         .map_err(|error| vec![error.to_string(source, strings)])?;
 
     let module_name = module_ast.name.full_name;
@@ -98,7 +99,7 @@ fn parse_file<'source>(
         module_names.push(submodule_index);
 
         // Queue dependencies
-        let dependencies = state.asts[submodule_index].dependencies();
+        let dependencies = state.modules[submodule_index].dependencies();
         for dependency in dependencies {
             if !state.has_ast(dependency.full_name) {
                 parse_queue.push(dependency.full_name);
@@ -111,7 +112,7 @@ fn parse_file<'source>(
     parse_queue.push(module_name);
     module_names.push(module_index);
     // Queue dependencies
-    let dependencies = state.asts[module_index].dependencies();
+    let dependencies = state.modules[module_index].dependencies();
     for dependency in dependencies {
         if !state.has_ast(dependency.full_name) {
             parse_queue.push(dependency.full_name);
@@ -154,7 +155,7 @@ pub fn check_cycles(
                                 // Place it in the queue of modules to check it, in the visited modules
                                 // path, and add its dependencies to check after it to the modules
                                 // queue
-                                let module_ast = &state.asts[module_idx];
+                                let module_ast = &state.modules[module_idx];
                                 modules_queue.push(module_idx);
                                 visited_modules.insert(module_idx);
                                 visited_path.push(module_idx);
@@ -242,12 +243,12 @@ fn check_cycles_in_path(
     if cycle {
         let mut cycle_names: Vec<&str> = cycle_names
             .iter()
-            .map(|m| state.strings.resolve(state.asts[*m].name.full_name))
+            .map(|m| state.strings.resolve(state.modules[*m].name.full_name))
             .collect();
         cycle_names.push(
             state
                 .strings
-                .resolve(state.asts[*module_name].name.full_name),
+                .resolve(state.modules[*module_name].name.full_name),
         );
 
         errors.push(cycle_error(&cycle_names));
@@ -282,7 +283,7 @@ pub fn infer(
                 if state.types[module_idx].is_some() {
                     continue;
                 }
-                let module_ast = &state.asts[module_idx];
+                let module_ast = &state.modules[module_idx];
 
                 // Check dependencies and skip back to queue if there are any that need processing
                 // before this module.

@@ -1157,7 +1157,7 @@ pub fn infer<'state>(
     primitive_types: &PolyTypeEnv,
 ) -> Result<(), Vec<Error>> {
     let strings = &mut compiler_state.strings;
-    let module_ast = &compiler_state.asts[module_idx];
+    let module_ast = &compiler_state.modules[module_idx];
     let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = primitive_types.clone();
@@ -2087,6 +2087,7 @@ mod tests {
 
     mod test_infer_expression {
         use super::*;
+        use crate::ast::Expressions;
         use insta::assert_snapshot;
 
         #[test]
@@ -2212,6 +2213,7 @@ add 5"
             let source = Source::new_orphan(code.to_string());
             let mut tokens = Tokens::new();
             let mut spans = Spans::new();
+            let mut expressions = Expressions::new();
 
             tokenizer::parse(&source, &mut strings, &mut tokens)
                 .map_err(|errors| {
@@ -2223,9 +2225,15 @@ add 5"
                 })
                 .unwrap();
 
-            let ast = parser::tests::parse_expression(&source, &tokens, &mut strings, &mut spans)
-                .map_err(|error| error.to_string(&source, &strings))
-                .unwrap();
+            let ast = parser::tests::parse_expression(
+                &source,
+                &tokens,
+                &mut strings,
+                &mut spans,
+                &mut expressions,
+            )
+            .map_err(|error| error.to_string(&source, &strings))
+            .unwrap();
 
             let mut state = State::new();
             let mut env = PolyTypeEnv::new();
