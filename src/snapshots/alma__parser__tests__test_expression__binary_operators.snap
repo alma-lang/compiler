@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2246
+assertion_line: 2258
 expression: "parse(\"1 - 5\")"
 ---
 Input:
@@ -9,96 +9,63 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        3,
     ),
-    end: Index(
-        2,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Binary {
-            expression: Node {
-                start: Index(
-                    1,
-                ),
-                end: Index(
-                    1,
-                ),
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Identifier {
-                        module: None,
-                        identifier: Identifier(
-                            Node {
-                                start: Index(
-                                    1,
-                                ),
-                                end: Index(
-                                    1,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 3,
-                                    },
-                                },
-                            },
-                        ),
-                    },
-                },
+    typ: RefCell {
+        value: None,
+    },
+    expr: Binary {
+        expression: Expression {
+            span: Index(
+                1,
+            ),
+            typ: RefCell {
+                value: None,
             },
-            op: Node {
-                start: Index(
-                    1,
+            expr: Identifier {
+                module: None,
+                identifier: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 3,
+                        },
+                        span: Index(
+                            1,
+                        ),
+                    },
                 ),
-                end: Index(
-                    1,
-                ),
-                value: Binop_ {
-                    typ: Substraction,
-                    precedence: 14,
-                    associativity: Ltr,
-                },
             },
-            arguments: [
-                Node {
-                    start: Index(
-                        0,
-                    ),
-                    end: Index(
-                        0,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
-                },
-                Node {
-                    start: Index(
-                        2,
-                    ),
-                    end: Index(
-                        2,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            5.0,
-                        ),
-                    },
-                },
-            ],
         },
+        op: Binop {
+            typ: Substraction,
+            precedence: 14,
+            associativity: Ltr,
+        },
+        arguments: [
+            Expression {
+                span: Index(
+                    0,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: Float(
+                    1.0,
+                ),
+            },
+            Expression {
+                span: Index(
+                    2,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: Float(
+                    5.0,
+                ),
+            },
+        ],
     },
 }

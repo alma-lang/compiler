@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3082
+assertion_line: 3095
 expression: "parse(\"\\\nmodule Test exposing (main)\n\nmain : Fruit -> Fruit\n\")"
 ---
 Input:
@@ -16,18 +16,13 @@ Result:
     Module {
         name: ModuleName {
             parts: [
-                Node {
-                    start: Index(
-                        1,
-                    ),
-                    end: Index(
-                        1,
-                    ),
-                    value: CapitalizedIdentifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
                     },
+                    span: Index(
+                        0,
+                    ),
                 },
             ],
             full_name: SymbolU32 {
@@ -35,26 +30,18 @@ Result:
             },
         },
         exports: [
-            Node {
-                start: Index(
-                    4,
+            Export {
+                span: Index(
+                    1,
                 ),
-                end: Index(
-                    4,
-                ),
-                value: Identifier(
-                    Node {
-                        start: Index(
-                            4,
-                        ),
-                        end: Index(
-                            4,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
+                typ: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 2,
                         },
+                        span: Index(
+                            1,
+                        ),
                     },
                 ),
             },
@@ -63,72 +50,47 @@ Result:
         definitions: [
             TypeSignature(
                 TypeSignature {
-                    name: Node {
-                        start: Index(
-                            6,
-                        ),
-                        end: Index(
-                            6,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
+                    name: Identifier {
+                        name: SymbolU32 {
+                            value: 2,
                         },
+                        span: Index(
+                            2,
+                        ),
                     },
                     typ: Fun {
                         params: [
                             App(
-                                Node {
-                                    start: Index(
-                                        8,
+                                Constructor {
+                                    span: Index(
+                                        4,
                                     ),
-                                    end: Index(
-                                        8,
-                                    ),
-                                    value: Constructor_ {
-                                        name: Node {
-                                            start: Index(
-                                                8,
-                                            ),
-                                            end: Index(
-                                                8,
-                                            ),
-                                            value: CapitalizedIdentifier_ {
-                                                name: SymbolU32 {
-                                                    value: 3,
-                                                },
-                                            },
+                                    name: CapitalizedIdentifier {
+                                        name: SymbolU32 {
+                                            value: 3,
                                         },
-                                        params: [],
+                                        span: Index(
+                                            3,
+                                        ),
                                     },
+                                    params: [],
                                 },
                             ),
                         ],
                         ret: App(
-                            Node {
-                                start: Index(
-                                    10,
+                            Constructor {
+                                span: Index(
+                                    6,
                                 ),
-                                end: Index(
-                                    10,
-                                ),
-                                value: Constructor_ {
-                                    name: Node {
-                                        start: Index(
-                                            10,
-                                        ),
-                                        end: Index(
-                                            10,
-                                        ),
-                                        value: CapitalizedIdentifier_ {
-                                            name: SymbolU32 {
-                                                value: 3,
-                                            },
-                                        },
+                                name: CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 3,
                                     },
-                                    params: [],
+                                    span: Index(
+                                        5,
+                                    ),
                                 },
+                                params: [],
                             },
                         ),
                     },

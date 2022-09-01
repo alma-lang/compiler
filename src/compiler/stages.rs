@@ -71,6 +71,7 @@ fn parse_file<'source>(
     let strings = &mut state.strings;
     let source = &state.sources[file];
     let tokens = &mut state.tokens[file];
+    let spans = &mut state.spans[file];
     tokenizer::parse(source, strings, tokens).map_err(|errors| {
         errors
             .iter()
@@ -80,7 +81,7 @@ fn parse_file<'source>(
 
     let mut module_names = vec![];
 
-    let (module_ast, submodules) = parser::parse(source, tokens, strings)
+    let (module_ast, submodules) = parser::parse(source, tokens, strings, spans)
         .map_err(|error| vec![error.to_string(source, strings)])?;
 
     let module_name = module_ast.name.full_name;
@@ -326,6 +327,7 @@ pub fn infer(
                                         &state.sources[source_idx],
                                         &state.strings,
                                         &state.tokens[source_idx],
+                                        &state.spans[source_idx],
                                     )
                                 })
                                 .collect::<Vec<String>>(),

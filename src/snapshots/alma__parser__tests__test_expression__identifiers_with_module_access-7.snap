@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2436
+assertion_line: 2448
 expression: "parse(\"function record.access\")"
 ---
 Input:
@@ -9,110 +9,75 @@ function record.access
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        4,
     ),
-    end: Index(
-        3,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: FnCall {
-            function: Node {
-                start: Index(
-                    0,
-                ),
-                end: Index(
-                    0,
-                ),
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
+    typ: RefCell {
+        value: None,
+    },
+    expr: FnCall {
+        function: Expression {
+            span: Index(
+                0,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Identifier {
+                module: None,
+                identifier: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                        span: Index(
+                            0,
+                        ),
                     },
-                    expr: Identifier {
-                        module: None,
-                        identifier: Identifier(
-                            Node {
-                                start: Index(
-                                    0,
-                                ),
-                                end: Index(
-                                    0,
-                                ),
-                                value: Identifier_ {
+                ),
+            },
+        },
+        arguments: [
+            Expression {
+                span: Index(
+                    3,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: PropertyAccess {
+                    expression: Expression {
+                        span: Index(
+                            1,
+                        ),
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Identifier {
+                            module: None,
+                            identifier: Identifier(
+                                Identifier {
                                     name: SymbolU32 {
-                                        value: 1,
+                                        value: 2,
                                     },
+                                    span: Index(
+                                        1,
+                                    ),
                                 },
-                            },
+                            ),
+                        },
+                    },
+                    property: Identifier {
+                        name: SymbolU32 {
+                            value: 3,
+                        },
+                        span: Index(
+                            2,
                         ),
                     },
                 },
             },
-            arguments: [
-                Node {
-                    start: Index(
-                        1,
-                    ),
-                    end: Index(
-                        3,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: PropertyAccess {
-                            expression: Node {
-                                start: Index(
-                                    1,
-                                ),
-                                end: Index(
-                                    1,
-                                ),
-                                value: Expression_ {
-                                    typ: RefCell {
-                                        value: None,
-                                    },
-                                    expr: Identifier {
-                                        module: None,
-                                        identifier: Identifier(
-                                            Node {
-                                                start: Index(
-                                                    1,
-                                                ),
-                                                end: Index(
-                                                    1,
-                                                ),
-                                                value: Identifier_ {
-                                                    name: SymbolU32 {
-                                                        value: 2,
-                                                    },
-                                                },
-                                            },
-                                        ),
-                                    },
-                                },
-                            },
-                            property: Node {
-                                start: Index(
-                                    3,
-                                ),
-                                end: Index(
-                                    3,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 3,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            ],
-        },
+        ],
     },
 }

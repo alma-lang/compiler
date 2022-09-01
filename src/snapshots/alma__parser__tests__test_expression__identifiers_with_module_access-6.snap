@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2435
+assertion_line: 2447
 expression: "parse(\"A.B.C.d\")"
 ---
 Input:
@@ -9,81 +9,56 @@ A.B.C.d
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        4,
     ),
-    end: Index(
-        6,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Identifier {
-            module: Some(
-                ModuleName {
-                    parts: [
-                        Node {
-                            start: Index(
-                                0,
-                            ),
-                            end: Index(
-                                0,
-                            ),
-                            value: CapitalizedIdentifier_ {
-                                name: SymbolU32 {
-                                    value: 1,
-                                },
-                            },
-                        },
-                        Node {
-                            start: Index(
-                                2,
-                            ),
-                            end: Index(
-                                2,
-                            ),
-                            value: CapitalizedIdentifier_ {
-                                name: SymbolU32 {
-                                    value: 2,
-                                },
-                            },
-                        },
-                        Node {
-                            start: Index(
-                                4,
-                            ),
-                            end: Index(
-                                4,
-                            ),
-                            value: CapitalizedIdentifier_ {
-                                name: SymbolU32 {
-                                    value: 3,
-                                },
-                            },
-                        },
-                    ],
-                    full_name: SymbolU32 {
-                        value: 5,
-                    },
-                },
-            ),
-            identifier: Identifier(
-                Node {
-                    start: Index(
-                        6,
-                    ),
-                    end: Index(
-                        6,
-                    ),
-                    value: Identifier_ {
+    typ: RefCell {
+        value: None,
+    },
+    expr: Identifier {
+        module: Some(
+            ModuleName {
+                parts: [
+                    CapitalizedIdentifier {
                         name: SymbolU32 {
-                            value: 4,
+                            value: 1,
                         },
+                        span: Index(
+                            0,
+                        ),
                     },
+                    CapitalizedIdentifier {
+                        name: SymbolU32 {
+                            value: 2,
+                        },
+                        span: Index(
+                            1,
+                        ),
+                    },
+                    CapitalizedIdentifier {
+                        name: SymbolU32 {
+                            value: 3,
+                        },
+                        span: Index(
+                            2,
+                        ),
+                    },
+                ],
+                full_name: SymbolU32 {
+                    value: 5,
                 },
-            ),
-        },
+            },
+        ),
+        identifier: Identifier(
+            Identifier {
+                name: SymbolU32 {
+                    value: 4,
+                },
+                span: Index(
+                    3,
+                ),
+            },
+        ),
     },
 }

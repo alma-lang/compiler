@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2164
+assertion_line: 2208
 expression: "parse(\"\\\"😄\\\"\")"
 ---
 Input:
@@ -9,21 +9,16 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
+Expression {
+    span: Index(
         0,
     ),
-    end: Index(
-        0,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: String_(
-            SymbolU32 {
-                value: 1,
-            },
-        ),
+    typ: RefCell {
+        value: None,
     },
+    expr: String_(
+        SymbolU32 {
+            value: 1,
+        },
+    ),
 }

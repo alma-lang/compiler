@@ -25,10 +25,13 @@ Expected an `=` sign or list of parameters for the definition of `x`, but instea
 
 Error {
     kind: InvalidLetBindingParametersOrEqualSeparator {
-        definition_identifier: Identifier_ {
+        definition_identifier: Identifier {
             name: SymbolU32 {
                 value: 1,
             },
+            span: Index(
+                3,
+            ),
         },
     },
     token: Token {

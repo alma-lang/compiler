@@ -1,18 +1,21 @@
-use crate::ast::{
-    binop::*,
-    types::{self, Type, TypeDefinition},
-    CapitalizedIdentifier, Expression,
-    ExpressionType::{self as ET, Float, If, Let, String_, *},
-    Expression_ as E, Identifier, Import, Lambda, Module, Node, Pattern, Pattern_,
-    Unary_::{Minus, Not},
-    *,
-};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
     self, Token, Tokens,
     Type::{self as TT, *},
 };
+use crate::{
+    ast::{
+        binop::*,
+        types::{self, Type, TypeDefinition},
+        CapitalizedIdentifier, Expression, Expression as E, ExpressionType as ET, Identifier,
+        Import, Lambda, Module, Pattern, Span,
+        UnaryType::{Minus, Not},
+        *,
+    },
+    index::Index,
+};
+use typed_index_collections::TiSlice;
 
 /* Grammar draft (●○):
     ● file                 → module EOF
@@ -117,7 +120,7 @@ enum ErrorType {
     MissingLetBindings,
     InvalidLetBodyIndent,
     InvalidLetBodyExpression,
-    InvalidLetBindingParametersOrEqualSeparator { definition_identifier: Identifier_ },
+    InvalidLetBindingParametersOrEqualSeparator { definition_identifier: Identifier },
     InvalidLetBindingSeparator,
     InvalidLetBindingRhs,
     InvalidIfCondition,
@@ -146,7 +149,6 @@ enum ErrorType {
     InvalidRecordFieldValue,
 }
 
-use typed_index_collections::TiSlice;
 use ErrorType::*;
 
 impl ErrorType {
@@ -531,14 +533,15 @@ impl Error {
 type ParseResult<A> = Result<A, Error>;
 
 #[derive(Debug)]
-struct State<'source, 'strings, 'tokens> {
+struct State<'source, 'strings, 'tokens, 'spans> {
     strings: &'strings mut Strings,
     source: &'source Source,
     tokens: &'tokens Tokens,
     current: token::Index,
+    spans: &'spans mut Spans,
 }
 
-impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
+impl<'source, 'strings, 'tokens, 'spans> State<'source, 'strings, 'tokens, 'spans> {
     fn file(&mut self) -> ParseResult<(Module, Vec<Module>)> {
         let module = self.module(None)?;
         match module {
@@ -633,9 +636,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
     fn export(&mut self) -> ParseResult<Export> {
         if let Some(export) = self.identifier() {
-            // Make intermediate node to please borrow checker
-            let node = &export.with_value(());
-            Ok(node.with_value(Export_::Identifier(export)))
+            Ok(Export {
+                span: export.span,
+                typ: ExportType::Identifier(export),
+            })
         } else if let Some(export) = self.export_type()? {
             Ok(export)
         } else {
@@ -659,14 +663,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
             let constructors = constructors.unwrap_or_else(|| vec![]);
 
-            let start = export.start;
-            Ok(Some(Node {
-                value: Export_::Type {
+            let start = self.spans[export.span].start;
+            let end = self.prev_token_index();
+            Ok(Some(Export {
+                typ: ExportType::Type {
                     name: export,
                     constructors,
                 },
-                start,
-                end: self.prev_token_index(),
+                span: self.span(start, end),
             }))
         } else {
             Ok(None)
@@ -691,19 +695,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let end = if !exposing.is_empty() {
                 self.prev_token_index()
             } else if let Some(alias) = &alias {
-                alias.end
+                self.spans[alias.span].end
             } else {
-                module_name.end()
+                self.spans[module_name.last_span()].end
             };
 
-            Ok(Some(Node {
-                value: Import_ {
-                    module_name,
-                    alias,
-                    exposing,
-                },
-                start: import_token_index,
-                end,
+            Ok(Some(Import {
+                module_name,
+                alias,
+                exposing,
+                span: self.span(import_token_index, end),
             }))
         } else {
             Ok(None)
@@ -745,10 +746,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         };
 
         let (end_index, _) = self.prev_token();
-        Ok(Some(Node {
-            value: types::TypeDefinition_::new(name, vars, type_definition),
-            start: type_token_index,
-            end: end_index,
+        Ok(Some(types::TypeDefinition {
+            name,
+            vars,
+            typ: type_definition,
+            span: self.span(type_token_index, end_index),
         }))
     }
 
@@ -782,12 +784,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 }
             })?;
 
-            let start = name.start;
+            let start = self.spans[name.span].start;
             let (end, _) = self.prev_token();
-            Ok(Some(Node {
-                value: types::Constructor_::new(name, params),
-                start,
-                end,
+            Ok(Some(types::Constructor {
+                name,
+                params,
+                span: self.span(start, end),
             }))
         } else {
             Ok(None)
@@ -807,11 +809,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             // Unit record
             (RightBrace, _) => {
                 self.advance();
-                Ok(Some(types::RecordType::Record(Node::new(
-                    types::Record_::new(vec![]),
-                    left_brace_token_index,
-                    next_token_index,
-                ))))
+                Ok(Some(types::RecordType::Record(types::Record {
+                    fields: vec![],
+                    span: self.span(left_brace_token_index, next_token_index),
+                })))
             }
 
             // Record literal
@@ -819,11 +820,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let fields = self.type_record_fields()?;
 
                 if let Some((last_token_index, _)) = self.match_token(RightBrace) {
-                    Ok(Some(types::RecordType::Record(Node::new(
-                        types::Record_::new(fields),
-                        left_brace_token_index,
-                        last_token_index,
-                    ))))
+                    Ok(Some(types::RecordType::Record(types::Record {
+                        fields,
+                        span: self.span(left_brace_token_index, last_token_index),
+                    })))
                 } else {
                     Err(self.error(InvalidRecordTypeFieldTypeOrLastRecordDelimiter {
                         first_delimiter: *left_brace_token,
@@ -853,11 +853,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     }));
                 }
 
-                Ok(Some(types::RecordType::RecordExt(Node::new(
-                    types::RecordExt_::new(extension, fields),
-                    left_brace_token_index,
-                    last_token_index,
-                ))))
+                Ok(Some(types::RecordType::RecordExt(types::RecordExt {
+                    extension,
+                    fields,
+                    span: self.span(left_brace_token_index, last_token_index),
+                })))
             }
         }
     }
@@ -888,11 +888,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if let Some(type_) = self.type_parens()? {
             Ok(Some(type_))
         } else if let Some(ident) = self.capitalized_identifier() {
-            let (start, end) = (ident.start, ident.end);
-            Ok(Some(Type::App(Node {
-                value: types::Constructor_::new(ident, vec![]),
-                start,
-                end,
+            let span = self.spans[ident.span];
+            let (start, end) = (span.start, span.end);
+            Ok(Some(Type::App(types::Constructor {
+                name: ident,
+                params: vec![],
+                span: self.span(start, end),
             })))
         } else if let Some(ident) = self.identifier() {
             Ok(Some(Type::Var(ident)))
@@ -1084,15 +1085,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             self_.error(InvalidLetBodyExpression)
         })?;
 
-        let end = body.end;
-        Ok(Some(Node {
-            value: E::untyped(Let {
+        let end = self.spans[body.span].end;
+        Ok(Some(E::untyped(
+            ET::Let {
                 definitions: bindings,
                 body: Box::new(body),
-            }),
-            start: let_token_index,
-            end,
-        }))
+            },
+            self.span(let_token_index, end),
+        )))
     }
 
     fn typed_binding(&mut self) -> ParseResult<Option<TypedDefinition>> {
@@ -1118,14 +1118,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     Some(binding) => {
                         let valid_name = match &binding {
                             Definition::Pattern(
-                                Node {
-                                    value: Pattern_::Identifier(identifier),
+                                Pattern {
+                                    typ: PatternType::Identifier(identifier),
                                     ..
                                 },
                                 _,
                             )
                             | Definition::Lambda(identifier, _)
-                                if identifier.value == signature.name.value =>
+                                if identifier.name == signature.name.name =>
                             {
                                 true
                             }
@@ -1145,28 +1145,30 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
 
     fn binding(&mut self) -> ParseResult<Option<Definition>> {
-        let token_index = self.get_token_index();
-
         let pattern = self.pattern()?;
 
         let definition = match pattern {
-            Some(Node {
-                value: Pattern_::Identifier(identifier),
+            Some(Pattern {
+                typ: PatternType::Identifier(identifier),
                 ..
             }) => {
                 // Peek to see if it is just an identifier and =, and return a pattern
                 let (_, equal_token) = self.get_token();
                 if equal_token.kind == Equal {
                     let expr = self.binding_rhs()?;
+                    let span = identifier.span;
                     Some(Definition::Pattern(
-                        Node::new(Pattern_::Identifier(identifier), token_index, token_index),
+                        Pattern {
+                            typ: PatternType::Identifier(identifier),
+                            span,
+                        },
                         expr,
                     ))
                 } else {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
                         self_.error(InvalidLetBindingParametersOrEqualSeparator {
-                            definition_identifier: identifier.value.clone(),
+                            definition_identifier: identifier.clone(),
                         })
                     })?;
 
@@ -1216,16 +1218,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let else_ = self.required(Self::expression, |self_| self_.error(InvalidIfElseBranch))?;
 
-        let end = else_.end;
-        Ok(Some(Node {
-            value: E::untyped(If {
+        let end = self.spans[else_.span].end;
+        Ok(Some(E::untyped(
+            ET::If {
                 condition: Box::new(condition),
                 then: Box::new(then),
                 else_: Box::new(else_),
-            }),
-            start: token_index,
-            end,
-        }))
+            },
+            self.span(token_index, end),
+        )))
     }
 
     fn lambda(&mut self) -> ParseResult<Option<Expression>> {
@@ -1244,28 +1245,29 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
         let body = self.required(Self::expression, |self_| self_.error(InvalidLambdaBody))?;
 
-        let end = body.end;
-        Ok(Some(Node {
-            value: E::untyped(ET::Lambda(Lambda {
+        let end = self.spans[body.span].end;
+        Ok(Some(E::untyped(
+            ET::Lambda(Lambda {
                 parameters: params,
                 body: Box::new(body),
-            })),
-            start: token_index,
-            end,
-        }))
+            }),
+            self.span(token_index, end),
+        )))
     }
 
     fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
         let token_index = self.get_token_index();
 
         if self.match_token(TT::Underscore).is_some() {
-            Ok(Some(Node::new(Pattern_::Hole, token_index, token_index)))
+            Ok(Some(Pattern {
+                typ: PatternType::Hole,
+                span: self.span(token_index, token_index),
+            }))
         } else if let Some(identifier) = self.identifier() {
-            Ok(Some(Node::new(
-                Pattern_::Identifier(identifier),
-                token_index,
-                token_index,
-            )))
+            Ok(Some(Pattern {
+                typ: PatternType::Identifier(identifier),
+                span: self.span(token_index, token_index),
+            }))
         } else {
             Ok(None)
         }
@@ -1275,22 +1277,15 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if let Some(expr) = self.unary()? {
             self.many(Self::binary_step).map(|mut binops| {
                 // Make the binops options to be able to take them later
-                let mut binops: Vec<Option<(Binop, Expression)>> =
-                    binops.drain(..).map(Some).collect();
+                let mut binops = binops.drain(..).map(Some).collect();
 
-                Some(organize_binops(
-                    self.strings,
-                    expr,
-                    &mut binops,
-                    &mut (0),
-                    0,
-                ))
+                Some(self.organize_binops(expr, &mut binops, &mut (0), 0))
             })
         } else {
             Ok(None)
         }
     }
-    fn binary_step(&mut self) -> ParseResult<Option<(Binop, Expression)>> {
+    fn binary_step(&mut self) -> ParseResult<Option<(Index<Span>, Binop, Expression)>> {
         let (token_index, token) = self.get_token();
 
         let op = match token.kind {
@@ -1312,13 +1307,13 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         if let Some(op) = op {
             self.advance();
 
-            let op_node = Node::new(op, token_index, token_index);
+            let span = self.span(token_index, token_index);
 
             let right = self.required(Self::unary, |self_| {
                 self_.error(InvalidBinopRhs { op: *token })
             })?;
 
-            Ok(Some((op_node, right)))
+            Ok(Some((span, op, right)))
         } else {
             Ok(None)
         }
@@ -1340,17 +1335,18 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         };
 
         match (u, self.call()?) {
-            (Some(u), Some(expr)) => {
-                let op = Node::new(u, token_index, token_index);
-                let (start, end) = (op.start, expr.end);
-                Ok(Some(Node {
-                    value: E::untyped(Unary {
-                        op,
+            (Some(op), Some(expr)) => {
+                let end = self.spans[expr.span].end;
+                Ok(Some(E::untyped(
+                    ET::Unary {
+                        op: Unary {
+                            typ: op,
+                            span: self.span(token_index, token_index),
+                        },
                         expression: Box::new(expr),
-                    }),
-                    start,
-                    end,
-                }))
+                    },
+                    self.span(token_index, end),
+                )))
             }
             (None, Some(expr)) => Ok(Some(expr)),
             (Some(_), None) => Err(self.error(InvalidUnaryRhs { op: *token })),
@@ -1369,15 +1365,14 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             } else {
                 let last_arg = &args[args.len() - 1];
 
-                let (start, end) = (expr.start, last_arg.end);
-                Ok(Some(Node {
-                    value: E::untyped(FnCall {
+                let (start, end) = (self.spans[expr.span].start, self.spans[last_arg.span].end);
+                Ok(Some(E::untyped(
+                    ET::FnCall {
                         function: Box::new(expr),
                         arguments: args,
-                    }),
-                    start,
-                    end,
-                }))
+                    },
+                    self.span(start, end),
+                )))
             }
         } else {
             Ok(None)
@@ -1405,18 +1400,17 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
     }
     fn properties(&mut self, expr: Expression) -> ParseResult<Expression> {
         let mut expr = expr;
-        while let Some(identifier) = self.property(self.tokens[expr.end].end)? {
+        while let Some(identifier) = self.property(self.tokens[self.spans[expr.span].end].end)? {
             expr = {
-                let start = expr.start;
-                let end = identifier.end;
-                Node {
-                    value: E::untyped(PropertyAccess {
+                let start = self.spans[expr.span].start;
+                let end = self.spans[identifier.span].end;
+                E::untyped(
+                    ET::PropertyAccess {
                         expression: Box::new(expr),
                         property: identifier,
-                    }),
-                    start,
-                    end,
-                }
+                    },
+                    self.span(start, end),
+                )
             };
         }
 
@@ -1434,11 +1428,10 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     // Dot token without whitespace between it and the identifier is a prop access
                     TT::Identifier(name) if identifier_token.start == dot_token.end => {
                         self.advance();
-                        Ok(Some(Node::new(
-                            Identifier_::new(name),
-                            identifier_token_index,
-                            identifier_token_index,
-                        )))
+                        Ok(Some(Identifier {
+                            name,
+                            span: self.span(identifier_token_index, identifier_token_index),
+                        }))
                     }
 
                     TT::Identifier(_) => {
@@ -1458,18 +1451,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         match token.kind {
             False => {
                 self.advance();
-                Ok(Some(Node::new(
-                    E::untyped(Bool(false)),
-                    token_index,
-                    token_index,
+                Ok(Some(E::untyped(
+                    ET::Bool(false),
+                    self.span(token_index, token_index),
                 )))
             }
             True => {
                 self.advance();
-                Ok(Some(Node::new(
-                    E::untyped(Bool(true)),
-                    token_index,
-                    token_index,
+                Ok(Some(E::untyped(
+                    ET::Bool(true),
+                    self.span(token_index, token_index),
                 )))
             }
 
@@ -1482,25 +1473,24 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 self.advance();
 
-                Ok(Some(Node::new(
-                    E::untyped(Float(n)),
-                    token_index,
-                    token_index,
+                Ok(Some(E::untyped(
+                    ET::Float(n),
+                    self.span(token_index, token_index),
                 )))
             }
 
             TT::Identifier(lexeme) => {
                 self.advance();
 
-                let identifier = Node::new(Identifier_::new(lexeme), token_index, token_index);
+                let span = self.span(token_index, token_index);
+                let identifier = Identifier { name: lexeme, span };
 
-                Ok(Some(Node::new(
-                    E::untyped(ET::Identifier {
+                Ok(Some(E::untyped(
+                    ET::Identifier {
                         module: None,
                         identifier: AnyIdentifier::Identifier(identifier),
-                    }),
-                    token_index,
-                    token_index,
+                    },
+                    span,
                 )))
             }
 
@@ -1515,7 +1505,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 let (module, identifier) = if module.parts.len() == 1 {
                     // Is there a normal identifier afterwards? If so it is a Module.ident, if not,
                     // the module's only part is a capitalized identifier.
-                    let module_end_position = self.tokens[module.end()].end;
+                    let module_end_position = self.tokens[self.spans[module.last_span()].end].end;
                     if let Some(ident) = self.property(module_end_position)? {
                         (Some(module), AnyIdentifier::Identifier(ident))
                     } else {
@@ -1525,7 +1515,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                 } else {
                     // Is there a normal identifier afterwards? If so the whole module is fine, if
                     // not, the module's last part is a capitalized identifier.
-                    let module_end_position = self.tokens[module.end()].end;
+                    let module_end_position = self.tokens[self.spans[module.last_span()].end].end;
                     if let Some(ident) = self.property(module_end_position)? {
                         (Some(module), AnyIdentifier::Identifier(ident))
                     } else {
@@ -1537,24 +1527,25 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 let (start, end) = if let Some(module) = &module {
                     let first = &module.parts[0];
-                    (first.start, identifier.node().end)
+                    (
+                        self.spans[first.span].start,
+                        self.spans[identifier.span()].end,
+                    )
                 } else {
-                    let node = identifier.node();
-                    (node.start, node.end)
+                    let span = self.spans[identifier.span()];
+                    (span.start, span.end)
                 };
-                Ok(Some(Node {
-                    value: E::untyped(ET::Identifier { module, identifier }),
-                    start,
-                    end,
-                }))
+                Ok(Some(E::untyped(
+                    ET::Identifier { module, identifier },
+                    self.span(start, end),
+                )))
             }
 
             TT::String_(string) => {
                 self.advance();
-                Ok(Some(Node::new(
-                    E::untyped(String_(string)),
-                    token_index,
-                    token_index,
+                Ok(Some(E::untyped(
+                    ET::String_(string),
+                    self.span(token_index, token_index),
                 )))
             }
 
@@ -1568,10 +1559,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     (RightBrace, _) => {
                         self.advance();
 
-                        Ok(Some(Node::new(
-                            E::untyped(Record { fields: vec![] }),
-                            token_index,
-                            next_token_index,
+                        Ok(Some(E::untyped(
+                            ET::Record { fields: vec![] },
+                            self.span(token_index, next_token_index),
                         )))
                     }
 
@@ -1580,10 +1570,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         let fields = self.record_fields()?;
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
-                            Ok(Some(Node::new(
-                                E::untyped(Record { fields }),
-                                token_index,
-                                right_brace_token_index,
+                            Ok(Some(E::untyped(
+                                ET::Record { fields },
+                                self.span(token_index, right_brace_token_index),
                             )))
                         } else {
                             Err(self.error(InvalidRecordFieldSeparatorOrLastDelimiter))
@@ -1603,13 +1592,12 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                         let fields = self.record_fields()?;
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
-                            Ok(Some(Node::new(
-                                E::untyped(RecordUpdate {
+                            Ok(Some(E::untyped(
+                                ET::RecordUpdate {
                                     record: Box::new(record),
                                     fields,
-                                }),
-                                token_index,
-                                right_brace_token_index,
+                                },
+                                self.span(token_index, right_brace_token_index),
                             )))
                         } else {
                             Err(self.error(InvalidExtensibleRecordFieldSeparatorOrLastDelimiter))
@@ -1623,10 +1611,9 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
 
                 // Unit expression
                 if let Some((right_paren_token_index, _)) = self.match_token(RightParen) {
-                    return Ok(Some(Node::new(
-                        E::untyped(Unit),
-                        token_index,
-                        right_paren_token_index,
+                    return Ok(Some(E::untyped(
+                        ET::Unit,
+                        self.span(token_index, right_paren_token_index),
                     )));
                 }
 
@@ -1653,18 +1640,16 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
                     TT::Identifier(lexeme) if identifier_token.start == token.end => {
                         self.advance();
 
-                        let name_identifier = Node::new(
-                            Identifier_::new(lexeme),
-                            identifier_token_index,
-                            identifier_token_index,
-                        );
+                        let name_identifier = Identifier {
+                            name: lexeme,
+                            span: self.span(identifier_token_index, identifier_token_index),
+                        };
 
-                        Ok(Some(Node::new(
-                            E::untyped(PropertyAccessLambda {
+                        Ok(Some(E::untyped(
+                            ET::PropertyAccessLambda {
                                 property: name_identifier,
-                            }),
-                            token_index,
-                            identifier_token_index,
+                            },
+                            self.span(token_index, identifier_token_index),
                         )))
                     }
 
@@ -1745,7 +1730,7 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
             let name = &names[i];
             let token_relative_index = tokens
                 .iter()
-                .position(|t| t.start == self.tokens[name.start].start)
+                .position(|t| t.start == self.tokens[self.spans[name.span].start].start)
                 .unwrap();
             Error::new(
                 self.tokens[start + token_relative_index.into()],
@@ -1764,12 +1749,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         ) = self.get_token()
         {
             self.advance();
-            let name_identifier = Identifier_::new(*lexeme);
-            Some(Node::new(
-                name_identifier,
-                identifier_token_index,
-                identifier_token_index,
-            ))
+            let name_identifier = Identifier {
+                name: *lexeme,
+                span: self.span(identifier_token_index, identifier_token_index),
+            };
+            Some(name_identifier)
         } else {
             None
         }
@@ -1785,12 +1769,11 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         ) = self.get_token()
         {
             self.advance();
-            let name_identifier = CapitalizedIdentifier_::new(*lexeme);
-            Some(Node::new(
-                name_identifier,
-                identifier_token_index,
-                identifier_token_index,
-            ))
+            let name_identifier = CapitalizedIdentifier {
+                name: *lexeme,
+                span: self.span(identifier_token_index, identifier_token_index),
+            };
+            Some(name_identifier)
         } else {
             None
         }
@@ -2048,93 +2031,105 @@ impl<'source, 'strings, 'tokens> State<'source, 'strings, 'tokens> {
         let (_, token) = self.get_token();
         Error::new(*token, error_type)
     }
-}
 
-fn organize_binops(
-    strings: &mut Strings,
-    left: Expression,
-    binops: &mut Vec<Option<(Binop, Expression)>>,
-    current: &mut usize,
-    min_precedence: u32,
-) -> Expression {
-    // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
-    // better than the wikipedia article for precedence climibing
-
-    let mut left = left;
-
-    loop {
-        let next = binops.get_mut(*current);
-
-        match next {
-            Some(op_and_expr) => {
-                let keep_parsing = matches!(op_and_expr, Some((op, _rhs)) if op.value.precedence >= min_precedence);
-
-                if keep_parsing {
-                    // Take ownership of the op and rhs
-                    let (op, rhs) = op_and_expr.take().unwrap();
-
-                    *current += 1;
-
-                    let next_min_precedence = op.value.precedence
-                        + if op.value.associativity == Associativity::Ltr {
-                            1
-                        } else {
-                            0
-                        };
-
-                    let right = organize_binops(strings, rhs, binops, current, next_min_precedence);
-
-                    let (start, end) = (left.start, right.end);
-                    left = Node {
-                        value: E::untyped(Binary {
-                            expression: Box::new(op.with_value(E::untyped(ET::Identifier {
-                                module: None,
-                                identifier: AnyIdentifier::Identifier(
-                                    op.with_value(op.value.get_function_identifier(strings)),
-                                ),
-                            }))),
-                            op,
-                            arguments: Box::new([left, right]),
-                        }),
-                        start,
-                        end,
-                    }
-                } else {
-                    break;
-                }
-            }
-            None => break,
-        }
+    fn span(&mut self, start: token::Index, end: token::Index) -> Index<Span> {
+        self.spans.push(Span { start, end });
+        self.spans.last_key().unwrap()
     }
 
-    left
+    fn organize_binops(
+        &mut self,
+        left: Expression,
+        binops: &mut Vec<Option<(Index<Span>, Binop, Expression)>>,
+        current: &mut usize,
+        min_precedence: u32,
+    ) -> Expression {
+        // https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+        // better than the wikipedia article for precedence climibing
+
+        let mut left = left;
+
+        loop {
+            let next = binops.get_mut(*current);
+
+            match next {
+                Some(op_and_expr) => {
+                    let keep_parsing = matches!(op_and_expr, Some((_op_span, op, _rhs)) if op.precedence >= min_precedence);
+
+                    if keep_parsing {
+                        // Take ownership of the op and rhs
+                        let (op_span, op, rhs) = op_and_expr.take().unwrap();
+
+                        *current += 1;
+
+                        let next_min_precedence = op.precedence
+                            + if op.associativity == Associativity::Ltr {
+                                1
+                            } else {
+                                0
+                            };
+
+                        let right = self.organize_binops(rhs, binops, current, next_min_precedence);
+
+                        let (start, end) =
+                            (self.spans[left.span].start, self.spans[right.span].end);
+                        left = E::untyped(
+                            ET::Binary {
+                                expression: Box::new(E::untyped(
+                                    ET::Identifier {
+                                        module: None,
+                                        identifier: AnyIdentifier::Identifier(
+                                            op.get_function_identifier(self.strings, op_span),
+                                        ),
+                                    },
+                                    op_span,
+                                )),
+                                op,
+                                arguments: Box::new([left, right]),
+                            },
+                            self.span(start, end),
+                        )
+                    } else {
+                        break;
+                    }
+                }
+                None => break,
+            }
+        }
+
+        left
+    }
 }
 
-pub fn parse<'source, 'strings, 'tokens>(
+pub fn parse<'source, 'strings, 'tokens, 'spans>(
     source: &'source Source,
     tokens: &'tokens Tokens,
     strings: &'strings mut Strings,
+    spans: &'spans mut Spans,
 ) -> ParseResult<(Module, Vec<Module>)> {
     let mut parser = State {
         strings,
         source,
         tokens,
         current: 0.into(),
+        spans,
     };
 
     parser.file()
 }
 
-pub fn parse_repl<'source, 'strings, 'tokens>(
+pub fn parse_repl<'source, 'strings, 'tokens, 'spans>(
     source: &'source Source,
     tokens: &'tokens Tokens,
     strings: &'strings mut Strings,
+    spans: &'spans mut Spans,
 ) -> ParseResult<ReplEntry> {
     let mut parser = State {
         strings,
         source,
         tokens,
         current: 0.into(),
+        spans,
     };
 
     parser.repl_entry()
@@ -2145,16 +2140,18 @@ pub mod tests {
     use super::*;
     use crate::tokenizer;
 
-    pub fn parse_expression<'source, 'strings, 'tokens>(
+    pub fn parse_expression<'source, 'strings, 'tokens, 'spans>(
         source: &'source Source,
         tokens: &'tokens Tokens,
         strings: &'strings mut Strings,
+        spans: &'spans mut Spans,
     ) -> ParseResult<Box<Expression>> {
         let mut parser = State {
             strings,
             source,
             tokens,
             current: 0.into(),
+            spans,
         };
 
         let result = parser.required(State::expression, |self_| {
@@ -2453,8 +2450,9 @@ add 5"
             let source = Source::new_orphan(code.to_string());
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
+            let mut spans = Spans::new();
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
-            let result = match &parse_expression(&source, &tokens, &mut strings) {
+            let result = match &parse_expression(&source, &tokens, &mut strings, &mut spans) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);
@@ -3154,8 +3152,9 @@ main =
             let source = Source::new_orphan(code.to_string());
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
+            let mut spans = Spans::new();
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
-            let result = match &super::parse(&source, &tokens, &mut strings) {
+            let result = match &super::parse(&source, &tokens, &mut strings, &mut spans) {
                 Ok(ast) => format!("{ast:#?}"),
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);

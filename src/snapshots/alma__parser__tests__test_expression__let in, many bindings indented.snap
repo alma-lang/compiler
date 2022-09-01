@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2340
+assertion_line: 2352
 expression: "parse(\"\\\nlet\n  x = a\n    x\n b = 5\nin\nx\")"
 ---
 Input:
@@ -14,199 +14,138 @@ x
 
 Result:
 
-Node {
-    start: Index(
-        0,
-    ),
-    end: Index(
+Expression {
+    span: Index(
         9,
     ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Let {
-            definitions: [
-                Untyped(
-                    Pattern(
-                        Node {
-                            start: Index(
-                                1,
-                            ),
-                            end: Index(
-                                1,
-                            ),
-                            value: Identifier(
-                                Node {
-                                    start: Index(
-                                        1,
-                                    ),
-                                    end: Index(
-                                        1,
-                                    ),
-                                    value: Identifier_ {
-                                        name: SymbolU32 {
-                                            value: 1,
-                                        },
-                                    },
+    typ: RefCell {
+        value: None,
+    },
+    expr: Let {
+        definitions: [
+            Untyped(
+                Pattern(
+                    Pattern {
+                        span: Index(
+                            0,
+                        ),
+                        typ: Identifier(
+                            Identifier {
+                                name: SymbolU32 {
+                                    value: 1,
                                 },
-                            ),
-                        },
-                        Node {
-                            start: Index(
-                                3,
-                            ),
-                            end: Index(
-                                4,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: FnCall {
-                                    function: Node {
-                                        start: Index(
-                                            3,
-                                        ),
-                                        end: Index(
-                                            3,
-                                        ),
-                                        value: Expression_ {
-                                            typ: RefCell {
-                                                value: None,
-                                            },
-                                            expr: Identifier {
-                                                module: None,
-                                                identifier: Identifier(
-                                                    Node {
-                                                        start: Index(
-                                                            3,
-                                                        ),
-                                                        end: Index(
-                                                            3,
-                                                        ),
-                                                        value: Identifier_ {
-                                                            name: SymbolU32 {
-                                                                value: 2,
-                                                            },
-                                                        },
-                                                    },
-                                                ),
-                                            },
-                                        },
-                                    },
-                                    arguments: [
-                                        Node {
-                                            start: Index(
-                                                4,
-                                            ),
-                                            end: Index(
-                                                4,
-                                            ),
-                                            value: Expression_ {
-                                                typ: RefCell {
-                                                    value: None,
-                                                },
-                                                expr: Identifier {
-                                                    module: None,
-                                                    identifier: Identifier(
-                                                        Node {
-                                                            start: Index(
-                                                                4,
-                                                            ),
-                                                            end: Index(
-                                                                4,
-                                                            ),
-                                                            value: Identifier_ {
-                                                                name: SymbolU32 {
-                                                                    value: 1,
-                                                                },
-                                                            },
-                                                        },
-                                                    ),
-                                                },
-                                            },
-                                        },
-                                    ],
-                                },
-                            },
-                        },
-                    ),
-                ),
-                Untyped(
-                    Pattern(
-                        Node {
-                            start: Index(
-                                5,
-                            ),
-                            end: Index(
-                                5,
-                            ),
-                            value: Identifier(
-                                Node {
-                                    start: Index(
-                                        5,
-                                    ),
-                                    end: Index(
-                                        5,
-                                    ),
-                                    value: Identifier_ {
-                                        name: SymbolU32 {
-                                            value: 3,
-                                        },
-                                    },
-                                },
-                            ),
-                        },
-                        Node {
-                            start: Index(
-                                7,
-                            ),
-                            end: Index(
-                                7,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Float(
-                                    5.0,
+                                span: Index(
+                                    0,
                                 ),
-                            },
-                        },
-                    ),
-                ),
-            ],
-            body: Node {
-                start: Index(
-                    9,
-                ),
-                end: Index(
-                    9,
-                ),
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: Identifier {
-                        module: None,
-                        identifier: Identifier(
-                            Node {
-                                start: Index(
-                                    9,
-                                ),
-                                end: Index(
-                                    9,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 1,
-                                    },
-                                },
                             },
                         ),
                     },
-                },
+                    Expression {
+                        span: Index(
+                            4,
+                        ),
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: FnCall {
+                            function: Expression {
+                                span: Index(
+                                    2,
+                                ),
+                                typ: RefCell {
+                                    value: None,
+                                },
+                                expr: Identifier {
+                                    module: None,
+                                    identifier: Identifier(
+                                        Identifier {
+                                            name: SymbolU32 {
+                                                value: 2,
+                                            },
+                                            span: Index(
+                                                2,
+                                            ),
+                                        },
+                                    ),
+                                },
+                            },
+                            arguments: [
+                                Expression {
+                                    span: Index(
+                                        3,
+                                    ),
+                                    typ: RefCell {
+                                        value: None,
+                                    },
+                                    expr: Identifier {
+                                        module: None,
+                                        identifier: Identifier(
+                                            Identifier {
+                                                name: SymbolU32 {
+                                                    value: 1,
+                                                },
+                                                span: Index(
+                                                    3,
+                                                ),
+                                            },
+                                        ),
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                ),
+            ),
+            Untyped(
+                Pattern(
+                    Pattern {
+                        span: Index(
+                            5,
+                        ),
+                        typ: Identifier(
+                            Identifier {
+                                name: SymbolU32 {
+                                    value: 3,
+                                },
+                                span: Index(
+                                    5,
+                                ),
+                            },
+                        ),
+                    },
+                    Expression {
+                        span: Index(
+                            7,
+                        ),
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            5.0,
+                        ),
+                    },
+                ),
+            ),
+        ],
+        body: Expression {
+            span: Index(
+                8,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Identifier {
+                module: None,
+                identifier: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                        span: Index(
+                            8,
+                        ),
+                    },
+                ),
             },
         },
     },

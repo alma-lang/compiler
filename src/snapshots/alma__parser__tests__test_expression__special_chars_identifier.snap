@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2191
+assertion_line: 2203
 expression: "parse(\"espaÆàʥñÑol\")"
 ---
 Input:
@@ -9,34 +9,24 @@ espaÆàʥñÑol
 
 Result:
 
-Node {
-    start: Index(
+Expression {
+    span: Index(
         0,
     ),
-    end: Index(
-        0,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Identifier {
-            module: None,
-            identifier: Identifier(
-                Node {
-                    start: Index(
-                        0,
-                    ),
-                    end: Index(
-                        0,
-                    ),
-                    value: Identifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                    },
+    typ: RefCell {
+        value: None,
+    },
+    expr: Identifier {
+        module: None,
+        identifier: Identifier(
+            Identifier {
+                name: SymbolU32 {
+                    value: 1,
                 },
-            ),
-        },
+                span: Index(
+                    0,
+                ),
+            },
+        ),
     },
 }

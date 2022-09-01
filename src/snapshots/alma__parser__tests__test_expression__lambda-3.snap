@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2256
+assertion_line: 2268
 expression: "parse(\"\\\\a b -> a\")"
 ---
 Input:
@@ -9,99 +9,68 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        5,
     ),
-    end: Index(
-        4,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Lambda(
-            Lambda {
-                parameters: [
-                    Node {
-                        start: Index(
-                            1,
-                        ),
-                        end: Index(
-                            1,
-                        ),
-                        value: Identifier(
-                            Node {
-                                start: Index(
-                                    1,
-                                ),
-                                end: Index(
-                                    1,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 1,
-                                    },
-                                },
-                            },
-                        ),
-                    },
-                    Node {
-                        start: Index(
-                            2,
-                        ),
-                        end: Index(
-                            2,
-                        ),
-                        value: Identifier(
-                            Node {
-                                start: Index(
-                                    2,
-                                ),
-                                end: Index(
-                                    2,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 2,
-                                    },
-                                },
-                            },
-                        ),
-                    },
-                ],
-                body: Node {
-                    start: Index(
-                        4,
+    typ: RefCell {
+        value: None,
+    },
+    expr: Lambda(
+        Lambda {
+            parameters: [
+                Pattern {
+                    span: Index(
+                        1,
                     ),
-                    end: Index(
-                        4,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Identifier {
-                            module: None,
-                            identifier: Identifier(
-                                Node {
-                                    start: Index(
-                                        4,
-                                    ),
-                                    end: Index(
-                                        4,
-                                    ),
-                                    value: Identifier_ {
-                                        name: SymbolU32 {
-                                            value: 1,
-                                        },
-                                    },
-                                },
+                    typ: Identifier(
+                        Identifier {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                            span: Index(
+                                0,
                             ),
                         },
-                    },
+                    ),
+                },
+                Pattern {
+                    span: Index(
+                        3,
+                    ),
+                    typ: Identifier(
+                        Identifier {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                            span: Index(
+                                2,
+                            ),
+                        },
+                    ),
+                },
+            ],
+            body: Expression {
+                span: Index(
+                    4,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: Identifier {
+                    module: None,
+                    identifier: Identifier(
+                        Identifier {
+                            name: SymbolU32 {
+                                value: 1,
+                            },
+                            span: Index(
+                                4,
+                            ),
+                        },
+                    ),
                 },
             },
-        ),
-    },
+        },
+    ),
 }

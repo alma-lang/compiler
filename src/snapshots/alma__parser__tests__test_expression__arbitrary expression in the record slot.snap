@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2422
+assertion_line: 2434
 expression: "parse(\"{ if True then {} else {} | x = 1, y = 3 }\")"
 ---
 Input:
@@ -9,145 +9,100 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        8,
     ),
-    end: Index(
-        17,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: RecordUpdate {
-            record: Node {
-                start: Index(
-                    1,
-                ),
-                end: Index(
-                    8,
-                ),
-                value: Expression_ {
+    typ: RefCell {
+        value: None,
+    },
+    expr: RecordUpdate {
+        record: Expression {
+            span: Index(
+                3,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: If {
+                condition: Expression {
+                    span: Index(
+                        0,
+                    ),
                     typ: RefCell {
                         value: None,
                     },
-                    expr: If {
-                        condition: Node {
-                            start: Index(
-                                2,
-                            ),
-                            end: Index(
-                                2,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Bool(
-                                    true,
-                                ),
-                            },
-                        },
-                        then: Node {
-                            start: Index(
-                                4,
-                            ),
-                            end: Index(
-                                5,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Record {
-                                    fields: [],
-                                },
-                            },
-                        },
-                        else_: Node {
-                            start: Index(
-                                7,
-                            ),
-                            end: Index(
-                                8,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Record {
-                                    fields: [],
-                                },
-                            },
-                        },
+                    expr: Bool(
+                        true,
+                    ),
+                },
+                then: Expression {
+                    span: Index(
+                        1,
+                    ),
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Record {
+                        fields: [],
+                    },
+                },
+                else_: Expression {
+                    span: Index(
+                        2,
+                    ),
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Record {
+                        fields: [],
                     },
                 },
             },
-            fields: [
-                (
-                    Node {
-                        start: Index(
-                            10,
-                        ),
-                        end: Index(
-                            10,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 1,
-                            },
-                        },
-                    },
-                    Node {
-                        start: Index(
-                            12,
-                        ),
-                        end: Index(
-                            12,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
-                            ),
-                        },
-                    },
-                ),
-                (
-                    Node {
-                        start: Index(
-                            14,
-                        ),
-                        end: Index(
-                            14,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 3,
-                            },
-                        },
-                    },
-                    Node {
-                        start: Index(
-                            16,
-                        ),
-                        end: Index(
-                            16,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                3.0,
-                            ),
-                        },
-                    },
-                ),
-            ],
         },
+        fields: [
+            (
+                Identifier {
+                    name: SymbolU32 {
+                        value: 1,
+                    },
+                    span: Index(
+                        4,
+                    ),
+                },
+                Expression {
+                    span: Index(
+                        5,
+                    ),
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Float(
+                        1.0,
+                    ),
+                },
+            ),
+            (
+                Identifier {
+                    name: SymbolU32 {
+                        value: 3,
+                    },
+                    span: Index(
+                        6,
+                    ),
+                },
+                Expression {
+                    span: Index(
+                        7,
+                    ),
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Float(
+                        3.0,
+                    ),
+                },
+            ),
+        ],
     },
 }

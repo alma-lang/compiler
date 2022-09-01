@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2778
+assertion_line: 2791
 expression: "parse(\"\nmodule Test\n\ntype Fruit a = Banana a\n\")"
 ---
 Input:
@@ -17,18 +17,13 @@ Result:
     Module {
         name: ModuleName {
             parts: [
-                Node {
-                    start: Index(
-                        1,
-                    ),
-                    end: Index(
-                        1,
-                    ),
-                    value: CapitalizedIdentifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
                     },
+                    span: Index(
+                        0,
+                    ),
                 },
             ],
             full_name: SymbolU32 {
@@ -39,86 +34,56 @@ Result:
         imports: [],
         definitions: [],
         type_definitions: [
-            Node {
-                start: Index(
-                    2,
+            TypeDefinition {
+                span: Index(
+                    6,
                 ),
-                end: Index(
-                    7,
-                ),
-                value: TypeDefinition_ {
-                    name: Node {
-                        start: Index(
-                            3,
-                        ),
-                        end: Index(
-                            3,
-                        ),
-                        value: CapitalizedIdentifier_ {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
-                        },
+                name: CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 2,
                     },
-                    vars: [
-                        Node {
-                            start: Index(
-                                4,
+                    span: Index(
+                        1,
+                    ),
+                },
+                vars: [
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 3,
+                        },
+                        span: Index(
+                            2,
+                        ),
+                    },
+                ],
+                typ: Union {
+                    constructors: [
+                        Constructor {
+                            span: Index(
+                                5,
                             ),
-                            end: Index(
-                                4,
-                            ),
-                            value: Identifier_ {
+                            name: CapitalizedIdentifier {
                                 name: SymbolU32 {
-                                    value: 3,
+                                    value: 4,
                                 },
+                                span: Index(
+                                    3,
+                                ),
                             },
+                            params: [
+                                Var(
+                                    Identifier {
+                                        name: SymbolU32 {
+                                            value: 3,
+                                        },
+                                        span: Index(
+                                            4,
+                                        ),
+                                    },
+                                ),
+                            ],
                         },
                     ],
-                    typ: Union {
-                        constructors: [
-                            Node {
-                                start: Index(
-                                    6,
-                                ),
-                                end: Index(
-                                    7,
-                                ),
-                                value: Constructor_ {
-                                    name: Node {
-                                        start: Index(
-                                            6,
-                                        ),
-                                        end: Index(
-                                            6,
-                                        ),
-                                        value: CapitalizedIdentifier_ {
-                                            name: SymbolU32 {
-                                                value: 4,
-                                            },
-                                        },
-                                    },
-                                    params: [
-                                        Var(
-                                            Node {
-                                                start: Index(
-                                                    7,
-                                                ),
-                                                end: Index(
-                                                    7,
-                                                ),
-                                                value: Identifier_ {
-                                                    name: SymbolU32 {
-                                                        value: 3,
-                                                    },
-                                                },
-                                            },
-                                        ),
-                                    ],
-                                },
-                            },
-                        ],
-                    },
                 },
             },
         ],

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2134
+assertion_line: 2178
 expression: "parse(\"()\")"
 ---
 Input:
@@ -9,17 +9,12 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
+Expression {
+    span: Index(
         0,
     ),
-    end: Index(
-        1,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Unit,
+    typ: RefCell {
+        value: None,
     },
+    expr: Unit,
 }

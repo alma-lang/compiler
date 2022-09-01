@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2546
+assertion_line: 2591
 expression: "parse(\"\\\nmodule Test exposing (a)\n\na = 1\n\nb = True\")"
 ---
 Input:
@@ -17,18 +17,13 @@ Result:
     Module {
         name: ModuleName {
             parts: [
-                Node {
-                    start: Index(
-                        1,
-                    ),
-                    end: Index(
-                        1,
-                    ),
-                    value: CapitalizedIdentifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
                     },
+                    span: Index(
+                        0,
+                    ),
                 },
             ],
             full_name: SymbolU32 {
@@ -36,26 +31,18 @@ Result:
             },
         },
         exports: [
-            Node {
-                start: Index(
-                    4,
+            Export {
+                span: Index(
+                    1,
                 ),
-                end: Index(
-                    4,
-                ),
-                value: Identifier(
-                    Node {
-                        start: Index(
-                            4,
-                        ),
-                        end: Index(
-                            4,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
+                typ: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 2,
                         },
+                        span: Index(
+                            1,
+                        ),
                     },
                 ),
             },
@@ -64,87 +51,61 @@ Result:
         definitions: [
             Untyped(
                 Pattern(
-                    Node {
-                        start: Index(
-                            6,
+                    Pattern {
+                        span: Index(
+                            2,
                         ),
-                        end: Index(
-                            6,
-                        ),
-                        value: Identifier(
-                            Node {
-                                start: Index(
-                                    6,
-                                ),
-                                end: Index(
-                                    6,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 2,
-                                    },
+                        typ: Identifier(
+                            Identifier {
+                                name: SymbolU32 {
+                                    value: 2,
                                 },
+                                span: Index(
+                                    2,
+                                ),
                             },
                         ),
                     },
-                    Node {
-                        start: Index(
-                            8,
+                    Expression {
+                        span: Index(
+                            4,
                         ),
-                        end: Index(
-                            8,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
-                            ),
+                        typ: RefCell {
+                            value: None,
                         },
+                        expr: Float(
+                            1.0,
+                        ),
                     },
                 ),
             ),
             Untyped(
                 Pattern(
-                    Node {
-                        start: Index(
-                            9,
+                    Pattern {
+                        span: Index(
+                            5,
                         ),
-                        end: Index(
-                            9,
-                        ),
-                        value: Identifier(
-                            Node {
-                                start: Index(
-                                    9,
-                                ),
-                                end: Index(
-                                    9,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 4,
-                                    },
+                        typ: Identifier(
+                            Identifier {
+                                name: SymbolU32 {
+                                    value: 4,
                                 },
+                                span: Index(
+                                    5,
+                                ),
                             },
                         ),
                     },
-                    Node {
-                        start: Index(
-                            11,
+                    Expression {
+                        span: Index(
+                            7,
                         ),
-                        end: Index(
-                            11,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Bool(
-                                true,
-                            ),
+                        typ: RefCell {
+                            value: None,
                         },
+                        expr: Bool(
+                            true,
+                        ),
                     },
                 ),
             ),

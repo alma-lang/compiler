@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2397
+assertion_line: 2409
 expression: "parse(\"{ x : 5 , y : 10 }\")"
 ---
 Input:
@@ -9,82 +9,57 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        4,
     ),
-    end: Index(
-        8,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Record {
-            fields: [
-                (
-                    Node {
-                        start: Index(
-                            1,
-                        ),
-                        end: Index(
-                            1,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 1,
-                            },
-                        },
+    typ: RefCell {
+        value: None,
+    },
+    expr: Record {
+        fields: [
+            (
+                Identifier {
+                    name: SymbolU32 {
+                        value: 1,
                     },
-                    Node {
-                        start: Index(
-                            3,
-                        ),
-                        end: Index(
-                            3,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                5.0,
-                            ),
-                        },
+                    span: Index(
+                        0,
+                    ),
+                },
+                Expression {
+                    span: Index(
+                        1,
+                    ),
+                    typ: RefCell {
+                        value: None,
                     },
-                ),
-                (
-                    Node {
-                        start: Index(
-                            5,
-                        ),
-                        end: Index(
-                            5,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 3,
-                            },
-                        },
+                    expr: Float(
+                        5.0,
+                    ),
+                },
+            ),
+            (
+                Identifier {
+                    name: SymbolU32 {
+                        value: 3,
                     },
-                    Node {
-                        start: Index(
-                            7,
-                        ),
-                        end: Index(
-                            7,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                10.0,
-                            ),
-                        },
+                    span: Index(
+                        2,
+                    ),
+                },
+                Expression {
+                    span: Index(
+                        3,
+                    ),
+                    typ: RefCell {
+                        value: None,
                     },
-                ),
-            ],
-        },
+                    expr: Float(
+                        10.0,
+                    ),
+                },
+            ),
+        ],
     },
 }

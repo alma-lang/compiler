@@ -1,11 +1,8 @@
+use crate::index;
 use crate::strings::{self, Strings};
-use derive_more::{Add, AddAssign, From, Into, Sub, SubAssign};
 use typed_index_collections::TiVec;
 
-#[derive(
-    Debug, From, Into, Add, AddAssign, Sub, SubAssign, PartialEq, Eq, PartialOrd, Ord, Clone, Copy,
-)]
-pub struct Index(usize);
+pub type Index = index::Index<Token>;
 
 pub type Tokens = TiVec<Index, Token>;
 

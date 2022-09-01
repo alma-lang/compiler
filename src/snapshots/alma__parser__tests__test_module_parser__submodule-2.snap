@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2486
+assertion_line: 2531
 expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1\")"
 ---
 Input:
@@ -17,18 +17,13 @@ Result:
     Module {
         name: ModuleName {
             parts: [
-                Node {
-                    start: Index(
-                        1,
-                    ),
-                    end: Index(
-                        1,
-                    ),
-                    value: CapitalizedIdentifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
                     },
+                    span: Index(
+                        0,
+                    ),
                 },
             ],
             full_name: SymbolU32 {
@@ -44,31 +39,21 @@ Result:
         Module {
             name: ModuleName {
                 parts: [
-                    Node {
-                        start: Index(
-                            3,
-                        ),
-                        end: Index(
-                            3,
-                        ),
-                        value: CapitalizedIdentifier_ {
-                            name: SymbolU32 {
-                                value: 1,
-                            },
+                    CapitalizedIdentifier {
+                        name: SymbolU32 {
+                            value: 1,
                         },
+                        span: Index(
+                            1,
+                        ),
                     },
-                    Node {
-                        start: Index(
-                            5,
-                        ),
-                        end: Index(
-                            5,
-                        ),
-                        value: CapitalizedIdentifier_ {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
+                    CapitalizedIdentifier {
+                        name: SymbolU32 {
+                            value: 2,
                         },
+                        span: Index(
+                            2,
+                        ),
                     },
                 ],
                 full_name: SymbolU32 {
@@ -80,44 +65,31 @@ Result:
             definitions: [
                 Untyped(
                     Pattern(
-                        Node {
-                            start: Index(
-                                6,
+                        Pattern {
+                            span: Index(
+                                3,
                             ),
-                            end: Index(
-                                6,
-                            ),
-                            value: Identifier(
-                                Node {
-                                    start: Index(
-                                        6,
-                                    ),
-                                    end: Index(
-                                        6,
-                                    ),
-                                    value: Identifier_ {
-                                        name: SymbolU32 {
-                                            value: 3,
-                                        },
+                            typ: Identifier(
+                                Identifier {
+                                    name: SymbolU32 {
+                                        value: 3,
                                     },
+                                    span: Index(
+                                        3,
+                                    ),
                                 },
                             ),
                         },
-                        Node {
-                            start: Index(
-                                8,
+                        Expression {
+                            span: Index(
+                                5,
                             ),
-                            end: Index(
-                                8,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Float(
-                                    1.0,
-                                ),
+                            typ: RefCell {
+                                value: None,
                             },
+                            expr: Float(
+                                1.0,
+                            ),
                         },
                     ),
                 ),

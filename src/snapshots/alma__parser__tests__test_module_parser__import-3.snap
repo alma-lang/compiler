@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2602
+assertion_line: 2647
 expression: "parse(\"\\\nmodule Test\n\nimport Banana exposing (phone)\")"
 ---
 Input:
@@ -15,18 +15,13 @@ Result:
     Module {
         name: ModuleName {
             parts: [
-                Node {
-                    start: Index(
-                        1,
-                    ),
-                    end: Index(
-                        1,
-                    ),
-                    value: CapitalizedIdentifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
                     },
+                    span: Index(
+                        0,
+                    ),
                 },
             ],
             full_name: SymbolU32 {
@@ -35,61 +30,43 @@ Result:
         },
         exports: [],
         imports: [
-            Node {
-                start: Index(
-                    2,
+            Import {
+                span: Index(
+                    3,
                 ),
-                end: Index(
-                    7,
-                ),
-                value: Import_ {
-                    module_name: ModuleName {
-                        parts: [
-                            Node {
-                                start: Index(
-                                    3,
-                                ),
-                                end: Index(
-                                    3,
-                                ),
-                                value: CapitalizedIdentifier_ {
-                                    name: SymbolU32 {
-                                        value: 2,
-                                    },
-                                },
+                module_name: ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 2,
                             },
-                        ],
-                        full_name: SymbolU32 {
-                            value: 2,
-                        },
-                    },
-                    alias: None,
-                    exposing: [
-                        Node {
-                            start: Index(
-                                6,
-                            ),
-                            end: Index(
-                                6,
-                            ),
-                            value: Identifier(
-                                Node {
-                                    start: Index(
-                                        6,
-                                    ),
-                                    end: Index(
-                                        6,
-                                    ),
-                                    value: Identifier_ {
-                                        name: SymbolU32 {
-                                            value: 3,
-                                        },
-                                    },
-                                },
+                            span: Index(
+                                1,
                             ),
                         },
                     ],
+                    full_name: SymbolU32 {
+                        value: 2,
+                    },
                 },
+                alias: None,
+                exposing: [
+                    Export {
+                        span: Index(
+                            2,
+                        ),
+                        typ: Identifier(
+                            Identifier {
+                                name: SymbolU32 {
+                                    value: 3,
+                                },
+                                span: Index(
+                                    2,
+                                ),
+                            },
+                        ),
+                    },
+                ],
             },
         ],
         definitions: [],

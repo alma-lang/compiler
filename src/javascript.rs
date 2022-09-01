@@ -4,8 +4,8 @@ use crate::strings::Strings;
 use crate::{
     ast::{
         types::{self, TypeDefinition},
-        Definition, Export_, Expression, ExpressionType as ET, Lambda, Module, ModuleName, Pattern,
-        Pattern_ as P, TypedDefinition, Unary_ as U,
+        Definition, ExportType, Expression, ExpressionType as ET, Lambda, Module, ModuleName,
+        Pattern, PatternType as P, TypedDefinition, UnaryType as U,
     },
     compiler,
 };
@@ -19,7 +19,7 @@ fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
         if i > 0 {
             out.push_str("__");
         }
-        let module = module.value.to_string(strings);
+        let module = module.to_string(strings);
         write!(out, "{module}").unwrap();
     }
 }
@@ -39,7 +39,7 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
 
     // for module_name in sorted_modules.iter().rev() {
     //     let name = strings.resolve(*module_name);
-    //     writeln!(code, "let {} = ", alias.value.to_string(strings)).unwrap();
+    //     writeln!(code, "let {} = ", alias.to_string(strings)).unwrap();
     // }
 
     for module_idx in sorted_modules {
@@ -105,12 +105,12 @@ fn generate_file(
 
 fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: &Strings) {
     for import in &module.imports {
-        let import = &import.value;
+        let import = &import;
 
         match &import.alias {
             Some(alias) => {
                 indented(code, indent, "");
-                let alias = alias.value.to_string(strings);
+                let alias = alias.to_string(strings);
                 write!(code, "let {alias} = ").unwrap();
                 module_full_name(code, &import.module_name, strings);
                 code.push('\n');
@@ -123,13 +123,13 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
         if !import.exposing.is_empty() {
             let mut identifiers = vec![];
             for exposing in &import.exposing {
-                match &exposing.value {
-                    Export_::Identifier(identifier) => {
-                        identifiers.push(identifier.value.to_string(strings));
+                match &exposing.typ {
+                    ExportType::Identifier(identifier) => {
+                        identifiers.push(identifier.to_string(strings));
                     }
-                    Export_::Type { constructors, .. } => {
+                    ExportType::Type { constructors, .. } => {
                         for constructor in constructors {
-                            identifiers.push(constructor.value.to_string(strings));
+                            identifiers.push(constructor.to_string(strings));
                         }
                     }
                 }
@@ -145,19 +145,19 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
 
 fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], strings: &Strings) {
     for (i, type_def) in types.iter().enumerate() {
-        let type_def = &type_def.value;
+        let type_def = &type_def;
         if i > 0 {
             code.push('\n')
         }
         match &type_def.typ {
             types::TypeDefinitionType::Union { constructors } => {
-                let type_name = type_def.name.value.to_string(strings);
+                let type_name = type_def.name.to_string(strings);
                 indented(code, indent, "");
                 writeln!(code, "// type {}\n", type_name).unwrap();
 
                 let max_params = constructors
                     .iter()
-                    .map(|c| c.value.params.len())
+                    .map(|c| c.params.len())
                     .max()
                     .unwrap_or(0);
 
@@ -165,8 +165,8 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                     if i > 0 {
                         code.push('\n')
                     }
-                    let constructor = &constructor.value;
-                    let constructor_name = constructor.name.value.to_string(strings);
+                    let constructor = &constructor;
+                    let constructor_name = constructor.name.to_string(strings);
                     let num_params = constructor.params.len();
 
                     if num_params > 0 {
@@ -238,7 +238,7 @@ fn generate_definitions(
         match definition.definition() {
             Some(Definition::Lambda(name, lambda)) => {
                 indented(code, indent, "");
-                generate_function(indent, code, name.value.to_string(strings), lambda, strings);
+                generate_function(indent, code, name.to_string(strings), lambda, strings);
                 code.push('\n');
             }
             Some(Definition::Pattern(pattern, expression)) => {
@@ -253,15 +253,15 @@ fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: 
     line(code, indent, "return {");
 
     for export in &module.exports {
-        match &export.value {
-            Export_::Identifier(ident) => {
+        match &export.typ {
+            ExportType::Identifier(ident) => {
                 indented(code, add_indent(indent), "");
-                writeln!(code, "{},", ident.value.to_string(strings)).unwrap();
+                writeln!(code, "{},", ident.to_string(strings)).unwrap();
             }
-            Export_::Type { constructors, .. } => {
+            ExportType::Type { constructors, .. } => {
                 for constructor in constructors {
                     indented(code, add_indent(indent), "");
-                    writeln!(code, "{},", constructor.value.to_string(strings)).unwrap();
+                    writeln!(code, "{},", constructor.to_string(strings)).unwrap();
                 }
             }
         }
@@ -299,9 +299,9 @@ fn generate_function(
 }
 
 fn generate_pattern(code: &mut String, pattern: &Pattern, strings: &Strings) {
-    match &pattern.value {
+    match &pattern.typ {
         P::Hole => code.push('_'),
-        P::Identifier(identifier) => code.push_str(identifier.value.to_string(strings)),
+        P::Identifier(identifier) => code.push_str(identifier.to_string(strings)),
     }
 }
 
@@ -325,7 +325,7 @@ fn generate_expression(
     expression: &Expression,
     strings: &Strings,
 ) {
-    match &expression.value.expr {
+    match &expression.expr {
         ET::Unit => code.push_str("()"),
 
         ET::Bool(bool_) => {
@@ -359,7 +359,7 @@ fn generate_expression(
                 let indent = add_indent(indent);
 
                 for (key, value) in fields {
-                    indented(code, indent, key.value.to_string(strings));
+                    indented(code, indent, key.to_string(strings));
                     code.push_str(": ");
                     generate_expression(indent, code, value, strings);
                     code.push_str(",\n");
@@ -380,7 +380,7 @@ fn generate_expression(
                 code.push('\n');
 
                 for (key, value) in fields {
-                    indented(code, indent, key.value.to_string(strings));
+                    indented(code, indent, key.to_string(strings));
                     code.push_str(": ");
                     generate_expression(indent, code, value, strings);
                     code.push_str(",\n");
@@ -396,16 +396,16 @@ fn generate_expression(
         } => {
             generate_expression(indent, code, expression, strings);
             code.push('.');
-            code.push_str(property.value.to_string(strings));
+            code.push_str(property.to_string(strings));
         }
 
         ET::PropertyAccessLambda { property } => {
-            let property = property.value.to_string(strings);
+            let property = property.to_string(strings);
             write!(code, "(r => r.{property})").unwrap()
         }
 
         ET::Unary { op, expression } => {
-            code.push(match &op.value {
+            code.push(match &op.typ {
                 U::Not => '!',
                 U::Minus => '-',
             });

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2430
+assertion_line: 2442
 expression: "parse(\"A\")"
 ---
 Input:
@@ -9,34 +9,24 @@ A
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        1,
     ),
-    end: Index(
-        0,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Identifier {
-            module: None,
-            identifier: CapitalizedIdentifier(
-                Node {
-                    start: Index(
-                        0,
-                    ),
-                    end: Index(
-                        0,
-                    ),
-                    value: CapitalizedIdentifier_ {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                    },
+    typ: RefCell {
+        value: None,
+    },
+    expr: Identifier {
+        module: None,
+        identifier: CapitalizedIdentifier(
+            CapitalizedIdentifier {
+                name: SymbolU32 {
+                    value: 1,
                 },
-            ),
-        },
+                span: Index(
+                    0,
+                ),
+            },
+        ),
     },
 }

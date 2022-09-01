@@ -1,5 +1,5 @@
 use crate::ast::ModuleName;
-use derive_more::{From, Into};
+use crate::index;
 use std::cmp::{max, min};
 use std::fmt;
 use std::fs;
@@ -10,8 +10,7 @@ use std::slice::SliceIndex;
 use std::str::CharIndices;
 use typed_index_collections::TiVec;
 
-#[derive(Debug, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct Index(usize);
+pub type Index = index::Index<Source>;
 
 pub type Sources = TiVec<Index, Source>;
 

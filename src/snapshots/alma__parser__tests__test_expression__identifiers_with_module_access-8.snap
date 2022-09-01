@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2437
+assertion_line: 2449
 expression: "parse(\"A.b\")"
 ---
 Input:
@@ -9,55 +9,40 @@ A.b
 
 Result:
 
-Node {
-    start: Index(
-        0,
-    ),
-    end: Index(
+Expression {
+    span: Index(
         2,
     ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Identifier {
-            module: Some(
-                ModuleName {
-                    parts: [
-                        Node {
-                            start: Index(
-                                0,
-                            ),
-                            end: Index(
-                                0,
-                            ),
-                            value: CapitalizedIdentifier_ {
-                                name: SymbolU32 {
-                                    value: 1,
-                                },
-                            },
-                        },
-                    ],
-                    full_name: SymbolU32 {
-                        value: 1,
-                    },
-                },
-            ),
-            identifier: Identifier(
-                Node {
-                    start: Index(
-                        2,
-                    ),
-                    end: Index(
-                        2,
-                    ),
-                    value: Identifier_ {
+    typ: RefCell {
+        value: None,
+    },
+    expr: Identifier {
+        module: Some(
+            ModuleName {
+                parts: [
+                    CapitalizedIdentifier {
                         name: SymbolU32 {
-                            value: 2,
+                            value: 1,
                         },
+                        span: Index(
+                            0,
+                        ),
                     },
+                ],
+                full_name: SymbolU32 {
+                    value: 1,
                 },
-            ),
-        },
+            },
+        ),
+        identifier: Identifier(
+            Identifier {
+                name: SymbolU32 {
+                    value: 2,
+                },
+                span: Index(
+                    1,
+                ),
+            },
+        ),
     },
 }

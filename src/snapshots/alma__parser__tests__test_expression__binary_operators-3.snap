@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2248
+assertion_line: 2260
 expression: "parse(\"1 + 2 / 3\")"
 ---
 Input:
@@ -9,173 +9,112 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        6,
     ),
-    end: Index(
-        4,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: Binary {
-            expression: Node {
-                start: Index(
-                    1,
-                ),
-                end: Index(
-                    1,
-                ),
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
+    typ: RefCell {
+        value: None,
+    },
+    expr: Binary {
+        expression: Expression {
+            span: Index(
+                1,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Identifier {
+                module: None,
+                identifier: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 5,
+                        },
+                        span: Index(
+                            1,
+                        ),
                     },
-                    expr: Identifier {
-                        module: None,
-                        identifier: Identifier(
-                            Node {
-                                start: Index(
-                                    1,
-                                ),
-                                end: Index(
-                                    1,
-                                ),
-                                value: Identifier_ {
+                ),
+            },
+        },
+        op: Binop {
+            typ: Addition,
+            precedence: 14,
+            associativity: Ltr,
+        },
+        arguments: [
+            Expression {
+                span: Index(
+                    0,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: Float(
+                    1.0,
+                ),
+            },
+            Expression {
+                span: Index(
+                    5,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: Binary {
+                    expression: Expression {
+                        span: Index(
+                            3,
+                        ),
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Identifier {
+                            module: None,
+                            identifier: Identifier(
+                                Identifier {
                                     name: SymbolU32 {
-                                        value: 5,
+                                        value: 4,
                                     },
+                                    span: Index(
+                                        3,
+                                    ),
                                 },
-                            },
-                        ),
+                            ),
+                        },
                     },
+                    op: Binop {
+                        typ: Division,
+                        precedence: 15,
+                        associativity: Ltr,
+                    },
+                    arguments: [
+                        Expression {
+                            span: Index(
+                                2,
+                            ),
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                2.0,
+                            ),
+                        },
+                        Expression {
+                            span: Index(
+                                4,
+                            ),
+                            typ: RefCell {
+                                value: None,
+                            },
+                            expr: Float(
+                                3.0,
+                            ),
+                        },
+                    ],
                 },
             },
-            op: Node {
-                start: Index(
-                    1,
-                ),
-                end: Index(
-                    1,
-                ),
-                value: Binop_ {
-                    typ: Addition,
-                    precedence: 14,
-                    associativity: Ltr,
-                },
-            },
-            arguments: [
-                Node {
-                    start: Index(
-                        0,
-                    ),
-                    end: Index(
-                        0,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Float(
-                            1.0,
-                        ),
-                    },
-                },
-                Node {
-                    start: Index(
-                        2,
-                    ),
-                    end: Index(
-                        4,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Binary {
-                            expression: Node {
-                                start: Index(
-                                    3,
-                                ),
-                                end: Index(
-                                    3,
-                                ),
-                                value: Expression_ {
-                                    typ: RefCell {
-                                        value: None,
-                                    },
-                                    expr: Identifier {
-                                        module: None,
-                                        identifier: Identifier(
-                                            Node {
-                                                start: Index(
-                                                    3,
-                                                ),
-                                                end: Index(
-                                                    3,
-                                                ),
-                                                value: Identifier_ {
-                                                    name: SymbolU32 {
-                                                        value: 4,
-                                                    },
-                                                },
-                                            },
-                                        ),
-                                    },
-                                },
-                            },
-                            op: Node {
-                                start: Index(
-                                    3,
-                                ),
-                                end: Index(
-                                    3,
-                                ),
-                                value: Binop_ {
-                                    typ: Division,
-                                    precedence: 15,
-                                    associativity: Ltr,
-                                },
-                            },
-                            arguments: [
-                                Node {
-                                    start: Index(
-                                        2,
-                                    ),
-                                    end: Index(
-                                        2,
-                                    ),
-                                    value: Expression_ {
-                                        typ: RefCell {
-                                            value: None,
-                                        },
-                                        expr: Float(
-                                            2.0,
-                                        ),
-                                    },
-                                },
-                                Node {
-                                    start: Index(
-                                        4,
-                                    ),
-                                    end: Index(
-                                        4,
-                                    ),
-                                    value: Expression_ {
-                                        typ: RefCell {
-                                            value: None,
-                                        },
-                                        expr: Float(
-                                            3.0,
-                                        ),
-                                    },
-                                },
-                            ],
-                        },
-                    },
-                },
-            ],
-        },
+        ],
     },
 }

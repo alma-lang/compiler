@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2271
+assertion_line: 2283
 expression: "parse(\"if True then if False then 1 else 3 else 2\")"
 ---
 Input:
@@ -9,113 +9,78 @@ if True then if False then 1 else 3 else 2
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        6,
     ),
-    end: Index(
-        10,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
+    typ: RefCell {
+        value: None,
+    },
+    expr: If {
+        condition: Expression {
+            span: Index(
+                0,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Bool(
+                true,
+            ),
         },
-        expr: If {
-            condition: Node {
-                start: Index(
-                    1,
-                ),
-                end: Index(
-                    1,
-                ),
-                value: Expression_ {
+        then: Expression {
+            span: Index(
+                4,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: If {
+                condition: Expression {
+                    span: Index(
+                        1,
+                    ),
                     typ: RefCell {
                         value: None,
                     },
                     expr: Bool(
-                        true,
+                        false,
                     ),
                 },
-            },
-            then: Node {
-                start: Index(
-                    3,
-                ),
-                end: Index(
-                    8,
-                ),
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
-                    },
-                    expr: If {
-                        condition: Node {
-                            start: Index(
-                                4,
-                            ),
-                            end: Index(
-                                4,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Bool(
-                                    false,
-                                ),
-                            },
-                        },
-                        then: Node {
-                            start: Index(
-                                6,
-                            ),
-                            end: Index(
-                                6,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Float(
-                                    1.0,
-                                ),
-                            },
-                        },
-                        else_: Node {
-                            start: Index(
-                                8,
-                            ),
-                            end: Index(
-                                8,
-                            ),
-                            value: Expression_ {
-                                typ: RefCell {
-                                    value: None,
-                                },
-                                expr: Float(
-                                    3.0,
-                                ),
-                            },
-                        },
-                    },
-                },
-            },
-            else_: Node {
-                start: Index(
-                    10,
-                ),
-                end: Index(
-                    10,
-                ),
-                value: Expression_ {
+                then: Expression {
+                    span: Index(
+                        2,
+                    ),
                     typ: RefCell {
                         value: None,
                     },
                     expr: Float(
-                        2.0,
+                        1.0,
+                    ),
+                },
+                else_: Expression {
+                    span: Index(
+                        3,
+                    ),
+                    typ: RefCell {
+                        value: None,
+                    },
+                    expr: Float(
+                        3.0,
                     ),
                 },
             },
+        },
+        else_: Expression {
+            span: Index(
+                5,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Float(
+                2.0,
+            ),
         },
     },
 }

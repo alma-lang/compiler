@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2241
+assertion_line: 2253
 expression: "parse(\"incr (-5)\")"
 ---
 Input:
@@ -9,91 +9,63 @@ incr (-5)
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        4,
     ),
-    end: Index(
-        3,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
-        },
-        expr: FnCall {
-            function: Node {
-                start: Index(
-                    0,
-                ),
-                end: Index(
-                    0,
-                ),
-                value: Expression_ {
-                    typ: RefCell {
-                        value: None,
+    typ: RefCell {
+        value: None,
+    },
+    expr: FnCall {
+        function: Expression {
+            span: Index(
+                0,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Identifier {
+                module: None,
+                identifier: Identifier(
+                    Identifier {
+                        name: SymbolU32 {
+                            value: 1,
+                        },
+                        span: Index(
+                            0,
+                        ),
                     },
-                    expr: Identifier {
-                        module: None,
-                        identifier: Identifier(
-                            Node {
-                                start: Index(
-                                    0,
-                                ),
-                                end: Index(
-                                    0,
-                                ),
-                                value: Identifier_ {
-                                    name: SymbolU32 {
-                                        value: 1,
-                                    },
-                                },
-                            },
+                ),
+            },
+        },
+        arguments: [
+            Expression {
+                span: Index(
+                    3,
+                ),
+                typ: RefCell {
+                    value: None,
+                },
+                expr: Unary {
+                    op: Unary {
+                        span: Index(
+                            2,
+                        ),
+                        typ: Minus,
+                    },
+                    expression: Expression {
+                        span: Index(
+                            1,
+                        ),
+                        typ: RefCell {
+                            value: None,
+                        },
+                        expr: Float(
+                            5.0,
                         ),
                     },
                 },
             },
-            arguments: [
-                Node {
-                    start: Index(
-                        2,
-                    ),
-                    end: Index(
-                        3,
-                    ),
-                    value: Expression_ {
-                        typ: RefCell {
-                            value: None,
-                        },
-                        expr: Unary {
-                            op: Node {
-                                start: Index(
-                                    2,
-                                ),
-                                end: Index(
-                                    2,
-                                ),
-                                value: Minus,
-                            },
-                            expression: Node {
-                                start: Index(
-                                    3,
-                                ),
-                                end: Index(
-                                    3,
-                                ),
-                                value: Expression_ {
-                                    typ: RefCell {
-                                        value: None,
-                                    },
-                                    expr: Float(
-                                        5.0,
-                                    ),
-                                },
-                            },
-                        },
-                    },
-                },
-            ],
-        },
+        ],
     },
 }

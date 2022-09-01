@@ -1,3 +1,4 @@
+use crate::index::Index;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token;
@@ -6,35 +7,24 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
+use typed_index_collections::TiVec;
 
-#[derive(PartialEq, Debug, Clone)]
-pub struct Node<V> {
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct Span {
     pub start: token::Index,
     pub end: token::Index,
-    pub value: V,
 }
 
-impl<V> Node<V> {
-    pub fn new(value: V, first_token: token::Index, last_token: token::Index) -> Self {
-        Node {
-            value,
+impl Span {
+    pub fn new(first_token: token::Index, last_token: token::Index) -> Self {
+        Self {
             start: first_token,
             end: last_token,
         }
     }
-
-    pub fn with_value<T>(&self, value: T) -> Node<T> {
-        Node {
-            value,
-            start: self.start,
-            end: self.end,
-        }
-    }
-
-    pub fn unit(&self) -> Node<()> {
-        self.with_value(())
-    }
 }
+
+pub type Spans = TiVec<Index<Span>, Span>;
 
 // Repl
 
@@ -62,7 +52,7 @@ impl ModuleName {
     ) -> Result<Self, (usize, Vec<CapitalizedIdentifier>)> {
         let str_parts = parts
             .iter()
-            .map(|i| i.value.to_string(strings))
+            .map(|i| i.to_string(strings))
             .collect::<Vec<_>>();
         let full_name = str_parts.join(".");
 
@@ -99,7 +89,7 @@ impl ModuleName {
                 .last()
                 .expect("Module name parts should never be empty");
 
-            last_module_segment.value.to_string(strings) == file_name
+            last_module_segment.to_string(strings) == file_name
         } else {
             true
         }
@@ -111,8 +101,8 @@ impl ModuleName {
         }
 
         for (i, parent_name) in parent.parts.iter().enumerate() {
-            let name = &self.parts[i];
-            if name.value.name != parent_name.value.name {
+            let part = &self.parts[i];
+            if part.name != parent_name.name {
                 return false;
             }
         }
@@ -120,11 +110,11 @@ impl ModuleName {
         true
     }
 
-    pub fn end(&self) -> token::Index {
+    pub fn last_span(&self) -> Index<Span> {
         self.parts
             .last()
             .expect("Module names should never be empty")
-            .end
+            .span
     }
 
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
@@ -145,23 +135,27 @@ impl Module {
     pub fn dependencies(&self) -> Vec<&ModuleName> {
         let mut deps = vec![];
         for import in &self.imports {
-            deps.push(&import.value.module_name);
+            deps.push(&import.module_name);
         }
         deps
     }
 }
 
-pub type Import = Node<Import_>;
 #[derive(Debug, PartialEq, Clone)]
-pub struct Import_ {
+pub struct Import {
+    pub span: Index<Span>,
     pub module_name: ModuleName,
     pub alias: Option<CapitalizedIdentifier>,
     pub exposing: Vec<Export>,
 }
 
-pub type Export = Node<Export_>;
 #[derive(Debug, PartialEq, Clone)]
-pub enum Export_ {
+pub struct Export {
+    pub span: Index<Span>,
+    pub typ: ExportType,
+}
+#[derive(Debug, PartialEq, Clone)]
+pub enum ExportType {
     Identifier(Identifier),
     Type {
         name: CapitalizedIdentifier,
@@ -210,22 +204,12 @@ pub enum Definition {
 pub mod types {
     use super::*;
 
-    pub type TypeDefinition = Node<TypeDefinition_>;
-
     #[derive(Debug)]
-    pub struct TypeDefinition_ {
+    pub struct TypeDefinition {
+        pub span: Index<Span>,
         pub name: CapitalizedIdentifier,
         pub vars: Vec<Identifier>,
         pub typ: TypeDefinitionType,
-    }
-    impl TypeDefinition_ {
-        pub fn new(
-            name: CapitalizedIdentifier,
-            vars: Vec<Identifier>,
-            typ: TypeDefinitionType,
-        ) -> Self {
-            Self { name, vars, typ }
-        }
     }
 
     #[derive(Debug)]
@@ -234,16 +218,11 @@ pub mod types {
         Record(RecordType),
     }
 
-    pub type Constructor = Node<Constructor_>;
     #[derive(Debug, Clone)]
-    pub struct Constructor_ {
+    pub struct Constructor {
+        pub span: Index<Span>,
         pub name: CapitalizedIdentifier,
         pub params: Vec<Type>,
-    }
-    impl Constructor_ {
-        pub fn new(name: CapitalizedIdentifier, params: Vec<Type>) -> Self {
-            Constructor_ { name, params }
-        }
     }
 
     #[derive(Debug, Clone)]
@@ -264,7 +243,7 @@ pub mod types {
                     ret.fill_vars(vars);
                 }
                 App(constructor) => {
-                    for param in &constructor.value.params {
+                    for param in &constructor.params {
                         param.fill_vars(vars);
                     }
                 }
@@ -288,22 +267,18 @@ pub mod types {
         pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
             use RecordType::*;
             match self {
-                Record(rec) => rec.value.fill_vars(vars),
-                RecordExt(rec) => rec.value.fill_vars(vars),
+                Record(rec) => rec.fill_vars(vars),
+                RecordExt(rec) => rec.fill_vars(vars),
             }
         }
     }
 
-    pub type Record = Node<Record_>;
     #[derive(Debug, Clone)]
-    pub struct Record_ {
+    pub struct Record {
+        pub span: Index<Span>,
         pub fields: Vec<(Identifier, Type)>,
     }
-    impl Record_ {
-        pub fn new(fields: Vec<(Identifier, Type)>) -> Self {
-            Self { fields }
-        }
-
+    impl Record {
         pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
             for (_, typ) in &self.fields {
                 typ.fill_vars(vars);
@@ -311,17 +286,13 @@ pub mod types {
         }
     }
 
-    pub type RecordExt = Node<RecordExt_>;
     #[derive(Debug, Clone)]
-    pub struct RecordExt_ {
+    pub struct RecordExt {
+        pub span: Index<Span>,
         pub extension: Identifier,
         pub fields: Vec<(Identifier, Type)>,
     }
-    impl RecordExt_ {
-        pub fn new(extension: Identifier, fields: Vec<(Identifier, Type)>) -> Self {
-            Self { extension, fields }
-        }
-
+    impl RecordExt {
         pub fn fill_vars<'typ>(&'typ self, vars: &mut Vec<&'typ Identifier>) {
             vars.push(&self.extension);
             for (_, typ) in &self.fields {
@@ -333,19 +304,19 @@ pub mod types {
 
 // Expressions
 
-pub type Expression = Node<Expression_>;
-
 #[derive(Debug, Clone)]
-pub struct Expression_ {
+pub struct Expression {
+    pub span: Index<Span>,
     pub typ: RefCell<Option<Rc<typ::Type>>>,
     pub expr: ExpressionType,
 }
 
-impl Expression_ {
-    pub fn untyped(expr: ExpressionType) -> Self {
+impl Expression {
+    pub fn untyped(expr: ExpressionType, span: Index<Span>) -> Self {
         Self {
             typ: RefCell::new(None),
             expr,
+            span,
         }
     }
 
@@ -411,10 +382,13 @@ pub struct Lambda {
 
 // Operators
 
-type Unary = Node<Unary_>;
-
 #[derive(PartialEq, Debug, Clone)]
-pub enum Unary_ {
+pub struct Unary {
+    pub span: Index<Span>,
+    pub typ: UnaryType,
+}
+#[derive(PartialEq, Debug, Clone)]
+pub enum UnaryType {
     Not,
     Minus,
 }
@@ -422,7 +396,8 @@ pub enum Unary_ {
 pub mod binop {
     use crate::strings::Strings;
 
-    use super::{Identifier_, Node};
+    use super::{Identifier, Span};
+    use crate::index::Index;
 
     #[derive(PartialEq, Debug, Clone)]
     pub enum Type {
@@ -446,17 +421,19 @@ pub mod binop {
         // RTL,
     }
 
-    pub type Binop = Node<Binop_>;
-
     #[derive(PartialEq, Debug, Clone)]
-    pub struct Binop_ {
+    pub struct Binop {
         typ: Type,
         pub precedence: u32,
         pub associativity: Associativity,
     }
 
-    impl Binop_ {
-        pub fn get_function_identifier(&self, strings: &mut Strings) -> Identifier_ {
+    impl Binop {
+        pub fn get_function_identifier(
+            &self,
+            strings: &mut Strings,
+            span: Index<Span>,
+        ) -> Identifier {
             let name_sym = strings.get_or_intern(match self.typ {
                 Or => "__op__or",
                 And => "__op__and",
@@ -471,80 +448,83 @@ pub mod binop {
                 Multiplication => "__op__mult",
                 Division => "__op__div",
             });
-            Identifier_::new(name_sym)
+            Identifier {
+                name: name_sym,
+                span,
+            }
         }
     }
 
     use Associativity::*;
     use Type::*;
 
-    pub const OR: Binop_ = Binop_ {
+    pub const OR: Binop = Binop {
         typ: Or,
         precedence: 6,
         associativity: Ltr,
     };
 
-    pub const AND: Binop_ = Binop_ {
+    pub const AND: Binop = Binop {
         typ: And,
         precedence: 7,
         associativity: Ltr,
     };
 
-    pub const EQUAL: Binop_ = Binop_ {
+    pub const EQUAL: Binop = Binop {
         typ: Equal,
         precedence: 11,
         associativity: Ltr,
     };
 
-    pub const NOT_EQUAL: Binop_ = Binop_ {
+    pub const NOT_EQUAL: Binop = Binop {
         typ: NotEqual,
         precedence: 11,
         associativity: Ltr,
     };
 
-    pub const GREATER_THAN: Binop_ = Binop_ {
+    pub const GREATER_THAN: Binop = Binop {
         typ: GreaterThan,
         precedence: 12,
         associativity: Ltr,
     };
 
-    pub const GREATER_EQUAL_THAN: Binop_ = Binop_ {
+    pub const GREATER_EQUAL_THAN: Binop = Binop {
         typ: GreaterEqualThan,
         precedence: 12,
         associativity: Ltr,
     };
 
-    pub const LESS_THAN: Binop_ = Binop_ {
+    pub const LESS_THAN: Binop = Binop {
         typ: LessThan,
         precedence: 12,
         associativity: Ltr,
     };
 
-    pub const LESS_EQUAL_THAN: Binop_ = Binop_ {
+    pub const LESS_EQUAL_THAN: Binop = Binop {
         typ: LessEqualThan,
         precedence: 12,
         associativity: Ltr,
     };
 
-    pub const ADDITION: Binop_ = Binop_ {
+    pub const ADDITION: Binop = Binop {
         typ: Addition,
         precedence: 14,
         associativity: Ltr,
     };
 
-    pub const SUBSTRACTION: Binop_ = Binop_ {
+    pub const SUBSTRACTION: Binop = Binop {
         typ: Substraction,
         precedence: 14,
         associativity: Ltr,
     };
 
-    pub const MULTIPLICATION: Binop_ = Binop_ {
+    pub const MULTIPLICATION: Binop = Binop {
         typ: Multiplication,
         precedence: 15,
         associativity: Ltr,
     };
 
-    pub const DIVISION: Binop_ = Binop_ {
+    pub const DIVISION: Binop = Binop {
         typ: Division,
         precedence: 15,
         associativity: Ltr,
@@ -554,10 +534,13 @@ use binop::Binop;
 
 // Patterns
 
-pub type Pattern = Node<Pattern_>;
-
 #[derive(PartialEq, Debug, Clone)]
-pub enum Pattern_ {
+pub struct Pattern {
+    pub span: Index<Span>,
+    pub typ: PatternType,
+}
+#[derive(PartialEq, Debug, Clone)]
+pub enum PatternType {
     Hole,
     Identifier(Identifier),
 }
@@ -566,32 +549,24 @@ pub enum Pattern_ {
 
 type IdentifierName = StringSymbol;
 
-pub type CapitalizedIdentifier = Node<CapitalizedIdentifier_>;
 #[derive(PartialEq, Debug, Clone)]
-pub struct CapitalizedIdentifier_ {
+pub struct CapitalizedIdentifier {
     pub name: IdentifierName,
+    pub span: Index<Span>,
 }
-impl CapitalizedIdentifier_ {
-    pub fn new(name_sym: StringSymbol) -> Self {
-        Self { name: name_sym }
-    }
-
+impl CapitalizedIdentifier {
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
         strings.resolve(self.name)
     }
 }
 
-pub type Identifier = Node<Identifier_>;
 #[derive(PartialEq, Debug, Clone)]
-pub struct Identifier_ {
+pub struct Identifier {
     pub name: IdentifierName,
+    pub span: Index<Span>,
 }
 
-impl Identifier_ {
-    pub fn new(name_sym: StringSymbol) -> Self {
-        Self { name: name_sym }
-    }
-
+impl Identifier {
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
         strings.resolve(self.name)
     }
@@ -606,24 +581,24 @@ impl AnyIdentifier {
     pub fn name(&self) -> IdentifierName {
         use AnyIdentifier::*;
         match self {
-            Identifier(i) => i.value.name,
-            CapitalizedIdentifier(i) => i.value.name,
+            Identifier(i) => i.name,
+            CapitalizedIdentifier(i) => i.name,
         }
     }
 
-    pub fn node(&self) -> Node<()> {
+    pub fn span(&self) -> Index<Span> {
         use AnyIdentifier::*;
         match self {
-            Identifier(i) => i.with_value(()),
-            CapitalizedIdentifier(i) => i.with_value(()),
+            Identifier(i) => i.span,
+            CapitalizedIdentifier(i) => i.span,
         }
     }
 
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
         use AnyIdentifier::*;
         match self {
-            Identifier(i) => i.value.to_string(strings),
-            CapitalizedIdentifier(i) => i.value.to_string(strings),
+            Identifier(i) => i.to_string(strings),
+            CapitalizedIdentifier(i) => i.to_string(strings),
         }
     }
 }

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2421
+assertion_line: 2433
 expression: "parse(\"{ 5 | x = 1, y = 3 }\")"
 ---
 Input:
@@ -9,98 +9,68 @@ Input:
 
 Result:
 
-Node {
-    start: Index(
-        0,
+Expression {
+    span: Index(
+        5,
     ),
-    end: Index(
-        10,
-    ),
-    value: Expression_ {
-        typ: RefCell {
-            value: None,
+    typ: RefCell {
+        value: None,
+    },
+    expr: RecordUpdate {
+        record: Expression {
+            span: Index(
+                0,
+            ),
+            typ: RefCell {
+                value: None,
+            },
+            expr: Float(
+                5.0,
+            ),
         },
-        expr: RecordUpdate {
-            record: Node {
-                start: Index(
-                    1,
-                ),
-                end: Index(
-                    1,
-                ),
-                value: Expression_ {
+        fields: [
+            (
+                Identifier {
+                    name: SymbolU32 {
+                        value: 2,
+                    },
+                    span: Index(
+                        1,
+                    ),
+                },
+                Expression {
+                    span: Index(
+                        2,
+                    ),
                     typ: RefCell {
                         value: None,
                     },
                     expr: Float(
-                        5.0,
+                        1.0,
                     ),
                 },
-            },
-            fields: [
-                (
-                    Node {
-                        start: Index(
-                            3,
-                        ),
-                        end: Index(
-                            3,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 2,
-                            },
-                        },
+            ),
+            (
+                Identifier {
+                    name: SymbolU32 {
+                        value: 4,
                     },
-                    Node {
-                        start: Index(
-                            5,
-                        ),
-                        end: Index(
-                            5,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                1.0,
-                            ),
-                        },
+                    span: Index(
+                        3,
+                    ),
+                },
+                Expression {
+                    span: Index(
+                        4,
+                    ),
+                    typ: RefCell {
+                        value: None,
                     },
-                ),
-                (
-                    Node {
-                        start: Index(
-                            7,
-                        ),
-                        end: Index(
-                            7,
-                        ),
-                        value: Identifier_ {
-                            name: SymbolU32 {
-                                value: 4,
-                            },
-                        },
-                    },
-                    Node {
-                        start: Index(
-                            9,
-                        ),
-                        end: Index(
-                            9,
-                        ),
-                        value: Expression_ {
-                            typ: RefCell {
-                                value: None,
-                            },
-                            expr: Float(
-                                3.0,
-                            ),
-                        },
-                    },
-                ),
-            ],
-        },
+                    expr: Float(
+                        3.0,
+                    ),
+                },
+            ),
+        ],
     },
 }
