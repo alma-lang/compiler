@@ -6,8 +6,6 @@ use crate::typ;
 use expression::*;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::cell::RefCell;
-use std::rc::Rc;
 use typed_index_collections::TiVec;
 
 pub mod span {
@@ -127,6 +125,8 @@ pub struct Module {
     pub imports: Vec<Import>,
     pub definitions: Vec<TypedDefinition>,
     pub type_definitions: Vec<types::TypeDefinition>,
+    pub expressions: Expressions,
+    pub expression_types: ExpressionTypes,
 }
 
 impl Module {
@@ -308,32 +308,23 @@ pub mod expression {
 
     pub type Index = index::Index<Expression>;
     pub type Expressions = TiVec<Index, Expression>;
+    pub type ExpressionTypes = TiVec<Index, Option<typ::Index>>;
 
     #[derive(Debug, Clone)]
     pub struct Expression {
         pub span: span::Index,
-        pub typ: RefCell<Option<Rc<typ::Type>>>,
         pub expr: ExpressionType,
     }
 
     impl Expression {
         pub fn untyped(expr: ExpressionType, span: span::Index) -> Self {
-            Self {
-                typ: RefCell::new(None),
-                expr,
-                span,
-            }
-        }
-
-        pub fn set_type(&self, typ: Rc<typ::Type>) {
-            *self.typ.borrow_mut() = Some(typ);
+            Self { expr, span }
         }
     }
 
     #[derive(Debug, Clone)]
     pub enum ExpressionType {
         Unit,
-        Bool(bool),
         Float(f64),
         String_(StringSymbol),
         Identifier {
@@ -438,18 +429,18 @@ pub mod expression {
                 span: span::Index,
             ) -> Identifier {
                 let name_sym = strings.get_or_intern(match self.typ {
-                    Or => "__op__or",
-                    And => "__op__and",
-                    Equal => "__op__eq",
-                    NotEqual => "__op__ne",
-                    GreaterThan => "__op__gt",
-                    GreaterEqualThan => "__op__ge",
-                    LessThan => "__op__lt",
-                    LessEqualThan => "__op__le",
-                    Addition => "__op__add",
-                    Substraction => "__op__sub",
-                    Multiplication => "__op__mult",
-                    Division => "__op__div",
+                    Or => "or_",
+                    And => "and_",
+                    Equal => "eq",
+                    NotEqual => "ne",
+                    GreaterThan => "gt",
+                    GreaterEqualThan => "ge",
+                    LessThan => "lt",
+                    LessEqualThan => "le",
+                    Addition => "add",
+                    Substraction => "sub",
+                    Multiplication => "mult",
+                    Division => "div",
                 });
                 Identifier {
                     name: name_sym,

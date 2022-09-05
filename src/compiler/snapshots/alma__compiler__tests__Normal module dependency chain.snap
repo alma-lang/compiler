@@ -1,9 +1,44 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 181
+assertion_line: 175
 expression: "compile(&[r\"\nmodule Modules exposing (main)\n\nimport Modules.WeirdMath exposing (weirdAdd)\n\nmain = weirdAdd\n\n\n\nmodule Modules.Constants exposing (five)\n\n    five = 5\n\n\n\nmodule Modules.WeirdMath exposing (weirdAdd)\n\n    import Modules.Constants exposing (five)\n\n    weirdAdd = \\x y -> x * y + five\n        \"])"
 ---
 /*
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
 
 module Modules
 
@@ -25,7 +60,70 @@ weirdAdd : ∀ ∅ . Float -> Float -> Float
 globalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {
 
 
+let Alma = function () {
+
+    // type Unit
+
+    let Unit = {
+        tag: "Unit",
+    }
+
+    // type Float
+
+    let Float = {
+        tag: "Float",
+    }
+
+    // type Bool
+
+    let True = {
+        tag: "True",
+    }
+
+    let False = {
+        tag: "False",
+    }
+
+    // type String
+
+    let String = {
+        tag: "String",
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    return {
+        True,
+        False,
+        or_,
+        and_,
+        eq,
+        ne,
+        gt,
+        ge,
+        lt,
+        le,
+        add,
+        sub,
+        mult,
+        div,
+    };
+
+}();
+
 let Modules__Constants = function () {
+
+    let { True, False } = Alma
 
     let five = 5
 
@@ -37,10 +135,11 @@ let Modules__Constants = function () {
 
 let Modules__WeirdMath = function () {
 
+    let { True, False } = Alma
     let { five } = Modules__Constants
 
     let weirdAdd = function (x, y) {
-        return __op__add(__op__mult(x, y), five)
+        return Alma.add(Alma.mult(x, y), five)
     }
 
     return {
@@ -51,6 +150,7 @@ let Modules__WeirdMath = function () {
 
 let Modules = function () {
 
+    let { True, False } = Alma
     let { weirdAdd } = Modules__WeirdMath
 
     let main = weirdAdd
@@ -62,6 +162,7 @@ let Modules = function () {
 }();
 
 return {
+    Alma,
     Modules,
     Modules__Constants,
     Modules__WeirdMath,

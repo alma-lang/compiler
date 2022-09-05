@@ -1,8 +1,9 @@
 use super::types::ModuleInterface;
-use crate::ast::{self, expression::Expressions, span::Spans, ModuleFullName};
+use crate::ast::{self, span::Spans, ModuleFullName};
 use crate::source::{self, Source, Sources, SourcesData};
 use crate::strings::Strings;
 use crate::token::Tokens;
+use crate::typ::Types;
 use derive_more::{From, Into};
 use fnv::FnvHashMap;
 use std::fmt::Write;
@@ -22,9 +23,9 @@ pub struct State {
     pub sources: Sources,
     pub tokens: SourcesData<Tokens>,
     pub spans: SourcesData<Spans>,
-    pub expressions: SourcesData<Expressions>,
     pub modules: Modules<ast::Module>,
-    pub types: Modules<Option<ModuleInterface>>,
+    pub module_interfaces: Modules<Option<ModuleInterface>>,
+    pub types: Types,
 }
 
 impl State {
@@ -33,27 +34,25 @@ impl State {
             sources: Sources::new(),
             tokens: SourcesData::new(),
             spans: SourcesData::new(),
-            expressions: SourcesData::new(),
             modules: Modules::new(),
-            types: Modules::new(),
+            module_interfaces: Modules::new(),
             strings: Strings::new(),
             module_to_source_idx: Modules::new(),
             module_name_to_module_idx: HashMap::default(),
+            types: Types::new(),
         }
     }
 
     pub fn add_source(&mut self, source: Source) -> source::Index {
-        self.sources.push(source);
+        let k = self.sources.push_and_get_key(source);
         self.tokens.push(Tokens::new());
         self.spans.push(Spans::new());
-        self.expressions.push(Expressions::new());
 
         // Return the newly created file index, sources and tokens and spans should always be in
         // sync with file indexes
         debug_assert_eq!(self.sources.len(), self.tokens.len());
         debug_assert_eq!(self.sources.len(), self.spans.len());
-        debug_assert_eq!(self.sources.len(), self.expressions.len());
-        self.sources.last_key().unwrap()
+        k
     }
 
     pub fn add_module_ast(
@@ -62,16 +61,15 @@ impl State {
         module_ast: ast::Module,
     ) -> ModuleIndex {
         let module_name = module_ast.name.full_name;
-        self.modules.push(module_ast);
-        self.types.push(None);
+        let module_idx = self.modules.push_and_get_key(module_ast);
+        self.module_interfaces.push(None);
         self.module_to_source_idx.push(source_idx);
-        let module_idx = self.modules.last_key().unwrap();
         self.module_name_to_module_idx
             .insert(module_name, module_idx);
 
         // Return the newly created module index, asts and types should always be in sync with
         // module indexes
-        debug_assert_eq!(self.modules.len(), self.types.len());
+        debug_assert_eq!(self.modules.len(), self.module_interfaces.len());
         debug_assert_eq!(self.modules.len(), self.module_to_source_idx.len());
         module_idx
     }
@@ -95,14 +93,14 @@ impl State {
 
     pub fn get_types_for_name(&self, name: ModuleFullName) -> Option<&ModuleInterface> {
         if let Some(idx) = self.get_module_idx_with_name(name) {
-            self.types[idx].as_ref()
+            self.module_interfaces[idx].as_ref()
         } else {
             None
         }
     }
 
     pub fn types_to_string(&self, out: &mut String) {
-        for (i, (module_idx, interface)) in self.types.iter_enumerated().enumerate() {
+        for (i, (module_idx, interface)) in self.module_interfaces.iter_enumerated().enumerate() {
             if i > 0 {
                 out.push_str("\n\n\n");
             }
@@ -110,7 +108,7 @@ impl State {
             let name = self.strings.resolve(name_sym);
             let interface = interface
                 .as_ref()
-                .map(|interface| interface.to_string(&self.strings))
+                .map(|interface| interface.to_string(&self.strings, &self.types))
                 .unwrap_or(String::new());
             write!(out, "module {name}\n\n{interface}").unwrap();
         }

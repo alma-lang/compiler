@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1860
+assertion_line: 2292
 expression: "infer(r\"\\a -> a 1 a\")"
-
 ---
 Input:
 
@@ -11,9 +10,11 @@ Input:
 ---
 Output:
 
-[1:6]
+[3:13]
 
 Infinite type
 
-  1│  \a -> a 1 a
-   │        ↑↑↑↑↑
+  1│  module Test exposing (test)
+  2│  
+  3│  test = \a -> a 1 a
+   │               ↑↑↑↑↑

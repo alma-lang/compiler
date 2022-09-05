@@ -13,7 +13,6 @@ use crate::javascript;
 use crate::source::Source;
 use crate::strings::Strings;
 // use crate::tokenizer;
-use crate::typ::Type;
 use crate::type_env::PolyTypeEnv;
 use crate::{infer, source};
 
@@ -23,9 +22,7 @@ pub fn compile(entry_sources: &[source::Index], state: &mut State) -> Result<Str
     let mut sorted_modules = check_cycles(&entry_modules, &state)?;
     sorted_modules.reverse();
 
-    let primitive_types = Type::primitive_types(&mut state.strings);
-
-    infer(entry_modules, state, &primitive_types)?;
+    infer(entry_modules, state)?;
 
     Ok(javascript::generate(&sorted_modules, &state))
 }
@@ -159,13 +156,14 @@ pub mod tests {
     pub fn test_compile() {
         fn compile(source_codes: &[&'static str]) -> String {
             let mut state = compiler::State::new();
-            let entry_sources = process_sources(
+            let alma_source = Source::new_file("Alma.alma").unwrap();
+            let mut sources = vec![alma_source];
+            sources.extend(
                 source_codes
                     .iter()
-                    .map(|s| Source::new_orphan(s.to_string()))
-                    .collect(),
-                &mut state,
+                    .map(|s| Source::new_orphan(s.to_string())),
             );
+            let entry_sources = process_sources(sources, &mut state);
             match super::compile(&entry_sources, &mut state) {
                 Ok(s) => s,
                 Err(e) => e,

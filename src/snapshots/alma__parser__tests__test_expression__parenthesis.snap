@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2244
+assertion_line: 2397
 expression: "parse(\"(\\\"\\\")\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: String_(
             SymbolU32 {
                 value: 1,

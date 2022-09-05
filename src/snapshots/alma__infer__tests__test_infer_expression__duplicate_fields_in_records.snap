@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1899
+assertion_line: 2332
 expression: "infer(\"{ age = 1, age = 1 }\")"
-
 ---
 Input:
 
@@ -11,14 +10,18 @@ Input:
 ---
 Output:
 
-[1:11]
+[3:18]
 
 Duplicate field `age`
 
-  1│  { age = 1, age = 1 }
-   │             ↑↑↑
+  1│  module Test exposing (test)
+  2│  
+  3│  test = { age = 1, age = 1 }
+   │                    ↑↑↑
 
 in record
 
-  1│  { age = 1, age = 1 }
+  1│  module Test exposing (test)
+  2│  
+  3│  test = { age = 1, age = 1 }
 

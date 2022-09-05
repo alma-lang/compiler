@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1850
+assertion_line: 2282
 expression: "infer(\"\\\nlet add x y = x + y\n\nadd 5\")"
-
 ---
 Input:
 
@@ -13,15 +12,15 @@ add 5
 ---
 Output:
 
-[3:0]
+[5:0]
 
 Type mismatch:  Float -> a  ≠  Float -> Float -> Float
 
 Expected
 
-  1│  let add x y = x + y
-  2│  
-  3│  add 5
+  3│  test = let add x y = x + y
+  4│  
+  5│  add 5
    │  ↑↑↑↑↑
 
 to be

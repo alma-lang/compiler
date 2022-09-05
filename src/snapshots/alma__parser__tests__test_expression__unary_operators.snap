@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2272
+assertion_line: 2425
 expression: "parse(\"not False\")"
 ---
 Input:
@@ -18,28 +18,32 @@ Index(
         0,
     ): Expression {
         span: Index(
-            0,
+            1,
         ),
-        typ: RefCell {
-            value: None,
+        expr: Identifier {
+            module: None,
+            identifier: CapitalizedIdentifier(
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
+                    },
+                    span: Index(
+                        0,
+                    ),
+                },
+            ),
         },
-        expr: Bool(
-            false,
-        ),
     },
     Index(
         1,
     ): Expression {
         span: Index(
-            2,
+            3,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Unary {
             op: Unary {
                 span: Index(
-                    1,
+                    2,
                 ),
                 typ: Not,
             },
@@ -65,6 +69,16 @@ Index(
         1,
     ): Span {
         start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
             0,
         ),
         end: Index(
@@ -72,7 +86,7 @@ Index(
         ),
     },
     Index(
-        2,
+        3,
     ): Span {
         start: Index(
             0,

@@ -1,36 +1,36 @@
 use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::typ::Types;
 use crate::type_env::{PolyTypeEnv, TypeEnv};
 use fnv::FnvHashMap;
 use std::fmt::Write;
-use std::rc::Rc;
 
 pub type HashMap<K, V> = FnvHashMap<K, V>;
 
 #[derive(Debug)]
 pub struct ModuleInterface {
-    pub types: Rc<TypeEnv>,
-    pub type_constructors: HashMap<StringSymbol, Rc<PolyTypeEnv>>,
-    pub definitions: Rc<PolyTypeEnv>,
+    pub types: TypeEnv,
+    pub type_constructors: HashMap<StringSymbol, PolyTypeEnv>,
+    pub definitions: PolyTypeEnv,
 }
 
 impl ModuleInterface {
     pub fn new() -> Self {
         Self {
-            types: Rc::new(TypeEnv::new()),
+            types: TypeEnv::new(),
             type_constructors: HashMap::default(),
-            definitions: Rc::new(PolyTypeEnv::new()),
+            definitions: PolyTypeEnv::new(),
         }
     }
 
-    pub fn to_string(&self, strings: &Strings) -> String {
+    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
         let mut out = String::new();
 
         for (_typ, constructors) in self.type_constructors.iter() {
-            out.push_str(&constructors.to_string(strings));
+            out.push_str(&constructors.to_string(strings, &types));
             out.push_str("\n\n");
         }
 
-        out.push_str(&self.definitions.to_string(strings));
+        out.push_str(&self.definitions.to_string(strings, &types));
 
         out
     }
@@ -58,7 +58,7 @@ impl ModuleInterfaces {
         &self.0
     }
 
-    pub fn to_string(&self, strings: &Strings) -> String {
+    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
@@ -70,7 +70,7 @@ impl ModuleInterfaces {
                 out.push_str("\n\n\n");
             }
             let name = strings.resolve(**name);
-            let interface = interface.to_string(strings);
+            let interface = interface.to_string(strings, &types);
             write!(out, "module {name}\n\n{interface}").unwrap();
         }
 

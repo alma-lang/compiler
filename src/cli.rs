@@ -78,7 +78,9 @@ pub fn repl() {
     */
 }
 
-pub fn compile_files(files: Vec<String>) {
+pub fn compile_files(arg_files: Vec<String>) {
+    let mut files = vec!["Alma.alma".to_owned()];
+    files.extend(arg_files);
     let sources: Vec<Source> = files.iter().map(|f| Source::from_path(f)).collect();
     let mut state = compiler::State::new();
     let entry_sources = process_sources(sources, &mut state);
@@ -94,7 +96,13 @@ pub fn compile_files(files: Vec<String>) {
 
 pub fn bench(runs: u32, file_path: String) {
     let mut state = compiler::State::new();
-    let entry_sources = process_sources(vec![Source::from_path(&file_path)], &mut state);
+    let entry_sources = process_sources(
+        vec![
+            Source::from_path("Alma.alma"),
+            Source::from_path(&file_path),
+        ],
+        &mut state,
+    );
 
     for _ in 0..runs {
         match compiler::compile(&entry_sources, &mut state) {

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2716
+assertion_line: 2890
 expression: "parse(\"\nmodule Test.Something\n\nmodule Test.Banana\n\")"
 ---
 Input:
@@ -41,7 +41,7 @@ Error {
                         value: 1,
                     },
                     span: Index(
-                        2,
+                        3,
                     ),
                 },
                 CapitalizedIdentifier {
@@ -49,12 +49,12 @@ Error {
                         value: 3,
                     },
                     span: Index(
-                        3,
+                        4,
                     ),
                 },
             ],
             full_name: SymbolU32 {
-                value: 5,
+                value: 11,
             },
         },
     },

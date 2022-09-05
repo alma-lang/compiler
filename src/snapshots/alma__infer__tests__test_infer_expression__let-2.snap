@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1849
+assertion_line: 2281
 expression: "infer(\"let a = bar\\nbar\")"
-
 ---
 Input:
 
@@ -12,18 +11,23 @@ bar
 ---
 Output:
 
-[1:8]
+[3:15]
 
 Undefined identifier `bar`
 
-  1│  let a = bar
-   │          ↑↑↑
-  2│  bar
+  1│  module Test exposing (test)
+  2│  
+  3│  test = let a = bar
+   │                 ↑↑↑
+  4│  bar
 
-[2:0]
+----------------------------------------
+
+[4:0]
 
 Undefined identifier `bar`
 
-  1│  let a = bar
-  2│  bar
+  2│  
+  3│  test = let a = bar
+  4│  bar
    │  ↑↑↑

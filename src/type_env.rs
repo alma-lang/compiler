@@ -1,21 +1,20 @@
 use crate::strings::{Strings, Symbol as StringSymbol};
-use crate::typ::{PolyType, Type};
+use crate::typ::{self, PolyType, Types};
 use fnv::FnvBuildHasher;
 use im_rc::HashMap;
 use std::fmt::Write;
-use std::rc::Rc;
 
-type TypeMap = HashMap<StringSymbol, Rc<Type>, FnvBuildHasher>;
+type TypeMap = HashMap<StringSymbol, typ::Index, FnvBuildHasher>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeEnv(TypeMap);
 
 impl TypeEnv {
-    pub fn get(&self, key: &StringSymbol) -> Option<&Rc<Type>> {
-        self.0.get(key)
+    pub fn get(&self, key: &StringSymbol) -> Option<typ::Index> {
+        self.0.get(key).copied()
     }
 
-    pub fn insert(&mut self, key: StringSymbol, value: Rc<Type>) {
+    pub fn insert(&mut self, key: StringSymbol, value: typ::Index) {
         self.0.insert(key, value);
     }
 
@@ -29,7 +28,7 @@ impl TypeEnv {
         &self.0
     }
 
-    pub fn to_string(&self, strings: &Strings) -> String {
+    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
@@ -41,7 +40,7 @@ impl TypeEnv {
                 out.push_str("\n\n");
             }
             let name = strings.resolve(**name);
-            let typ = typ.to_string(strings);
+            let typ = types[**typ].to_string(strings, types);
             write!(out, "{name} : {typ}").unwrap();
         }
 
@@ -49,7 +48,7 @@ impl TypeEnv {
     }
 }
 
-type PolyTypeMap = HashMap<StringSymbol, Rc<PolyType>, FnvBuildHasher>;
+type PolyTypeMap = HashMap<StringSymbol, PolyType, FnvBuildHasher>;
 
 // TODO: Join this with TypeEnv and parametrize it, and use a trait for the
 // to_string(strings: &Strings)
@@ -57,11 +56,11 @@ type PolyTypeMap = HashMap<StringSymbol, Rc<PolyType>, FnvBuildHasher>;
 pub struct PolyTypeEnv(PolyTypeMap);
 
 impl PolyTypeEnv {
-    pub fn get(&self, key: &StringSymbol) -> Option<&Rc<PolyType>> {
+    pub fn get(&self, key: &StringSymbol) -> Option<&PolyType> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: StringSymbol, value: Rc<PolyType>) {
+    pub fn insert(&mut self, key: StringSymbol, value: PolyType) {
         self.0.insert(key, value);
     }
 
@@ -75,7 +74,7 @@ impl PolyTypeEnv {
         &self.0
     }
 
-    pub fn to_string(&self, strings: &Strings) -> String {
+    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
@@ -87,7 +86,7 @@ impl PolyTypeEnv {
                 out.push_str("\n\n");
             }
             let name = strings.resolve(**name);
-            let typ = typ.to_string(strings);
+            let typ = typ.to_string(strings, types);
             write!(out, "{name} : {typ}").unwrap();
         }
 

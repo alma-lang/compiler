@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2248
+assertion_line: 2401
 expression: "parse(\"(\n  ((1))\n)\")"
 ---
 Input:
@@ -22,9 +22,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             1.0,
         ),

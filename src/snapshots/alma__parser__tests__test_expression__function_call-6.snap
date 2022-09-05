@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2267
+assertion_line: 2420
 expression: "parse(\"hello ()\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -43,9 +40,6 @@ Index(
         span: Index(
             1,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Unit,
     },
     Index(
@@ -54,9 +48,6 @@ Index(
         span: Index(
             2,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: FnCall {
             function: Index(
                 0,

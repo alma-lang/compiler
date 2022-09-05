@@ -47,7 +47,7 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
 
     for module_idx in sorted_modules {
         let module_ast = &state.modules[*module_idx];
-        let expressions = &state.expressions[state.module_to_source_idx[*module_idx]];
+        let expressions = &module_ast.expressions;
 
         code.push_str("\nlet ");
         module_full_name(&mut code, &module_ast.name, strings);
@@ -56,10 +56,12 @@ pub fn generate(sorted_modules: &[ModuleIndex], state: &compiler::State) -> Stri
         generate_file(
             &mut code,
             module_ast,
-            &state.types[*module_idx].as_ref().unwrap_or_else(|| {
-                let name = strings.resolve(module_ast.name.full_name);
-                panic!("Couldn't find the types for module {name}");
-            }),
+            &state.module_interfaces[*module_idx]
+                .as_ref()
+                .unwrap_or_else(|| {
+                    let name = strings.resolve(module_ast.name.full_name);
+                    panic!("Couldn't find the types for module {name}");
+                }),
             strings,
             expressions,
         );
@@ -362,14 +364,6 @@ fn generate_expression(
 ) {
     match &expression.expr {
         ET::Unit => code.push_str("()"),
-
-        ET::Bool(bool_) => {
-            if *bool_ {
-                code.push_str("true");
-            } else {
-                code.push_str("false");
-            }
-        }
 
         ET::Float(float) => write!(code, "{float}").unwrap(),
 

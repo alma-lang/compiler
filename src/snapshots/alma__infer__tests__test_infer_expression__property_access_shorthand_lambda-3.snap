@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1883
+assertion_line: 2316
 expression: "infer(\".name { age = 1 }\")"
-
 ---
 Input:
 
@@ -11,14 +10,16 @@ Input:
 ---
 Output:
 
-[1:6]
+[3:13]
 
 Type mismatch:  { age : Float }  ≠  { a | name : b }
 
 Expected
 
-  1│  .name { age = 1 }
-   │        ↑↑↑↑↑↑↑↑↑↑↑
+  1│  module Test exposing (test)
+  2│  
+  3│  test = .name { age = 1 }
+   │               ↑↑↑↑↑↑↑↑↑↑↑
 
 to be
 

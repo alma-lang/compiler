@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2406
+assertion_line: 2559
 expression: "parse(\"\\\nlet\n  incr n = n + 1\nin\nincr 5\n\")"
 ---
 Input:
@@ -24,15 +24,28 @@ Index(
         span: Index(
             5,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
-            module: None,
+            module: Some(
+                ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 5,
+                            },
+                            span: Index(
+                                7,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 5,
+                    },
+                },
+            ),
             identifier: Identifier(
                 Identifier {
                     name: SymbolU32 {
-                        value: 5,
+                        value: 6,
                     },
                     span: Index(
                         5,
@@ -47,9 +60,6 @@ Index(
         span: Index(
             4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -70,9 +80,6 @@ Index(
         span: Index(
             6,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             1.0,
         ),
@@ -81,11 +88,8 @@ Index(
         3,
     ): Expression {
         span: Index(
-            7,
+            8,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Binary {
             expression: Index(
                 0,
@@ -109,11 +113,8 @@ Index(
         4,
     ): Expression {
         span: Index(
-            8,
+            9,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -122,7 +123,7 @@ Index(
                         value: 1,
                     },
                     span: Index(
-                        8,
+                        9,
                     ),
                 },
             ),
@@ -132,11 +133,8 @@ Index(
         5,
     ): Expression {
         span: Index(
-            9,
+            10,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             5.0,
         ),
@@ -145,11 +143,8 @@ Index(
         6,
     ): Expression {
         span: Index(
-            10,
+            11,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: FnCall {
             function: Index(
                 4,
@@ -165,11 +160,8 @@ Index(
         7,
     ): Expression {
         span: Index(
-            11,
+            12,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Let {
             definitions: [
                 Untyped(
@@ -289,6 +281,16 @@ Index(
         7,
     ): Span {
         start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
             4,
         ),
         end: Index(
@@ -296,30 +298,20 @@ Index(
         ),
     },
     Index(
-        8,
-    ): Span {
-        start: Index(
-            8,
-        ),
-        end: Index(
-            8,
-        ),
-    },
-    Index(
         9,
     ): Span {
         start: Index(
-            9,
+            8,
         ),
         end: Index(
-            9,
+            8,
         ),
     },
     Index(
         10,
     ): Span {
         start: Index(
-            8,
+            9,
         ),
         end: Index(
             9,
@@ -327,6 +319,16 @@ Index(
     },
     Index(
         11,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        12,
     ): Span {
         start: Index(
             0,

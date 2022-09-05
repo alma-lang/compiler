@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2431
+assertion_line: 2584
 expression: "parse(\"{ x = 5 }\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             1,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             5.0,
         ),
@@ -33,9 +30,6 @@ Index(
         span: Index(
             2,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Record {
             fields: [
                 (

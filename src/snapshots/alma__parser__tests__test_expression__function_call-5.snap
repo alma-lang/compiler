@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2261
+assertion_line: 2414
 expression: "parse(\"\nfun arg1\n  arg2 arg3\n  arg4\")"
 ---
 Input:
@@ -23,9 +23,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -46,9 +43,6 @@ Index(
         span: Index(
             1,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -69,9 +63,6 @@ Index(
         span: Index(
             2,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -92,9 +83,6 @@ Index(
         span: Index(
             3,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -115,9 +103,6 @@ Index(
         span: Index(
             4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -138,9 +123,6 @@ Index(
         span: Index(
             5,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: FnCall {
             function: Index(
                 0,

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2950
+assertion_line: 3103
 expression: "parse(\"\nmodule Test\n\ntype Fruit a = { test : Banana a (Phone a) }\n\")"
 ---
 Input:
@@ -31,19 +31,108 @@ Result:
             },
         },
         exports: [],
-        imports: [],
+        imports: [
+            Import {
+                span: Index(
+                    1,
+                ),
+                module_name: ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 7,
+                            },
+                            span: Index(
+                                1,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 7,
+                    },
+                },
+                alias: None,
+                exposing: [
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 8,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 9,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 10,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 11,
+                                    },
+                                    span: Index(
+                                        1,
+                                    ),
+                                },
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 12,
+                                    },
+                                    span: Index(
+                                        1,
+                                    ),
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
         definitions: [],
         type_definitions: [
             TypeDefinition {
                 span: Index(
-                    11,
+                    12,
                 ),
                 name: CapitalizedIdentifier {
                     name: SymbolU32 {
                         value: 2,
                     },
                     span: Index(
-                        1,
+                        2,
                     ),
                 },
                 vars: [
@@ -52,7 +141,7 @@ Result:
                             value: 3,
                         },
                         span: Index(
-                            2,
+                            3,
                         ),
                     },
                 ],
@@ -60,7 +149,7 @@ Result:
                     Record(
                         Record {
                             span: Index(
-                                10,
+                                11,
                             ),
                             fields: [
                                 (
@@ -69,20 +158,20 @@ Result:
                                             value: 4,
                                         },
                                         span: Index(
-                                            3,
+                                            4,
                                         ),
                                     },
                                     App(
                                         Constructor {
                                             span: Index(
-                                                9,
+                                                10,
                                             ),
                                             name: CapitalizedIdentifier {
                                                 name: SymbolU32 {
                                                     value: 5,
                                                 },
                                                 span: Index(
-                                                    4,
+                                                    5,
                                                 ),
                                             },
                                             params: [
@@ -92,21 +181,21 @@ Result:
                                                             value: 3,
                                                         },
                                                         span: Index(
-                                                            5,
+                                                            6,
                                                         ),
                                                     },
                                                 ),
                                                 App(
                                                     Constructor {
                                                         span: Index(
-                                                            8,
+                                                            9,
                                                         ),
                                                         name: CapitalizedIdentifier {
                                                             name: SymbolU32 {
                                                                 value: 6,
                                                             },
                                                             span: Index(
-                                                                6,
+                                                                7,
                                                             ),
                                                         },
                                                         params: [
@@ -116,7 +205,7 @@ Result:
                                                                         value: 3,
                                                                     },
                                                                     span: Index(
-                                                                        7,
+                                                                        8,
                                                                     ),
                                                                 },
                                                             ),
@@ -133,11 +222,11 @@ Result:
                 ),
             },
         ],
+        expressions: {},
+        expression_types: {},
     },
     [],
 )
-
-{}
 
 {
     Index(
@@ -154,77 +243,77 @@ Result:
         1,
     ): Span {
         start: Index(
-            3,
+            0,
         ),
         end: Index(
-            3,
+            0,
         ),
     },
     Index(
         2,
     ): Span {
         start: Index(
-            4,
+            3,
         ),
         end: Index(
-            4,
+            3,
         ),
     },
     Index(
         3,
     ): Span {
         start: Index(
-            7,
+            4,
         ),
         end: Index(
-            7,
+            4,
         ),
     },
     Index(
         4,
     ): Span {
         start: Index(
-            9,
+            7,
         ),
         end: Index(
-            9,
+            7,
         ),
     },
     Index(
         5,
     ): Span {
         start: Index(
-            10,
+            9,
         ),
         end: Index(
-            10,
+            9,
         ),
     },
     Index(
         6,
     ): Span {
         start: Index(
-            12,
+            10,
         ),
         end: Index(
-            12,
+            10,
         ),
     },
     Index(
         7,
     ): Span {
         start: Index(
-            13,
+            12,
         ),
         end: Index(
-            13,
+            12,
         ),
     },
     Index(
         8,
     ): Span {
         start: Index(
-            12,
+            13,
         ),
         end: Index(
             13,
@@ -234,6 +323,16 @@ Result:
         9,
     ): Span {
         start: Index(
+            12,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
             9,
         ),
         end: Index(
@@ -241,7 +340,7 @@ Result:
         ),
     },
     Index(
-        10,
+        11,
     ): Span {
         start: Index(
             6,
@@ -251,7 +350,7 @@ Result:
         ),
     },
     Index(
-        11,
+        12,
     ): Span {
         start: Index(
             2,

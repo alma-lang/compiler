@@ -1,4 +1,6 @@
-use crate::ast::expression::{binop, AnyIdentifier, Expressions, PatternType, Unary};
+use crate::ast::expression::{
+    binop, AnyIdentifier, ExpressionTypes, Expressions, PatternType, Unary,
+};
 use crate::ast::span::Spans;
 use crate::ast::{
     expression::{
@@ -12,7 +14,7 @@ use crate::ast::{
     types::{self, Type, TypeDefinition},
     Import, Module, ModuleName, ReplEntry,
 };
-use crate::ast::{Definition, Export, ExportType, TypeSignature, TypedDefinition};
+use crate::ast::{Definition, Export, ExportType, ModuleFullName, TypeSignature, TypedDefinition};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
@@ -592,25 +594,104 @@ impl<'a> State<'a> {
                 ));
             }
 
+            // We are going to parse a module, so save up the current expressions vec in
+            // a temporary var and we will restore it after we are done with the module. This is
+            // done because each module has its own expressions vec.
+            let mut expressions = Expressions::new();
+            std::mem::swap(&mut expressions, self.expressions);
+
             let exports = self.exposing()?;
 
-            let imports = self.many(Self::import)?;
+            let mut imports = self.get_implicit_imports(&name.full_name);
+            imports.extend(self.many(Self::import)?);
 
             let (mut modules, definitions, type_definitions) =
                 self.module_definitions(top_level, &name, module_token, vec![], vec![], vec![])?;
 
-            modules.push(Module {
+            // Restore the previous expressions vec from whatever parent module we were parsing.
+            // `expressions` will now be this submodule's expressions we just parsed.
+            std::mem::swap(&mut expressions, self.expressions);
+
+            let mut expression_types = ExpressionTypes::with_capacity(expressions.len());
+            expression_types.resize_with(expressions.len(), || None);
+
+            let module = Module {
                 name,
                 exports,
                 imports,
                 definitions,
                 type_definitions,
-            });
+                expressions,
+                expression_types,
+            };
+
+            modules.push(module);
 
             Ok(Some(modules))
         } else {
             Ok(None)
         }
+    }
+
+    fn get_implicit_imports(&mut self, module_name: &ModuleFullName) -> Vec<Import> {
+        let mut imports = vec![];
+        let name = self.strings.get_or_intern("Alma");
+        let span = self.span(0.into(), 0.into());
+
+        if *module_name != name {
+            imports.push(Import {
+                module_name: ModuleName::new(
+                    vec![CapitalizedIdentifier { name, span }],
+                    &mut self.strings,
+                )
+                .unwrap(),
+                alias: None,
+                exposing: vec![
+                    Export {
+                        span,
+                        typ: ExportType::Type {
+                            name: CapitalizedIdentifier {
+                                name: self.strings.get_or_intern("Float"),
+                                span,
+                            },
+                            constructors: vec![],
+                        },
+                    },
+                    Export {
+                        span,
+                        typ: ExportType::Type {
+                            name: CapitalizedIdentifier {
+                                name: self.strings.get_or_intern("String"),
+                                span,
+                            },
+                            constructors: vec![],
+                        },
+                    },
+                    Export {
+                        span,
+                        typ: ExportType::Type {
+                            name: CapitalizedIdentifier {
+                                name: self.strings.get_or_intern("Bool"),
+                                span,
+                            },
+                            constructors: vec![
+                                CapitalizedIdentifier {
+                                    name: self.strings.get_or_intern("True"),
+                                    span,
+                                },
+                                CapitalizedIdentifier {
+                                    name: self.strings.get_or_intern("False"),
+                                    span,
+                                },
+                            ],
+                        },
+                    },
+                ],
+                span,
+            });
+        }
+
+        imports
     }
 
     fn exposing(&mut self) -> ParseResult<Vec<Export>> {
@@ -1362,7 +1443,22 @@ impl<'a> State<'a> {
 
                         let binary_expr = E::untyped(
                             ET::Identifier {
-                                module: None,
+                                module: Some(
+                                    // TODO: Creating this every time we have a binary expression
+                                    // is awful. These could be pre-stored somewhere and just
+                                    // cloned. Or ideally this fake expression we create here to
+                                    // help with the type checking later is no longer necessary and
+                                    // we can get rid of it and make it up as needed in the
+                                    // inference pass.
+                                    ModuleName::new(
+                                        vec![CapitalizedIdentifier {
+                                            span: self.span(0.into(), 0.into()),
+                                            name: self.strings.get_or_intern("Alma"),
+                                        }],
+                                        self.strings,
+                                    )
+                                    .unwrap(),
+                                ),
                                 identifier: AnyIdentifier::Identifier(
                                     op.get_function_identifier(self.strings, op_span),
                                 ),
@@ -1521,21 +1617,6 @@ impl<'a> State<'a> {
         let (token_index, token) = self.get_token();
 
         match token.kind {
-            False => {
-                self.advance();
-                Ok(Some(E::untyped(
-                    ET::Bool(false),
-                    self.span(token_index, token_index),
-                )))
-            }
-            True => {
-                self.advance();
-                Ok(Some(E::untyped(
-                    ET::Bool(true),
-                    self.span(token_index, token_index),
-                )))
-            }
-
             TT::Float(lexeme) => {
                 let n = self
                     .strings
@@ -2108,13 +2189,11 @@ impl<'a> State<'a> {
     }
 
     fn span(&mut self, start: token::Index, end: token::Index) -> span::Index {
-        self.spans.push(Span { start, end });
-        self.spans.last_key().unwrap()
+        self.spans.push_and_get_key(Span { start, end })
     }
 
     fn add_expression(&mut self, expression: Expression) -> expression::Index {
-        self.expressions.push(expression);
-        self.expressions.last_key().unwrap()
+        self.expressions.push_and_get_key(expression)
     }
 }
 
@@ -2123,15 +2202,15 @@ pub fn parse<'a>(
     tokens: &'a Tokens,
     strings: &'a mut Strings,
     spans: &'a mut Spans,
-    expressions: &'a mut Expressions,
 ) -> ParseResult<(Module, Vec<Module>)> {
+    let mut expressions = Expressions::new();
     let mut parser = State {
         strings,
         source,
         tokens,
         current: 0.into(),
         spans,
-        expressions,
+        expressions: &mut expressions,
     };
 
     parser.file()
@@ -3184,16 +3263,14 @@ main =
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
             let mut spans = Spans::new();
-            let mut expressions = Expressions::new();
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
-            let result =
-                match &super::parse(&source, &tokens, &mut strings, &mut spans, &mut expressions) {
-                    Ok(ast) => format!("{ast:#?}\n\n{expressions:#?}\n\n{spans:#?}"),
-                    Err(error) => {
-                        let error_str = error.to_string(&source, &strings);
-                        format!("{error_str}\n\n{error:#?}")
-                    }
-                };
+            let result = match &super::parse(&source, &tokens, &mut strings, &mut spans) {
+                Ok(ast) => format!("{ast:#?}\n\n{spans:#?}"),
+                Err(error) => {
+                    let error_str = error.to_string(&source, &strings);
+                    format!("{error_str}\n\n{error:#?}")
+                }
+            };
             format!("Input:\n\n{code}\n\nResult:\n\n{result}")
         }
     }

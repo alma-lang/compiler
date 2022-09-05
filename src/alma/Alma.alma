@@ -1,0 +1,41 @@
+module Alma exposing
+    ( Float
+    , Bool(True, False)
+    , String
+    , or_
+    , and_
+    , eq
+    , ne
+    , gt
+    , ge
+    , lt
+    , le
+    , add
+    , sub
+    , mult
+    , div
+    )
+
+type Unit = Unit
+
+type Float = Float
+
+type Bool = True | False
+
+type String = String
+
+or_ : Bool -> Bool -> Bool
+and_ : Bool -> Bool -> Bool
+
+eq : a -> a -> Bool
+ne : a -> a -> Bool
+
+gt : Float -> Float -> Bool
+ge : Float -> Float -> Bool
+lt : Float -> Float -> Bool
+le : Float -> Float -> Bool
+
+add : Float -> Float -> Float
+sub : Float -> Float -> Float
+mult : Float -> Float -> Float
+div : Float -> Float -> Float

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2444
+assertion_line: 2597
 expression: "parse(\".b\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             1,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: PropertyAccessLambda {
             property: Identifier {
                 name: SymbolU32 {

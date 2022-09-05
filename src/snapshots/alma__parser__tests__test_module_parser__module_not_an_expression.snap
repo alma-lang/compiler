@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2432
+assertion_line: 2640
 expression: "parse(\"True\")"
 ---
 Input:
@@ -19,7 +19,11 @@ Expected `module FileName` at the start of the file, but instead found: `True`
 Error {
     kind: MissingTopLevelModule,
     token: Token {
-        kind: True,
+        kind: CapitalizedIdentifier(
+            SymbolU32 {
+                value: 1,
+            },
+        ),
         indent: 0,
         start: 0,
         end: 4,

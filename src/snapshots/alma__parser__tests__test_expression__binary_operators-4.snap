@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2282
+assertion_line: 2435
 expression: "parse(\"1 == 2 / 3\")"
 ---
 Input:
@@ -20,15 +20,28 @@ Index(
         span: Index(
             3,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
-            module: None,
+            module: Some(
+                ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 4,
+                            },
+                            span: Index(
+                                5,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 4,
+                    },
+                },
+            ),
             identifier: Identifier(
                 Identifier {
                     name: SymbolU32 {
-                        value: 4,
+                        value: 5,
                     },
                     span: Index(
                         3,
@@ -43,9 +56,6 @@ Index(
         span: Index(
             2,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             2.0,
         ),
@@ -56,9 +66,6 @@ Index(
         span: Index(
             4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             3.0,
         ),
@@ -69,15 +76,28 @@ Index(
         span: Index(
             1,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
-            module: None,
+            module: Some(
+                ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 4,
+                            },
+                            span: Index(
+                                7,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 4,
+                    },
+                },
+            ),
             identifier: Identifier(
                 Identifier {
                     name: SymbolU32 {
-                        value: 5,
+                        value: 6,
                     },
                     span: Index(
                         1,
@@ -92,9 +112,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             1.0,
         ),
@@ -103,11 +120,8 @@ Index(
         5,
     ): Expression {
         span: Index(
-            5,
+            6,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Binary {
             expression: Index(
                 0,
@@ -131,11 +145,8 @@ Index(
         6,
     ): Expression {
         span: Index(
-            6,
+            8,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Binary {
             expression: Index(
                 3,
@@ -212,6 +223,16 @@ Index(
         5,
     ): Span {
         start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
             2,
         ),
         end: Index(
@@ -219,7 +240,17 @@ Index(
         ),
     },
     Index(
-        6,
+        7,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        8,
     ): Span {
         start: Index(
             0,

@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1901
+assertion_line: 2334
 expression: "infer(\"{ { name = 1, age = 1 } | name = 2, name = 3 }\")"
-
 ---
 Input:
 
@@ -11,14 +10,18 @@ Input:
 ---
 Output:
 
-[1:36]
+[3:43]
 
 Duplicate field `name`
 
-  1│  { { name = 1, age = 1 } | name = 2, name = 3 }
-   │                                      ↑↑↑↑
+  1│  module Test exposing (test)
+  2│  
+  3│  test = { { name = 1, age = 1 } | name = 2, name = 3 }
+   │                                             ↑↑↑↑
 
 in record
 
-  1│  { { name = 1, age = 1 } | name = 2, name = 3 }
+  1│  module Test exposing (test)
+  2│  
+  3│  test = { { name = 1, age = 1 } | name = 2, name = 3 }
 

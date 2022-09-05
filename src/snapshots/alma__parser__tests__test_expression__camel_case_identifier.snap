@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2214
+assertion_line: 2367
 expression: "parse(\"variableOne\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(

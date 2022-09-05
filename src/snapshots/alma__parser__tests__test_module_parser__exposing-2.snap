@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2627
+assertion_line: 2780
 expression: "parse(\"\\\nmodule Test exposing (a, b)\n\na = 1\n\nb = True\")"
 ---
 Input:
@@ -62,13 +62,102 @@ Result:
                 ),
             },
         ],
-        imports: [],
+        imports: [
+            Import {
+                span: Index(
+                    3,
+                ),
+                module_name: ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 6,
+                            },
+                            span: Index(
+                                3,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 6,
+                    },
+                },
+                alias: None,
+                exposing: [
+                    Export {
+                        span: Index(
+                            3,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 7,
+                                },
+                                span: Index(
+                                    3,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            3,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 8,
+                                },
+                                span: Index(
+                                    3,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            3,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 9,
+                                },
+                                span: Index(
+                                    3,
+                                ),
+                            },
+                            constructors: [
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 5,
+                                    },
+                                    span: Index(
+                                        3,
+                                    ),
+                                },
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 10,
+                                    },
+                                    span: Index(
+                                        3,
+                                    ),
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
         definitions: [
             Untyped(
                 Pattern(
                     Pattern {
                         span: Index(
-                            3,
+                            4,
                         ),
                         typ: Identifier(
                             Identifier {
@@ -76,7 +165,7 @@ Result:
                                     value: 2,
                                 },
                                 span: Index(
-                                    3,
+                                    4,
                                 ),
                             },
                         ),
@@ -90,7 +179,7 @@ Result:
                 Pattern(
                     Pattern {
                         span: Index(
-                            6,
+                            7,
                         ),
                         typ: Identifier(
                             Identifier {
@@ -98,7 +187,7 @@ Result:
                                     value: 3,
                                 },
                                 span: Index(
-                                    6,
+                                    7,
                                 ),
                             },
                         ),
@@ -110,38 +199,49 @@ Result:
             ),
         ],
         type_definitions: [],
+        expressions: {
+            Index(
+                0,
+            ): Expression {
+                span: Index(
+                    6,
+                ),
+                expr: Float(
+                    1.0,
+                ),
+            },
+            Index(
+                1,
+            ): Expression {
+                span: Index(
+                    10,
+                ),
+                expr: Identifier {
+                    module: None,
+                    identifier: CapitalizedIdentifier(
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 5,
+                            },
+                            span: Index(
+                                9,
+                            ),
+                        },
+                    ),
+                },
+            },
+        },
+        expression_types: {
+            Index(
+                0,
+            ): None,
+            Index(
+                1,
+            ): None,
+        },
     },
     [],
 )
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            5,
-        ),
-        typ: RefCell {
-            value: None,
-        },
-        expr: Float(
-            1.0,
-        ),
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            8,
-        ),
-        typ: RefCell {
-            value: None,
-        },
-        expr: Bool(
-            true,
-        ),
-    },
-}
 
 {
     Index(
@@ -178,10 +278,10 @@ Result:
         3,
     ): Span {
         start: Index(
-            8,
+            0,
         ),
         end: Index(
-            8,
+            0,
         ),
     },
     Index(
@@ -198,20 +298,20 @@ Result:
         5,
     ): Span {
         start: Index(
-            10,
+            8,
         ),
         end: Index(
-            10,
+            8,
         ),
     },
     Index(
         6,
     ): Span {
         start: Index(
-            11,
+            10,
         ),
         end: Index(
-            11,
+            10,
         ),
     },
     Index(
@@ -226,6 +326,26 @@ Result:
     },
     Index(
         8,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            13,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        10,
     ): Span {
         start: Index(
             13,

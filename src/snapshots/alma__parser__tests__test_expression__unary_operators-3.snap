@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2274
+assertion_line: 2427
 expression: "parse(\"incr (-5)\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             1,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             5.0,
         ),
@@ -33,9 +30,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -56,9 +50,6 @@ Index(
         span: Index(
             3,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Unary {
             op: Unary {
                 span: Index(
@@ -77,9 +68,6 @@ Index(
         span: Index(
             4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: FnCall {
             function: Index(
                 1,

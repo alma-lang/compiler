@@ -1,9 +1,44 @@
 ---
 source: src/compiler/mod.rs
+assertion_line: 224
 expression: "compile(&[r\"\nmodule ModuleWithTypeOnlyDefinitions exposing (main)\n\ntest : Float -> Float -> Float\n\nmain a = test a 5\n        \"])"
-
 ---
 /*
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
 
 module ModuleWithTypeOnlyDefinitions
 
@@ -15,7 +50,70 @@ main : ∀ ∅ . Float -> Float
 globalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {
 
 
+let Alma = function () {
+
+    // type Unit
+
+    let Unit = {
+        tag: "Unit",
+    }
+
+    // type Float
+
+    let Float = {
+        tag: "Float",
+    }
+
+    // type Bool
+
+    let True = {
+        tag: "True",
+    }
+
+    let False = {
+        tag: "False",
+    }
+
+    // type String
+
+    let String = {
+        tag: "String",
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    return {
+        True,
+        False,
+        or_,
+        and_,
+        eq,
+        ne,
+        gt,
+        ge,
+        lt,
+        le,
+        add,
+        sub,
+        mult,
+        div,
+    };
+
+}();
+
 let ModuleWithTypeOnlyDefinitions = function () {
+
+    let { True, False } = Alma
 
 
     function main(a) {
@@ -29,6 +127,7 @@ let ModuleWithTypeOnlyDefinitions = function () {
 }();
 
 return {
+    Alma,
     ModuleWithTypeOnlyDefinitions,
 };
 

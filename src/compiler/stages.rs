@@ -4,7 +4,6 @@ use crate::compiler::state::{ModuleIndex, State};
 use crate::parser;
 use crate::source::Source;
 use crate::tokenizer;
-use crate::type_env::PolyTypeEnv;
 use crate::{infer, source};
 use fnv::FnvHashSet as HashSet;
 
@@ -72,7 +71,6 @@ fn parse_file<'source>(
     let source = &state.sources[file];
     let tokens = &mut state.tokens[file];
     let spans = &mut state.spans[file];
-    let expressions = &mut state.expressions[file];
     tokenizer::parse(source, strings, tokens).map_err(|errors| {
         errors
             .iter()
@@ -82,7 +80,7 @@ fn parse_file<'source>(
 
     let mut module_names = vec![];
 
-    let (module_ast, submodules) = parser::parse(source, tokens, strings, spans, expressions)
+    let (module_ast, submodules) = parser::parse(source, tokens, strings, spans)
         .map_err(|error| vec![error.to_string(source, strings)])?;
 
     let module_name = module_ast.name.full_name;
@@ -266,11 +264,7 @@ fn cycle_error(cycle_names: &[&str]) -> String {
     )
 }
 
-pub fn infer(
-    entry_modules: Vec<ModuleIndex>,
-    state: &mut State,
-    primitive_types: &PolyTypeEnv,
-) -> Result<(), String> {
+pub fn infer(entry_modules: Vec<ModuleIndex>, state: &mut State) -> Result<(), String> {
     let mut errors = vec![];
     let mut infer_queue: Vec<ModuleIndex> = vec![];
     infer_queue.extend(entry_modules);
@@ -280,7 +274,7 @@ pub fn infer(
             None => break,
             Some(module_idx) => {
                 // If not already inferred
-                if state.types[module_idx].is_some() {
+                if state.module_interfaces[module_idx].is_some() {
                     continue;
                 }
                 let module_ast = &state.modules[module_idx];
@@ -316,7 +310,7 @@ pub fn infer(
                 }
 
                 // Process this module
-                match infer::infer(state, module_idx, primitive_types) {
+                match infer::infer(state, module_idx) {
                     Ok(()) => (),
                     Err(module_errors) => {
                         errors.append(
@@ -329,6 +323,7 @@ pub fn infer(
                                         &state.strings,
                                         &state.tokens[source_idx],
                                         &state.spans[source_idx],
+                                        &state.types,
                                     )
                                 })
                                 .collect::<Vec<String>>(),

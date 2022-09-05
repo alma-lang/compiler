@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2304
+assertion_line: 2457
 expression: "parse(\"if True then if False then 1 else 3 else 2\")"
 ---
 Input:
@@ -18,24 +18,28 @@ Index(
         0,
     ): Expression {
         span: Index(
-            1,
+            3,
         ),
-        typ: RefCell {
-            value: None,
+        expr: Identifier {
+            module: None,
+            identifier: CapitalizedIdentifier(
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 2,
+                    },
+                    span: Index(
+                        2,
+                    ),
+                },
+            ),
         },
-        expr: Bool(
-            false,
-        ),
     },
     Index(
         1,
     ): Expression {
         span: Index(
-            2,
+            4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             1.0,
         ),
@@ -44,11 +48,8 @@ Index(
         2,
     ): Expression {
         span: Index(
-            3,
+            5,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             3.0,
         ),
@@ -57,24 +58,28 @@ Index(
         3,
     ): Expression {
         span: Index(
-            0,
+            1,
         ),
-        typ: RefCell {
-            value: None,
+        expr: Identifier {
+            module: None,
+            identifier: CapitalizedIdentifier(
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
+                    },
+                    span: Index(
+                        0,
+                    ),
+                },
+            ),
         },
-        expr: Bool(
-            true,
-        ),
     },
     Index(
         4,
     ): Expression {
         span: Index(
-            4,
+            6,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: If {
             condition: Index(
                 0,
@@ -91,11 +96,8 @@ Index(
         5,
     ): Expression {
         span: Index(
-            5,
+            7,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             2.0,
         ),
@@ -104,11 +106,8 @@ Index(
         6,
     ): Expression {
         span: Index(
-            6,
+            8,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: If {
             condition: Index(
                 3,
@@ -138,16 +137,36 @@ Index(
         1,
     ): Span {
         start: Index(
-            4,
+            1,
         ),
         end: Index(
-            4,
+            1,
         ),
     },
     Index(
         2,
     ): Span {
         start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            4,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
             6,
         ),
         end: Index(
@@ -155,7 +174,7 @@ Index(
         ),
     },
     Index(
-        3,
+        5,
     ): Span {
         start: Index(
             8,
@@ -165,7 +184,7 @@ Index(
         ),
     },
     Index(
-        4,
+        6,
     ): Span {
         start: Index(
             3,
@@ -175,7 +194,7 @@ Index(
         ),
     },
     Index(
-        5,
+        7,
     ): Span {
         start: Index(
             10,
@@ -185,7 +204,7 @@ Index(
         ),
     },
     Index(
-        6,
+        8,
     ): Span {
         start: Index(
             0,

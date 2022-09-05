@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2193
+assertion_line: 2585
 expression: "infer(\"\\\nmodule User exposing (new)\n\nimport User.Attributes\nimport User.Attributes.Id\n\nnew = { id = User.Attributes.Id.new }\n\nmodule User.Attributes\n    module User.Attributes.Id exposing (new)\n        new = 42\n\")"
 ---
 Input:
@@ -19,6 +19,41 @@ module User.Attributes
 
 ---
 Output:
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
 
 module User
 

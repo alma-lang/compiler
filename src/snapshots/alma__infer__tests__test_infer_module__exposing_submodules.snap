@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1995
+assertion_line: 2418
 expression: "infer(r#\"\nmodule Test exposing (a, b)\n\na = 1\n\nb = 2\n\nmodule Test.TestInner exposing (a, b)\n  a = \\x y -> x + y\n  b = \\c -> c\n\nc = \"hi\"\n\"#)"
-
 ---
 Input:
 
@@ -22,6 +21,41 @@ c = "hi"
 
 ---
 Output:
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
 
 module Test
 

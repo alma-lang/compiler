@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2362
+assertion_line: 2515
 expression: "parse(\"\\\nlet\n  x = a\n    x\nin\nx\")"
 ---
 Input:
@@ -24,9 +24,6 @@ Index(
         span: Index(
             2,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -47,9 +44,6 @@ Index(
         span: Index(
             3,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -70,9 +64,6 @@ Index(
         span: Index(
             4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: FnCall {
             function: Index(
                 0,
@@ -90,9 +81,6 @@ Index(
         span: Index(
             5,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: None,
             identifier: Identifier(
@@ -113,9 +101,6 @@ Index(
         span: Index(
             6,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Let {
             definitions: [
                 Untyped(

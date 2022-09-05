@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2194
+assertion_line: 2347
 expression: "parse(\"False\")"
 ---
 Input:
@@ -18,20 +18,37 @@ Index(
         0,
     ): Expression {
         span: Index(
-            0,
+            1,
         ),
-        typ: RefCell {
-            value: None,
+        expr: Identifier {
+            module: None,
+            identifier: CapitalizedIdentifier(
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
+                    },
+                    span: Index(
+                        0,
+                    ),
+                },
+            ),
         },
-        expr: Bool(
-            false,
-        ),
     },
 }
 
 {
     Index(
         0,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        1,
     ): Span {
         start: Index(
             0,

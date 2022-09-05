@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2468
+assertion_line: 2621
 expression: "parse(\"A.B.C.d\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             4,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Identifier {
             module: Some(
                 ModuleName {

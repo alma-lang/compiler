@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2209
+assertion_line: 2362
 expression: "parse(\"123.2\")"
 ---
 Input:
@@ -20,9 +20,6 @@ Index(
         span: Index(
             0,
         ),
-        typ: RefCell {
-            value: None,
-        },
         expr: Float(
             123.2,
         ),

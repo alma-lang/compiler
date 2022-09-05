@@ -15,6 +15,7 @@ pub type Index = index::Index<Source>;
 pub type Sources = TiVec<Index, Source>;
 pub type SourcesData<T> = TiVec<Index, T>;
 
+#[derive(Debug)]
 pub enum Error {
     InvalidExtension(String),
     InvalidFileName(String),
@@ -67,13 +68,21 @@ impl Source {
     pub fn new_file(file: &str) -> Result<Self, Error> {
         let path = Path::new(&file).to_path_buf();
 
-        Source::validate_file_name(&path)?;
-        let code = Source::read_file(&path)?;
+        // TODO: Load the standard library from an alma/core package
+        if file == "Alma.alma" {
+            Ok(Source {
+                source: SourceOrigin::File(path),
+                code: include_str!("alma/Alma.alma").to_owned(),
+            })
+        } else {
+            Source::validate_file_name(&path)?;
+            let code = Source::read_file(&path)?;
 
-        Ok(Source {
-            source: SourceOrigin::File(path),
-            code,
-        })
+            Ok(Source {
+                source: SourceOrigin::File(path),
+                code,
+            })
+        }
     }
 
     fn validate_file_name(file_path: &Path) -> Result<(), Error> {

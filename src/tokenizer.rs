@@ -362,8 +362,6 @@ impl<'source, 'strings> State<'source, 'strings> {
                                     "if" => If,
                                     "then" => Then,
                                     "else" => Else,
-                                    "True" => True,
-                                    "False" => False,
                                     "let" => Let,
                                     "in" => In,
                                     "import" => Import,

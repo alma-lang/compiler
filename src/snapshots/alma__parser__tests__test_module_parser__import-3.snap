@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2675
+assertion_line: 2828
 expression: "parse(\"\\\nmodule Test\n\nimport Banana exposing (phone)\")"
 ---
 Input:
@@ -32,7 +32,95 @@ Result:
         imports: [
             Import {
                 span: Index(
-                    3,
+                    1,
+                ),
+                module_name: ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 4,
+                            },
+                            span: Index(
+                                1,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 4,
+                    },
+                },
+                alias: None,
+                exposing: [
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 5,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 6,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 7,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 8,
+                                    },
+                                    span: Index(
+                                        1,
+                                    ),
+                                },
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 9,
+                                    },
+                                    span: Index(
+                                        1,
+                                    ),
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            Import {
+                span: Index(
+                    4,
                 ),
                 module_name: ModuleName {
                     parts: [
@@ -41,7 +129,7 @@ Result:
                                 value: 2,
                             },
                             span: Index(
-                                1,
+                                2,
                             ),
                         },
                     ],
@@ -53,7 +141,7 @@ Result:
                 exposing: [
                     Export {
                         span: Index(
-                            2,
+                            3,
                         ),
                         typ: Identifier(
                             Identifier {
@@ -61,7 +149,7 @@ Result:
                                     value: 3,
                                 },
                                 span: Index(
-                                    2,
+                                    3,
                                 ),
                             },
                         ),
@@ -71,11 +159,11 @@ Result:
         ],
         definitions: [],
         type_definitions: [],
+        expressions: {},
+        expression_types: {},
     },
     [],
 )
-
-{}
 
 {
     Index(
@@ -92,6 +180,16 @@ Result:
         1,
     ): Span {
         start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
             3,
         ),
         end: Index(
@@ -99,7 +197,7 @@ Result:
         ),
     },
     Index(
-        2,
+        3,
     ): Span {
         start: Index(
             6,
@@ -109,7 +207,7 @@ Result:
         ),
     },
     Index(
-        3,
+        4,
     ): Span {
         start: Index(
             2,

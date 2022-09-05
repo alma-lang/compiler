@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 1890
+assertion_line: 2323
 expression: "infer(\"{ { age = 5 } | age = \\\"Hi\\\" }\")"
-
 ---
 Input:
 
@@ -11,14 +10,16 @@ Input:
 ---
 Output:
 
-[1:2]
+[3:9]
 
 Type mismatch:  { age : Float }  ≠  { a | age : String }
 
 Expected
 
-  1│  { { age = 5 } | age = "Hi" }
-   │    ↑↑↑↑↑↑↑↑↑↑↑
+  1│  module Test exposing (test)
+  2│  
+  3│  test = { { age = 5 } | age = "Hi" }
+   │           ↑↑↑↑↑↑↑↑↑↑↑
 
 to be
 
