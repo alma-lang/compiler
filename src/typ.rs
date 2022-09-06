@@ -17,13 +17,13 @@ pub struct TypeVarId(pub u32);
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone)]
 pub struct Level(pub u32);
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum TypeVar {
     Bound(Index),
     Unbound(TypeVarId, Level),
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Type {
     // Unit type ()
     Unit,

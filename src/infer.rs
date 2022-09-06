@@ -390,7 +390,7 @@ impl State {
             t: typ::Index,
             types: &mut Types,
         ) -> typ::Index {
-            match types[t].clone() {
+            match &types[t] {
                 Unit => t,
 
                 Named {
@@ -398,8 +398,10 @@ impl State {
                     name,
                     params,
                 } => {
+                    let module = *module;
+                    let name = *name;
                     let mut new_params = vec![];
-                    for param in &**params {
+                    for param in params.clone().iter() {
                         new_params.push(replace_type_vars(vars_to_replace, *param, types));
                     }
 
@@ -411,7 +413,7 @@ impl State {
                 }
 
                 Var(var) => match var {
-                    Bound(t) => replace_type_vars(vars_to_replace, t, types),
+                    Bound(t) => replace_type_vars(vars_to_replace, *t, types),
                     Unbound(n, _level) => match vars_to_replace.get(&n) {
                         Some(t_) => *t_,
                         None => t,
@@ -419,9 +421,10 @@ impl State {
                 },
 
                 Fn { params, ret } => {
+                    let ret = *ret;
                     let params = {
                         let mut new_args = vec![];
-                        for param in &**params {
+                        for param in params.clone().iter() {
                             new_args.push(replace_type_vars(vars_to_replace, *param, types));
                         }
                         Rc::new(new_args)
@@ -431,8 +434,8 @@ impl State {
                 }
 
                 Record { fields } => {
-                    let mut new_fields = (*fields).clone();
-                    for (key, value) in fields.map() {
+                    let mut new_fields = (**fields).clone();
+                    for (key, value) in fields.clone().map() {
                         new_fields.insert(*key, replace_type_vars(vars_to_replace, *value, types));
                     }
                     types.push_and_get_key(Record {
@@ -444,8 +447,9 @@ impl State {
                     fields,
                     base_record,
                 } => {
-                    let mut new_fields = (*fields).clone();
-                    for (key, value) in fields.map() {
+                    let base_record = *base_record;
+                    let mut new_fields = (**fields).clone();
+                    for (key, value) in fields.clone().map() {
                         new_fields.insert(*key, replace_type_vars(vars_to_replace, *value, types));
                     }
                     let base_record = replace_type_vars(vars_to_replace, base_record, types);
@@ -461,9 +465,12 @@ impl State {
                     params,
                     destination,
                 } => {
+                    let module = *module;
+                    let name = *name;
+                    let destination = *destination;
                     let params = {
                         let mut new_params = Vec::new();
-                        for (name, param) in params.iter() {
+                        for (name, param) in params.clone().iter() {
                             new_params
                                 .push((*name, replace_type_vars(vars_to_replace, *param, types)));
                         }
@@ -563,15 +570,15 @@ impl State {
  * Can a monomorphic Var(a) be found inside this type?
  */
 fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> bool {
-    match types[t].clone() {
+    match &types[t] {
         Unit => false,
         Named { .. } => false,
 
         Var(var) => match var {
-            Bound(t) => occurs(a_id, a_level, t, types),
+            Bound(t) => occurs(a_id, a_level, *t, types),
 
             Unbound(b_id, b_level) => {
-                let (b_id, b_level) = (b_id, b_level);
+                let (b_id, b_level) = (*b_id, *b_level);
 
                 let min_level = min(a_level, b_level);
 
@@ -582,13 +589,16 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> 
         },
 
         Fn { params, ret } => {
+            let ret = *ret;
             params
+                .clone()
                 .iter()
                 .any(|param| occurs(a_id, a_level, *param, types))
                 || occurs(a_id, a_level, ret, types)
         }
 
         Record { fields } => fields
+            .clone()
             .map()
             .values()
             .any(|tv| occurs(a_id, a_level, *tv, types)),
@@ -597,18 +607,20 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> 
             fields,
             base_record,
         } => {
-            if fields
+            let base_record = *base_record;
+            let fields_occur = fields
+                .clone()
                 .map()
                 .values()
-                .any(|tv| occurs(a_id, a_level, *tv, types))
-            {
+                .any(|tv| occurs(a_id, a_level, *tv, types));
+            if fields_occur {
                 true
             } else {
                 occurs(a_id, a_level, base_record, types)
             }
         }
 
-        Alias { destination, .. } => occurs(a_id, a_level, destination, types),
+        Alias { destination, .. } => occurs(a_id, a_level, *destination, types),
     }
 }
 
@@ -718,7 +730,7 @@ fn unify_rec(
     typ2: typ::Index,
     types: &mut Types,
 ) -> Result<(), Error> {
-    match (types[t1].clone(), types[t2].clone()) {
+    match (&types[t1], &types[t2]) {
         (Unit, Unit) => Ok(()),
 
         (
@@ -744,16 +756,22 @@ fn unify_rec(
                     expected_type: typ2,
                 })
             } else {
-                for (p1, p2) in params.iter().zip(params2.iter()) {
+                for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
                     unify_rec(state, *p1, *p2, ast, typ, ast2, typ2, types)?;
                 }
                 Ok(())
             }
         }
 
-        (Var(var), _) => unify_var(state, t1, &var, t2, ast, typ, ast2, typ2, types),
+        (Var(var), _) => {
+            let var = *var;
+            unify_var(state, t1, &var, t2, ast, typ, ast2, typ2, types)
+        }
 
-        (_, Var(var)) => unify_var(state, t2, &var, t1, ast, typ, ast2, typ2, types),
+        (_, Var(var)) => {
+            let var = *var;
+            unify_var(state, t2, &var, t1, ast, typ, ast2, typ2, types)
+        }
 
         (
             Fn { params, ret },
@@ -770,7 +788,9 @@ fn unify_rec(
                     expected_type: typ2,
                 })
             } else {
-                for (p1, p2) in params.iter().zip(params2.iter()) {
+                let ret = *ret;
+                let ret2 = *ret2;
+                for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
                     unify_rec(state, *p1, *p2, ast, typ, ast2, typ2, types)?;
                 }
                 unify_rec(state, ret, ret2, ast, typ, ast2, typ2, types)
@@ -778,6 +798,9 @@ fn unify_rec(
         }
 
         (Record { fields: fields1 }, Record { fields: fields2 }) => {
+            let fields1 = fields1.clone();
+            let fields2 = fields2.clone();
+
             // Check fields on each record, and unify types of the values against the other
             // record. If the field doesn't exist then it is a type mismatch.
 
@@ -841,6 +864,10 @@ fn unify_rec(
             },
             Record { fields },
         ) => {
+            let base_record = *base_record;
+            let fields = fields.clone();
+            let ext_fields = ext_fields.clone();
+
             // Check the fields on the open record and match them against the fixed record. If
             // a field doesn't exist it is a mismatch
             for (key, value) in ext_fields.map() {
@@ -889,6 +916,11 @@ fn unify_rec(
                 base_record: base_record2,
             },
         ) => {
+            let base_record1 = *base_record1;
+            let base_record2 = *base_record2;
+            let fields1 = fields1.clone();
+            let fields2 = fields2.clone();
+
             // Check common fields on the records, and unify types
             for (key, value) in fields1.map() {
                 if fields2.map().contains_key(key) {
@@ -940,8 +972,8 @@ fn unify_rec(
             Ok(())
         }
 
-        (Alias { destination: t, .. }, _) => unify_rec(state, t, t2, ast, typ, ast2, typ2, types),
-        (_, Alias { destination: t, .. }) => unify_rec(state, t1, t, ast, typ, ast2, typ2, types),
+        (Alias { destination: t, .. }, _) => unify_rec(state, *t, t2, ast, typ, ast2, typ2, types),
+        (_, Alias { destination: t, .. }) => unify_rec(state, t1, *t, ast, typ, ast2, typ2, types),
 
         (Unit, _)
         | (Named { .. }, _)
@@ -969,14 +1001,14 @@ fn signature_is_too_generic(
     let signature = flatten_record(signature, types).unwrap_or(signature);
     let inferred = flatten_record(inferred, types).unwrap_or(inferred);
 
-    match (types[signature].clone(), types[inferred].clone()) {
+    match (&types[signature], &types[inferred]) {
         (
             Named { params, .. },
             Named {
                 params: params2, ..
             },
         ) => {
-            for (p1, p2) in params.iter().zip(params2.iter()) {
+            for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
                 if signature_is_too_generic(*p1, *p2, types) {
                     return true;
                 }
@@ -997,7 +1029,9 @@ fn signature_is_too_generic(
                 ret: ret2,
             },
         ) => {
-            for (p1, p2) in params.iter().zip(params2.iter()) {
+            let ret = *ret;
+            let ret2 = *ret2;
+            for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
                 if signature_is_too_generic(*p1, *p2, types) {
                     return true;
                 }
@@ -1006,6 +1040,8 @@ fn signature_is_too_generic(
         }
 
         (Record { fields: fields1 }, Record { fields: fields2 }) => {
+            let fields1 = fields1.clone();
+            let fields2 = fields2.clone();
             for (key, value) in fields1.map() {
                 if signature_is_too_generic(*value, fields2.get(key).unwrap(), types) {
                     return true;
@@ -1020,6 +1056,8 @@ fn signature_is_too_generic(
                 fields: ext_fields, ..
             },
         ) => {
+            let fields = fields.clone();
+            let ext_fields = ext_fields.clone();
             for (key, value) in fields.map() {
                 if signature_is_too_generic(*value, ext_fields.get(key).unwrap(), types) {
                     return true;
@@ -1040,6 +1078,11 @@ fn signature_is_too_generic(
                 base_record: inferred_base_record,
             },
         ) => {
+            let signature_base_record = *signature_base_record;
+            let inferred_base_record = *inferred_base_record;
+            let signature_fields = signature_fields.clone();
+            let inferred_fields = inferred_fields.clone();
+
             for (key, signature_field_value) in signature_fields.map() {
                 if signature_is_too_generic(
                     *signature_field_value,
@@ -1052,9 +1095,9 @@ fn signature_is_too_generic(
             signature_is_too_generic(signature_base_record, inferred_base_record, types)
         }
 
-        (Alias { destination, .. }, _) => signature_is_too_generic(destination, inferred, types),
+        (Alias { destination, .. }, _) => signature_is_too_generic(*destination, inferred, types),
 
-        (_, Alias { destination, .. }) => signature_is_too_generic(signature, destination, types),
+        (_, Alias { destination, .. }) => signature_is_too_generic(signature, *destination, types),
 
         (Unit, _)
         | (Named { .. }, _)
@@ -1350,8 +1393,9 @@ fn ast_type_to_type<'ast>(
                 state.enter_level();
                 let t = state.instantiate(t, types);
                 state.exit_level();
-                match types[t].clone() {
+                match &types[t] {
                     Named { module, .. } => {
+                        let module = *module;
                         let mut params_types = vec![];
                         for param in &typ.params {
                             params_types.push(ast_type_to_type(
@@ -1374,6 +1418,11 @@ fn ast_type_to_type<'ast>(
                         params,
                         destination,
                     } => {
+                        let module = *module;
+                        let name = *name;
+                        let destination = *destination;
+                        let params = params.clone();
+
                         if params.len() != typ.params.len() {
                             return Err(Error::WrongArity {
                                 location: typ.span,
