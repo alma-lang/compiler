@@ -106,7 +106,7 @@ pub fn bench(runs: u32, file_path: String) {
 
     for _ in 0..runs {
         match compiler::compile(&entry_sources, &mut state) {
-            Ok(out) => println!("{out}"),
+            Ok(_out) => println!("Ok."),
             Err(errs) => {
                 eprintln!("\n{errs}\n");
                 process::exit(1);
