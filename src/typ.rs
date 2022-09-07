@@ -114,15 +114,19 @@ impl Type {
     }
 
     pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
-        let mut s = String::new();
+        let mut out = String::new();
         self.to_string_rec(
             &mut vec!['a'],
             &mut HashMap::default(),
-            &mut s,
+            &mut out,
             strings,
             types,
         );
-        s
+        out
+    }
+
+    pub fn write_to_string<'a>(&self, out: &'a mut String, strings: &Strings, types: &Types) {
+        self.to_string_rec(&mut vec!['a'], &mut HashMap::default(), out, strings, types);
     }
 
     pub fn to_string_rec<'a>(
@@ -387,8 +391,7 @@ impl PolyType {
         PolyType { vars, typ }
     }
 
-    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
-        let mut s = String::new();
+    pub fn write_to_string(&self, s: &mut String, strings: &Strings, types: &Types) {
         let mut cur_type_var_name = vec!['a'];
         let mut type_var_names = HashMap::default();
 
@@ -403,7 +406,7 @@ impl PolyType {
                 unbound_var.to_string_rec(
                     &mut cur_type_var_name,
                     &mut type_var_names,
-                    &mut s,
+                    s,
                     strings,
                     types,
                 );
@@ -416,12 +419,10 @@ impl PolyType {
         types[self.typ].to_string_rec(
             &mut cur_type_var_name,
             &mut type_var_names,
-            &mut s,
+            s,
             strings,
             types,
         );
-
-        s
     }
 }
 
@@ -598,9 +599,10 @@ mod test {
             ),
         ];
 
-        for (t, expected) in tests {
-            let typ = &types[t];
-            assert_eq!(typ.to_string(&strings, &types), expected, "\n\n{:#?}", typ);
+        for (value, expected) in tests {
+            let mut out = String::new();
+            types[value].write_to_string(&mut out, &strings, &types);
+            assert_eq!(out, expected, "\n\n{:#?}", value);
         }
     }
 
@@ -651,12 +653,9 @@ mod test {
         ];
 
         for (value, expected) in tests {
-            assert_eq!(
-                value.to_string(&strings, &types),
-                expected,
-                "\n\n{:#?}",
-                value
-            );
+            let mut actual = String::new();
+            value.write_to_string(&mut actual, &strings, &types);
+            assert_eq!(actual, expected, "\n\n{:#?}", value);
         }
     }
 }

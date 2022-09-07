@@ -106,11 +106,11 @@ impl State {
             }
             let name_sym = self.modules[module_idx].name.full_name;
             let name = self.strings.resolve(name_sym);
-            let interface = interface
+            write!(out, "module {name}\n\n").unwrap();
+            interface
                 .as_ref()
-                .map(|interface| interface.to_string(&self.strings, &self.types))
-                .unwrap_or(String::new());
-            write!(out, "module {name}\n\n{interface}").unwrap();
+                .unwrap()
+                .write_to_string(out, &self.strings, &self.types);
         }
     }
 }

@@ -14,25 +14,13 @@ pub struct ModuleInterface {
 }
 
 impl ModuleInterface {
-    pub fn new() -> Self {
-        Self {
-            types: TypeEnv::new(),
-            type_constructors: HashMap::default(),
-            definitions: PolyTypeEnv::new(),
-        }
-    }
-
-    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
-        let mut out = String::new();
-
+    pub fn write_to_string(&self, out: &mut String, strings: &Strings, types: &Types) {
         for (_typ, constructors) in self.type_constructors.iter() {
-            out.push_str(&constructors.to_string(strings, &types));
+            constructors.write_to_string(out, strings, types);
             out.push_str("\n\n");
         }
 
-        out.push_str(&self.definitions.to_string(strings, &types));
-
-        out
+        self.definitions.write_to_string(out, strings, types);
     }
 }
 
@@ -58,22 +46,19 @@ impl ModuleInterfaces {
         &self.0
     }
 
-    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
+    pub fn write_to_string(&self, out: &mut String, strings: &Strings, types: &Types) {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
         entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
-        let mut out = String::new();
         for (i, (name, interface)) in entries.iter().enumerate() {
             if i > 0 {
                 out.push_str("\n\n\n");
             }
             let name = strings.resolve(**name);
-            let interface = interface.to_string(strings, &types);
-            write!(out, "module {name}\n\n{interface}").unwrap();
+            write!(out, "module {name}\n\n").unwrap();
+            interface.write_to_string(out, strings, types);
         }
-
-        out
     }
 }

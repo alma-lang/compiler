@@ -28,23 +28,20 @@ impl TypeEnv {
         &self.0
     }
 
-    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
+    pub fn write_to_string(&self, out: &mut String, strings: &Strings, types: &Types) {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
         entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
-        let mut out = String::new();
         for (i, (name, typ)) in entries.iter().enumerate() {
             if i > 0 {
                 out.push_str("\n\n");
             }
             let name = strings.resolve(**name);
-            let typ = types[**typ].to_string(strings, types);
-            write!(out, "{name} : {typ}").unwrap();
+            write!(out, "{name} : ").unwrap();
+            types[**typ].write_to_string(out, strings, types);
         }
-
-        out
     }
 }
 
@@ -74,22 +71,19 @@ impl PolyTypeEnv {
         &self.0
     }
 
-    pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
+    pub fn write_to_string(&self, out: &mut String, strings: &Strings, types: &Types) {
         let mut entries: Vec<_> = self.0.iter().collect();
         // we need to sort the entries because they come out with different order and they mess up
         // tests
         entries.sort_by_key(|(k, _)| strings.resolve(**k));
 
-        let mut out = String::new();
         for (i, (name, typ)) in entries.iter().enumerate() {
             if i > 0 {
                 out.push_str("\n\n");
             }
             let name = strings.resolve(**name);
-            let typ = typ.to_string(strings, types);
-            write!(out, "{name} : {typ}").unwrap();
+            write!(out, "{name} : ").unwrap();
+            typ.write_to_string(out, strings, types);
         }
-
-        out
     }
 }
