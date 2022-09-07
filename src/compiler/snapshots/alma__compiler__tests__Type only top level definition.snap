@@ -52,17 +52,7 @@ globalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {
 
 let Alma = function () {
 
-    // type Unit
 
-    let Unit = {
-        tag: "Unit",
-    }
-
-    // type Float
-
-    let Float = {
-        tag: "Float",
-    }
 
     // type Bool
 
@@ -74,11 +64,6 @@ let Alma = function () {
         tag: "False",
     }
 
-    // type String
-
-    let String = {
-        tag: "String",
-    }
 
 
 

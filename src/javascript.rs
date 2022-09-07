@@ -165,6 +165,7 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
             code.push('\n')
         }
         match &type_def.typ {
+            types::TypeDefinitionData::Empty => (),
             types::TypeDefinitionData::Union { constructors } => {
                 let type_name = type_def.name.to_string(strings);
                 indented(code, indent, "");
@@ -373,6 +374,7 @@ fn generate_expression(
         }
 
         E::Identifier { module, identifier } => {
+            // TODO: Generate True and False as true and false
             if let Some(module) = module {
                 module_full_name(code, module, strings);
                 code.push('.');

@@ -214,6 +214,7 @@ pub mod types {
     pub enum TypeDefinitionData {
         Union { constructors: Vec<Constructor> },
         Record(RecordType),
+        Empty,
     }
 
     #[derive(Debug, Clone)]

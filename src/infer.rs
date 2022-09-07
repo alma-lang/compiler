@@ -1234,6 +1234,14 @@ pub fn infer<'state>(
         let name = type_def.name.name;
 
         match &type_def.typ {
+            ast::types::TypeDefinitionData::Empty => {
+                let type_def_type = types_vec.push_and_get_key(Type::Named {
+                    module: module_ast.name.full_name,
+                    name,
+                    params: Rc::new(type_vars.iter().map(|(_, t)| *t).collect()),
+                });
+                types_env.insert(name, state.generalize(type_def_type, &types_vec));
+            }
             ast::types::TypeDefinitionData::Union { constructors } => {
                 let type_def_type = types_vec.push_and_get_key(Type::Named {
                     module: module_ast.name.full_name,

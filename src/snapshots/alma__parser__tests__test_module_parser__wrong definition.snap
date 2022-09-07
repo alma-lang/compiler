@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2695
+assertion_line: 2849
 expression: "parse(\"\nmodule Test\n\ntype Banana : asdf\n\")"
 ---
 Input:
@@ -15,7 +15,7 @@ Result:
 
 :4:12
 
-Expected type variable names like `a` or a `=` sign between the name and the type definition, but instead found: `:`
+Expected type variable names like `a`, or an `=` sign between the name and the type definition, or just something else below this type definition, but instead found: `:`
 
   2│  module Test
   3│  

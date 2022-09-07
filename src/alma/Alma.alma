@@ -16,13 +16,13 @@ module Alma exposing
     , div
     )
 
-type Unit = Unit
+type Unit
 
-type Float = Float
+type Float
 
 type Bool = True | False
 
-type String = String
+type String
 
 or_ : Bool -> Bool -> Bool
 and_ : Bool -> Bool -> Bool

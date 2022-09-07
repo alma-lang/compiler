@@ -264,8 +264,9 @@ impl ErrorType {
             }
 
             InvalidTypeDefinitionTypeVarsOrEqualSeparator => expected_but_found(
-                "Expected type variable names like `a` or a `=` sign \
-                between the name and the type definition",
+                "Expected type variable names like `a`, or an `=` sign \
+                between the name and the type definition, or just \
+                something else below this type definition",
             ),
 
             InvalidUnionTypeDefinitionConstructor => expected_but_found(
@@ -792,7 +793,7 @@ impl<'a> State<'a> {
     }
 
     fn type_def(&mut self) -> ParseResult<Option<TypeDefinition>> {
-        let (type_token_index, _) = self.get_token();
+        let (type_token_index, type_token) = self.get_token();
 
         if self.match_token(TT::Type).is_none() {
             return Ok(None);
@@ -803,25 +804,35 @@ impl<'a> State<'a> {
             |self_| self_.error(InvalidTypeDefinitionName),
         )?;
 
-        let vars = self.many(|self_| match self_.identifier() {
-            Some(variable) => Ok(Some(variable)),
-            None => {
-                let (_, token) = self_.get_token();
-                if matches!(token.kind, Equal) {
-                    self_.advance();
-                    Ok(None)
-                } else {
-                    Err(self_.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator))
+        let vars = self.many(|self_| {
+            if self_.is_token_in_same_line_or_nested_indent_from(type_token) {
+                match self_.identifier() {
+                    Some(variable) => Ok(Some(variable)),
+                    None => Ok(None),
                 }
+            } else {
+                Ok(None)
             }
         })?;
 
-        let type_definition = if let Some(record) = self.type_record()? {
-            types::TypeDefinitionData::Record(record)
+        let (_, token) = self.get_token();
+
+        let type_definition = if matches!(token.kind, Equal) {
+            self.advance();
+
+            if let Some(record) = self.type_record()? {
+                types::TypeDefinitionData::Record(record)
+            } else {
+                let branches = self.type_union_branches()?;
+                types::TypeDefinitionData::Union {
+                    constructors: branches,
+                }
+            }
         } else {
-            let branches = self.type_union_branches()?;
-            types::TypeDefinitionData::Union {
-                constructors: branches,
+            if self.is_token_equal_or_less_indented_than(type_token) {
+                types::TypeDefinitionData::Empty
+            } else {
+                return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
             }
         };
 
@@ -2862,6 +2873,28 @@ type Banana : asdf
 module Test
 
 type Fruit = Banana
+"
+                )
+            );
+            assert_snapshot!(
+                "no definition, followed by a type var",
+                parse(
+                    "
+module Test
+
+type Banana a b
+"
+                )
+            );
+            assert_snapshot!(
+                "no definition, followed by a look-alike type var that is in the next line",
+                parse(
+                    "
+module Test
+
+type Banana a b
+
+hello : Float
 "
                 )
             );
