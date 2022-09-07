@@ -5,10 +5,10 @@ use crate::strings::Strings;
 use crate::{
     ast::{
         expression::{
-            Expression, ExpressionType as ET, Lambda, Pattern, PatternType as P, UnaryType as U,
+            Expression, ExpressionData as E, Lambda, Pattern, PatternData as P, UnaryData as U,
         },
         types::{self, TypeDefinition},
-        Definition, ExportType, Module, ModuleName, TypedDefinition,
+        Definition, ExportData, Module, ModuleName, TypedDefinition,
     },
     compiler,
 };
@@ -139,10 +139,10 @@ fn generate_imports(indent: usize, code: &mut String, module: &Module, strings: 
             let mut identifiers = vec![];
             for exposing in &import.exposing {
                 match &exposing.typ {
-                    ExportType::Identifier(identifier) => {
+                    ExportData::Identifier(identifier) => {
                         identifiers.push(identifier.to_string(strings));
                     }
-                    ExportType::Type { constructors, .. } => {
+                    ExportData::Type { constructors, .. } => {
                         for constructor in constructors {
                             identifiers.push(constructor.to_string(strings));
                         }
@@ -165,7 +165,7 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
             code.push('\n')
         }
         match &type_def.typ {
-            types::TypeDefinitionType::Union { constructors } => {
+            types::TypeDefinitionData::Union { constructors } => {
                 let type_name = type_def.name.to_string(strings);
                 indented(code, indent, "");
                 writeln!(code, "// type {}\n", type_name).unwrap();
@@ -234,7 +234,7 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                     line(code, indent, "}");
                 }
             }
-            types::TypeDefinitionType::Record(_) => (),
+            types::TypeDefinitionData::Record(_) => (),
         }
     }
 }
@@ -282,11 +282,11 @@ fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: 
 
     for export in &module.exports {
         match &export.typ {
-            ExportType::Identifier(ident) => {
+            ExportData::Identifier(ident) => {
                 indented(code, add_indent(indent), "");
                 writeln!(code, "{},", ident.to_string(strings)).unwrap();
             }
-            ExportType::Type { constructors, .. } => {
+            ExportData::Type { constructors, .. } => {
                 for constructor in constructors {
                     indented(code, add_indent(indent), "");
                     writeln!(code, "{},", constructor.to_string(strings)).unwrap();
@@ -363,16 +363,16 @@ fn generate_expression(
     expressions: &Expressions,
 ) {
     match &expression.expr {
-        ET::Unit => code.push_str("()"),
+        E::Unit => code.push_str("()"),
 
-        ET::Float(float) => write!(code, "{float}").unwrap(),
+        E::Float(float) => write!(code, "{float}").unwrap(),
 
-        ET::String_(string) => {
+        E::String_(string) => {
             let escaped_string = strings.resolve(*string).replace("\n", "\\n");
             write!(code, "\"{escaped_string}\"").unwrap()
         }
 
-        ET::Identifier { module, identifier } => {
+        E::Identifier { module, identifier } => {
             if let Some(module) = module {
                 module_full_name(code, module, strings);
                 code.push('.');
@@ -381,7 +381,7 @@ fn generate_expression(
             code.push_str(identifier.to_string(strings));
         }
 
-        ET::Record { fields } => {
+        E::Record { fields } => {
             code.push_str("{\n");
 
             {
@@ -398,7 +398,7 @@ fn generate_expression(
             indented(code, indent, "}");
         }
 
-        ET::RecordUpdate { record, fields } => {
+        E::RecordUpdate { record, fields } => {
             code.push_str("{\n");
 
             {
@@ -419,7 +419,7 @@ fn generate_expression(
             indented(code, indent, "}");
         }
 
-        ET::PropertyAccess {
+        E::PropertyAccess {
             expression,
             property,
         } => {
@@ -434,12 +434,12 @@ fn generate_expression(
             code.push_str(property.to_string(strings));
         }
 
-        ET::PropertyAccessLambda { property } => {
+        E::PropertyAccessLambda { property } => {
             let property = property.to_string(strings);
             write!(code, "(r => r.{property})").unwrap()
         }
 
-        ET::Unary { op, expression } => {
+        E::Unary { op, expression } => {
             code.push(match &op.typ {
                 U::Not => '!',
                 U::Minus => '-',
@@ -453,7 +453,7 @@ fn generate_expression(
             );
         }
 
-        ET::Binary {
+        E::Binary {
             expression,
             arguments,
             ..
@@ -466,11 +466,11 @@ fn generate_expression(
             expressions,
         ),
 
-        ET::Lambda(lambda) => {
+        E::Lambda(lambda) => {
             generate_function(indent, code, "", lambda, strings, expressions);
         }
 
-        ET::FnCall {
+        E::FnCall {
             function,
             arguments,
         } => generate_fn_call(
@@ -482,7 +482,7 @@ fn generate_expression(
             expressions,
         ),
 
-        ET::Let { definitions, body } => {
+        E::Let { definitions, body } => {
             code.push_str("function() {\n");
 
             {
@@ -497,7 +497,7 @@ fn generate_expression(
             indented(code, indent, "}()");
         }
 
-        ET::If {
+        E::If {
             condition,
             then,
             else_,

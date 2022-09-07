@@ -1,20 +1,20 @@
 use crate::ast::expression::{
-    binop, AnyIdentifier, ExpressionTypes, Expressions, PatternType, Unary,
+    binop, AnyIdentifier, ExpressionTypes, Expressions, PatternData, Unary,
 };
 use crate::ast::span::Spans;
 use crate::ast::{
     expression::{
         self,
         binop::*,
-        CapitalizedIdentifier, Expression, Expression as E, ExpressionType as ET, Identifier,
+        CapitalizedIdentifier, Expression, Expression as E, ExpressionData as ED, Identifier,
         Lambda, Pattern,
-        UnaryType::{Minus, Not},
+        UnaryData::{Minus, Not},
     },
     span::{self, Span},
     types::{self, Type, TypeDefinition},
     Import, Module, ModuleName, ReplEntry,
 };
-use crate::ast::{Definition, Export, ExportType, ModuleFullName, TypeSignature, TypedDefinition};
+use crate::ast::{Definition, Export, ExportData, ModuleFullName, TypeSignature, TypedDefinition};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::{
@@ -649,7 +649,7 @@ impl<'a> State<'a> {
                 exposing: vec![
                     Export {
                         span,
-                        typ: ExportType::Type {
+                        typ: ExportData::Type {
                             name: CapitalizedIdentifier {
                                 name: self.strings.get_or_intern("Float"),
                                 span,
@@ -659,7 +659,7 @@ impl<'a> State<'a> {
                     },
                     Export {
                         span,
-                        typ: ExportType::Type {
+                        typ: ExportData::Type {
                             name: CapitalizedIdentifier {
                                 name: self.strings.get_or_intern("String"),
                                 span,
@@ -669,7 +669,7 @@ impl<'a> State<'a> {
                     },
                     Export {
                         span,
-                        typ: ExportType::Type {
+                        typ: ExportData::Type {
                             name: CapitalizedIdentifier {
                                 name: self.strings.get_or_intern("Bool"),
                                 span,
@@ -718,7 +718,7 @@ impl<'a> State<'a> {
         if let Some(export) = self.identifier() {
             Ok(Export {
                 span: export.span,
-                typ: ExportType::Identifier(export),
+                typ: ExportData::Identifier(export),
             })
         } else if let Some(export) = self.export_type()? {
             Ok(export)
@@ -746,7 +746,7 @@ impl<'a> State<'a> {
             let start = self.spans[export.span].start;
             let end = self.prev_token_index();
             Ok(Some(Export {
-                typ: ExportType::Type {
+                typ: ExportData::Type {
                     name: export,
                     constructors,
                 },
@@ -817,10 +817,10 @@ impl<'a> State<'a> {
         })?;
 
         let type_definition = if let Some(record) = self.type_record()? {
-            types::TypeDefinitionType::Record(record)
+            types::TypeDefinitionData::Record(record)
         } else {
             let branches = self.type_union_branches()?;
-            types::TypeDefinitionType::Union {
+            types::TypeDefinitionData::Union {
                 constructors: branches,
             }
         };
@@ -1167,7 +1167,7 @@ impl<'a> State<'a> {
 
         let end = self.spans[body.span].end;
         Ok(Some(E::untyped(
-            ET::Let {
+            ED::Let {
                 definitions: bindings,
                 body: self.add_expression(body),
             },
@@ -1199,7 +1199,7 @@ impl<'a> State<'a> {
                         let valid_name = match &binding {
                             Definition::Pattern(
                                 Pattern {
-                                    typ: PatternType::Identifier(identifier),
+                                    typ: PatternData::Identifier(identifier),
                                     ..
                                 },
                                 _,
@@ -1229,7 +1229,7 @@ impl<'a> State<'a> {
 
         let definition = match pattern {
             Some(Pattern {
-                typ: PatternType::Identifier(identifier),
+                typ: PatternData::Identifier(identifier),
                 ..
             }) => {
                 // Peek to see if it is just an identifier and =, and return a pattern
@@ -1239,7 +1239,7 @@ impl<'a> State<'a> {
                     let span = identifier.span;
                     Some(Definition::Pattern(
                         Pattern {
-                            typ: PatternType::Identifier(identifier),
+                            typ: PatternData::Identifier(identifier),
                             span,
                         },
                         self.add_expression(expr),
@@ -1306,7 +1306,7 @@ impl<'a> State<'a> {
 
         let end = self.spans[else_.span].end;
         Ok(Some(E::untyped(
-            ET::If {
+            ED::If {
                 condition: self.add_expression(condition),
                 then: self.add_expression(then),
                 else_: self.add_expression(else_),
@@ -1333,7 +1333,7 @@ impl<'a> State<'a> {
 
         let end = self.spans[body.span].end;
         Ok(Some(E::untyped(
-            ET::Lambda(Lambda {
+            ED::Lambda(Lambda {
                 parameters: params,
                 body: self.add_expression(body),
             }),
@@ -1346,12 +1346,12 @@ impl<'a> State<'a> {
 
         if self.match_token(TT::Underscore).is_some() {
             Ok(Some(Pattern {
-                typ: PatternType::Hole,
+                typ: PatternData::Hole,
                 span: self.span(token_index, token_index),
             }))
         } else if let Some(identifier) = self.identifier() {
             Ok(Some(Pattern {
-                typ: PatternType::Identifier(identifier),
+                typ: PatternData::Identifier(identifier),
                 span: self.span(token_index, token_index),
             }))
         } else {
@@ -1442,7 +1442,7 @@ impl<'a> State<'a> {
                             (self.spans[left.span].start, self.spans[right.span].end);
 
                         let binary_expr = E::untyped(
-                            ET::Identifier {
+                            ED::Identifier {
                                 module: Some(
                                     // TODO: Creating this every time we have a binary expression
                                     // is awful. These could be pre-stored somewhere and just
@@ -1466,7 +1466,7 @@ impl<'a> State<'a> {
                             op_span,
                         );
                         left = E::untyped(
-                            ET::Binary {
+                            ED::Binary {
                                 expression: self.add_expression(binary_expr),
                                 op,
                                 arguments: ([
@@ -1506,7 +1506,7 @@ impl<'a> State<'a> {
             (Some(op), Some(expr)) => {
                 let end = self.spans[expr.span].end;
                 Ok(Some(E::untyped(
-                    ET::Unary {
+                    ED::Unary {
                         op: Unary {
                             typ: op,
                             span: self.span(token_index, token_index),
@@ -1535,7 +1535,7 @@ impl<'a> State<'a> {
 
                 let (start, end) = (self.spans[expr.span].start, self.spans[last_arg.span].end);
                 Ok(Some(E::untyped(
-                    ET::FnCall {
+                    ED::FnCall {
                         function: self.add_expression(expr),
                         arguments: args.into_iter().map(|a| self.add_expression(a)).collect(),
                     },
@@ -1573,7 +1573,7 @@ impl<'a> State<'a> {
                 let start = self.spans[expr.span].start;
                 let end = self.spans[identifier.span].end;
                 E::untyped(
-                    ET::PropertyAccess {
+                    ED::PropertyAccess {
                         expression: self.add_expression(expr),
                         property: identifier,
                     },
@@ -1627,7 +1627,7 @@ impl<'a> State<'a> {
                 self.advance();
 
                 Ok(Some(E::untyped(
-                    ET::Float(n),
+                    ED::Float(n),
                     self.span(token_index, token_index),
                 )))
             }
@@ -1639,7 +1639,7 @@ impl<'a> State<'a> {
                 let identifier = Identifier { name: lexeme, span };
 
                 Ok(Some(E::untyped(
-                    ET::Identifier {
+                    ED::Identifier {
                         module: None,
                         identifier: AnyIdentifier::Identifier(identifier),
                     },
@@ -1689,7 +1689,7 @@ impl<'a> State<'a> {
                     (span.start, span.end)
                 };
                 Ok(Some(E::untyped(
-                    ET::Identifier { module, identifier },
+                    ED::Identifier { module, identifier },
                     self.span(start, end),
                 )))
             }
@@ -1697,7 +1697,7 @@ impl<'a> State<'a> {
             TT::String_(string) => {
                 self.advance();
                 Ok(Some(E::untyped(
-                    ET::String_(string),
+                    ED::String_(string),
                     self.span(token_index, token_index),
                 )))
             }
@@ -1713,7 +1713,7 @@ impl<'a> State<'a> {
                         self.advance();
 
                         Ok(Some(E::untyped(
-                            ET::Record { fields: vec![] },
+                            ED::Record { fields: vec![] },
                             self.span(token_index, next_token_index),
                         )))
                     }
@@ -1724,7 +1724,7 @@ impl<'a> State<'a> {
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(E::untyped(
-                                ET::Record { fields },
+                                ED::Record { fields },
                                 self.span(token_index, right_brace_token_index),
                             )))
                         } else {
@@ -1746,7 +1746,7 @@ impl<'a> State<'a> {
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(E::untyped(
-                                ET::RecordUpdate {
+                                ED::RecordUpdate {
                                     record: self.add_expression(record),
                                     fields,
                                 },
@@ -1765,7 +1765,7 @@ impl<'a> State<'a> {
                 // Unit expression
                 if let Some((right_paren_token_index, _)) = self.match_token(RightParen) {
                     return Ok(Some(E::untyped(
-                        ET::Unit,
+                        ED::Unit,
                         self.span(token_index, right_paren_token_index),
                     )));
                 }
@@ -1799,7 +1799,7 @@ impl<'a> State<'a> {
                         };
 
                         Ok(Some(E::untyped(
-                            ET::PropertyAccessLambda {
+                            ED::PropertyAccessLambda {
                                 property: name_identifier,
                             },
                             self.span(token_index, identifier_token_index),

@@ -150,10 +150,10 @@ pub struct Import {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Export {
     pub span: span::Index,
-    pub typ: ExportType,
+    pub typ: ExportData,
 }
 #[derive(Debug, PartialEq, Clone)]
-pub enum ExportType {
+pub enum ExportData {
     Identifier(Identifier),
     Type {
         name: CapitalizedIdentifier,
@@ -207,11 +207,11 @@ pub mod types {
         pub span: span::Index,
         pub name: CapitalizedIdentifier,
         pub vars: Vec<Identifier>,
-        pub typ: TypeDefinitionType,
+        pub typ: TypeDefinitionData,
     }
 
     #[derive(Debug)]
-    pub enum TypeDefinitionType {
+    pub enum TypeDefinitionData {
         Union { constructors: Vec<Constructor> },
         Record(RecordType),
     }
@@ -313,17 +313,17 @@ pub mod expression {
     #[derive(Debug, Clone)]
     pub struct Expression {
         pub span: span::Index,
-        pub expr: ExpressionType,
+        pub expr: ExpressionData,
     }
 
     impl Expression {
-        pub fn untyped(expr: ExpressionType, span: span::Index) -> Self {
+        pub fn untyped(expr: ExpressionData, span: span::Index) -> Self {
             Self { expr, span }
         }
     }
 
     #[derive(Debug, Clone)]
-    pub enum ExpressionType {
+    pub enum ExpressionData {
         Unit,
         Float(f64),
         String_(StringSymbol),
@@ -381,10 +381,10 @@ pub mod expression {
     #[derive(PartialEq, Debug, Clone)]
     pub struct Unary {
         pub span: span::Index,
-        pub typ: UnaryType,
+        pub typ: UnaryData,
     }
     #[derive(PartialEq, Debug, Clone)]
-    pub enum UnaryType {
+    pub enum UnaryData {
         Not,
         Minus,
     }
@@ -531,10 +531,10 @@ pub mod expression {
     #[derive(PartialEq, Debug, Clone)]
     pub struct Pattern {
         pub span: span::Index,
-        pub typ: PatternType,
+        pub typ: PatternData,
     }
     #[derive(PartialEq, Debug, Clone)]
-    pub enum PatternType {
+    pub enum PatternData {
         Hole,
         Identifier(Identifier),
     }
