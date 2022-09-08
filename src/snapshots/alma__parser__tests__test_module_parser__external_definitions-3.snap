@@ -1,0 +1,38 @@
+---
+source: src/parser.rs
+assertion_line: 3319
+expression: "parse(\"\\\nmodule Test exposing (main)\n\nexternal test2 : Bool -> Bool\ntest2 a = not a\n\")"
+---
+Input:
+
+module Test exposing (main)
+
+external test2 : Bool -> Bool
+test2 a = not a
+
+
+Result:
+
+:3:0
+
+External definitions can only be used with type signature only definitions. Like this:
+
+    external add5 : Float -> Float
+
+  1│  module Test exposing (main)
+  2│  
+  3│  external test2 : Bool -> Bool
+   │  ↑↑↑↑↑↑↑↑
+  4│  test2 a = not a
+
+Error {
+    kind: InvalidExternalDefinition,
+    token: Token {
+        kind: External,
+        indent: 0,
+        start: 29,
+        end: 37,
+        line: 3,
+        column: 0,
+    },
+}

@@ -91,6 +91,7 @@ enum ErrorType {
     SubmoduleAndParentModuleNameMismatch { submodule: ModuleName },
     InvalidModuleDefinitionLhs,
     InvalidModuleDefinition,
+    InvalidExternalDefinition,
 
     // Exports
     NotEnoughModuleExports,
@@ -353,6 +354,11 @@ impl ErrorType {
                 or `add x y = x + y` or a type definition like \
                 `type User = LoggedIn | Anon`",
             ),
+
+            InvalidExternalDefinition => "External definitions can only be used with type \
+                signature only definitions. Like this:\n\n    \
+                external add5 : Float -> Float"
+                .to_owned(),
 
             MissingLetBindings => expected_but_found(
                 // TODO: This error message can be improved, may show up when there were no
@@ -1078,7 +1084,7 @@ impl<'a> State<'a> {
                     definitions,
                     type_definitions,
                 )
-            } else if let Some(definition) = self.typed_binding()? {
+            } else if let Some(definition) = self.top_level_typed_binding()? {
                 definitions.push(definition);
                 self.module_definitions(
                     top_level,
@@ -1184,6 +1190,26 @@ impl<'a> State<'a> {
             },
             self.span(let_token_index, end),
         )))
+    }
+
+    fn top_level_typed_binding(&mut self) -> ParseResult<Option<TypedDefinition>> {
+        let (_, first_token) = self.get_token();
+        let external = matches!(first_token.kind, External);
+        if external {
+            self.advance();
+        }
+        let definition = self.typed_binding()?;
+        if external {
+            match definition {
+                Some(TypedDefinition::TypeSignature(typ)) => {
+                    Ok(Some(TypedDefinition::External(typ)))
+                }
+                Some(_) => Err(Error::new(*first_token, InvalidExternalDefinition)),
+                None => Ok(None),
+            }
+        } else {
+            Ok(definition)
+        }
     }
 
     fn typed_binding(&mut self) -> ParseResult<Option<TypedDefinition>> {
@@ -3267,6 +3293,42 @@ main : Fruit a -> Fruit b -> Fruit c
 signature : Fruit d -> Fruit e -> Fruit f
 
 test = 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_external_definitions() {
+            assert_snapshot!(parse(
+                "\
+module Test exposing (main)
+
+external test : Bool
+
+external test2 : Bool -> Bool
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing (main)
+
+external test : Bool
+test = True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing (main)
+
+external test2 : Bool -> Bool
+test2 a = not a
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test exposing (main)
+
+external test2 a = not a
 "
             ));
         }

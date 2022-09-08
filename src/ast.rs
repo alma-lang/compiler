@@ -163,6 +163,7 @@ pub enum ExportData {
 
 #[derive(Debug, Clone)]
 pub enum TypedDefinition {
+    External(TypeSignature),
     TypeSignature(TypeSignature),
     Typed(TypeSignature, Definition),
     Untyped(Definition),
@@ -173,13 +174,14 @@ impl TypedDefinition {
         match self {
             Typed(_, definition) | Untyped(definition) => Some(definition),
             TypeSignature(_) => None,
+            External(_) => None,
         }
     }
 
     pub fn typ(&self) -> Option<&TypeSignature> {
         use TypedDefinition::*;
         match self {
-            Typed(typ, _) | TypeSignature(typ) => Some(typ),
+            External(typ) | Typed(typ, _) | TypeSignature(typ) => Some(typ),
             Untyped(_) => None,
         }
     }

@@ -66,6 +66,7 @@ pub enum Type {
     Module,
     Import,
     Type,
+    External,
 
     Comment,
     Eof,
@@ -118,6 +119,7 @@ impl Type {
             Module => "module",
             Import => "import",
             Type => "type",
+            External => "external",
 
             Comment => "[Comment]",
             Eof => "[End of file]",
