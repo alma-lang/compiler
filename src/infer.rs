@@ -3004,6 +3004,35 @@ main a = List a
         }
 
         #[test]
+        fn test_function_signature_only_definition_usage_from_the_same_module() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+test : Float -> Float
+
+main = test 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_function_signature_only_definition_usage_from_another_module() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Help exposing (test)
+
+module Test.Help exposing (test)
+    test : Float -> Float
+
+main = test 5
+"
+            ));
+        }
+
+        #[test]
         fn test_union_type_application_arity_mismatch() {
             assert_snapshot!(infer(
                 "\
@@ -3092,6 +3121,46 @@ module Test exposing (main)
 
 main : { r | x : a, y: a } -> Float
 main r = r.x + r.y + 1
+"
+            ));
+        }
+
+        #[test]
+        fn test_external_function_signature() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+external test : Float -> String
+"
+            ));
+        }
+
+        #[test]
+        fn test_external_function_signature_usage_from_the_same_module() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+external test : Float -> String
+
+main = test 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_external_function_signature_usage_from_another_module() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Help exposing (test)
+
+module Test.Help exposing (test)
+    external test : Float -> String
+
+main = test 5
 "
             ));
         }
