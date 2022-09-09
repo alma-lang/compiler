@@ -12,7 +12,7 @@ external test2 a = not a
 
 Result:
 
-:3:0
+Test.alma:3:0
 
 External definitions can only be used with type signature only definitions. Like this:
 

@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-assertion_line: 2509
-expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1 + 2) + 3\n\n  b = * add\n    5\n\na = 1 + 2) + 3\n\nb = * add\n  5\")"
+assertion_line: 2694
+expression: "parse(\"\\\nmodule Test\n\nmodule Test.TestInner\n\n  a = 1 + 2) + 3\n\n  b = * add\n    5\n\na = 1 + 2) + 3\n\nb = * add\n  5\")"
 ---
 Input:
 
-module Parent
+module Test
 
-module Parent.Test
+module Test.TestInner
 
   a = 1 + 2) + 3
 
@@ -21,11 +21,11 @@ b = * add
 
 Result:
 
-:5:11
+Test.alma:5:11
 
 Expected a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `)`
 
-  3│  module Parent.Test
+  3│  module Test.TestInner
   4│  
   5│    a = 1 + 2) + 3
    │             ↑
@@ -37,8 +37,8 @@ Error {
     token: Token {
         kind: RightParen,
         indent: 2,
-        start: 46,
-        end: 47,
+        start: 47,
+        end: 48,
         line: 5,
         column: 11,
     },

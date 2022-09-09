@@ -3,6 +3,8 @@ pub mod stages;
 pub mod state;
 pub mod types;
 
+use std::path::Path;
+
 use self::state::ModuleIndex;
 pub use self::state::State;
 use crate::ast::{self /*, ReplEntry, TypedDefinition*/};
@@ -16,7 +18,11 @@ use crate::strings::Strings;
 use crate::type_env::PolyTypeEnv;
 use crate::{infer, source};
 
-pub fn compile(entry_sources: &[source::Index], state: &mut State) -> Result<String, String> {
+pub fn compile(
+    entry_sources: &[source::Index],
+    state: &mut State,
+    output: &Path,
+) -> Result<Vec<(String, String)>, String> {
     let entry_modules = parse_files(entry_sources, state)?;
 
     let mut sorted_modules = check_cycles(&entry_modules, &state)?;
@@ -24,7 +30,7 @@ pub fn compile(entry_sources: &[source::Index], state: &mut State) -> Result<Str
 
     infer(entry_modules, state)?;
 
-    Ok(javascript::generate(&sorted_modules, &state))
+    Ok(javascript::generate(&sorted_modules, &state, output))
 }
 
 pub fn compile_repl_entry(
@@ -147,6 +153,8 @@ fn compile_repl_entry_helper<'ast>(
 
 #[cfg(test)]
 pub mod tests {
+    use std::path::Path;
+
     use crate::compiler;
     use crate::compiler::stages::process_sources;
     use crate::source::Source;
@@ -161,11 +169,21 @@ pub mod tests {
             sources.extend(
                 source_codes
                     .iter()
-                    .map(|s| Source::new_orphan(s.to_string())),
+                    .map(|s| Source::new("Test.alma", s.to_string())),
             );
             let entry_sources = process_sources(sources, &mut state);
-            match super::compile(&entry_sources, &mut state) {
-                Ok(s) => s,
+            match super::compile(&entry_sources, &mut state, Path::new("alma_out")) {
+                Ok(s) => {
+                    let mut out = String::new();
+                    for (f, c) in s {
+                        out.push_str("// ");
+                        out.push_str(&f);
+                        out.push_str("\n\n");
+                        out.push_str(&c);
+                        out.push_str("\n\n\n");
+                    }
+                    out
+                }
                 Err(e) => e,
             }
         }
@@ -175,23 +193,23 @@ pub mod tests {
         assert_snapshot!(
             "Normal module dependency chain",
             compile(&[r"
-module Modules exposing (main)
+module Test exposing (main)
 
-import Modules.WeirdMath exposing (weirdAdd)
+import Test.WeirdMath exposing (weirdAdd)
 
 main = weirdAdd
 
 
 
-module Modules.Constants exposing (five)
+module Test.Constants exposing (five)
 
     five = 5
 
 
 
-module Modules.WeirdMath exposing (weirdAdd)
+module Test.WeirdMath exposing (weirdAdd)
 
-    import Modules.Constants exposing (five)
+    import Test.Constants exposing (five)
 
     weirdAdd = \x y -> x * y + five
         "])
@@ -202,33 +220,47 @@ module Modules.WeirdMath exposing (weirdAdd)
         assert_snapshot!(
             "Direct dependency module cycle",
             compile(&[r"
-module CycleModule
+module Test
 
-import CycleModule.Test
+import Test.TestInner
 
 
-module CycleModule.Test
-    import CycleModule
+module Test.TestInner
+    import Test
         "])
         );
 
         assert_snapshot!(
             "Direct module cycle",
             compile(&[r"
-module CycleModule
+module Test
 
-import CycleModule
+import Test
         "])
         );
 
         assert_snapshot!(
             "Type only top level definition",
             compile(&[r"
-module ModuleWithTypeOnlyDefinitions exposing (main)
+module Test exposing (main)
 
 test : Float -> Float -> Float
 
 main a = test a 5
+        "])
+        );
+
+        assert_snapshot!(
+            "External definitions",
+            compile(&[r"
+module Test exposing (main)
+
+external test : Float -> Float -> Float
+
+main a = test a 5
+
+module Test.Inner exposing (another_test)
+    external another_test : Float -> Float
         "])
         );
     }

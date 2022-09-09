@@ -1,8 +1,10 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 224
-expression: "compile(&[r\"\nmodule ModuleWithTypeOnlyDefinitions exposing (main)\n\ntest : Float -> Float -> Float\n\nmain a = test a 5\n        \"])"
+assertion_line: 242
+expression: "compile(&[r\"\nmodule Test exposing (main)\n\ntest : Float -> Float -> Float\n\nmain a = test a 5\n        \"])"
 ---
+// alma_out/Alma.js
+
 /*
 
 module Alma
@@ -39,82 +41,92 @@ or_ : ∀ ∅ . Bool -> Bool -> Bool
 
 sub : ∀ ∅ . Float -> Float -> Float
 
+*/
 
-module ModuleWithTypeOnlyDefinitions
+
+
+
+
+// type Bool
+
+let True = {
+    tag: "True",
+}
+
+let False = {
+    tag: "False",
+}
+
+
+let or_ = new Error("Unimplemented")
+
+let and_ = new Error("Unimplemented")
+
+let eq = new Error("Unimplemented")
+
+let ne = new Error("Unimplemented")
+
+let gt = new Error("Unimplemented")
+
+let ge = new Error("Unimplemented")
+
+let lt = new Error("Unimplemented")
+
+let le = new Error("Unimplemented")
+
+let add = new Error("Unimplemented")
+
+let sub = new Error("Unimplemented")
+
+let mult = new Error("Unimplemented")
+
+let div = new Error("Unimplemented")
+
+export {
+    // type Bool
+    True,
+    False,
+    or_,
+    and_,
+    eq,
+    ne,
+    gt,
+    ge,
+    lt,
+    le,
+    add,
+    sub,
+    mult,
+    div,
+}
+
+
+
+// alma_out/Test.js
+
+/*
+
+module Test
 
 main : ∀ ∅ . Float -> Float
 
 */
 
 
-globalThis.Alma = Object.assign(globalThis.Alma ?? {}, function () {
 
+import * as Alma from "alma_out/Alma.js"
+import { True, False } from "alma_out/Alma.js"
 
-let Alma = function () {
+let test = new Error("Unimplemented")
 
+function main(a) {
+    return test(a, 5)
+}
 
-
-    // type Bool
-
-    let True = {
-        tag: "True",
-    }
-
-    let False = {
-        tag: "False",
-    }
+export {
+    main,
+}
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-    return {
-        True,
-        False,
-        or_,
-        and_,
-        eq,
-        ne,
-        gt,
-        ge,
-        lt,
-        le,
-        add,
-        sub,
-        mult,
-        div,
-    };
-
-}();
-
-let ModuleWithTypeOnlyDefinitions = function () {
-
-    let { True, False } = Alma
-
-
-    function main(a) {
-        return test(a, 5)
-    }
-
-    return {
-        main,
-    };
-
-}();
-
-return {
-    Alma,
-    ModuleWithTypeOnlyDefinitions,
-};
-
-}());
 

@@ -1,19 +1,19 @@
 ---
 source: src/parser.rs
-assertion_line: 2754
-expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test1\n  a = 1\n\n  module Parent.Test1.Test1Test\n    b = 1\n\nmodule Parent.Test2\n    c = 5\n    \")"
+assertion_line: 2717
+expression: "parse(\"\\\nmodule Test\n\nmodule Test.Test1\n  a = 1\n\n  module Test.Test1.Test1Test\n    b = 1\n\nmodule Test.Test2\n    c = 5\n    \")"
 ---
 Input:
 
-module Parent
+module Test
 
-module Parent.Test1
+module Test.Test1
   a = 1
 
-  module Parent.Test1.Test1Test
+  module Test.Test1.Test1Test
     b = 1
 
-module Parent.Test2
+module Test.Test2
     c = 5
     
 

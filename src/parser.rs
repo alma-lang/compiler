@@ -528,7 +528,7 @@ impl Error {
                 .unwrap();
             format!("{message}\n\n{lines_report}")
         };
-        let source_name = source.name();
+        let source_name = source.path_str();
         let line = self.token.line;
         let column = self.token.column;
         format!("{source_name}:{line}:{column}\n\n{message}")
@@ -2587,7 +2587,7 @@ add 5"
         }
 
         fn parse(code: &str) -> String {
-            let source = Source::new_orphan(code.to_string());
+            let source = Source::new("Test.alma", code.to_string());
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
             let mut spans = Spans::new();
@@ -2668,23 +2668,23 @@ b = * add
         fn test_submodule() {
             assert_snapshot!(parse(
                 "\
-module Parent
+module Test
 
-module Parent.Test"
+module Test.TestInner"
             ));
             assert_snapshot!(parse(
                 "\
-module Parent
+module Test
 
-module Parent.Test
+module Test.TestInner
 
   a = 1"
             ));
             assert_snapshot!(parse(
                 "\
-module Parent
+module Test
 
-module Parent.Test
+module Test.TestInner
 
   a = 1
 
@@ -2695,9 +2695,9 @@ a = 1
                 "parsing errors",
                 parse(
                     "\
-module Parent
+module Test
 
-module Parent.Test
+module Test.TestInner
 
   a = 1 + 2) + 3
 
@@ -2716,15 +2716,15 @@ b = * add
         fn test_submodules_nested() {
             assert_snapshot!(parse(
                 "\
-module Parent
+module Test
 
-module Parent.Test1
+module Test.Test1
   a = 1
 
-  module Parent.Test1.Test1Test
+  module Test.Test1.Test1Test
     b = 1
 
-module Parent.Test2
+module Test.Test2
     c = 5
     ",
             ));
@@ -2859,9 +2859,9 @@ incr n = n + 1
             assert_snapshot!(parse("module Test.Te_st.Test"));
             assert_snapshot!(parse(
                 "
-module Test.Something
+module Test
 
-module Test.Banana
+module Testo.Banana
 "
             ));
         }
@@ -3354,7 +3354,7 @@ main =
         }
 
         fn parse(code: &str) -> String {
-            let source = Source::new_orphan(code.to_string());
+            let source = Source::new("Test.alma", code.to_string());
             let mut strings = Strings::new();
             let mut tokens = Tokens::new();
             let mut spans = Spans::new();

@@ -2426,13 +2426,16 @@ add 5"
         fn infer(code: &str) -> String {
             let mut compiler_state = compiler::State::new();
             let alma_source = Source::new_file("Alma.alma").unwrap();
-            let source = Source::new_orphan(format!(
-                "\
+            let source = Source::new(
+                "Test.alma",
+                format!(
+                    "\
 module Test exposing (test)
 
 test = {}",
-                code.to_string()
-            ));
+                    code.to_string()
+                ),
+            );
 
             let entry_sources =
                 compiler::stages::process_sources(vec![alma_source, source], &mut compiler_state);
@@ -2525,52 +2528,52 @@ c = "hi"
         fn test_importing_from_submodule() {
             assert_snapshot!(infer(
                 r#"
-module Parent
+module Test
 
-import Parent.Test exposing (test)
+import Test.TestInner exposing (test)
 
 add = \x -> x + test
 
-module Parent.Test exposing (test)
+module Test.TestInner exposing (test)
 
     test = 5
 "#
             ));
             assert_snapshot!(infer(
                 r#"
-module Parent
+module Test
 
-import Parent.Test exposing (test)
+import Test.TestInner exposing (test)
 
 add = \x -> x + test
 
-module Parent.Test exposing (test)
+module Test.TestInner exposing (test)
 
     test = "hi"
 "#
             ));
             assert_snapshot!(infer(
                 r#"
-module Parent
+module Test
 
-import Parent.Test exposing (nope)
+import Test.TestInner exposing (nope)
 
 add = \x -> x + test
 
-module Parent.Test exposing (test)
+module Test.TestInner exposing (test)
 
     test = "hi"
 "#
             ));
             assert_snapshot!(infer(
                 r#"
-module Parent
+module Test
 
-import Parent.Test exposing (test)
+import Test.TestInner exposing (test)
 
 add = \x -> x + test x
 
-module Parent.Test exposing (test)
+module Test.TestInner exposing (test)
 
     test = \x -> x + "hi"
 "#
@@ -2581,7 +2584,7 @@ module Parent.Test exposing (test)
         fn test_import_nonexistent_module() {
             assert_snapshot!(infer(
                 r#"
-module Parent
+module Test
 
 import Nope exposing (test)
 
@@ -2617,25 +2620,25 @@ last _ y = y
         fn test_import_fully_qualified_name() {
             assert_snapshot!(infer(
                 "\
-module User exposing (new)
+module Test exposing (new)
 
-import User.Id
+import Test.Id
 
-new = { id = User.Id.new }
+new = { id = Test.Id.new }
 
-module User.Id exposing (new)
+module Test.Id exposing (new)
     new = 42
 "
             ));
             assert_snapshot!(infer(
                 "\
-module User exposing (new)
+module Test exposing (new)
 
-import User.Id
+import Test.Id
 
-new = User.Id
+new = Test.Id
 
-module User.Id exposing (new)
+module Test.Id exposing (new)
     new = 42
 "
             ));
@@ -2645,25 +2648,25 @@ module User.Id exposing (new)
         fn test_import_alias() {
             assert_snapshot!(infer(
                 "\
-module User exposing (new)
+module Test exposing (new)
 
-import User.Id as UserId
+import Test.Id as UserId
 
 new = { id = UserId.new }
 
-module User.Id exposing (new)
+module Test.Id exposing (new)
     new = 42
 "
             ));
             assert_snapshot!(infer(
                 "\
-module User exposing (new)
+module Test exposing (new)
 
-import User.Id as UserId
+import Test.Id as UserId
 
-new = { id = User.Id.new }
+new = { id = Test.Id.new }
 
-module User.Id exposing (new)
+module Test.Id exposing (new)
     new = 42
 "
             ));
@@ -2673,15 +2676,15 @@ module User.Id exposing (new)
         fn test_import_nested_fully_qualified_name() {
             assert_snapshot!(infer(
                 "\
-module User exposing (new)
+module Test exposing (new)
 
-import User.Attributes
-import User.Attributes.Id
+import Test.Attributes
+import Test.Attributes.Id
 
-new = { id = User.Attributes.Id.new }
+new = { id = Test.Attributes.Id.new }
 
-module User.Attributes
-    module User.Attributes.Id exposing (new)
+module Test.Attributes
+    module Test.Attributes.Id exposing (new)
         new = 42
 "
             ));
@@ -2691,13 +2694,13 @@ module User.Attributes
         fn test_use_nonexistent_import_from_fully_qualified_module() {
             assert_snapshot!(infer(
                 "\
-module User exposing (new)
+module Test exposing (new)
 
-import User.Id
+import Test.Id
 
-new = User.Id.wat
+new = Test.Id.wat
 
-module User.Id exposing (new)
+module Test.Id exposing (new)
     new = 42
 "
             ));
@@ -3168,7 +3171,7 @@ main = test 5
         fn infer(code: &str) -> String {
             let mut state = compiler::State::new();
             let alma_source = Source::new_file("Alma.alma").unwrap();
-            let source = Source::new_orphan(code.to_string());
+            let source = Source::new("Test.alma", code.to_string());
 
             let entry_sources =
                 compiler::stages::process_sources(vec![alma_source, source], &mut state);

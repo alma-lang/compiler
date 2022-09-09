@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2334
+assertion_line: 2423
 expression: "infer(\"{ { name = 1, age = 1 } | name = 2, name = 3 }\")"
 ---
 Input:
@@ -10,7 +10,7 @@ Input:
 ---
 Output:
 
-[3:43]
+Test.alma [3:43]
 
 Duplicate field `name`
 

@@ -137,6 +137,12 @@ impl Module {
         }
         deps
     }
+
+    pub fn has_externals(&self) -> bool {
+        self.definitions
+            .iter()
+            .any(|def| matches!(def, TypedDefinition::External(_)))
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

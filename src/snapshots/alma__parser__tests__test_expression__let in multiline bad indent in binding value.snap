@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2330
+assertion_line: 2467
 expression: "parse(\"\\\nlet\n  x = a\n  x\nin\nx\")"
 ---
 Input:
@@ -13,7 +13,7 @@ x
 
 Result:
 
-:4:0
+Test.alma:4:0
 
 Expected an `=` sign or list of parameters for the definition of `x`, but instead found: `in`
 

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2649
+assertion_line: 2835
 expression: "parse(\"\\\nmodule Test\n\nIAmNotCamelCase = 1\n\")"
 ---
 Input:
@@ -12,7 +12,7 @@ IAmNotCamelCase = 1
 
 Result:
 
-:3:0
+Test.alma:3:0
 
 Expected the left side of a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `IAmNotCamelCase`
 

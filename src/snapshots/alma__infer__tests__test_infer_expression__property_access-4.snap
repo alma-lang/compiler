@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2308
+assertion_line: 2397
 expression: "infer(r#\"let a = \"Hi\" in a.wat\"#)"
 ---
 Input:
@@ -10,7 +10,7 @@ let a = "Hi" in a.wat
 ---
 Output:
 
-[3:23]
+Test.alma [3:23]
 
 Type mismatch:  String  ≠  { a | wat : b }
 

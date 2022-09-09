@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2257
+assertion_line: 2435
 expression: "parse(\"\\\nlet x = a\n  x\")"
 ---
 Input:
@@ -10,7 +10,7 @@ let x = a
 
 Result:
 
-:2:3
+Test.alma:2:3
 
 Expected the let definition to be followed by another expression in the next line and same indentation, but instead found: `[End of file]`
 

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2672
+assertion_line: 2857
 expression: "parse(\"module Te_st\")"
 ---
 Input:
@@ -9,7 +9,7 @@ module Te_st
 
 Result:
 
-:1:7
+Test.alma:1:7
 
 Invalid module name 'Te_st'.
 

@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2282
+assertion_line: 2371
 expression: "infer(\"\\\nlet add x y = x + y\n\nadd 5\")"
 ---
 Input:
@@ -12,7 +12,7 @@ add 5
 ---
 Output:
 
-[5:0]
+Test.alma [5:0]
 
 Type mismatch:  Float -> a  ≠  Float -> Float -> Float
 

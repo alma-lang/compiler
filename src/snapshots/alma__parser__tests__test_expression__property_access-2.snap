@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2377
+assertion_line: 2554
 expression: "parse(\"a. b\")"
 ---
 Input:
@@ -9,7 +9,7 @@ a. b
 
 Result:
 
-:1:1
+Test.alma:1:1
 
 A property access must have the dot and identifier together, like this `a.b.c`
 

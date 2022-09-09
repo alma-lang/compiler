@@ -12,6 +12,8 @@ mod tokenizer;
 mod typ;
 mod type_env;
 
+use std::path::Path;
+
 use clap::{value_t, App, AppSettings, Arg, SubCommand};
 
 fn main() {
@@ -23,13 +25,21 @@ fn main() {
         // Subcommands
         .subcommand(SubCommand::with_name("repl").about("Start the interactive Alma REPL"))
         .subcommand(
-            SubCommand::with_name("make").about("Compile files").arg(
-                Arg::with_name("FILE")
-                    .required(true)
-                    // Just one file for now
-                    // .multiple(true)
-                    .help("File entry points to compile"),
-            ),
+            SubCommand::with_name("make")
+                .about("Compile files")
+                .arg(
+                    Arg::with_name("FILE")
+                        .required(true)
+                        .multiple(true)
+                        .help("File entry points to compile"),
+                )
+                .arg(
+                    Arg::with_name("output")
+                        .default_value("alma/out")
+                        .long("output")
+                        .short("o")
+                        .help("Where to emit the compiled output"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("bench")
@@ -59,9 +69,12 @@ fn main() {
             matches.value_of("FILE").unwrap().to_owned(),
         );
     } else if let Some(matches) = matches.subcommand_matches("make") {
-        // TODO: Just one file for now
-        // let files = matches.values_of_lossy("FILE").unwrap();
-        let files = vec![matches.value_of_lossy("FILE").unwrap().into_owned()];
-        cli::compile_files(files);
+        let files = matches
+            .values_of("FILE")
+            .unwrap()
+            .map(|f| f.to_owned())
+            .collect();
+        let output = matches.value_of("output").unwrap();
+        cli::compile_files(files, Path::new(output));
     }
 }

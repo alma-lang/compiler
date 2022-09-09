@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-assertion_line: 2706
-expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\")"
+assertion_line: 2669
+expression: "parse(\"\\\nmodule Test\n\nmodule Test.TestInner\")"
 ---
 Input:
 
-module Parent
+module Test
 
-module Parent.Test
+module Test.TestInner
 
 Result:
 

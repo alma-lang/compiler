@@ -39,17 +39,11 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Debug, PartialEq)]
-enum SourceOrigin {
-    File(PathBuf),
-    NotAFile,
-}
-
 type LinesAround<'str> = (Vec<&'str str>, (usize, Vec<&'str str>), Vec<&'str str>);
 
 #[derive(Debug, PartialEq)]
 pub struct Source {
-    source: SourceOrigin,
+    pub path: PathBuf,
     code: String,
 }
 
@@ -71,17 +65,14 @@ impl Source {
         // TODO: Load the standard library from an alma/core package
         if file == "Alma.alma" {
             Ok(Source {
-                source: SourceOrigin::File(path),
+                path,
                 code: include_str!("alma/Alma.alma").to_owned(),
             })
         } else {
             Source::validate_file_name(&path)?;
             let code = Source::read_file(&path)?;
 
-            Ok(Source {
-                source: SourceOrigin::File(path),
-                code,
-            })
+            Ok(Source { path, code })
         }
     }
 
@@ -111,25 +102,19 @@ impl Source {
         fs::read_to_string(file_path).map_err(Error::IO)
     }
 
-    pub fn new_orphan(code: String) -> Self {
+    pub fn new(path: &str, code: String) -> Self {
         Source {
-            source: SourceOrigin::NotAFile,
+            path: Path::new(path).to_path_buf(),
             code,
         }
     }
 
-    pub fn name(&self) -> &str {
-        match &self.source {
-            SourceOrigin::File(path) => path.to_str().unwrap(),
-            SourceOrigin::NotAFile => "",
-        }
+    pub fn path_str(&self) -> &str {
+        self.path.to_str().unwrap()
     }
 
     pub fn file_stem(&self) -> Option<&str> {
-        match &self.source {
-            SourceOrigin::File(path) => Some(path.file_stem().unwrap().to_str().unwrap()),
-            SourceOrigin::NotAFile => None,
-        }
+        self.path.file_stem().map(|s| s.to_str().unwrap())
     }
 
     pub fn _char_at(&self, i: usize) -> Option<char> {
@@ -267,10 +252,7 @@ impl Source {
     }
 
     pub fn to_string_with_line_and_col(&self, line: u32, column: u32) -> String {
-        let file_name = match &self.source {
-            SourceOrigin::File(path) => path.to_str().unwrap(),
-            SourceOrigin::NotAFile => "",
-        };
+        let file_name = self.path_str();
         let space = if file_name.is_empty() { "" } else { " " };
         format!("{file_name}{space}[{line}:{column}]")
     }
@@ -282,7 +264,7 @@ mod tests {
     use insta::assert_snapshot;
 
     fn report(code: &str, position: usize, end_position: Option<usize>, lines: u32) -> String {
-        let source = Source::new_orphan(code.to_string());
+        let source = Source::new("Test.alma", code.to_string());
         let result = source.lines_report_at_position_with_pointer(position, end_position, lines);
         format!(
             "Input:\n\n{code}\n\nResult:\n\n{result}",

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2636
+assertion_line: 2821
 expression: "parse(\"\\\nmodule Test\n\nmodule Test.Test2\n\n    module i_am_not_PascalCase\n        test = 1\n\")"
 ---
 Input:
@@ -15,7 +15,7 @@ module Test.Test2
 
 Result:
 
-:5:11
+Test.alma:5:11
 
 Invalid module name 'i_am_not_PascalCase'.
 

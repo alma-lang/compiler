@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2818
+assertion_line: 3025
 expression: "parse(\"\nmodule Test\n\ntype Fruit = { name }\n\")"
 ---
 Input:
@@ -13,7 +13,7 @@ type Fruit = { name }
 
 Result:
 
-:4:20
+Test.alma:4:20
 
 Expected `|` between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: `}`
 

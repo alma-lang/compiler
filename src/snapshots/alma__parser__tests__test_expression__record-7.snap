@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2368
+assertion_line: 2545
 expression: "parse(\"{ x : 5 , }\")"
 ---
 Input:
@@ -9,7 +9,7 @@ Input:
 
 Result:
 
-:1:10
+Test.alma:1:10
 
 Expected an identifier for the name of the field in the record, but instead found: `}`
 

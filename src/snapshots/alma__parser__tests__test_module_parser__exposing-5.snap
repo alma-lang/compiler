@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2581
+assertion_line: 2767
 expression: "parse(\"\\\nmodule Test exposing (a, b\n\na = 1\n\nb = True\")"
 ---
 Input:
@@ -13,7 +13,7 @@ b = True
 
 Result:
 
-:3:0
+Test.alma:3:0
 
 Parsing the module exports expected a comma separated list of exports inside parenthesis, but instead found: `a`
 

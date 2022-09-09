@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2243
+assertion_line: 2422
 expression: "parse(\"if True then 1\")"
 ---
 Input:
@@ -9,7 +9,7 @@ if True then 1
 
 Result:
 
-:1:14
+Test.alma:1:14
 
 Expected the `else` branch of the if expression, but instead found: `[End of file]`
 

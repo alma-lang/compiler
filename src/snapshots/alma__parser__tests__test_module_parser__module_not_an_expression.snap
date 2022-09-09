@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2640
+assertion_line: 2619
 expression: "parse(\"True\")"
 ---
 Input:
@@ -9,7 +9,7 @@ True
 
 Result:
 
-:1:0
+Test.alma:1:0
 
 Expected `module FileName` at the start of the file, but instead found: `True`
 

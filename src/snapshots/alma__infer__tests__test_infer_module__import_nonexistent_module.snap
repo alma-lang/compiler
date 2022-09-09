@@ -1,13 +1,12 @@
 ---
 source: src/infer.rs
-assertion_line: 2070
-expression: "infer(r#\"\nmodule Parent\n\nimport Nope exposing (test)\n\ntest = 1\n\"#)"
-
+assertion_line: 2585
+expression: "infer(r#\"\nmodule Test\n\nimport Nope exposing (test)\n\ntest = 1\n\"#)"
 ---
 Input:
 
 
-module Parent
+module Test
 
 import Nope exposing (test)
 
@@ -17,11 +16,11 @@ test = 1
 ---
 Output:
 
-[4:0]
+Test.alma [4:0]
 
 Couldn't find module `Nope`
 
-  2│  module Parent
+  2│  module Test
   3│  
   4│  import Nope exposing (test)
    │  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑

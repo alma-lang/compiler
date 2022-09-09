@@ -1,21 +1,21 @@
 ---
 source: src/parser.rs
-assertion_line: 2890
-expression: "parse(\"\nmodule Test.Something\n\nmodule Test.Banana\n\")"
+assertion_line: 2860
+expression: "parse(\"\nmodule Test\n\nmodule Testo.Banana\n\")"
 ---
 Input:
 
 
-module Test.Something
+module Test
 
-module Test.Banana
+module Testo.Banana
 
 
 Result:
 
-:4:0
+Test.alma:4:0
 
-The sub-module name 'Test.Banana' differs from the name of the parent module.
+The sub-module name 'Testo.Banana' differs from the name of the parent module.
 
 Module names need to match their parent module path names and specify their name at the end.
 
@@ -27,9 +27,9 @@ Like this:
 
 
 
-  2│  module Test.Something
+  2│  module Test
   3│  
-  4│  module Test.Banana
+  4│  module Testo.Banana
    │  ↑↑↑↑↑↑
 
 Error {
@@ -38,10 +38,10 @@ Error {
             parts: [
                 CapitalizedIdentifier {
                     name: SymbolU32 {
-                        value: 1,
+                        value: 2,
                     },
                     span: Index(
-                        3,
+                        2,
                     ),
                 },
                 CapitalizedIdentifier {
@@ -49,20 +49,20 @@ Error {
                         value: 3,
                     },
                     span: Index(
-                        4,
+                        3,
                     ),
                 },
             ],
             full_name: SymbolU32 {
-                value: 11,
+                value: 10,
             },
         },
     },
     token: Token {
         kind: Module,
         indent: 0,
-        start: 24,
-        end: 30,
+        start: 14,
+        end: 20,
         line: 4,
         column: 0,
     },

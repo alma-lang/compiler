@@ -1,8 +1,33 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 193
-expression: "compile(&[r\"\nmodule Test exposing (main)\n\nimport Test.WeirdMath exposing (weirdAdd)\n\nmain = weirdAdd\n\n\n\nmodule Test.Constants exposing (five)\n\n    five = 5\n\n\n\nmodule Test.WeirdMath exposing (weirdAdd)\n\n    import Test.Constants exposing (five)\n\n    weirdAdd = \\x y -> x * y + five\n        \"])"
+assertion_line: 253
+expression: "compile(&[r\"\nmodule Test exposing (main)\n\nexternal test : Float -> Float -> Float\n\nmain a = test a 5\n\nmodule Test.Inner exposing (another_test)\n    external another_test : Float -> Float\n        \"])"
 ---
+// alma_out/Test.Inner.js
+
+/*
+
+module Test.Inner
+
+another_test : ∀ ∅ . Float -> Float
+
+*/
+
+
+import * as Test__Inner__ffi from "alma_out/Test.Inner.ffi.js"
+
+
+import * as Alma from "alma_out/Alma.js"
+import { True, False } from "alma_out/Alma.js"
+
+let another_test = Test__Inner__ffi.another_test
+
+export {
+    another_test,
+}
+
+
+
 // alma_out/Alma.js
 
 /*
@@ -102,74 +127,28 @@ export {
 
 
 
-// alma_out/Test.Constants.js
-
-/*
-
-module Test.Constants
-
-five : ∀ ∅ . Float
-
-*/
-
-
-
-import * as Alma from "alma_out/Alma.js"
-import { True, False } from "alma_out/Alma.js"
-
-let five = 5
-
-export {
-    five,
-}
-
-
-
-// alma_out/Test.WeirdMath.js
-
-/*
-
-module Test.WeirdMath
-
-weirdAdd : ∀ ∅ . Float -> Float -> Float
-
-*/
-
-
-
-import * as Alma from "alma_out/Alma.js"
-import { True, False } from "alma_out/Alma.js"
-import * as Test__Constants from "alma_out/Test.Constants.js"
-import { five } from "alma_out/Test.Constants.js"
-
-let weirdAdd = function (x, y) {
-    return Alma.add(Alma.mult(x, y), five)
-}
-
-export {
-    weirdAdd,
-}
-
-
-
 // alma_out/Test.js
 
 /*
 
 module Test
 
-main : ∀ ∅ . Float -> Float -> Float
+main : ∀ ∅ . Float -> Float
 
 */
 
 
+import * as Test__ffi from "alma_out/Test.ffi.js"
+
 
 import * as Alma from "alma_out/Alma.js"
 import { True, False } from "alma_out/Alma.js"
-import * as Test__WeirdMath from "alma_out/Test.WeirdMath.js"
-import { weirdAdd } from "alma_out/Test.WeirdMath.js"
 
-let main = weirdAdd
+let test = Test__ffi.test
+
+function main(a) {
+    return test(a, 5)
+}
 
 export {
     main,

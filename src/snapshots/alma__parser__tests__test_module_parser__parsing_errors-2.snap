@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2469
+assertion_line: 2656
 expression: "parse(\"\\\nmodule Test\n\na = 1 + 2 + 3\n\nb = * add\n  5\")"
 ---
 Input:
@@ -14,7 +14,7 @@ b = * add
 
 Result:
 
-:5:4
+Test.alma:5:4
 
 Expected an expression for the right side of the definition, but instead found: `*`
 

@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2321
+assertion_line: 2410
 expression: "infer(\"{ {} | age = 1 }\")"
 ---
 Input:
@@ -10,7 +10,7 @@ Input:
 ---
 Output:
 
-[3:9]
+Test.alma [3:9]
 
 Type mismatch:  {}  ≠  { a | age : Float }
 

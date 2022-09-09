@@ -1,7 +1,9 @@
 use crate::compiler;
 use crate::compiler::stages::process_sources;
 use crate::source::Source;
+use std::path::Path;
 // use rustyline::{error::ReadlineError, Editor};
+use std::fs;
 use std::process;
 
 pub fn repl() {
@@ -78,15 +80,26 @@ pub fn repl() {
     */
 }
 
-pub fn compile_files(arg_files: Vec<String>) {
+pub fn compile_files(arg_files: Vec<String>, output: &Path) {
     let mut files = vec!["Alma.alma".to_owned()];
     files.extend(arg_files);
     let sources: Vec<Source> = files.iter().map(|f| Source::from_path(f)).collect();
     let mut state = compiler::State::new();
     let entry_sources = process_sources(sources, &mut state);
 
-    match compiler::compile(&entry_sources, &mut state) {
-        Ok(out) => println!("{out}"),
+    match compiler::compile(&entry_sources, &mut state, &output) {
+        Ok(files) => {
+            for (path, contents) in files {
+                let write_result = fs::write(path, contents);
+                if let Err(e) = write_result {
+                    eprintln!("\nWriting output files failed.\n");
+                    eprintln!("\n{e}\n");
+                    process::exit(1);
+                }
+            }
+            let output = output.to_str().unwrap();
+            println!("Success. Files emitted in {output}");
+        }
         Err(errs) => {
             eprintln!("\n{errs}\n");
             process::exit(1);
@@ -105,7 +118,7 @@ pub fn bench(runs: u32, file_path: String) {
     );
 
     for _ in 0..runs {
-        match compiler::compile(&entry_sources, &mut state) {
+        match compiler::compile(&entry_sources, &mut state, Path::new("")) {
             Ok(_out) => println!("Ok."),
             Err(errs) => {
                 eprintln!("\n{errs}\n");

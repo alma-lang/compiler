@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2730
+assertion_line: 2937
 expression: "parse(\"\nmodule Test\n\ntype Fruit = Banana / Apple\n\")"
 ---
 Input:
@@ -13,7 +13,7 @@ type Fruit = Banana / Apple
 
 Result:
 
-:4:20
+Test.alma:4:20
 
 Expected a definition like `n = 5` or `add x y = x + y` or a type definition like `type User = LoggedIn | Anon`, but instead found: `/`
 

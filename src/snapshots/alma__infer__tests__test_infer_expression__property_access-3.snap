@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2307
+assertion_line: 2396
 expression: "infer(r#\"{ age = 1, msg = \"Hello\" }.wat\"#)"
 ---
 Input:
@@ -10,7 +10,7 @@ Input:
 ---
 Output:
 
-[3:7]
+Test.alma [3:7]
 
 Type mismatch:  { age : Float, msg : String }  ≠  { a | wat : b }
 

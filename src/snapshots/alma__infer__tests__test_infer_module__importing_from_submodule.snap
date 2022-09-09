@@ -1,18 +1,18 @@
 ---
 source: src/infer.rs
-assertion_line: 2437
-expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (test)\n\nadd = \\x -> x + test\n\nmodule Parent.Test exposing (test)\n\n    test = 5\n\"#)"
+assertion_line: 2529
+expression: "infer(r#\"\nmodule Test\n\nimport Test.TestInner exposing (test)\n\nadd = \\x -> x + test\n\nmodule Test.TestInner exposing (test)\n\n    test = 5\n\"#)"
 ---
 Input:
 
 
-module Parent
+module Test
 
-import Parent.Test exposing (test)
+import Test.TestInner exposing (test)
 
 add = \x -> x + test
 
-module Parent.Test exposing (test)
+module Test.TestInner exposing (test)
 
     test = 5
 
@@ -55,11 +55,11 @@ or_ : ∀ ∅ . Bool -> Bool -> Bool
 sub : ∀ ∅ . Float -> Float -> Float
 
 
-module Parent
+module Test
 
 
 
 
-module Parent.Test
+module Test.TestInner
 
 test : ∀ ∅ . Float

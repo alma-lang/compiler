@@ -1,14 +1,14 @@
 ---
 source: src/compiler/mod.rs
-expression: "compile(&[r\"\nmodule CycleModule\n\nimport CycleModule.Test\n\n\nmodule CycleModule.Test\n    import CycleModule\n        \"])"
-
+assertion_line: 220
+expression: "compile(&[r\"\nmodule Test\n\nimport Test.TestInner\n\n\nmodule Test.TestInner\n    import Test\n        \"])"
 ---
 Cycle detected between modules:
 
-    CycleModule
+    Test
         ↓
-    CycleModule.Test
+    Test.TestInner
         ↓
-    CycleModule
+    Test
 
 Alma's module system does not support cyclic dependencies.

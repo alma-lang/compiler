@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2225
+assertion_line: 2362
 expression: "parse(\"(((1))\")"
 ---
 Input:
@@ -9,7 +9,7 @@ Input:
 
 Result:
 
-:1:6
+Test.alma:1:6
 
 Expected `)` after parenthesized expression, but instead found: `[End of file]`
 

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2808
+assertion_line: 3015
 expression: "parse(\"\nmodule Test\n\ntype Fruit = {\n\")"
 ---
 Input:
@@ -13,7 +13,7 @@ type Fruit = {
 
 Result:
 
-:5:0
+Test.alma:5:0
 
 Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x : Int, y : Int }`, but instead found: `[End of file]`
 

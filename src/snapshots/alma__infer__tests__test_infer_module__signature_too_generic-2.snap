@@ -1,8 +1,7 @@
 ---
 source: src/infer.rs
-assertion_line: 2453
+assertion_line: 2983
 expression: "infer(\"\\\nmodule Test exposing (main)\n\ntype List a = List a\n\nmain : List a\nmain = List 1\n\")"
-
 ---
 Input:
 
@@ -17,7 +16,7 @@ main = List 1
 ---
 Output:
 
-[5:0]
+Test.alma [5:0]
 
 The type signature is more generic than the inferred type:
 

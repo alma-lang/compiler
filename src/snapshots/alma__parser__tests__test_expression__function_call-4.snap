@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2198
+assertion_line: 2376
 expression: "parse(\"fun\\narg\")"
 ---
 Input:
@@ -10,7 +10,7 @@ arg
 
 Result:
 
-:2:0
+Test.alma:2:0
 
 Expected the end of input, but instead found: `arg`
 

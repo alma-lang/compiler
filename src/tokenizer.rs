@@ -18,7 +18,7 @@ impl Error {
 
         msg.push_str(&format!(
             "{name}:{line}:{column}\n\n{message}",
-            name = source.name(),
+            name = source.path_str(),
             line = self.line,
             column = self.column,
             message = self.message
@@ -450,7 +450,7 @@ mod tests {
     use insta::assert_snapshot;
 
     fn tokenize<'a>(code: &'a str) -> String {
-        let source = &Source::new_orphan(code.to_string());
+        let source = &Source::new("Test.alma", code.to_string());
         let mut tokens = Tokens::new();
         let result = parse(source, &mut Strings::new(), &mut tokens);
         format!("{:#?}", result.map(|_| tokens))

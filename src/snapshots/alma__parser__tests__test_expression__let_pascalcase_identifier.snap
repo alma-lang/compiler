@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2327
+assertion_line: 2505
 expression: "parse(\"\\\nlet\n  IAmNotCamelCase = 1\nin\nIAmNotCamelCase\n\")"
 ---
 Input:
@@ -13,7 +13,7 @@ IAmNotCamelCase
 
 Result:
 
-:2:2
+Test.alma:2:2
 
 Expected a pattern for the left side of the let expression, but instead found: `IAmNotCamelCase`
 

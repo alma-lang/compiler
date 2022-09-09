@@ -1,19 +1,18 @@
 ---
 source: src/infer.rs
-assertion_line: 2053
-expression: "infer(r#\"\nmodule Parent\n\nimport Parent.Test exposing (test)\n\nadd = \\x -> x + test x\n\nmodule Parent.Test exposing (test)\n\n    test = \\x -> x + \"hi\"\n\"#)"
-
+assertion_line: 2568
+expression: "infer(r#\"\nmodule Test\n\nimport Test.TestInner exposing (test)\n\nadd = \\x -> x + test x\n\nmodule Test.TestInner exposing (test)\n\n    test = \\x -> x + \"hi\"\n\"#)"
 ---
 Input:
 
 
-module Parent
+module Test
 
-import Parent.Test exposing (test)
+import Test.TestInner exposing (test)
 
 add = \x -> x + test x
 
-module Parent.Test exposing (test)
+module Test.TestInner exposing (test)
 
     test = \x -> x + "hi"
 
@@ -21,13 +20,13 @@ module Parent.Test exposing (test)
 ---
 Output:
 
-[10:21]
+Test.alma [10:21]
 
 Type mismatch:  String  ≠  Float
 
 Expected
 
-   8│  module Parent.Test exposing (test)
+   8│  module Test.TestInner exposing (test)
    9│  
   10│      test = \x -> x + "hi"
     │                       ↑↑↑↑

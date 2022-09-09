@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-assertion_line: 2712
-expression: "parse(\"\\\nmodule Parent\n\nmodule Parent.Test\n\n  a = 1\")"
+assertion_line: 2675
+expression: "parse(\"\\\nmodule Test\n\nmodule Test.TestInner\n\n  a = 1\")"
 ---
 Input:
 
-module Parent
+module Test
 
-module Parent.Test
+module Test.TestInner
 
   a = 1
 

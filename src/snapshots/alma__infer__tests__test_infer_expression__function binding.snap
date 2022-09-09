@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2265
+assertion_line: 2354
 expression: "infer(r\"\nlet incr = \\n -> n + 1\n\nincr True\")"
 ---
 Input:
@@ -13,7 +13,7 @@ incr True
 ---
 Output:
 
-[6:5]
+Test.alma [6:5]
 
 Type mismatch:  Bool  ≠  Float
 

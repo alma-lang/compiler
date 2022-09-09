@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2260
+assertion_line: 2349
 expression: "infer(\"if 1 then 5 else 1\")"
 ---
 Input:
@@ -10,7 +10,7 @@ if 1 then 5 else 1
 ---
 Output:
 
-[3:10]
+Test.alma [3:10]
 
 Type mismatch:  Float  ≠  Bool
 

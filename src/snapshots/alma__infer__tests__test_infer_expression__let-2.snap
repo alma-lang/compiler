@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2281
+assertion_line: 2370
 expression: "infer(\"let a = bar\\nbar\")"
 ---
 Input:
@@ -11,7 +11,7 @@ bar
 ---
 Output:
 
-[3:15]
+Test.alma [3:15]
 
 Undefined identifier `bar`
 
@@ -23,7 +23,7 @@ Undefined identifier `bar`
 
 ----------------------------------------
 
-[4:0]
+Test.alma [4:0]
 
 Undefined identifier `bar`
 
