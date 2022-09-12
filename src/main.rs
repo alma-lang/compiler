@@ -35,7 +35,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("output")
-                        .default_value("alma/out")
+                        .default_value("./alma-build/")
                         .long("output")
                         .short("o")
                         .help("Where to emit the compiled output"),

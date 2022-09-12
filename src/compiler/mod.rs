@@ -10,7 +10,7 @@ pub use self::state::State;
 use crate::ast::{self /*, ReplEntry, TypedDefinition*/};
 use crate::compiler::stages::{check_cycles, infer, parse_files};
 use crate::compiler::types::ModuleInterfaces;
-use crate::javascript;
+use crate::javascript::{self, OutputFile};
 // use crate::parser;
 use crate::source::Source;
 use crate::strings::Strings;
@@ -22,7 +22,7 @@ pub fn compile(
     entry_sources: &[source::Index],
     state: &mut State,
     output: &Path,
-) -> Result<Vec<(String, String)>, String> {
+) -> Result<Vec<(String, OutputFile)>, String> {
     let entry_modules = parse_files(entry_sources, state)?;
 
     let mut sorted_modules = check_cycles(&entry_modules, &state)?;
@@ -157,8 +157,10 @@ pub mod tests {
 
     use crate::compiler;
     use crate::compiler::stages::process_sources;
+    use crate::javascript::OutputFile;
     use crate::source::Source;
     use insta::assert_snapshot;
+    use std::fmt::Write;
 
     #[test]
     pub fn test_compile() {
@@ -179,7 +181,10 @@ pub mod tests {
                         out.push_str("// ");
                         out.push_str(&f);
                         out.push_str("\n\n");
-                        out.push_str(&c);
+                        match c {
+                            OutputFile::File(c) => out.push_str(&c),
+                            OutputFile::CopyFrom(c) => write!(out, "// Copy from: {c}").unwrap(),
+                        };
                         out.push_str("\n\n\n");
                     }
                     out

@@ -12,68 +12,33 @@ use crate::{
     },
     compiler,
 };
+use pathdiff::diff_paths;
 use std::cmp::min;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 const INDENT: usize = 4;
 
-fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
-    for (i, module) in name.parts.iter().enumerate() {
-        if i > 0 {
-            out.push_str("__");
-        }
-        let module = module.to_string(strings);
-        write!(out, "{module}").unwrap();
-    }
-}
-
-fn module_ffi_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
-    for (i, module) in name.parts.iter().enumerate() {
-        if i > 0 {
-            out.push_str("__");
-        }
-        let module = module.to_string(strings);
-        write!(out, "{module}").unwrap();
-    }
-    out.push_str("__ffi");
-}
-
-fn module_ffi_file_name(name: &str) -> String {
-    format!("{name}.ffi.js")
+pub enum OutputFile {
+    File(String),
+    CopyFrom(String),
 }
 
 pub fn generate(
     sorted_modules: &[ModuleIndex],
     state: &compiler::State,
     output: &Path,
-) -> Vec<(String, String)> {
+) -> Vec<(String, OutputFile)> {
     let mut files = vec![];
     let strings = &state.strings;
 
     for module_idx in sorted_modules {
         let mut code = String::new();
         let module_ast = &state.modules[*module_idx];
-        let dir = {
-            let mut path = state.sources[state.module_to_source_idx[*module_idx]]
-                .path
-                .to_path_buf();
-            // Get rid of the source file part and keep the directory
-            path.pop();
-            path
-        };
-        let module_output_path = {
-            let mut path = output.to_path_buf().join(&dir);
-            path.push(&format!("{}.js", module_ast.name.to_string(strings)));
-            path
-        };
-
-        dbg!(
-            &state.sources[state.module_to_source_idx[*module_idx]].path,
-            (&dir).to_str().unwrap(),
-            module_output_path.to_str().unwrap(),
-            module_ast.name.to_string(strings)
-        );
+        let path = &state.sources[state.module_to_source_idx[*module_idx]].path;
+        let module_output_path = output
+            .join(&path)
+            .with_file_name(&format!("{}.js", module_ast.name.to_string(strings)));
 
         // Print types
         {
@@ -92,7 +57,7 @@ pub fn generate(
         }
 
         let expressions = &module_ast.expressions;
-        generate_file(
+        let maybe_out_ffi_file = generate_file(
             &module_output_path,
             &mut code,
             output,
@@ -108,7 +73,27 @@ pub fn generate(
             expressions,
         );
 
-        files.push((module_output_path.to_str().unwrap().to_owned(), code))
+        if let Some(out_ffi_file) = maybe_out_ffi_file {
+            let ffi_file = {
+                let ffi_path = path.with_file_name(module_ffi_file_name(
+                    module_output_path.file_stem().unwrap().to_str().unwrap(),
+                ));
+                ffi_path.to_str().unwrap().to_owned()
+            };
+            files.push((
+                out_ffi_file,
+                if ffi_file == "Alma.ffi.js" {
+                    OutputFile::File(include_str!("./alma/Alma.ffi.js").to_owned())
+                } else {
+                    OutputFile::CopyFrom(ffi_file)
+                },
+            ));
+        }
+
+        files.push((
+            module_output_path.to_str().unwrap().to_owned(),
+            OutputFile::File(code),
+        ))
     }
 
     files
@@ -123,23 +108,37 @@ fn generate_file(
     _interface: &ModuleInterface,
     strings: &Strings,
     expressions: &Expressions,
-) {
+) -> Option<String> {
     let indent = 0;
+    let mut ffi_file = None;
 
     if module.has_externals() {
         code.push_str("import * as ");
         module_ffi_full_name(code, &module.name, strings);
-        let mut ffi_path = module_output_path.clone();
-        ffi_path.set_file_name(module_ffi_file_name(
+
+        let ffi_path = module_output_path.with_file_name(module_ffi_file_name(
             module_output_path.file_stem().unwrap().to_str().unwrap(),
         ));
+        let module_output_dir = module_output_path.parent().unwrap();
+        let relative_path = get_relative_path(module_output_dir, &ffi_path);
         let ffi_path = ffi_path.to_str().unwrap();
-        write!(code, " from \"{ffi_path}\"\n\n").unwrap();
+        let relative_path = relative_path.to_str().unwrap();
+        generate_import_from_part_with_newline(code, relative_path);
+
+        ffi_file = Some(ffi_path.to_owned());
     }
 
     if !module.imports.is_empty() {
         code.push('\n');
-        generate_imports(indent, code, output, state, module, strings);
+        generate_imports(
+            indent,
+            code,
+            module_output_path,
+            output,
+            state,
+            module,
+            strings,
+        );
     }
 
     if !module.type_definitions.is_empty() {
@@ -164,29 +163,32 @@ fn generate_file(
         code.push('\n');
         generate_exports(indent, code, module, strings);
     }
+
+    ffi_file
 }
 
 fn generate_imports(
     indent: usize,
     code: &mut String,
+    module_output_path: &PathBuf,
     output: &Path,
     state: &compiler::State,
     module: &Module,
     strings: &Strings,
 ) {
+    let module_output_dir = module_output_path.parent().unwrap();
     for import in &module.imports {
         let import = &import;
         let import_output_path = {
-            let mut path = state.sources[state.module_to_source_idx[*state
+            let path = state.sources[state.module_to_source_idx[*state
                 .module_name_to_module_idx
                 .get(&import.module_name.full_name)
                 .unwrap()]]
             .path
-            .to_path_buf();
-            // Get rid of the source file part and keep the directory
-            path.pop();
-            path.push(format!("{}.js", import.module_name.to_string(strings)));
-            output.to_path_buf().join(path)
+            .with_file_name(format!("{}.js", import.module_name.to_string(strings)));
+            let path = output.to_path_buf().join(path);
+            let relative_path = get_relative_path(module_output_dir, &path);
+            relative_path
         };
         let import_output_path = import_output_path.to_str().unwrap();
 
@@ -201,7 +203,7 @@ fn generate_imports(
                 module_full_name(code, &import.module_name, strings);
             }
         }
-        write!(code, " from \"{import_output_path}\"\n").unwrap();
+        generate_import_from_part_with_newline(code, import_output_path);
 
         if !import.exposing.is_empty() {
             let mut identifiers = vec![];
@@ -219,13 +221,19 @@ fn generate_imports(
             }
             indented(code, indent, "");
             let fields = identifiers.join(", ");
-            write!(
-                code,
-                "import {{ {fields} }} from \"{import_output_path}\"\n"
-            )
-            .unwrap();
+            write!(code, "import {{ {fields} }}").unwrap();
+            generate_import_from_part_with_newline(code, import_output_path);
         }
     }
+}
+
+fn generate_import_from_part_with_newline(code: &mut String, path: &str) {
+    let dot_slash = if path.starts_with("./") || path.starts_with("../") || path.starts_with("/") {
+        ""
+    } else {
+        "./"
+    };
+    write!(code, " from \"{dot_slash}{path}\"\n").unwrap();
 }
 
 fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], strings: &Strings) {
@@ -742,4 +750,41 @@ fn indented(out: &mut String, indent: usize, line: &str) {
 fn line(out: &mut String, indent: usize, line: &str) {
     indented(out, indent, line);
     out.push('\n');
+}
+
+fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
+    for (i, module) in name.parts.iter().enumerate() {
+        if i > 0 {
+            out.push_str("__");
+        }
+        let module = module.to_string(strings);
+        write!(out, "{module}").unwrap();
+    }
+}
+
+fn module_ffi_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
+    for (i, module) in name.parts.iter().enumerate() {
+        if i > 0 {
+            out.push_str("__");
+        }
+        let module = module.to_string(strings);
+        write!(out, "{module}").unwrap();
+    }
+    out.push_str("__ffi");
+}
+
+fn module_ffi_file_name(name: &str) -> String {
+    format!("{name}.ffi.js")
+}
+
+fn get_relative_path<P, B>(from_dir: P, to: B) -> PathBuf
+where
+    P: AsRef<Path>,
+    B: AsRef<Path>,
+{
+    diff_paths(&to, &from_dir).unwrap_or_else(|| {
+        let from = from_dir.as_ref().to_str().unwrap();
+        let to = to.as_ref().to_str().unwrap();
+        panic!("Couldn't find a relative path from {from} to {to}")
+    })
 }

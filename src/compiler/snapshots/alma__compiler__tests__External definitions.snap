@@ -1,8 +1,13 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 253
+assertion_line: 258
 expression: "compile(&[r\"\nmodule Test exposing (main)\n\nexternal test : Float -> Float -> Float\n\nmain a = test a 5\n\nmodule Test.Inner exposing (another_test)\n    external another_test : Float -> Float\n        \"])"
 ---
+// alma_out/Test.Inner.ffi.js
+
+// Copy from: Test.Inner.ffi.js
+
+
 // alma_out/Test.Inner.js
 
 /*
@@ -14,17 +19,36 @@ another_test : ∀ ∅ . Float -> Float
 */
 
 
-import * as Test__Inner__ffi from "alma_out/Test.Inner.ffi.js"
+import * as Test__Inner__ffi from "./Test.Inner.ffi.js"
 
-
-import * as Alma from "alma_out/Alma.js"
-import { True, False } from "alma_out/Alma.js"
+import * as Alma from "./Alma.js"
+import { True, False } from "./Alma.js"
 
 let another_test = Test__Inner__ffi.another_test
 
 export {
     another_test,
 }
+
+
+
+// alma_out/Alma.ffi.js
+
+export const or_ = (x, y) => x || y;
+export const and_ = (x, y) => x && y;
+
+export const eq = (x, y) => x === y;
+export const ne = (x, y) => x !== y;
+
+export const gt = (x, y) => x > y;
+export const ge = (x, y) => x >= y;
+export const lt = (x, y) => x < y;
+export const le = (x, y) => x <= y;
+
+export const add = (x, y) => x + y;
+export const sub = (x, y) => x - y;
+export const mult = (x, y) => x * y;
+export const div = (x, y) => x / y;
 
 
 
@@ -69,6 +93,7 @@ sub : ∀ ∅ . Float -> Float -> Float
 */
 
 
+import * as Alma__ffi from "./Alma.ffi.js"
 
 
 
@@ -83,29 +108,29 @@ let False = {
 }
 
 
-let or_ = new Error("Unimplemented")
+let or_ = Alma__ffi.or_
 
-let and_ = new Error("Unimplemented")
+let and_ = Alma__ffi.and_
 
-let eq = new Error("Unimplemented")
+let eq = Alma__ffi.eq
 
-let ne = new Error("Unimplemented")
+let ne = Alma__ffi.ne
 
-let gt = new Error("Unimplemented")
+let gt = Alma__ffi.gt
 
-let ge = new Error("Unimplemented")
+let ge = Alma__ffi.ge
 
-let lt = new Error("Unimplemented")
+let lt = Alma__ffi.lt
 
-let le = new Error("Unimplemented")
+let le = Alma__ffi.le
 
-let add = new Error("Unimplemented")
+let add = Alma__ffi.add
 
-let sub = new Error("Unimplemented")
+let sub = Alma__ffi.sub
 
-let mult = new Error("Unimplemented")
+let mult = Alma__ffi.mult
 
-let div = new Error("Unimplemented")
+let div = Alma__ffi.div
 
 export {
     // type Bool
@@ -127,6 +152,11 @@ export {
 
 
 
+// alma_out/Test.ffi.js
+
+// Copy from: Test.ffi.js
+
+
 // alma_out/Test.js
 
 /*
@@ -138,11 +168,10 @@ main : ∀ ∅ . Float -> Float
 */
 
 
-import * as Test__ffi from "alma_out/Test.ffi.js"
+import * as Test__ffi from "./Test.ffi.js"
 
-
-import * as Alma from "alma_out/Alma.js"
-import { True, False } from "alma_out/Alma.js"
+import * as Alma from "./Alma.js"
+import { True, False } from "./Alma.js"
 
 let test = Test__ffi.test
 

@@ -24,18 +24,18 @@ type Bool = True | False
 
 type String
 
-or_ : Bool -> Bool -> Bool
-and_ : Bool -> Bool -> Bool
+external or_ : Bool -> Bool -> Bool
+external and_ : Bool -> Bool -> Bool
 
-eq : a -> a -> Bool
-ne : a -> a -> Bool
+external eq : a -> a -> Bool
+external ne : a -> a -> Bool
 
-gt : Float -> Float -> Bool
-ge : Float -> Float -> Bool
-lt : Float -> Float -> Bool
-le : Float -> Float -> Bool
+external gt : Float -> Float -> Bool
+external ge : Float -> Float -> Bool
+external lt : Float -> Float -> Bool
+external le : Float -> Float -> Bool
 
-add : Float -> Float -> Float
-sub : Float -> Float -> Float
-mult : Float -> Float -> Float
-div : Float -> Float -> Float
+external add : Float -> Float -> Float
+external sub : Float -> Float -> Float
+external mult : Float -> Float -> Float
+external div : Float -> Float -> Float

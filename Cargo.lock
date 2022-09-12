@@ -33,6 +33,7 @@ dependencies = [
  "indexmap",
  "insta",
  "lazy_static",
+ "pathdiff",
  "pretty_assertions",
  "regex",
  "rustyline",
@@ -413,6 +414,12 @@ checksum = "628223faebab4e3e40667ee0b2336d34a5b960ff60ea743ddfdbcf7770bcfb66"
 dependencies = [
  "winapi",
 ]
+
+[[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "pretty_assertions"

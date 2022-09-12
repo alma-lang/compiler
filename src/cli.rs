@@ -1,7 +1,8 @@
 use crate::compiler;
 use crate::compiler::stages::process_sources;
+use crate::javascript::OutputFile;
 use crate::source::Source;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 // use rustyline::{error::ReadlineError, Editor};
 use std::fs;
 use std::process;
@@ -89,12 +90,29 @@ pub fn compile_files(arg_files: Vec<String>, output: &Path) {
 
     match compiler::compile(&entry_sources, &mut state, &output) {
         Ok(files) => {
-            for (path, contents) in files {
-                let write_result = fs::write(path, contents);
-                if let Err(e) = write_result {
-                    eprintln!("\nWriting output files failed.\n");
-                    eprintln!("\n{e}\n");
-                    process::exit(1);
+            for (path, file) in files {
+                let mut dir = PathBuf::from(&path);
+                dir.pop();
+                let dir_write_result = fs::create_dir_all(&dir);
+                match file {
+                    OutputFile::File(contents) => {
+                        let write_result =
+                            dir_write_result.and_then(|()| fs::write(&path, contents));
+                        if let Err(e) = write_result {
+                            eprintln!("\nWriting output file at '{path}' failed.\n");
+                            eprintln!("\n{e}\n");
+                            process::exit(1);
+                        }
+                    }
+                    OutputFile::CopyFrom(from_path) => {
+                        let copy_result =
+                            dir_write_result.and_then(|()| fs::copy(&from_path, &path));
+                        if let Err(e) = copy_result {
+                            eprintln!("\nCopying file '{from_path}' to '{path}' failed.\n");
+                            eprintln!("\n{e}\n");
+                            process::exit(1);
+                        }
+                    }
                 }
             }
             let output = output.to_str().unwrap();
