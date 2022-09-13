@@ -426,7 +426,7 @@ pub mod expression {
 
         #[derive(PartialEq, Debug, Clone)]
         pub struct Binop {
-            typ: Type,
+            pub typ: Type,
             pub precedence: u32,
             pub associativity: Associativity,
         }

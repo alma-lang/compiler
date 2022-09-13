@@ -1,7 +1,7 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 198
-expression: "compile(&[r\"\nmodule Test exposing (main)\n\nimport Test.WeirdMath exposing (weirdAdd)\n\nmain = weirdAdd\n\n\n\nmodule Test.Constants exposing (five)\n\n    five = 5\n\n\n\nmodule Test.WeirdMath exposing (weirdAdd)\n\n    import Test.Constants exposing (five)\n\n    weirdAdd = \\x y -> x * y + five\n        \"])"
+assertion_line: 272
+expression: "compile(&[r\"\nmodule Test exposing (main)\n\ntest = 1 - 2 + 3 * 4 * 5\n\nmain = 8 + 2 == 10 or False and True\n\n        \"])"
 ---
 // alma_out/Alma.ffi.js
 
@@ -123,63 +123,13 @@ export {
 
 
 
-// alma_out/Test.Constants.js
-
-/*
-
-module Test.Constants
-
-five : ∀ ∅ . Float
-
-*/
-
-
-
-import * as Alma from "./Alma.js"
-import { True, False } from "./Alma.js"
-
-let five = 5
-
-export {
-    five,
-}
-
-
-
-// alma_out/Test.WeirdMath.js
-
-/*
-
-module Test.WeirdMath
-
-weirdAdd : ∀ ∅ . Float -> Float -> Float
-
-*/
-
-
-
-import * as Alma from "./Alma.js"
-import { True, False } from "./Alma.js"
-import * as Test__Constants from "./Test.Constants.js"
-import { five } from "./Test.Constants.js"
-
-let weirdAdd = function (x, y) {
-    return ((x * y) + five)
-}
-
-export {
-    weirdAdd,
-}
-
-
-
 // alma_out/Test.js
 
 /*
 
 module Test
 
-main : ∀ ∅ . Float -> Float -> Float
+main : ∀ ∅ . Bool
 
 */
 
@@ -187,10 +137,10 @@ main : ∀ ∅ . Float -> Float -> Float
 
 import * as Alma from "./Alma.js"
 import { True, False } from "./Alma.js"
-import * as Test__WeirdMath from "./Test.WeirdMath.js"
-import { weirdAdd } from "./Test.WeirdMath.js"
 
-let main = weirdAdd
+let test = ((1 - 2) + ((3 * 4) * 5))
+
+let main = (Alma.eq((8 + 2), 10) || (False && True))
 
 export {
     main,

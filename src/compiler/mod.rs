@@ -268,5 +268,17 @@ module Test.Inner exposing (another_test)
     external another_test : Float -> Float
         "])
         );
+
+        assert_snapshot!(
+            "Binary operators",
+            compile(&[r"
+module Test exposing (main)
+
+test = 1 - 2 + 3 * 4 * 5
+
+main = 8 + 2 == 10 or False and True
+
+        "])
+        );
     }
 }

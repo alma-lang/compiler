@@ -1,4 +1,4 @@
-use crate::ast::expression::Expressions;
+use crate::ast::expression::{binop, Expressions};
 use crate::compiler::state::ModuleIndex;
 use crate::compiler::types::ModuleInterface;
 use crate::strings::Strings;
@@ -603,17 +603,48 @@ fn generate_expression(
 
         E::Binary {
             expression,
+            op,
             arguments,
-            ..
-        } => generate_fn_call(
-            indent,
-            code,
-            module_name,
-            &expressions[*expression],
-            arguments.iter().map(|a| &expressions[*a]),
-            strings,
-            expressions,
-        ),
+        } => {
+            let binop = match op.typ {
+                binop::Type::And => Some("&&"),
+                binop::Type::Or => Some("||"),
+                binop::Type::LessThan => Some("<"),
+                binop::Type::LessEqualThan => Some("<="),
+                binop::Type::GreaterThan => Some(">"),
+                binop::Type::GreaterEqualThan => Some(">="),
+                binop::Type::Addition => Some("+"),
+                binop::Type::Substraction => Some("-"),
+                binop::Type::Multiplication => Some("*"),
+                binop::Type::Division => Some("/"),
+                // TODO: Specialize equal and not equal too when the types are primitives
+                _ => None,
+            };
+
+            if let Some(binop) = binop {
+                let [left, right] = arguments;
+                generate_binary_operator(
+                    indent,
+                    code,
+                    module_name,
+                    binop,
+                    &expressions[*left],
+                    &expressions[*right],
+                    strings,
+                    expressions,
+                )
+            } else {
+                generate_fn_call(
+                    indent,
+                    code,
+                    module_name,
+                    &expressions[*expression],
+                    arguments.iter().map(|a| &expressions[*a]),
+                    strings,
+                    expressions,
+                )
+            }
+        }
 
         E::Lambda(lambda) => {
             generate_function(indent, code, module_name, "", lambda, strings, expressions);
@@ -716,6 +747,23 @@ fn generate_expression(
             indented(code, indent, "}()");
         }
     };
+}
+
+fn generate_binary_operator(
+    indent: usize,
+    code: &mut String,
+    module_name: &ModuleName,
+    binop: &str,
+    left: &Expression,
+    right: &Expression,
+    strings: &Strings,
+    expressions: &Expressions,
+) {
+    code.push('(');
+    generate_expression(indent, code, module_name, left, strings, expressions);
+    write!(code, " {binop} ").unwrap();
+    generate_expression(indent, code, module_name, right, strings, expressions);
+    code.push(')');
 }
 
 fn generate_fn_call<'ast, Args>(
