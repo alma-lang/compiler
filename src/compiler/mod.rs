@@ -280,5 +280,17 @@ main = 8 + 2 == 10 or False and True
 
         "])
         );
+
+        assert_snapshot!(
+            "External type",
+            compile(&[r"
+module Test exposing (main, Option(Some, None))
+
+external type Option a = Some a | None
+
+main = Some 1
+
+        "])
+        );
     }
 }

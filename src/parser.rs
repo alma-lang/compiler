@@ -40,7 +40,7 @@ use typed_index_collections::TiSlice;
     ● type_var             → IDENTIFIER
     ● type_def             → type_def_union | type_def_alias
     ● type_def_name        → type_identifier ( type_var )*
-    ● type_def_union       → "type" type_def_name "=" type_union_branches
+    ● type_def_union       → "external"? "type" type_def_name "=" type_union_branches
     ● type_def_alias       → "alias" type_def_name "=" type_record
     ● type_union_branches  → type_constructor ( "|" type_constructor )*
     ● type_constructor     → type_identifier ( type_param )*
@@ -840,13 +840,23 @@ impl<'a> State<'a> {
     }
 
     fn type_def_union(&mut self) -> ParseResult<Option<TypeDefinition>> {
-        let (type_token_index, type_token) = self.get_token();
+        let (first_token_index, first_token) = self.get_token();
+        let second_token = self.peek_next_token();
 
-        if self.match_token(TT::Type).is_none() {
-            return Ok(None);
-        }
+        let is_external = match (&first_token.kind, &second_token.kind) {
+            (TT::External, TT::Type) => {
+                self.advance();
+                self.advance();
+                true
+            }
+            (TT::Type, _) => {
+                self.advance();
+                false
+            }
+            (_, _) => return Ok(None),
+        };
 
-        let (name, vars) = self.type_def_name(&type_token)?;
+        let (name, vars) = self.type_def_name(&first_token)?;
 
         let (_, token) = self.get_token();
 
@@ -854,11 +864,17 @@ impl<'a> State<'a> {
             self.advance();
 
             let branches = self.type_union_branches()?;
-            types::TypeDefinitionData::Union {
-                constructors: branches,
+            if is_external {
+                types::TypeDefinitionData::External {
+                    constructors: branches,
+                }
+            } else {
+                types::TypeDefinitionData::Union {
+                    constructors: branches,
+                }
             }
         } else {
-            if self.is_token_equal_or_less_indented_than(type_token) {
+            if self.is_token_equal_or_less_indented_than(first_token) {
                 types::TypeDefinitionData::Empty
             } else {
                 return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
@@ -870,7 +886,7 @@ impl<'a> State<'a> {
             name,
             vars,
             typ: type_definition,
-            span: self.span(type_token_index, end_index),
+            span: self.span(first_token_index, end_index),
         }))
     }
 
@@ -1253,18 +1269,27 @@ impl<'a> State<'a> {
 
     fn top_level_typed_binding(&mut self) -> ParseResult<Option<TypedDefinition>> {
         let (_, first_token) = self.get_token();
-        let external = matches!(first_token.kind, External);
-        if external {
-            self.advance();
-        }
+        let second_token = self.peek_next_token();
+
+        let is_external = match (&first_token.kind, &second_token.kind) {
+            // Commit, and error out if the external binding wasn't a type signature below
+            (TT::External, TT::Identifier(_)) => {
+                self.advance();
+                true
+            }
+            // Don't commit if the next token is not an identifier, may be picked up later by type
+            // definitions
+            (TT::External, _) => return Ok(None),
+            (_, _) => false,
+        };
+
         let definition = self.typed_binding()?;
-        if external {
+        if is_external {
             match definition {
                 Some(TypedDefinition::TypeSignature(typ)) => {
                     Ok(Some(TypedDefinition::External(typ)))
                 }
-                Some(_) => Err(Error::new(*first_token, InvalidExternalDefinition)),
-                None => Ok(None),
+                Some(_) | None => Err(Error::new(*first_token, InvalidExternalDefinition)),
             }
         } else {
             Ok(definition)
@@ -3408,6 +3433,17 @@ main =
         test3 a b = c
 
     test
+"
+            ));
+        }
+
+        #[test]
+        fn test_external_types() {
+            assert_snapshot!(parse(
+                "\
+module Test exposing (Option)
+
+external type Option a = Some a | None
 "
             ));
         }

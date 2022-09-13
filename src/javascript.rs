@@ -143,7 +143,13 @@ fn generate_file(
 
     if !module.type_definitions.is_empty() {
         code.push('\n');
-        generate_types(indent, code, &module.type_definitions, strings);
+        generate_types(
+            indent,
+            code,
+            &module.name,
+            &module.type_definitions,
+            strings,
+        );
     }
 
     if !module.definitions.is_empty() {
@@ -236,7 +242,13 @@ fn generate_import_from_part_with_newline(code: &mut String, path: &str) {
     write!(code, " from \"{dot_slash}{path}\"\n").unwrap();
 }
 
-fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], strings: &Strings) {
+fn generate_types(
+    indent: usize,
+    code: &mut String,
+    module_name: &ModuleName,
+    types: &[TypeDefinition],
+    strings: &Strings,
+) {
     for (i, type_def) in types.iter().enumerate() {
         let type_def = &type_def;
         if i > 0 {
@@ -244,10 +256,29 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
         }
         match &type_def.typ {
             types::TypeDefinitionData::Empty => (),
+            types::TypeDefinitionData::External { constructors } => {
+                let type_name = type_def.name.to_string(strings);
+                indented(code, indent, "");
+                writeln!(code, "// type {type_name}\n").unwrap();
+
+                for (i, constructor) in constructors.iter().enumerate() {
+                    if i > 0 {
+                        code.push('\n')
+                    }
+                    let constructor = &constructor;
+                    let constructor_name = constructor.name.to_string(strings);
+
+                    indented(code, indent, "");
+                    write!(code, "let {constructor_name} = ").unwrap();
+                    module_ffi_full_name(code, module_name, strings);
+                    write!(code, ".{type_name}__{constructor_name}").unwrap();
+                    code.push_str("\n");
+                }
+            }
             types::TypeDefinitionData::Union { constructors } => {
                 let type_name = type_def.name.to_string(strings);
                 indented(code, indent, "");
-                writeln!(code, "// type {}\n", type_name).unwrap();
+                writeln!(code, "// type {type_name}\n").unwrap();
 
                 let max_params = constructors
                     .iter()
@@ -281,14 +312,14 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                             {
                                 let indent = add_indent(indent);
                                 indented(code, indent, "");
-                                writeln!(code, "tag: \"{}\",", constructor_name).unwrap();
+                                writeln!(code, "tag: \"{constructor_name}\",").unwrap();
 
                                 for i in 0..max_params {
                                     indented(code, indent, "");
                                     if i < num_params {
-                                        writeln!(code, "_{},", i).unwrap();
+                                        writeln!(code, "_{i},").unwrap();
                                     } else {
-                                        writeln!(code, "_{}: null,", i).unwrap();
+                                        writeln!(code, "_{i}: null,").unwrap();
                                     }
                                 }
                             }
@@ -301,11 +332,11 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
                         {
                             let indent = add_indent(indent);
                             indented(code, indent, "");
-                            writeln!(code, "tag: \"{}\",", constructor_name).unwrap();
+                            writeln!(code, "tag: \"{constructor_name}\",").unwrap();
 
                             for i in 0..max_params {
                                 indented(code, indent, "");
-                                writeln!(code, "_{}: null,", i).unwrap();
+                                writeln!(code, "_{i}: null,").unwrap();
                             }
                         }
                     }
@@ -336,16 +367,16 @@ fn generate_definitions(
                 let name = typ.name.to_string(strings);
 
                 indented(code, indent, "");
-                write!(code, "let {} = ", name).unwrap();
+                write!(code, "let {name} = ").unwrap();
                 module_ffi_full_name(code, module_name, strings);
-                writeln!(code, ".{}", name).unwrap();
+                writeln!(code, ".{name}").unwrap();
             }
             TypedDefinition::TypeSignature(typ) => {
                 indented(code, indent, "");
                 writeln!(
                     code,
-                    "let {} = new Error(\"Unimplemented\")",
-                    typ.name.to_string(strings)
+                    "let {type_name} = new Error(\"Unimplemented\")",
+                    type_name = typ.name.to_string(strings)
                 )
                 .unwrap();
             }
@@ -398,9 +429,9 @@ fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: 
 
     for export in &module.exports {
         match &export.typ {
-            ExportData::Identifier(ident) => {
+            ExportData::Identifier(identifier) => {
                 indented(code, add_indent(indent), "");
-                writeln!(code, "{},", ident.to_string(strings)).unwrap();
+                writeln!(code, "{},", identifier.to_string(strings)).unwrap();
             }
             ExportData::Type { constructors, name } => {
                 if !constructors.is_empty() {

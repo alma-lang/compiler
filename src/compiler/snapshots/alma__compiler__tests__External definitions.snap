@@ -50,6 +50,9 @@ export const sub = (x, y) => x - y;
 export const mult = (x, y) => x * y;
 export const div = (x, y) => x / y;
 
+export const Bool__True = true;
+export const Bool__False = false;
+
 
 
 // alma_out/Alma.js
@@ -99,13 +102,9 @@ import * as Alma__ffi from "./Alma.ffi.js"
 
 // type Bool
 
-let True = {
-    tag: "True",
-}
+let True = Alma__ffi.Bool__True
 
-let False = {
-    tag: "False",
-}
+let False = Alma__ffi.Bool__False
 
 
 let or_ = Alma__ffi.or_

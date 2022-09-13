@@ -608,26 +608,9 @@ mod test {
 
     #[test]
     fn test_printing_polytypes() {
-        let mut strings = Strings::new();
+        let strings = Strings::new();
 
         let mut types = Types::new();
-        let module = strings.get_or_intern("Test");
-
-        let float = types.push_and_get_key(Type::Named {
-            module,
-            name: strings.get_or_intern("Float"),
-            params: Rc::new(vec![]),
-        });
-        let string = types.push_and_get_key(Type::Named {
-            module,
-            name: strings.get_or_intern("String"),
-            params: Rc::new(vec![]),
-        });
-        let int = types.push_and_get_key(Type::Named {
-            module,
-            name: strings.get_or_intern("Int"),
-            params: Rc::new(vec![]),
-        });
         let a = types.push_and_get_key(Type::Var(TypeVar::Unbound(TypeVarId(0), Level(0))));
         let b = types.push_and_get_key(Type::Var(TypeVar::Unbound(TypeVarId(1), Level(0))));
 

@@ -20,7 +20,7 @@ type Unit
 
 type Float
 
-type Bool = True | False
+external type Bool = True | False
 
 type String
 

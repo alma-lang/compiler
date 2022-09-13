@@ -1242,7 +1242,8 @@ pub fn infer<'state>(
                 });
                 types_env.insert(name, state.generalize(type_def_type, &types_vec));
             }
-            ast::types::TypeDefinitionData::Union { constructors } => {
+            ast::types::TypeDefinitionData::External { constructors }
+            | ast::types::TypeDefinitionData::Union { constructors } => {
                 let type_def_type = types_vec.push_and_get_key(Type::Named {
                     module: module_ast.name.full_name,
                     name,

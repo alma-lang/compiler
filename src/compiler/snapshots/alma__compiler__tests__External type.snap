@@ -1,7 +1,7 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 247
-expression: "compile(&[r\"\nmodule Test exposing (main)\n\ntest : Float -> Float -> Float\n\nmain a = test a 5\n        \"])"
+assertion_line: 284
+expression: "compile(&[r\"\nmodule Test exposing (main, Option(Some, None))\n\nexternal type Option a = Some a | None\n\nmain = Some 1\n\n        \"])"
 ---
 // alma_out/Alma.ffi.js
 
@@ -122,29 +122,44 @@ export {
 
 
 
+// alma_out/Test.ffi.js
+
+// Copy from: Test.ffi.js
+
+
 // alma_out/Test.js
 
 /*
 
 module Test
 
-main : ∀ ∅ . Float -> Float
+None : ∀ a . Option a
+
+Some : ∀ a . a -> Option a
+
+main : ∀ ∅ . Option Float
 
 */
 
 
+import * as Test__ffi from "./Test.ffi.js"
 
 import * as Alma from "./Alma.js"
 import { True, False } from "./Alma.js"
 
-let test = new Error("Unimplemented")
+// type Option
 
-function main(a) {
-    return test(a, 5)
-}
+let Some = Test__ffi.Option__Some
+
+let None = Test__ffi.Option__None
+
+let main = Some(1)
 
 export {
     main,
+    // type Option
+    Some,
+    None,
 }
 
 
