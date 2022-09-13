@@ -1,13 +1,13 @@
 ---
 source: src/parser.rs
-assertion_line: 3202
-expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\ntype Fruit a b = { f : (a -> b) }\n\")"
+assertion_line: 3248
+expression: "parse(\"\\\nmodule Test exposing (Fruit)\n\nalias Fruit a b = { f : (a -> b) }\n\")"
 ---
 Input:
 
 module Test exposing (Fruit)
 
-type Fruit a b = { f : (a -> b) }
+alias Fruit a b = { f : (a -> b) }
 
 
 Result:

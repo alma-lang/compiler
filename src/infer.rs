@@ -2912,7 +2912,7 @@ main = Banana (\\x y -> x + y)
                 "\
 module Test exposing (main)
 
-type Math num =
+alias Math num =
     { add : num -> num -> num
     , sub : num -> num -> num
     }
@@ -2926,7 +2926,7 @@ main = M { add: \\x y -> x + y, sub: \\x y -> x - y }
                 "\
 module Test exposing (main)
 
-type Math num =
+alias Math num =
     { add : num -> num -> num
     , sub : num -> num -> num
     }
@@ -3055,7 +3055,7 @@ main = List 1
                 "\
 module Test exposing (main)
 
-type List a = { x : a }
+alias List a = { x : a }
 
 main : List Float
 main = { x : 1 }
@@ -3069,7 +3069,7 @@ main = { x : 1 }
                 "\
 module Test exposing (main)
 
-type List a = { x : a }
+alias List a = { x : a }
 
 main : List
 main = { x : 1 }
@@ -3079,7 +3079,7 @@ main = { x : 1 }
                 "\
 module Test exposing (main)
 
-type List a = { x : a }
+alias List a = { x : a }
 
 main : List Float String
 main = { x : 1 }
@@ -3096,7 +3096,7 @@ module Test exposing (main)
 import Test.Record exposing (Record)
 
 module Test.Record exposing (Record)
-    type Record a = { x : a }
+    alias Record a = { x : a }
 
 main : Record Float
 main = { x : 5 }

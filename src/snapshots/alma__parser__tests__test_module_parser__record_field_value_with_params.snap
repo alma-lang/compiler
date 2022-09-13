@@ -1,14 +1,14 @@
 ---
 source: src/parser.rs
-assertion_line: 3103
-expression: "parse(\"\nmodule Test\n\ntype Fruit a = { test : Banana a (Phone a) }\n\")"
+assertion_line: 3149
+expression: "parse(\"\nmodule Test\n\nalias Fruit a = { test : Banana a (Phone a) }\n\")"
 ---
 Input:
 
 
 module Test
 
-type Fruit a = { test : Banana a (Phone a) }
+alias Fruit a = { test : Banana a (Phone a) }
 
 
 Result:

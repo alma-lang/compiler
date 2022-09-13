@@ -369,6 +369,7 @@ impl<'source, 'strings> State<'source, 'strings> {
                                     "exposing" => Exposing,
                                     "module" => Module,
                                     "type" => Type,
+                                    "alias" => Alias,
                                     "external" => External,
                                     _ => {
                                         if is_capitalized {

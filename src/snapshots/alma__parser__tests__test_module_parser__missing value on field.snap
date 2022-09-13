@@ -1,35 +1,35 @@
 ---
 source: src/parser.rs
-assertion_line: 3025
-expression: "parse(\"\nmodule Test\n\ntype Fruit = { name }\n\")"
+assertion_line: 3086
+expression: "parse(\"\nmodule Test\n\nalias Fruit = { name }\n\")"
 ---
 Input:
 
 
 module Test
 
-type Fruit = { name }
+alias Fruit = { name }
 
 
 Result:
 
-Test.alma:4:20
+Test.alma:4:21
 
 Expected `|` between the type variable and the fields of the record (like this `{ a | field : Type }`), but instead found: `}`
 
   2│  module Test
   3│  
-  4│  type Fruit = { name }
-   │                      ↑
+  4│  alias Fruit = { name }
+   │                       ↑
 
 Error {
     kind: InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
     token: Token {
         kind: RightBrace,
         indent: 0,
-        start: 34,
-        end: 35,
+        start: 35,
+        end: 36,
         line: 4,
-        column: 20,
+        column: 21,
     },
 }

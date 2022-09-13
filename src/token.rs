@@ -66,6 +66,7 @@ pub enum Type {
     Module,
     Import,
     Type,
+    Alias,
     External,
 
     Comment,
@@ -119,6 +120,7 @@ impl Type {
             Module => "module",
             Import => "import",
             Type => "type",
+            Alias => "alias",
             External => "external",
 
             Comment => "[Comment]",

@@ -33,12 +33,15 @@ use typed_index_collections::TiSlice;
     ● imports              → ( import )*
     ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
 
-    ● module_definitions   → ( type_def | module | typed_binding )+
+    ● module_definitions   → ( type_def | module | top_level_binding )+
 
     // Type definitions
     ● type_identifier      → CAPITALIZED_IDENTIFIER
     ● type_var             → IDENTIFIER
-    ● type_def             → "type" type_identifier ( type_var )* "=" type_record | type_union_branches
+    ● type_def             → type_def_union | type_def_alias
+    ● type_def_name        → type_identifier ( type_var )*
+    ● type_def_union       → "type" type_def_name "=" type_union_branches
+    ● type_def_alias       → "alias" type_def_name "=" type_record
     ● type_union_branches  → type_constructor ( "|" type_constructor )*
     ● type_constructor     → type_identifier ( type_param )*
     ● type_param           → type_parens | type_identifier | type_var | type_record
@@ -52,6 +55,8 @@ use typed_index_collections::TiSlice;
 
     // Expressions
     ● let                  → "let" ( typed_binding )+ ( "in" )? expression
+    ● top_level_binding    → "external" type_signature
+                           | typed_binding
     ● typed_binding        → type_signature binding
                            | binding
     ● binding              → ( identifier ( params )? | pattern ) "=" expression
@@ -111,6 +116,7 @@ enum ErrorType {
     InvalidTypeDefinitionTypeVarsOrEqualSeparator,
     InvalidUnionTypeDefinitionConstructor,
     MissingUnionTypeDefinitionConstructors,
+    InvalidAliasDefinitionType,
     InvalidRecordTypeFieldTypeOrLastRecordDelimiter { first_delimiter: Token },
     InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
@@ -277,6 +283,11 @@ impl ErrorType {
             MissingUnionTypeDefinitionConstructors => expected_but_found(
                 "Expected at least one constructor \
                 for the type like `type User = User Int`",
+            ),
+
+            InvalidAliasDefinitionType => expected_but_found(
+                "Expected a record type for the type alias \
+                like `alias User = { name : String }`",
             ),
 
             InvalidRecordTypeFieldTypeOrLastRecordDelimiter { first_delimiter: _ } => {
@@ -799,19 +810,23 @@ impl<'a> State<'a> {
     }
 
     fn type_def(&mut self) -> ParseResult<Option<TypeDefinition>> {
-        let (type_token_index, type_token) = self.get_token();
-
-        if self.match_token(TT::Type).is_none() {
-            return Ok(None);
+        match self.type_def_union() {
+            Ok(None) => self.type_def_alias(),
+            result => result,
         }
+    }
 
+    fn type_def_name(
+        &mut self,
+        type_def_first_token: &Token,
+    ) -> ParseResult<(CapitalizedIdentifier, Vec<Identifier>)> {
         let name = self.required(
             |self_| Ok(self_.capitalized_identifier()),
             |self_| self_.error(InvalidTypeDefinitionName),
         )?;
 
         let vars = self.many(|self_| {
-            if self_.is_token_in_same_line_or_nested_indent_from(type_token) {
+            if self_.is_token_in_same_line_or_nested_indent_from(type_def_first_token) {
                 match self_.identifier() {
                     Some(variable) => Ok(Some(variable)),
                     None => Ok(None),
@@ -821,18 +836,26 @@ impl<'a> State<'a> {
             }
         })?;
 
+        Ok((name, vars))
+    }
+
+    fn type_def_union(&mut self) -> ParseResult<Option<TypeDefinition>> {
+        let (type_token_index, type_token) = self.get_token();
+
+        if self.match_token(TT::Type).is_none() {
+            return Ok(None);
+        }
+
+        let (name, vars) = self.type_def_name(&type_token)?;
+
         let (_, token) = self.get_token();
 
         let type_definition = if matches!(token.kind, Equal) {
             self.advance();
 
-            if let Some(record) = self.type_record()? {
-                types::TypeDefinitionData::Record(record)
-            } else {
-                let branches = self.type_union_branches()?;
-                types::TypeDefinitionData::Union {
-                    constructors: branches,
-                }
+            let branches = self.type_union_branches()?;
+            types::TypeDefinitionData::Union {
+                constructors: branches,
             }
         } else {
             if self.is_token_equal_or_less_indented_than(type_token) {
@@ -848,6 +871,42 @@ impl<'a> State<'a> {
             vars,
             typ: type_definition,
             span: self.span(type_token_index, end_index),
+        }))
+    }
+
+    fn type_def_alias(&mut self) -> ParseResult<Option<TypeDefinition>> {
+        let (alias_token_index, alias_token) = self.get_token();
+
+        if self.match_token(TT::Alias).is_none() {
+            return Ok(None);
+        }
+
+        let (name, vars) = self.type_def_name(&alias_token)?;
+
+        let (_, token) = self.get_token();
+
+        let type_definition = if matches!(token.kind, Equal) {
+            self.advance();
+
+            if let Some(record) = self.type_record()? {
+                types::TypeDefinitionData::Record(record)
+            } else {
+                return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
+            }
+        } else {
+            if self.is_token_equal_or_less_indented_than(alias_token) {
+                types::TypeDefinitionData::Empty
+            } else {
+                return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
+            }
+        };
+
+        let (end_index, _) = self.prev_token();
+        Ok(Some(types::TypeDefinition {
+            name,
+            vars,
+            typ: type_definition,
+            span: self.span(alias_token_index, end_index),
         }))
     }
 
@@ -3008,7 +3067,7 @@ type Fruit a =
                     "
 module Test
 
-type Fruit = {}
+alias Fruit = {}
 "
                 )
             );
@@ -3018,7 +3077,7 @@ type Fruit = {}
                     "
 module Test
 
-type Fruit = {
+alias Fruit = {
 "
                 )
             );
@@ -3028,7 +3087,7 @@ type Fruit = {
                     "
 module Test
 
-type Fruit = { name }
+alias Fruit = { name }
 "
                 )
             );
@@ -3038,7 +3097,7 @@ type Fruit = { name }
                     "
 module Test
 
-type Fruit = { name : String }
+alias Fruit = { name : String }
 "
                 )
             );
@@ -3048,7 +3107,7 @@ type Fruit = { name : String }
                     "
 module Test
 
-type Fruit = { name : String , banana: Phone }
+alias Fruit = { name : String , banana: Phone }
 "
                 )
             );
@@ -3060,7 +3119,7 @@ type Fruit = { name : String , banana: Phone }
                 "
 module Test
 
-type Fruit a = { a | name : String , banana: Phone }
+alias Fruit a = { a | name : String , banana: Phone }
 "
             ));
         }
@@ -3089,14 +3148,14 @@ type Fruit a = Banana a (Phone a)
                 "
 module Test
 
-type Fruit a = { test : Banana a (Phone a) }
+alias Fruit a = { test : Banana a (Phone a) }
 "
             ));
             assert_snapshot!(parse(
                 "
 module Test
 
-type Fruit a = { test : (Banana a (Phone a)) }
+alias Fruit a = { test : (Banana a (Phone a)) }
 "
             ));
         }
@@ -3181,14 +3240,14 @@ type Fruit a b = Fruit (a -> b)
                 "\
 module Test exposing (Fruit)
 
-type Fruit a b = { f : a -> b }
+alias Fruit a b = { f : a -> b }
 "
             ));
             assert_snapshot!(parse(
                 "\
 module Test exposing (Fruit)
 
-type Fruit a b = { f : (a -> b) }
+alias Fruit a b = { f : (a -> b) }
 "
             ));
             assert_snapshot!(parse(

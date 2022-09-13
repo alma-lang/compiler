@@ -1,14 +1,14 @@
 ---
 source: src/parser.rs
-assertion_line: 3015
-expression: "parse(\"\nmodule Test\n\ntype Fruit = {\n\")"
+assertion_line: 3076
+expression: "parse(\"\nmodule Test\n\nalias Fruit = {\n\")"
 ---
 Input:
 
 
 module Test
 
-type Fruit = {
+alias Fruit = {
 
 
 Result:
@@ -19,16 +19,16 @@ Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x
 
   3│  module Test
   4│  
-  5│  type Fruit = {
-   │                ↑
+  5│  alias Fruit = {
+   │                 ↑
 
 Error {
     kind: InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     token: Token {
         kind: Eof,
         indent: 0,
-        start: 29,
-        end: 29,
+        start: 30,
+        end: 30,
         line: 5,
         column: 0,
     },
