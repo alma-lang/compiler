@@ -70,7 +70,6 @@ sub : ∀ ∅ . Float -> Float -> Float
 import * as Alma__ffi from "./Alma.ffi.js"
 
 
-
 // type Bool
 
 let True = Alma__ffi.Bool__True
