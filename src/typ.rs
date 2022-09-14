@@ -90,6 +90,7 @@ impl Type {
         match self {
             Var(TypeVar::Bound(t)) => types[*t].should_parenthesize(types),
             Fn { .. } => true,
+            Named { params, .. } => params.len() > 0,
             _ => false,
         }
     }
@@ -165,14 +166,21 @@ impl Type {
             Named { name, params, .. } => {
                 s.push_str(strings.resolve(*name));
                 for param in params.iter() {
+                    let param = &types[*param];
+
                     s.push(' ');
-                    types[*param].to_string_rec(
-                        cur_type_var_name,
-                        type_var_names,
-                        s,
-                        strings,
-                        types,
-                    );
+
+                    let parens = param.should_parenthesize(types);
+
+                    if parens {
+                        s.push('(');
+                    }
+
+                    param.to_string_rec(cur_type_var_name, type_var_names, s, strings, types);
+
+                    if parens {
+                        s.push(')');
+                    }
                 }
             }
 
