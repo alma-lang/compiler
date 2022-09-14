@@ -1,11 +1,11 @@
 ---
 source: src/parser.rs
-assertion_line: 2420
-expression: "parse(\"hello ()\")"
+assertion_line: 2459
+expression: "parse(\"hello {}\")"
 ---
 Input:
 
-hello ()
+hello {}
 
 Result:
 
@@ -40,7 +40,9 @@ Index(
         span: Index(
             1,
         ),
-        expr: Unit,
+        expr: Record {
+            fields: [],
+        },
     },
     Index(
         2,

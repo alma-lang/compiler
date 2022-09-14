@@ -25,9 +25,6 @@ pub enum TypeVar {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Type {
-    // Unit type ()
-    Unit,
-
     // Named type (Int, Bool, List a, ...)
     Named {
         module: ModuleFullName,
@@ -165,8 +162,6 @@ impl Type {
 
         use Type::*;
         match self {
-            Unit => s.push_str("()"),
-
             Named { name, params, .. } => {
                 s.push_str(strings.resolve(*name));
                 for param in params.iter() {
@@ -474,7 +469,6 @@ mod test {
         let b = types.push_and_get_key(Type::Var(TypeVar::Unbound(TypeVarId(1), Level(0))));
 
         let tests: Vec<(Index, &'static str)> = vec![
-            (types.push_and_get_key(Type::Unit), "()"),
             (float, "Float"),
             (
                 types.push_and_get_key(Type::Named {
@@ -494,11 +488,8 @@ mod test {
             ),
             (a, "a"),
             (
-                {
-                    let unit = types.push_and_get_key(Type::Unit);
-                    types.push_and_get_key(Type::Var(TypeVar::Bound(unit)))
-                },
-                "()",
+                types.push_and_get_key(Type::Var(TypeVar::Bound(float))),
+                "Float",
             ),
             (
                 types.push_and_get_key(Type::Fn {

@@ -391,8 +391,6 @@ impl State {
             types: &mut Types,
         ) -> typ::Index {
             match &types[t] {
-                Unit => t,
-
                 Named {
                     module,
                     name,
@@ -507,8 +505,6 @@ impl State {
             types: &Types,
         ) {
             match t {
-                Unit => (),
-
                 Named { params, .. } => {
                     for param in params.iter() {
                         find_all_tvs(current_level, vars, &types[*param], types);
@@ -571,7 +567,6 @@ impl State {
  */
 fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> bool {
     match &types[t] {
-        Unit => false,
         Named { .. } => false,
 
         Var(var) => match var {
@@ -731,8 +726,6 @@ fn unify_rec(
     types: &mut Types,
 ) -> Result<(), Error> {
     match (&types[t1], &types[t2]) {
-        (Unit, Unit) => Ok(()),
-
         (
             Named {
                 module,
@@ -975,16 +968,14 @@ fn unify_rec(
         (Alias { destination: t, .. }, _) => unify_rec(state, *t, t2, ast, typ, ast2, typ2, types),
         (_, Alias { destination: t, .. }) => unify_rec(state, t1, *t, ast, typ, ast2, typ2, types),
 
-        (Unit, _)
-        | (Named { .. }, _)
-        | (Fn { .. }, _)
-        | (Record { .. }, _)
-        | (RecordExt { .. }, _) => Err(Error::TypeMismatch {
-            actual_type_location: ast,
-            actual_type: typ,
-            expected_type_location: ast2,
-            expected_type: typ2,
-        }),
+        (Named { .. }, _) | (Fn { .. }, _) | (Record { .. }, _) | (RecordExt { .. }, _) => {
+            Err(Error::TypeMismatch {
+                actual_type_location: ast,
+                actual_type: typ,
+                expected_type_location: ast2,
+                expected_type: typ2,
+            })
+        }
     }
 }
 
@@ -1099,11 +1090,7 @@ fn signature_is_too_generic(
 
         (_, Alias { destination, .. }) => signature_is_too_generic(signature, *destination, types),
 
-        (Unit, _)
-        | (Named { .. }, _)
-        | (Fn { .. }, _)
-        | (Record { .. }, _)
-        | (RecordExt { .. }, _) => false,
+        (Named { .. }, _) | (Fn { .. }, _) | (Record { .. }, _) | (RecordExt { .. }, _) => false,
     }
 }
 
@@ -1533,8 +1520,6 @@ fn infer_rec<'ast>(
 ) -> typ::Index {
     let ast = &expressions[expr_idx];
     let typ = match &ast.expr {
-        E::Unit => types_env.get(&strings.get_or_intern("Unit")).unwrap().typ,
-
         E::Float(_) => types_env.get(&strings.get_or_intern("Float")).unwrap().typ,
 
         E::String_(_) => types_env.get(&strings.get_or_intern("String")).unwrap().typ,

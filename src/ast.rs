@@ -338,7 +338,6 @@ pub mod expression {
 
     #[derive(Debug, Clone)]
     pub enum ExpressionData {
-        Unit,
         Float(f64),
         String_(StringSymbol),
         Identifier {

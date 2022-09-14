@@ -1883,14 +1883,6 @@ impl<'a> State<'a> {
             LeftParen => {
                 self.advance();
 
-                // Unit expression
-                if let Some((right_paren_token_index, _)) = self.match_token(RightParen) {
-                    return Ok(Some(E::untyped(
-                        ED::Unit,
-                        self.span(token_index, right_paren_token_index),
-                    )));
-                }
-
                 // Parenthesized expression
                 let expr = self.required(Self::expression, |self_| {
                     self_.error(InvalidParenthesizedExpression)
@@ -2464,7 +2456,7 @@ fun arg1
   arg2 arg3
   arg4",
             ));
-            assert_snapshot!(parse("hello ()"));
+            assert_snapshot!(parse("hello {}"));
         }
 
         #[test]

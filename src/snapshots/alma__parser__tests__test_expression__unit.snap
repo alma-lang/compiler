@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2352
+assertion_line: 2391
 expression: "parse(\"()\")"
 ---
 Input:
@@ -9,30 +9,21 @@ Input:
 
 Result:
 
-Index(
-    0,
-)
+Test.alma:1:1
 
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            0,
-        ),
-        expr: Unit,
-    },
-}
+Expected an expression inside the parenthesis, but instead found: `)`
 
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            1,
-        ),
+  1│  ()
+   │   ↑
+
+Error {
+    kind: InvalidParenthesizedExpression,
+    token: Token {
+        kind: RightParen,
+        indent: 0,
+        start: 1,
+        end: 2,
+        line: 1,
+        column: 1,
     },
 }

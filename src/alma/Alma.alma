@@ -16,8 +16,6 @@ module Alma exposing
     , div
     )
 
-type Unit
-
 type Float
 
 external type Bool = True | False

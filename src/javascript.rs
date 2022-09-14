@@ -518,8 +518,6 @@ fn generate_expression(
     expressions: &Expressions,
 ) {
     match &expression.expr {
-        E::Unit => code.push_str("()"),
-
         E::Float(float) => write!(code, "{float}").unwrap(),
 
         E::String_(string) => {
