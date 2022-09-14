@@ -61,7 +61,12 @@ use typed_index_collections::TiSlice;
                            | binding
     ● binding              → ( identifier ( params )? | pattern ) "=" expression
     ● lambda               → "\" params "->" expression
-    ● pattern              → parsed from Ast.Pattern
+    ● pattern              → "_"
+                           | identifier
+                           | NUMBER
+                           | STRING
+                           | type_identifier ( pattern )*
+                           | "(" pattern ")"
     ● if                   → "if" binary "then" expression "else" expression
     // Operators
     ● binary               → unary ( binop unary )*
@@ -71,7 +76,7 @@ use typed_index_collections::TiSlice;
     ● call                 → prop_access ( prop_access )*
     ● prop_access          → primary properties
     ● properties           → ( "." ( IDENTIFIER ) )*
-    ● primary              → NUMBER | STRING | "false" | "true"
+    ● primary              → NUMBER | STRING
                            | ( module_name "." )? ( IDENTIFIER | CAPITALIZED_IDENTIFIER )
                            | "." IDENTIFIER
                            | record
@@ -160,6 +165,11 @@ enum ErrorType {
     InvalidRecordFieldKey,
     InvalidRecordFieldKeyValueSeparator,
     InvalidRecordFieldValue,
+
+    // Patterns
+    InvalidParenthesizedPattern,
+    InvalidParenthesizedPatternLastDelimiter { first_delimiter: Token },
+    UselessPattern,
 }
 
 use ErrorType::*;
@@ -171,6 +181,10 @@ impl ErrorType {
                 Some(*first_delimiter)
             }
             InvalidParenthesizedTypeDelimiter { first_delimiter } => Some(*first_delimiter),
+            InvalidParenthesizedExpressionLastDelimiter { first_delimiter } => {
+                Some(*first_delimiter)
+            }
+            InvalidParenthesizedPatternLastDelimiter { first_delimiter } => Some(*first_delimiter),
             _ => None,
         }
     }
@@ -510,6 +524,18 @@ impl ErrorType {
                 "Expected an expression for the value \
                 of the field in the record",
             ),
+
+            InvalidParenthesizedPattern => {
+                expected_but_found("Expected an expression inside the parenthesis")
+            }
+
+            InvalidParenthesizedPatternLastDelimiter { first_delimiter: _ } =>
+            // TODO: This error message can be better
+            {
+                expected_but_found("Expected `)` after parenthesized pattern")
+            }
+
+            UselessPattern => "This incomplete pattern can't be exhaustive here.".to_owned(),
         }
     }
 }
@@ -1348,6 +1374,10 @@ impl<'a> State<'a> {
     fn binding(&mut self) -> ParseResult<Option<Definition>> {
         let pattern = self.pattern()?;
 
+        if let Some(pattern) = &pattern {
+            self.error_if_useless_binding_pattern(&pattern)?;
+        }
+
         let definition = match pattern {
             Some(Pattern {
                 typ: PatternData::Identifier(identifier),
@@ -1372,6 +1402,10 @@ impl<'a> State<'a> {
                             definition_identifier: identifier.clone(),
                         })
                     })?;
+
+                    for param in &params {
+                        self.error_if_useless_binding_pattern(param)?;
+                    }
 
                     let expr = self.binding_rhs()?;
 
@@ -1446,6 +1480,10 @@ impl<'a> State<'a> {
         let params =
             self.one_or_many(Self::pattern, |self_| self_.error(MissingLambdaParamaters))?;
 
+        for param in &params {
+            self.error_if_useless_binding_pattern(param)?;
+        }
+
         if self.match_token(Arrow).is_none() {
             return Err(self.error(InvalidLambdaArrow));
         }
@@ -1462,10 +1500,33 @@ impl<'a> State<'a> {
         )))
     }
 
-    fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
-        let token_index = self.get_token_index();
+    fn error_if_useless_binding_pattern(&mut self, pattern: &Pattern) -> ParseResult<()> {
+        if pattern.typ.is_useless_in_bindings() {
+            Err(Error::new(
+                self.tokens[self.spans[pattern.span].start],
+                UselessPattern,
+            ))
+        } else {
+            Ok(())
+        }
+    }
 
-        if self.match_token(TT::Underscore).is_some() {
+    fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
+        let (token_index, token) = self.get_token();
+
+        if self.match_token(TT::LeftParen).is_some() {
+            if let Some(pattern) = self.pattern()? {
+                if self.match_token(RightParen).is_some() {
+                    Ok(Some(pattern))
+                } else {
+                    Err(self.error(InvalidParenthesizedPatternLastDelimiter {
+                        first_delimiter: *token,
+                    }))
+                }
+            } else {
+                Err(self.error(InvalidParenthesizedPattern))
+            }
+        } else if self.match_token(TT::Underscore).is_some() {
             Ok(Some(Pattern {
                 typ: PatternData::Hole,
                 span: self.span(token_index, token_index),
@@ -1474,6 +1535,39 @@ impl<'a> State<'a> {
             Ok(Some(Pattern {
                 typ: PatternData::Identifier(identifier),
                 span: self.span(token_index, token_index),
+            }))
+        } else if let TT::String_(s) = token.kind {
+            self.advance();
+            Ok(Some(Pattern {
+                typ: PatternData::String_(s),
+                span: self.span(token_index, token_index),
+            }))
+        } else if let TT::Float(n) = token.kind {
+            let n = self
+                .strings
+                .resolve(n)
+                .parse::<f64>()
+                .map_err(|_| Error::new(*token, InvalidFloat(*token)))?;
+
+            self.advance();
+            Ok(Some(Pattern {
+                typ: PatternData::Float(n),
+                span: self.span(token_index, token_index),
+            }))
+        } else if let Some(pattern) = self.type_pattern()? {
+            Ok(Some(pattern))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn type_pattern(&mut self) -> ParseResult<Option<Pattern>> {
+        let token_index = self.get_token_index();
+        if let Some(constructor) = self.capitalized_identifier() {
+            let args = self.many(Self::pattern)?;
+            Ok(Some(Pattern {
+                typ: PatternData::Type(constructor, args),
+                span: self.span(token_index, self.get_token_index()),
             }))
         } else {
             Ok(None)
@@ -3436,6 +3530,58 @@ main =
 module Test exposing (Option)
 
 external type Option a = Some a | None
+"
+            ));
+        }
+
+        #[test]
+        fn test_parenthesized_pattern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+(hello) = world
+
+(_) = world
+"
+            ));
+        }
+
+        #[test]
+        fn test_string_pattern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+\"\" = world
+
+\"hello\" = world
+"
+            ));
+        }
+
+        #[test]
+        fn test_float_pattern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+5 = world
+
+3 = world
+"
+            ));
+        }
+
+        #[test]
+        fn test_type_pattern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+Banana = world
+
+Phone hello = world
 "
             ));
         }

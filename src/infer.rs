@@ -2013,6 +2013,11 @@ fn infer_definitions<'ast>(
                     match &pattern.typ {
                         P::Hole => (),
                         P::Identifier(x) => env.insert(x.name, t),
+                        P::String_(_s) => (),
+                        P::Float(_n) => (),
+                        P::Type(_constructor, _args) => {
+                            todo!("make new types for all variables and insert them in the environment")
+                        }
                     }
                 }
             }
@@ -2142,6 +2147,11 @@ fn infer_lambda<'ast>(
             match &(**param).typ {
                 P::Hole => (),
                 P::Identifier(x) => env.insert(x.name, param_type.clone()),
+                P::String_(_s) => (),
+                P::Float(_n) => (),
+                P::Type(_constructor, _args) => {
+                    todo!("make new types for all variables and insert them in the environment")
+                }
             };
             env
         });

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2362
+assertion_line: 2468
 expression: "parse(\"(((1))\")"
 ---
 Input:
@@ -14,7 +14,7 @@ Test.alma:1:6
 Expected `)` after parenthesized expression, but instead found: `[End of file]`
 
   1│  (((1))
-   │        ↑
+   │  ↑
 
 Error {
     kind: InvalidParenthesizedExpressionLastDelimiter {

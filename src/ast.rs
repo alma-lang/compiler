@@ -550,6 +550,18 @@ pub mod expression {
     pub enum PatternData {
         Hole,
         Identifier(Identifier),
+        String_(StringSymbol),
+        Float(f64),
+        Type(CapitalizedIdentifier, Vec<Pattern>),
+    }
+    impl PatternData {
+        pub fn is_useless_in_bindings(&self) -> bool {
+            use PatternData::*;
+            match self {
+                String_(_) | Float(_) => true,
+                Hole | Identifier(_) | Type(..) => false,
+            }
+        }
     }
 
     // Identifiers

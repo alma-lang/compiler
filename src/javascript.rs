@@ -464,7 +464,7 @@ fn generate_function(
         if i > 0 {
             code.push_str(", ");
         }
-        generate_pattern(code, pattern, strings);
+        generate_binding_destructuring(code, pattern, strings);
     }
 
     code.push_str(") {\n");
@@ -486,10 +486,11 @@ fn generate_function(
     indented(code, indent, "}");
 }
 
-fn generate_pattern(code: &mut String, pattern: &Pattern, strings: &Strings) {
+fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings: &Strings) {
     match &pattern.typ {
-        P::Hole => code.push('_'),
         P::Identifier(identifier) => code.push_str(identifier.to_string(strings)),
+        P::Type(_constructor, _args) => todo!(),
+        P::Hole | P::String_(_) | P::Float(_) => code.push('_'),
     }
 }
 
@@ -503,7 +504,7 @@ fn generate_let(
     expressions: &Expressions,
 ) {
     indented(code, indent, "let ");
-    generate_pattern(code, pattern, strings);
+    generate_binding_destructuring(code, pattern, strings);
     code.push_str(" = ");
     generate_expression(indent, code, module_name, expression, strings, expressions);
     code.push('\n');

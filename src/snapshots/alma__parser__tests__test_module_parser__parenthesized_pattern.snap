@@ -1,13 +1,15 @@
 ---
 source: src/parser.rs
-assertion_line: 3004
-expression: "parse(\"\\\nmodule Test\n\nIAmNotCamelCase = 1\n\")"
+assertion_line: 3475
+expression: "parse(\"\\\nmodule Test\n\n(hello) = world\n\n(_) = world\n\")"
 ---
 Input:
 
 module Test
 
-IAmNotCamelCase = 1
+(hello) = world
+
+(_) = world
 
 
 Result:
@@ -125,10 +127,10 @@ Result:
                 Pattern(
                     Pattern {
                         span: Index(
-                            3,
+                            2,
                         ),
-                        typ: Type(
-                            CapitalizedIdentifier {
+                        typ: Identifier(
+                            Identifier {
                                 name: SymbolU32 {
                                     value: 2,
                                 },
@@ -136,11 +138,23 @@ Result:
                                     2,
                                 ),
                             },
-                            [],
                         ),
                     },
                     Index(
                         0,
+                    ),
+                ),
+            ),
+            Untyped(
+                Pattern(
+                    Pattern {
+                        span: Index(
+                            5,
+                        ),
+                        typ: Hole,
+                    },
+                    Index(
+                        1,
                     ),
                 ),
             ),
@@ -153,14 +167,47 @@ Result:
                 span: Index(
                     4,
                 ),
-                expr: Float(
-                    1.0,
+                expr: Identifier {
+                    module: None,
+                    identifier: Identifier(
+                        Identifier {
+                            name: SymbolU32 {
+                                value: 3,
+                            },
+                            span: Index(
+                                4,
+                            ),
+                        },
+                    ),
+                },
+            },
+            Index(
+                1,
+            ): Expression {
+                span: Index(
+                    6,
                 ),
+                expr: Identifier {
+                    module: None,
+                    identifier: Identifier(
+                        Identifier {
+                            name: SymbolU32 {
+                                value: 3,
+                            },
+                            span: Index(
+                                6,
+                            ),
+                        },
+                    ),
+                },
             },
         },
         expression_types: {
             Index(
                 0,
+            ): None,
+            Index(
+                1,
             ): None,
         },
     },
@@ -192,17 +239,17 @@ Result:
         2,
     ): Span {
         start: Index(
-            2,
+            3,
         ),
         end: Index(
-            2,
+            3,
         ),
     },
     Index(
         3,
     ): Span {
         start: Index(
-            2,
+            3,
         ),
         end: Index(
             3,
@@ -212,10 +259,30 @@ Result:
         4,
     ): Span {
         start: Index(
-            4,
+            6,
         ),
         end: Index(
-            4,
+            6,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            8,
+        ),
+        end: Index(
+            8,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
         ),
     },
 }

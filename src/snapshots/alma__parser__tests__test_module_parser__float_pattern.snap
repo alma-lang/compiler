@@ -1,0 +1,42 @@
+---
+source: src/parser.rs
+assertion_line: 3547
+expression: "parse(\"\\\nmodule Test\n\n5 = world\n\n3 = world\n\")"
+---
+Input:
+
+module Test
+
+5 = world
+
+3 = world
+
+
+Result:
+
+Test.alma:3:0
+
+This incomplete pattern can't be exhaustive here.
+
+  1│  module Test
+  2│  
+  3│  5 = world
+   │  ↑
+  4│  
+  5│  3 = world
+
+Error {
+    kind: UselessPattern,
+    token: Token {
+        kind: Float(
+            SymbolU32 {
+                value: 2,
+            },
+        ),
+        indent: 0,
+        start: 13,
+        end: 14,
+        line: 3,
+        column: 0,
+    },
+}
