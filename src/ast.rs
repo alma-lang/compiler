@@ -395,6 +395,7 @@ pub mod expression {
 
     #[derive(Debug, Clone)]
     pub struct PatternMatchingBranch {
+        pub span: span::Index,
         pub pattern: Pattern,
         pub condition: Option<expression::Index>,
         pub body: expression::Index,

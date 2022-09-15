@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3741
+assertion_line: 3750
 expression: "parse(\"\\\nmodule Test\n\ntest = when 5 is\n    1 -> True\n    _ -> False\n\")"
 ---
 Input:
@@ -172,7 +172,7 @@ Result:
                 1,
             ): Expression {
                 span: Index(
-                    10,
+                    11,
                 ),
                 expr: Identifier {
                     module: None,
@@ -182,7 +182,7 @@ Result:
                                 value: 6,
                             },
                             span: Index(
-                                9,
+                                10,
                             ),
                         },
                     ),
@@ -202,7 +202,7 @@ Result:
                 3,
             ): Expression {
                 span: Index(
-                    11,
+                    13,
                 ),
                 expr: PatternMatching {
                     expression: Index(
@@ -210,6 +210,9 @@ Result:
                     ),
                     branches: [
                         PatternMatchingBranch {
+                            span: Index(
+                                8,
+                            ),
                             pattern: Pattern {
                                 span: Index(
                                     5,
@@ -224,9 +227,12 @@ Result:
                             ),
                         },
                         PatternMatchingBranch {
+                            span: Index(
+                                12,
+                            ),
                             pattern: Pattern {
                                 span: Index(
-                                    8,
+                                    9,
                                 ),
                                 typ: Hole,
                             },
@@ -342,20 +348,20 @@ Result:
         8,
     ): Span {
         start: Index(
-            10,
+            7,
         ),
         end: Index(
-            10,
+            9,
         ),
     },
     Index(
         9,
     ): Span {
         start: Index(
-            12,
+            10,
         ),
         end: Index(
-            12,
+            10,
         ),
     },
     Index(
@@ -370,6 +376,26 @@ Result:
     },
     Index(
         11,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        12,
+    ): Span {
+        start: Index(
+            10,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        13,
     ): Span {
         start: Index(
             4,

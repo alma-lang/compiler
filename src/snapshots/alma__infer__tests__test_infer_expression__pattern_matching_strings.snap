@@ -1,0 +1,53 @@
+---
+source: src/infer.rs
+assertion_line: 2556
+expression: "infer(\"\\\nwhen \\\"hi\\\" is\n    \\\"hi\\\" -> True\n    \\\"\\\" -> False\n            \")"
+---
+Input:
+
+when "hi" is
+    "hi" -> True
+    "" -> False
+            
+
+---
+Output:
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
+
+module Test
+
+test : ∀ ∅ . Bool

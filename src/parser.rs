@@ -1565,8 +1565,7 @@ impl<'a> State<'a> {
             |self_| self_.error(MissingPatternMatchingBranch),
         )?;
 
-        let end = self.spans[self.expressions[branches.last().unwrap().body].span].end;
-
+        let end = self.spans[branches.last().unwrap().span].end;
         Ok(Some(E::untyped(
             ED::PatternMatching {
                 expression: self.add_expression(expression),
@@ -1577,6 +1576,8 @@ impl<'a> State<'a> {
     }
 
     fn pattern_matching_branch(&mut self) -> ParseResult<Option<PatternMatchingBranch>> {
+        let token_index = self.get_token_index();
+
         let pattern = if let Some(pattern) = self.pattern()? {
             pattern
         } else {
@@ -1599,7 +1600,10 @@ impl<'a> State<'a> {
             self_.error(InvalidPatternMatchingBranchExpression)
         })?;
 
+        let end = self.spans[body.span].end;
+
         Ok(Some(PatternMatchingBranch {
+            span: self.span(token_index, end),
             pattern,
             condition: condition.map(|c| self.add_expression(c)),
             body: self.add_expression(body),

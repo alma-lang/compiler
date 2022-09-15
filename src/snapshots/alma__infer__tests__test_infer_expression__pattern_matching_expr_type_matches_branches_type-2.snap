@@ -1,0 +1,75 @@
+---
+source: src/infer.rs
+assertion_line: 2576
+expression: "infer(\"\\\nwhen True is\n    1 -> True\n    \\\"hi\\\" -> True\n            \")"
+---
+Input:
+
+when True is
+    1 -> True
+    "hi" -> True
+            
+
+---
+Output:
+
+Test.alma [4:4]
+
+Type mismatch:  Float  ≠  Bool
+
+Expected
+
+  2│  
+  3│  test = when True is
+  4│      1 -> True
+   │      ↑
+  5│      "hi" -> True
+  6│              
+
+with type
+
+Float
+
+to have the same type as
+
+  1│  module Test exposing (test)
+  2│  
+  3│  test = when True is
+   │              ↑↑↑↑
+  4│      1 -> True
+  5│      "hi" -> True
+
+with type
+
+Bool
+
+----------------------------------------
+
+Test.alma [5:4]
+
+Type mismatch:  String  ≠  Bool
+
+Expected
+
+  3│  test = when True is
+  4│      1 -> True
+  5│      "hi" -> True
+   │      ↑↑↑↑
+  6│              
+
+with type
+
+String
+
+to have the same type as
+
+  1│  module Test exposing (test)
+  2│  
+  3│  test = when True is
+   │              ↑↑↑↑
+  4│      1 -> True
+  5│      "hi" -> True
+
+with type
+
+Bool

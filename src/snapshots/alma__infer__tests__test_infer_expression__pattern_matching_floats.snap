@@ -1,0 +1,54 @@
+---
+source: src/infer.rs
+assertion_line: 2544
+expression: "infer(\"\\\nwhen 5 is\n    1 -> True\n    1.2 -> True\n    _ -> False\n            \")"
+---
+Input:
+
+when 5 is
+    1 -> True
+    1.2 -> True
+    _ -> False
+            
+
+---
+Output:
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
+
+module Test
+
+test : ∀ ∅ . Bool

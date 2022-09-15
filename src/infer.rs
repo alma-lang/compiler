@@ -1952,7 +1952,76 @@ fn infer_rec<'ast>(
             )
         }
 
-        E::PatternMatching { .. } => todo!(),
+        E::PatternMatching {
+            expression,
+            branches,
+        } => {
+            let return_type = types.push_and_get_key(state.new_type_var());
+
+            let expression_type = infer_rec(
+                *expression,
+                state,
+                env,
+                types_env,
+                strings,
+                expressions,
+                expression_types,
+                types,
+                errors,
+            );
+            let expression_type_span = Some(expressions[*expression].span);
+
+            let mut branch_types = Vec::with_capacity(branches.len());
+            for branch in branches {
+                let mut env = env.clone();
+                check_pattern_and_add_bindings(
+                    &branch.pattern,
+                    expression_type,
+                    expression_type_span,
+                    state,
+                    &mut env,
+                    types_env,
+                    strings,
+                    types,
+                    errors,
+                );
+
+                branch_types.push(infer_rec(
+                    branch.body,
+                    state,
+                    &mut env,
+                    types_env,
+                    strings,
+                    expressions,
+                    expression_types,
+                    types,
+                    errors,
+                ));
+            }
+
+            let mut last_unified_span = None;
+            for (branch, branch_type) in branches.iter().zip(branch_types) {
+                if let Err(e) = unify(
+                    state,
+                    branch.span,
+                    branch_type,
+                    last_unified_span,
+                    return_type,
+                    types,
+                ) {
+                    // TODO: Right now we error with only the first branch to have a type mismatch,
+                    // but ideally we would unify all and store the branches that have different
+                    // types, eg: (all_that_unified, all_that_didnt) and emit a specific nice error
+                    // message for it. For now this can do but it can be improved.
+                    add_error(Err(e), errors);
+                    return types.push_and_get_key(state.new_type_var());
+                } else {
+                    last_unified_span = Some(branch.span);
+                }
+            }
+
+            return_type
+        }
     };
 
     expression_types[expr_idx] = Some(typ);
@@ -2018,9 +2087,9 @@ fn infer_definitions<'ast>(
                         P::String_(_s) => (),
                         P::Float(_n) => (),
                         P::Type {
-                            module,
-                            constructor,
-                            params,
+                            module: _,
+                            constructor: _,
+                            params: _,
                         } => {
                             todo!("make new types for all variables and insert them in the environment")
                         }
@@ -2119,6 +2188,54 @@ fn check_signature<'ast>(
         }
     } else {
         typ
+    }
+}
+
+fn check_pattern_and_add_bindings(
+    pattern: &Pattern,
+    expected_pattern_type: typ::Index,
+    expected_pattern_type_span: Option<span::Index>,
+    state: &mut State,
+    env: &mut PolyTypeEnv,
+    types_env: &PolyTypeEnv,
+    strings: &mut Strings,
+    types: &mut Types,
+    errors: &mut Vec<Error>,
+) {
+    match &pattern.typ {
+        P::Hole => (),
+        P::Identifier(x) => env.insert(x.name, state.generalize(expected_pattern_type, types)),
+        P::String_(_) => add_error(
+            unify(
+                state,
+                pattern.span,
+                types_env.get(&strings.get_or_intern("String")).unwrap().typ,
+                expected_pattern_type_span,
+                expected_pattern_type,
+                types,
+            ),
+            errors,
+        ),
+        P::Float(_) => add_error(
+            unify(
+                state,
+                pattern.span,
+                types_env.get(&strings.get_or_intern("Float")).unwrap().typ,
+                expected_pattern_type_span,
+                expected_pattern_type,
+                types,
+            ),
+            errors,
+        ),
+        P::Type {
+            module: _,
+            constructor: _,
+            params: _,
+        } => {
+            // type check this similar to a function call, the constructor with the type from
+            // env, unify this patterns var with return type, unify params with args
+            todo!("")
+        }
     }
 }
 
@@ -2427,6 +2544,64 @@ add 5"
             assert_snapshot!(infer("{ age = 1, age = 1 }"));
             assert_snapshot!(infer("{ name = 1, age = 1, name = 1 }"));
             assert_snapshot!(infer("{ { name = 1, age = 1 } | name = 2, name = 3 }"));
+        }
+
+        #[test]
+        fn test_pattern_matching_floats() {
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 -> True
+    1.2 -> True
+    _ -> False
+            "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_strings() {
+            assert_snapshot!(infer(
+                "\
+when \"hi\" is
+    \"hi\" -> True
+    \"\" -> False
+            "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_expr_type_matches_branches_type() {
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 -> True
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when True is
+    1 -> True
+    \"hi\" -> True
+            "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_all_branches_return_type() {
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 -> True
+    1.2 -> 1 == 1
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 -> True
+    1.2 -> 2
+            "
+            ));
         }
 
         fn infer(code: &str) -> String {

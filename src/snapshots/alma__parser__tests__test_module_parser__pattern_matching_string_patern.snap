@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3812
+assertion_line: 3816
 expression: "parse(\"\\\nmodule Test\n\ntest = when test is\n    \\\"test\\\" -> True\n\")"
 ---
 Input:
@@ -191,7 +191,7 @@ Result:
                 2,
             ): Expression {
                 span: Index(
-                    8,
+                    9,
                 ),
                 expr: PatternMatching {
                     expression: Index(
@@ -199,6 +199,9 @@ Result:
                     ),
                     branches: [
                         PatternMatchingBranch {
+                            span: Index(
+                                8,
+                            ),
                             pattern: Pattern {
                                 span: Index(
                                     5,
@@ -316,6 +319,16 @@ Result:
     },
     Index(
         8,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        9,
     ): Span {
         start: Index(
             4,
