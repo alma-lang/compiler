@@ -1,0 +1,40 @@
+---
+source: src/parser.rs
+assertion_line: 3779
+expression: "parse(\"\\\nmodule Test\n\ntest = when 5 is\n\nlol = 5\n\")"
+---
+Input:
+
+module Test
+
+test = when 5 is
+
+lol = 5
+
+
+Result:
+
+Test.alma:5:0
+
+Expected at least a pattern matching branch, but instead found: `lol`
+
+  3│  test = when 5 is
+  4│  
+  5│  lol = 5
+   │  ↑↑↑
+
+Error {
+    kind: MissingPatternMatchingBranch,
+    token: Token {
+        kind: Identifier(
+            SymbolU32 {
+                value: 4,
+            },
+        ),
+        indent: 0,
+        start: 31,
+        end: 34,
+        line: 5,
+        column: 0,
+    },
+}

@@ -1,5 +1,5 @@
 use crate::ast::expression::{
-    binop, AnyIdentifier, ExpressionTypes, Expressions, PatternData, Unary,
+    binop, AnyIdentifier, ExpressionTypes, Expressions, PatternData, PatternMatchingBranch, Unary,
 };
 use crate::ast::span::Spans;
 use crate::ast::{
@@ -24,67 +24,70 @@ use crate::token::{
 use typed_index_collections::TiSlice;
 
 /* Grammar draft (●○):
-    ● file                 → module EOF
-    ● module               → "module" module_name exposing? imports? module_definitions?
-    ● module_name          → CAPITALIZED_IDENTIFIER ( "." CAPITALIZED_IDENTIFIER )*
-    ● exposing             → "exposing" "(" export ( "," export )* ")"
-    ● export               → IDENTIFIER
-                           | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
-    ● imports              → ( import )*
-    ● import               → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
+    ● file                     → module EOF
+    ● module                   → "module" module_name exposing? imports? module_definitions?
+    ● module_name              → CAPITALIZED_IDENTIFIER ( "." CAPITALIZED_IDENTIFIER )*
+    ● exposing                 → "exposing" "(" export ( "," export )* ")"
+    ● export                   → IDENTIFIER
+                               | CAPITALIZED_IDENTIFIER ( "(" CAPITALIZED_IDENTIFIER ( "," CAPITALIZED_IDENTIFIER )* ")" )?
+    ● imports                  → ( import )*
+    ● import                   → "import" IDENTIFIER ( "as" IDENTIFIER )? exposing?
 
-    ● module_definitions   → ( type_def | module | top_level_binding )+
+    ● module_definitions       → ( type_def | module | top_level_binding )+
 
     // Type definitions
-    ● type_identifier      → CAPITALIZED_IDENTIFIER
-    ● type_var             → IDENTIFIER
-    ● type_def             → type_def_union | type_def_alias
-    ● type_def_name        → type_identifier ( type_var )*
-    ● type_def_union       → "external"? "type" type_def_name "=" type_union_branches
-    ● type_def_alias       → "alias" type_def_name "=" type_record
-    ● type_union_branches  → type_constructor ( "|" type_constructor )*
-    ● type_constructor     → type_identifier ( type_param )*
-    ● type_param           → type_parens | type_identifier | type_var | type_record
-    ● type_parens          → "(" type_function ")"
-    ● type_record          → "{" ( type_var "|" )? ( type_record_field ( "," type_record_field )* )? "}"
-    ● type_record_field    → IDENTIFIER ":" type_function
-    ● type_function        → type ( ( "->" type )* "->" type )?
-    ● type                 → type_constructor | type_var | type_record | type_parens
+    ● type_identifier          → CAPITALIZED_IDENTIFIER
+    ● type_var                 → IDENTIFIER
+    ● type_def                 → type_def_union | type_def_alias
+    ● type_def_name            → type_identifier ( type_var )*
+    ● type_def_union           → "external"? "type" type_def_name "=" type_union_branches
+    ● type_def_alias           → "alias" type_def_name "=" type_record
+    ● type_union_branches      → type_constructor ( "|" type_constructor )*
+    ● type_constructor         → type_identifier ( type_param )*
+    ● type_param               → type_parens | type_identifier | type_var | type_record
+    ● type_parens              → "(" type_function ")"
+    ● type_record              → "{" ( type_var "|" )? ( type_record_field ( "," type_record_field )* )? "}"
+    ● type_record_field        → IDENTIFIER ":" type_function
+    ● type_function            → type ( ( "->" type )* "->" type )?
+    ● type                     → type_constructor | type_var | type_record | type_parens
 
-    ● type_signature       → identifier ":" type_function
+    ● type_signature           → identifier ":" type_function
 
     // Expressions
-    ● let                  → "let" ( typed_binding )+ ( "in" )? expression
-    ● top_level_binding    → "external" type_signature
-                           | typed_binding
-    ● typed_binding        → type_signature binding
-                           | binding
-    ● binding              → ( identifier ( params )? | pattern ) "=" expression
-    ● lambda               → "\" params "->" expression
-    ● pattern              → "_"
-                           | identifier
-                           | NUMBER
-                           | STRING
-                           | type_identifier ( pattern )*
-                           | "(" pattern ")"
-    ● if                   → "if" binary "then" expression "else" expression
+    ● expression               → let | if | lambda | pattern_matching
+    ● let                      → "let" ( typed_binding )+ ( "in" )? expression
+    ● top_level_binding        → "external" type_signature
+                               | typed_binding
+    ● typed_binding            → type_signature binding
+                               | binding
+    ● binding                  → ( identifier ( params )? | pattern ) "=" expression
+    ● lambda                   → "\" params "->" expression
+    ● pattern                  → "_"
+                               | identifier
+                               | NUMBER
+                               | STRING
+                               | ( module_name "." )? type_identifier ( pattern )*
+                               | "(" pattern ")"
+    ● if                       → "if" binary "then" expression "else" expression
+    ● pattern_matching         → "when" expression "is" ( pattern_matching_branch )+
+    ● pattern_matching_branch  → pattern ( "if" expression ) "->" expression
     // Operators
-    ● binary               → unary ( binop unary )*
-    ● binop                → // parsed from Ast.Binop operator list
-    ● unary                → ( "not" | "-" )? call
+    ● binary                   → unary ( binop unary )*
+    ● binop                    → // parsed from Ast.Binop operator list
+    ● unary                    → ( "not" | "-" )? call
     // Other primitives
-    ● call                 → prop_access ( prop_access )*
-    ● prop_access          → primary properties
-    ● properties           → ( "." ( IDENTIFIER ) )*
-    ● primary              → NUMBER | STRING
-                           | ( module_name "." )? ( IDENTIFIER | CAPITALIZED_IDENTIFIER )
-                           | "." IDENTIFIER
-                           | record
-                           | "(" ( expression )? ")"
+    ● call                     → property_access ( property_access )*
+    ● property_access          → primary properties
+    ● properties               → ( "." ( IDENTIFIER ) )*
+    ● primary                  → NUMBER | STRING
+                               | ( module_name "." )? ( IDENTIFIER | CAPITALIZED_IDENTIFIER )
+                               | "." IDENTIFIER
+                               | record
+                               | "(" ( expression )? ")"
 
     // Records
-    ● record               → "{" ( expression "|" )? ( field ( "," field )* )? "}"
-    ● field                → IDENTIFIER ":" expression
+    ● record                   → "{" ( expression "|" )? ( field ( "," field )* )? "}"
+    ● field                    → IDENTIFIER ":" expression
 */
 
 #[derive(Debug)]
@@ -149,6 +152,12 @@ enum ErrorType {
     MissingLambdaParamaters,
     InvalidLambdaArrow,
     InvalidLambdaBody,
+    InvalidPatternMatchingExpression,
+    InvalidPatternMatchingIsKeyword,
+    MissingPatternMatchingBranch,
+    InvalidPatternMatchingBranchConditionExpression,
+    InvalidPatternMatchingBranchSeparator,
+    InvalidPatternMatchingBranchExpression,
     InvalidBinopRhs { op: Token },
     InvalidUnaryRhs { op: Token },
     InvalidPropertyAccessSeparator,
@@ -449,6 +458,34 @@ impl ErrorType {
             InvalidLambdaBody => {
                 expected_but_found("Expected an expression for the body of the function")
             }
+
+            InvalidPatternMatchingExpression => {
+                expected_but_found("Expected an expression to match on")
+            }
+
+            InvalidPatternMatchingIsKeyword => expected_but_found(
+                "Expected an `is` keyword after the expression \
+                and before the pattern matching branches",
+            ),
+
+            MissingPatternMatchingBranch => {
+                expected_but_found("Expected at least a pattern matching branch")
+            }
+
+            InvalidPatternMatchingBranchConditionExpression => expected_but_found(
+                "Expected an expression for the condition \
+                of the if in the pattern matching branch",
+            ),
+
+            InvalidPatternMatchingBranchSeparator => expected_but_found(
+                "Expected an `->` separating the pattern \
+                of the expression in the pattern matching branch",
+            ),
+
+            InvalidPatternMatchingBranchExpression => expected_but_found(
+                "Expected an expression after the arrow for the \
+                pattern matching branch",
+            ),
 
             InvalidBinopRhs { op } => expected_but_found(&format!(
                 "Expected an expression after the binary operator `{lexeme}`",
@@ -1250,6 +1287,8 @@ impl<'a> State<'a> {
             Ok(Some(if_))
         } else if let Some(lambda) = self.lambda()? {
             Ok(Some(lambda))
+        } else if let Some(pattern_matching) = self.pattern_matching()? {
+            Ok(Some(pattern_matching))
         } else {
             self.binary()
         }
@@ -1500,6 +1539,73 @@ impl<'a> State<'a> {
         )))
     }
 
+    fn pattern_matching(&mut self) -> ParseResult<Option<Expression>> {
+        let (when_token_index, when_token) = self.get_token();
+
+        if self.match_token(TT::When).is_none() {
+            return Ok(None);
+        }
+
+        let expression = self.required(Self::expression, |self_| {
+            self_.error(InvalidPatternMatchingExpression)
+        })?;
+
+        if self.match_token(TT::Is).is_none() {
+            return Err(self.error(InvalidPatternMatchingIsKeyword));
+        }
+
+        let branches = self.one_or_many(
+            |self_| {
+                if self_.is_token_in_same_line_or_nested_indent_from(when_token) {
+                    self_.pattern_matching_branch()
+                } else {
+                    Ok(None)
+                }
+            },
+            |self_| self_.error(MissingPatternMatchingBranch),
+        )?;
+
+        let end = self.spans[self.expressions[branches.last().unwrap().body].span].end;
+
+        Ok(Some(E::untyped(
+            ED::PatternMatching {
+                expression: self.add_expression(expression),
+                branches,
+            },
+            self.span(when_token_index, end),
+        )))
+    }
+
+    fn pattern_matching_branch(&mut self) -> ParseResult<Option<PatternMatchingBranch>> {
+        let pattern = if let Some(pattern) = self.pattern()? {
+            pattern
+        } else {
+            return Ok(None);
+        };
+
+        let condition = if self.match_token(TT::If).is_some() {
+            Some(self.required(Self::expression, |self_| {
+                self_.error(InvalidPatternMatchingBranchConditionExpression)
+            })?)
+        } else {
+            None
+        };
+
+        if self.match_token(TT::Arrow).is_none() {
+            return Err(self.error(InvalidPatternMatchingBranchSeparator));
+        }
+
+        let body = self.required(Self::expression, |self_| {
+            self_.error(InvalidPatternMatchingBranchExpression)
+        })?;
+
+        Ok(Some(PatternMatchingBranch {
+            pattern,
+            condition: condition.map(|c| self.add_expression(c)),
+            body: self.add_expression(body),
+        }))
+    }
+
     fn error_if_useless_binding_pattern(&mut self, pattern: &Pattern) -> ParseResult<()> {
         if pattern.typ.is_useless_in_bindings() {
             Err(Error::new(
@@ -1562,12 +1668,22 @@ impl<'a> State<'a> {
     }
 
     fn type_pattern(&mut self) -> ParseResult<Option<Pattern>> {
-        let token_index = self.get_token_index();
-        if let Some(constructor) = self.capitalized_identifier() {
-            let args = self.many(Self::pattern)?;
+        let (token_index, token) = self.get_token();
+        if matches!(token.kind, TT::CapitalizedIdentifier(_)) {
+            let (module, constructor) = self.module_qualified_capitalized_identifier()?;
+            let params = self.many(Self::pattern)?;
+
+            let end = params
+                .last()
+                .map(|p| self.spans[p.span].end)
+                .unwrap_or_else(|| self.spans[constructor.span].end);
             Ok(Some(Pattern {
-                typ: PatternData::Type(constructor, args),
-                span: self.span(token_index, self.get_token_index()),
+                typ: PatternData::Type {
+                    module,
+                    constructor,
+                    params,
+                },
+                span: self.span(token_index, end),
             }))
         } else {
             Ok(None)
@@ -1740,7 +1856,7 @@ impl<'a> State<'a> {
     fn call(&mut self) -> ParseResult<Option<Expression>> {
         let (_, token) = self.get_token();
 
-        if let Some(expr) = self.prop_access()? {
+        if let Some(expr) = self.property_access()? {
             let args = self.many(|self_| self_.argument(token))?;
 
             if args.is_empty() {
@@ -1764,7 +1880,7 @@ impl<'a> State<'a> {
 
     fn argument(&mut self, first_token: &Token) -> ParseResult<Option<Expression>> {
         if self.is_token_in_same_line_or_nested_indent_from(first_token) {
-            match self.prop_access()? {
+            match self.property_access()? {
                 Some(arg) => Ok(Some(arg)),
                 // We tried to get an argument, but there was no match, or it was not well indented
                 None => Ok(None),
@@ -1774,7 +1890,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn prop_access(&mut self) -> ParseResult<Option<Expression>> {
+    fn property_access(&mut self) -> ParseResult<Option<Expression>> {
         if let Some(expr) = self.primary()? {
             self.properties(expr).map(Some)
         } else {
@@ -1863,35 +1979,7 @@ impl<'a> State<'a> {
             }
 
             TT::CapitalizedIdentifier(_) => {
-                // TODO: This is slightly wrong, since it will validate the last module segment as
-                // a module name, even though it can be just a CapitalizedIdentifier which can have
-                // more characters.
-                // Maybe what should happen is that I should restrain capitalized identifiers to
-                // have the same kinds of characters as the module name part.
-                let mut module = self.module_name(|| InvalidModuleNameSegment)?;
-
-                let (module, identifier) = if module.parts.len() == 1 {
-                    // Is there a normal identifier afterwards? If so it is a Module.ident, if not,
-                    // the module's only part is a capitalized identifier.
-                    let module_end_position = self.tokens[self.spans[module.last_span()].end].end;
-                    if let Some(ident) = self.property(module_end_position)? {
-                        (Some(module), AnyIdentifier::Identifier(ident))
-                    } else {
-                        let first = module.parts.swap_remove(0);
-                        (None, AnyIdentifier::CapitalizedIdentifier(first))
-                    }
-                } else {
-                    // Is there a normal identifier afterwards? If so the whole module is fine, if
-                    // not, the module's last part is a capitalized identifier.
-                    let module_end_position = self.tokens[self.spans[module.last_span()].end].end;
-                    if let Some(ident) = self.property(module_end_position)? {
-                        (Some(module), AnyIdentifier::Identifier(ident))
-                    } else {
-                        let ident = module.parts.pop().unwrap();
-                        let module = ModuleName::new(module.parts, self.strings).expect("Internal parser error: Module should be valid as it is being built from a previously built module");
-                        (Some(module), AnyIdentifier::CapitalizedIdentifier(ident))
-                    }
-                };
+                let (module, identifier) = self.module_qualified_any_identifier()?;
 
                 let (start, end) = if let Some(module) = &module {
                     let first = &module.parts[0];
@@ -2139,6 +2227,60 @@ impl<'a> State<'a> {
             Some(name_identifier)
         } else {
             None
+        }
+    }
+
+    fn module_qualified_any_identifier(
+        &mut self,
+    ) -> ParseResult<(Option<ModuleName>, AnyIdentifier)> {
+        // TODO: This is slightly wrong, since it will validate the last module segment as
+        // a module name, even though it can be just a CapitalizedIdentifier which can have
+        // more characters.
+        // Maybe what should happen is that I should restrain capitalized identifiers to
+        // have the same kinds of characters as the module name part.
+        let mut module = self.module_name(|| InvalidModuleNameSegment)?;
+
+        if module.parts.len() == 1 {
+            // Is there a normal identifier afterwards? If so it is a Module.ident, if not,
+            // the module's only part is a capitalized identifier.
+            let module_end_position = self.tokens[self.spans[module.last_span()].end].end;
+            if let Some(ident) = self.property(module_end_position)? {
+                Ok((Some(module), AnyIdentifier::Identifier(ident)))
+            } else {
+                let first = module.parts.swap_remove(0);
+                Ok((None, AnyIdentifier::CapitalizedIdentifier(first)))
+            }
+        } else {
+            // Is there a normal identifier afterwards? If so the whole module is fine, if
+            // not, the module's last part is a capitalized identifier.
+            let module_end_position = self.tokens[self.spans[module.last_span()].end].end;
+            if let Some(ident) = self.property(module_end_position)? {
+                Ok((Some(module), AnyIdentifier::Identifier(ident)))
+            } else {
+                let ident = module.parts.pop().unwrap();
+                let module = ModuleName::new(module.parts, self.strings).expect("Internal parser error: Module should be valid as it is being built from a previously built module");
+                Ok((Some(module), AnyIdentifier::CapitalizedIdentifier(ident)))
+            }
+        }
+    }
+
+    fn module_qualified_capitalized_identifier(
+        &mut self,
+    ) -> ParseResult<(Option<ModuleName>, CapitalizedIdentifier)> {
+        // TODO: This is slightly wrong, since it will validate the last module segment as
+        // a module name, even though it can be just a CapitalizedIdentifier which can have
+        // more characters.
+        // Maybe what should happen is that I should restrain capitalized identifiers to
+        // have the same kinds of characters as the module name part.
+        let mut module = self.module_name(|| InvalidModuleNameSegment)?;
+
+        if module.parts.len() == 1 {
+            let first = module.parts.swap_remove(0);
+            Ok((None, first))
+        } else {
+            let ident = module.parts.pop().unwrap();
+            let module = ModuleName::new(module.parts, self.strings).expect("Internal parser error: Module should be valid as it is being built from a previously built module");
+            Ok((Some(module), ident))
         }
     }
 
@@ -3582,6 +3724,123 @@ module Test
 Banana = world
 
 Phone hello = world
+"
+            ));
+        }
+
+        #[test]
+        fn test_type_pattern_qualified() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+Banana.Phone = world
+
+Banana.Phone asdf = world
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when 5 is
+    1 -> True
+    _ -> False
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_errors() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when and is
+    1 -> True
+    _ -> False
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when 5 match
+    1 -> True
+    _ -> False
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when 5 is
+
+lol = 5
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when 5 is
+    1 => True
+    _ => False
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when 5 is
+    1 -> ,
+    _ -> False
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_string_patern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    \"test\" -> True
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_number_patern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    5 -> True
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_type_patern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana -> True
+    Banana asdf -> True
+    Banana.Banana asdf -> True
 "
             ));
         }

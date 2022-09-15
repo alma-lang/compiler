@@ -489,7 +489,11 @@ fn generate_function(
 fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings: &Strings) {
     match &pattern.typ {
         P::Identifier(identifier) => code.push_str(identifier.to_string(strings)),
-        P::Type(_constructor, _args) => todo!(),
+        P::Type {
+            module: _,
+            constructor: _,
+            params: _,
+        } => todo!(),
         P::Hole | P::String_(_) | P::Float(_) => code.push('_'),
     }
 }
@@ -776,6 +780,8 @@ fn generate_expression(
 
             indented(code, indent, "}()");
         }
+
+        E::PatternMatching { .. } => todo!(),
     };
 }
 

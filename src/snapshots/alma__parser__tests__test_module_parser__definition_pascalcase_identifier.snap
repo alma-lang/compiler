@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3004
+assertion_line: 3142
 expression: "parse(\"\\\nmodule Test\n\nIAmNotCamelCase = 1\n\")"
 ---
 Input:
@@ -127,8 +127,9 @@ Result:
                         span: Index(
                             3,
                         ),
-                        typ: Type(
-                            CapitalizedIdentifier {
+                        typ: Type {
+                            module: None,
+                            constructor: CapitalizedIdentifier {
                                 name: SymbolU32 {
                                     value: 2,
                                 },
@@ -136,8 +137,8 @@ Result:
                                     2,
                                 ),
                             },
-                            [],
-                        ),
+                            params: [],
+                        },
                     },
                     Index(
                         0,
@@ -205,7 +206,7 @@ Result:
             2,
         ),
         end: Index(
-            3,
+            2,
         ),
     },
     Index(

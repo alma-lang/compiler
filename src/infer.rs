@@ -1951,6 +1951,8 @@ fn infer_rec<'ast>(
                 errors,
             )
         }
+
+        E::PatternMatching { .. } => todo!(),
     };
 
     expression_types[expr_idx] = Some(typ);
@@ -2015,7 +2017,11 @@ fn infer_definitions<'ast>(
                         P::Identifier(x) => env.insert(x.name, t),
                         P::String_(_s) => (),
                         P::Float(_n) => (),
-                        P::Type(_constructor, _args) => {
+                        P::Type {
+                            module,
+                            constructor,
+                            params,
+                        } => {
                             todo!("make new types for all variables and insert them in the environment")
                         }
                     }
@@ -2149,7 +2155,11 @@ fn infer_lambda<'ast>(
                 P::Identifier(x) => env.insert(x.name, param_type.clone()),
                 P::String_(_s) => (),
                 P::Float(_n) => (),
-                P::Type(_constructor, _args) => {
+                P::Type {
+                    module: _,
+                    constructor: _,
+                    params: _,
+                } => {
                     todo!("make new types for all variables and insert them in the environment")
                 }
             };

@@ -371,6 +371,8 @@ impl<'source, 'strings> State<'source, 'strings> {
                                     "type" => Type,
                                     "alias" => Alias,
                                     "external" => External,
+                                    "when" => When,
+                                    "is" => Is,
                                     _ => {
                                         if is_capitalized {
                                             CapitalizedIdentifier(self.lexeme())

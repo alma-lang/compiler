@@ -68,6 +68,8 @@ pub enum Type {
     Type,
     Alias,
     External,
+    When,
+    Is,
 
     Comment,
     Eof,
@@ -122,6 +124,8 @@ impl Type {
             Type => "type",
             Alias => "alias",
             External => "external",
+            When => "when",
+            Is => "is",
 
             Comment => "[Comment]",
             Eof => "[End of file]",

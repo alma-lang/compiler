@@ -1,15 +1,15 @@
 ---
 source: src/parser.rs
-assertion_line: 3715
-expression: "parse(\"\\\nmodule Test\n\nBanana = world\n\nPhone hello = world\n\")"
+assertion_line: 3728
+expression: "parse(\"\\\nmodule Test\n\nBanana.Phone = world\n\nBanana.Phone asdf = world\n\")"
 ---
 Input:
 
 module Test
 
-Banana = world
+Banana.Phone = world
 
-Phone hello = world
+Banana.Phone asdf = world
 
 
 Result:
@@ -127,16 +127,32 @@ Result:
                 Pattern(
                     Pattern {
                         span: Index(
-                            3,
+                            4,
                         ),
                         typ: Type {
-                            module: None,
+                            module: Some(
+                                ModuleName {
+                                    parts: [
+                                        CapitalizedIdentifier {
+                                            name: SymbolU32 {
+                                                value: 2,
+                                            },
+                                            span: Index(
+                                                2,
+                                            ),
+                                        },
+                                    ],
+                                    full_name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            ),
                             constructor: CapitalizedIdentifier {
                                 name: SymbolU32 {
-                                    value: 2,
+                                    value: 3,
                                 },
                                 span: Index(
-                                    2,
+                                    3,
                                 ),
                             },
                             params: [],
@@ -151,22 +167,38 @@ Result:
                 Pattern(
                     Pattern {
                         span: Index(
-                            8,
+                            10,
                         ),
                         typ: Type {
-                            module: None,
+                            module: Some(
+                                ModuleName {
+                                    parts: [
+                                        CapitalizedIdentifier {
+                                            name: SymbolU32 {
+                                                value: 2,
+                                            },
+                                            span: Index(
+                                                6,
+                                            ),
+                                        },
+                                    ],
+                                    full_name: SymbolU32 {
+                                        value: 2,
+                                    },
+                                },
+                            ),
                             constructor: CapitalizedIdentifier {
                                 name: SymbolU32 {
-                                    value: 4,
+                                    value: 3,
                                 },
                                 span: Index(
-                                    5,
+                                    7,
                                 ),
                             },
                             params: [
                                 Pattern {
                                     span: Index(
-                                        7,
+                                        9,
                                     ),
                                     typ: Identifier(
                                         Identifier {
@@ -174,7 +206,7 @@ Result:
                                                 value: 5,
                                             },
                                             span: Index(
-                                                6,
+                                                8,
                                             ),
                                         },
                                     ),
@@ -194,17 +226,17 @@ Result:
                 0,
             ): Expression {
                 span: Index(
-                    4,
+                    5,
                 ),
                 expr: Identifier {
                     module: None,
                     identifier: Identifier(
                         Identifier {
                             name: SymbolU32 {
-                                value: 3,
+                                value: 4,
                             },
                             span: Index(
-                                4,
+                                5,
                             ),
                         },
                     ),
@@ -214,17 +246,17 @@ Result:
                 1,
             ): Expression {
                 span: Index(
-                    9,
+                    11,
                 ),
                 expr: Identifier {
                     module: None,
                     identifier: Identifier(
                         Identifier {
                             name: SymbolU32 {
-                                value: 3,
+                                value: 4,
                             },
                             span: Index(
-                                9,
+                                11,
                             ),
                         },
                     ),
@@ -278,17 +310,17 @@ Result:
         3,
     ): Span {
         start: Index(
-            2,
+            4,
         ),
         end: Index(
-            2,
+            4,
         ),
     },
     Index(
         4,
     ): Span {
         start: Index(
-            4,
+            2,
         ),
         end: Index(
             4,
@@ -298,50 +330,70 @@ Result:
         5,
     ): Span {
         start: Index(
-            5,
+            6,
         ),
         end: Index(
-            5,
+            6,
         ),
     },
     Index(
         6,
     ): Span {
         start: Index(
-            6,
+            7,
         ),
         end: Index(
-            6,
+            7,
         ),
     },
     Index(
         7,
     ): Span {
         start: Index(
-            6,
+            9,
         ),
         end: Index(
-            6,
+            9,
         ),
     },
     Index(
         8,
     ): Span {
         start: Index(
-            5,
+            10,
         ),
         end: Index(
-            6,
+            10,
         ),
     },
     Index(
         9,
     ): Span {
         start: Index(
-            8,
+            10,
         ),
         end: Index(
-            8,
+            10,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            10,
+        ),
+    },
+    Index(
+        11,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
         ),
     },
 }

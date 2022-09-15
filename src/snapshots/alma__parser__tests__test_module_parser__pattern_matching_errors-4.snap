@@ -1,0 +1,37 @@
+---
+source: src/parser.rs
+assertion_line: 3784
+expression: "parse(\"\\\nmodule Test\n\ntest = when 5 is\n    1 => True\n    _ => False\n\")"
+---
+Input:
+
+module Test
+
+test = when 5 is
+    1 => True
+    _ => False
+
+
+Result:
+
+Test.alma:4:6
+
+Expected an `->` separating the pattern of the expression in the pattern matching branch, but instead found: `=`
+
+  2│  
+  3│  test = when 5 is
+  4│      1 => True
+   │        ↑
+  5│      _ => False
+
+Error {
+    kind: InvalidPatternMatchingBranchSeparator,
+    token: Token {
+        kind: Equal,
+        indent: 4,
+        start: 36,
+        end: 37,
+        line: 4,
+        column: 6,
+    },
+}

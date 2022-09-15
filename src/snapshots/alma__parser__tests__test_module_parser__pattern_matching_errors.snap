@@ -1,0 +1,38 @@
+---
+source: src/parser.rs
+assertion_line: 3754
+expression: "parse(\"\\\nmodule Test\n\ntest = when and is\n    1 -> True\n    _ -> False\n\")"
+---
+Input:
+
+module Test
+
+test = when and is
+    1 -> True
+    _ -> False
+
+
+Result:
+
+Test.alma:3:12
+
+Expected an expression to match on, but instead found: `and`
+
+  1│  module Test
+  2│  
+  3│  test = when and is
+   │              ↑↑↑
+  4│      1 -> True
+  5│      _ -> False
+
+Error {
+    kind: InvalidPatternMatchingExpression,
+    token: Token {
+        kind: And,
+        indent: 0,
+        start: 25,
+        end: 28,
+        line: 3,
+        column: 12,
+    },
+}

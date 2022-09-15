@@ -381,11 +381,22 @@ pub mod expression {
             then: expression::Index,
             else_: expression::Index,
         },
+        PatternMatching {
+            expression: expression::Index,
+            branches: Vec<PatternMatchingBranch>,
+        },
     }
 
     #[derive(Debug, Clone)]
     pub struct Lambda {
         pub parameters: Vec<Pattern>,
+        pub body: expression::Index,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct PatternMatchingBranch {
+        pub pattern: Pattern,
+        pub condition: Option<expression::Index>,
         pub body: expression::Index,
     }
 
@@ -552,14 +563,18 @@ pub mod expression {
         Identifier(Identifier),
         String_(StringSymbol),
         Float(f64),
-        Type(CapitalizedIdentifier, Vec<Pattern>),
+        Type {
+            module: Option<ModuleName>,
+            constructor: CapitalizedIdentifier,
+            params: Vec<Pattern>,
+        },
     }
     impl PatternData {
         pub fn is_useless_in_bindings(&self) -> bool {
             use PatternData::*;
             match self {
                 String_(_) | Float(_) => true,
-                Hole | Identifier(_) | Type(..) => false,
+                Hole | Identifier(_) | Type { .. } => false,
             }
         }
     }
