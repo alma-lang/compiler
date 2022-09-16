@@ -85,30 +85,14 @@ impl Type {
      * If this type is the a in a -> b, should it be parenthesized?
      * Note this is recursive in case bound type vars are used
      */
-    fn should_parenthesize(&self, types: &Types) -> bool {
+    fn should_parenthesize(&self, parent_has_separators: bool, types: &Types) -> bool {
         use Type::*;
         match self {
-            Var(TypeVar::Bound(t)) => types[*t].should_parenthesize(types),
+            Var(TypeVar::Bound(t)) => types[*t].should_parenthesize(parent_has_separators, types),
             Fn { .. } => true,
-            Named { params, .. } => params.len() > 0,
+            Named { params, .. } => !parent_has_separators && params.len() > 0,
             _ => false,
         }
-    }
-
-    pub fn parameters(&self, types: &Types) -> Vec<Index> {
-        fn parameters_rec<'a>(mut all_params: Vec<Index>, t: &Type, types: &Types) -> Vec<Index> {
-            match t {
-                Type::Fn { params, ret, .. } => {
-                    for param in &**params {
-                        all_params.push(*param);
-                    }
-                    parameters_rec(all_params, &types[*ret], types)
-                }
-                _ => all_params,
-            }
-        }
-
-        parameters_rec(vec![], self, types)
     }
 
     pub fn to_string(&self, strings: &Strings, types: &Types) -> String {
@@ -170,7 +154,7 @@ impl Type {
 
                     s.push(' ');
 
-                    let parens = param.should_parenthesize(types);
+                    let parens = param.should_parenthesize(false, types);
 
                     if parens {
                         s.push('(');
@@ -210,7 +194,7 @@ impl Type {
                         s.push_str(" -> ");
                     }
 
-                    let parens = arg.should_parenthesize(types);
+                    let parens = arg.should_parenthesize(true, types);
 
                     if parens {
                         s.push('(');

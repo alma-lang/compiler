@@ -1,0 +1,42 @@
+---
+source: src/infer.rs
+assertion_line: 2745
+expression: "infer(\"\\\nwhen {x = 1} is\n    True -> True\n            \")"
+---
+Input:
+
+when {x = 1} is
+    True -> True
+            
+
+---
+Output:
+
+Test.alma [4:4]
+
+Type mismatch:  Bool  ≠  { x : Float }
+
+Expected
+
+  2│  
+  3│  test = when {x = 1} is
+  4│      True -> True
+   │      ↑↑↑↑
+  5│              
+
+with type
+
+Bool
+
+to have the same type as
+
+  1│  module Test exposing (test)
+  2│  
+  3│  test = when {x = 1} is
+   │              ↑↑↑↑↑↑↑
+  4│      True -> True
+  5│              
+
+with type
+
+{ x : Float }

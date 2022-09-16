@@ -1,11 +1,12 @@
 use crate::ast::{
     self,
     expression::{
-        self, CapitalizedIdentifier, Expression, ExpressionData as E, ExpressionTypes, Expressions,
-        Identifier, Lambda, Pattern, PatternData as P, UnaryData as U,
+        self, AnyIdentifier, CapitalizedIdentifier, Expression, ExpressionData as E,
+        ExpressionTypes, Expressions, Identifier, Lambda, Pattern, PatternData as P,
+        UnaryData as U,
     },
     span::{self, Spans},
-    Definition, Import, TypeSignature, TypedDefinition,
+    Definition, Import, ModuleName, TypeSignature, TypedDefinition,
 };
 use crate::compiler;
 use crate::compiler::state::ModuleIndex;
@@ -1810,35 +1811,9 @@ fn infer_rec<'ast>(
          *
          *     t = inst s
          */
-        E::Identifier { module, identifier } => {
-            let name = if let Some(module) = module {
-                // TODO: Check the module if it was imported, would make for a better error message
-                // TODO: This should be pre-computed in the identifier to avoid doing this with
-                // each node in the AST.
-                let full_name = {
-                    let module = strings.resolve(module.full_name);
-                    let name = strings.resolve(identifier.name());
-                    format!("{module}.{name}")
-                };
-                strings.get_or_intern(full_name)
-            } else {
-                identifier.name()
-            };
-
-            match env.get(&name) {
-                Some(s) => state.instantiate(s, types),
-                None => {
-                    add_error(
-                        Err(Error::UndefinedIdentifier {
-                            identifier: name,
-                            location: ast.span,
-                        }),
-                        errors,
-                    );
-                    types.push_and_get_key(state.new_type_var())
-                }
-            }
-        }
+        E::Identifier { module, identifier } => infer_identifier(
+            module, identifier, ast.span, state, env, strings, types, errors,
+        ),
 
         /* FnCall
          *
@@ -2228,13 +2203,193 @@ fn check_pattern_and_add_bindings(
             errors,
         ),
         P::Type {
-            module: _,
-            constructor: _,
-            params: _,
+            module,
+            constructor,
+            params: pattern_params,
         } => {
-            // type check this similar to a function call, the constructor with the type from
-            // env, unify this patterns var with return type, unify params with args
-            todo!("")
+            // TODO: This is ugly and unnecessary, we could have AnyIdentifier be a trait, or
+            // make the function take an thing that complies with an identifier trait.
+            let identifier = AnyIdentifier::CapitalizedIdentifier(constructor.clone());
+            let constructor_type = infer_identifier(
+                module,
+                &identifier,
+                identifier.span(),
+                state,
+                env,
+                strings,
+                types,
+                errors,
+            );
+
+            let pattern_arity = pattern_params.len();
+
+            let constructor_return_type = match (pattern_arity, &types[constructor_type]) {
+                // Arities match, then check params against each other, and return the return type
+                (
+                    n,
+                    Fn {
+                        params: constructor_type_params,
+                        ret,
+                    },
+                ) if n == constructor_type_params.len() => {
+                    let constructor_type_params = constructor_type_params.clone();
+                    let ret = *ret;
+                    for (pattern_param, constructor_type_param) in
+                        pattern_params.iter().zip(&*constructor_type_params)
+                    {
+                        check_pattern_and_add_bindings(
+                            pattern_param,
+                            *constructor_type_param,
+                            None,
+                            state,
+                            env,
+                            types_env,
+                            strings,
+                            types,
+                            errors,
+                        );
+                    }
+                    ret
+                }
+
+                // Arities dont match. Check the arguments anyways to introduce bindings and avoid
+                // extra error messages, and make up variables as needed. Return a new variable to
+                // avoid unnecessary errors when matching against the expected type.
+                (
+                    _n,
+                    Fn {
+                        params: constructor_type_params,
+                        ..
+                    },
+                ) => {
+                    let constructor_type_params = constructor_type_params.clone();
+
+                    errors.push(Error::WrongArity {
+                        location: identifier.span(),
+                        num_params_applied: pattern_arity,
+                        num_params: constructor_type_params.len(),
+                        typ: constructor_type,
+                    });
+
+                    for (i, param) in pattern_params.iter().enumerate() {
+                        let expected_param_type = constructor_type_params
+                            .get(i)
+                            .map(|t| *t)
+                            .unwrap_or_else(|| types.push_and_get_key(state.new_type_var()));
+
+                        check_pattern_and_add_bindings(
+                            param,
+                            expected_param_type,
+                            None,
+                            state,
+                            env,
+                            types_env,
+                            strings,
+                            types,
+                            errors,
+                        );
+                    }
+
+                    types.push_and_get_key(state.new_type_var())
+                }
+
+                // Just a type without arguments, arities match
+                (0, Named { .. }) => constructor_type,
+
+                // Used the pattern with arguments, but the type is just a type not a function
+                (_n, Named { .. }) => {
+                    let mut params = Vec::with_capacity(pattern_params.len());
+                    let ret = types.push_and_get_key(state.new_type_var());
+
+                    for param in pattern_params {
+                        let expected_param_type = types.push_and_get_key(state.new_type_var());
+                        params.push(expected_pattern_type);
+                        check_pattern_and_add_bindings(
+                            param,
+                            expected_param_type,
+                            None,
+                            state,
+                            env,
+                            types_env,
+                            strings,
+                            types,
+                            errors,
+                        );
+                    }
+
+                    let pattern_type = types.push_and_get_key(Fn {
+                        params: Rc::new(params),
+                        ret,
+                    });
+
+                    add_error(
+                        unify(
+                            state,
+                            identifier.span(),
+                            pattern_type,
+                            None,
+                            constructor_type,
+                            types,
+                        ),
+                        errors,
+                    );
+
+                    ret
+                }
+
+                (_, _) => constructor_type,
+            };
+
+            add_error(
+                unify(
+                    state,
+                    constructor.span,
+                    constructor_return_type,
+                    expected_pattern_type_span,
+                    expected_pattern_type,
+                    types,
+                ),
+                errors,
+            );
+        }
+    }
+}
+
+fn infer_identifier(
+    module: &Option<ModuleName>,
+    identifier: &AnyIdentifier,
+    span: span::Index,
+    state: &mut State,
+    env: &mut PolyTypeEnv,
+    strings: &mut Strings,
+    types: &mut Types,
+    errors: &mut Vec<Error>,
+) -> typ::Index {
+    let name = if let Some(module) = module {
+        // TODO: Check the module if it was imported, would make for a better error message
+        // TODO: This should be pre-computed in the identifier to avoid doing this with
+        // each node in the AST.
+        let full_name = {
+            let module = strings.resolve(module.full_name);
+            let name = strings.resolve(identifier.name());
+            format!("{module}.{name}")
+        };
+        strings.get_or_intern(full_name)
+    } else {
+        identifier.name()
+    };
+
+    match env.get(&name) {
+        Some(s) => state.instantiate(s, types),
+        None => {
+            add_error(
+                Err(Error::UndefinedIdentifier {
+                    identifier: name,
+                    location: span,
+                }),
+                errors,
+            );
+            types.push_and_get_key(state.new_type_var())
         }
     }
 }
@@ -2333,7 +2488,10 @@ where
         types,
         errors,
     );
-    let param_types = types[fn_type].parameters(types);
+    let param_types = match &types[fn_type] {
+        Fn { params, .. } => params.clone(),
+        _ => Rc::new(Vec::new()),
+    };
 
     let arg_types: Vec<typ::Index> = args
         .clone()
@@ -2363,7 +2521,7 @@ where
     let res = arg_types
         .iter()
         .zip(args)
-        .zip(param_types)
+        .zip(param_types.iter())
         .fold(Ok(()), |result, ((arg_type, arg), param_type)| {
             result.and_then(|_| {
                 unify(
@@ -2371,7 +2529,7 @@ where
                     expressions[arg].span,
                     *arg_type,
                     None,
-                    param_type,
+                    *param_type,
                     types,
                 )
             })
@@ -2582,6 +2740,12 @@ when 5 is
 when True is
     1 -> True
     \"hi\" -> True
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when {x = 1} is
+    True -> True
             "
             ));
         }
@@ -3345,6 +3509,60 @@ module Test.Help exposing (test)
     external test : Float -> String
 
 main = test 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_constructor_types_wrong_arity() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type Test a = X a | Y
+
+test = when X 1 is
+    X -> True
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type Test a = X a | Y
+
+test = when X 1 is
+    X a b -> a + b
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type Test a = X a | Y
+
+test = when X 1 is
+    X a -> a
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type Test a = X a | Y
+
+test = when X 1 is
+    Y a -> a
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type Test a = X a | Y
+
+test = when X 1 is
+    Y -> True
 "
             ));
         }
