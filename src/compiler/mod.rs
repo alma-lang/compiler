@@ -292,5 +292,21 @@ main = Some 1
 
         "])
         );
+
+        assert_snapshot!(
+            "Type",
+            compile(&[r"
+module Test exposing (main, Option(Some, None))
+
+type Option a = Some a | None
+
+type Id = Id Float
+
+main =
+    let Id id = Id 1
+    Some id
+
+        "])
+        );
     }
 }

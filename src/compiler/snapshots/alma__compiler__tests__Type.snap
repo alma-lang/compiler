@@ -1,0 +1,180 @@
+---
+source: src/compiler/mod.rs
+assertion_line: 296
+expression: "compile(&[r\"\nmodule Test exposing (main, Option(Some, None))\n\ntype Option a = Some a | None\n\ntype Id = Id Float\n\nmain =\n    let Id id = Id 1\n    Some id\n\n        \"])"
+---
+// alma_out/Alma.ffi.js
+
+export const or_ = (x, y) => x || y;
+export const and_ = (x, y) => x && y;
+
+export const eq = (x, y) => x === y;
+export const ne = (x, y) => x !== y;
+
+export const gt = (x, y) => x > y;
+export const ge = (x, y) => x >= y;
+export const lt = (x, y) => x < y;
+export const le = (x, y) => x <= y;
+
+export const add = (x, y) => x + y;
+export const sub = (x, y) => x - y;
+export const mult = (x, y) => x * y;
+export const div = (x, y) => x / y;
+
+export const Bool__True = true;
+export const Bool__False = false;
+
+
+
+// alma_out/Alma.js
+
+/*
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
+*/
+
+
+import * as Alma__ffi from "./Alma.ffi.js"
+
+
+// type Bool
+
+let True = Alma__ffi.Bool__True
+
+let False = Alma__ffi.Bool__False
+
+
+let or_ = Alma__ffi.or_
+
+let and_ = Alma__ffi.and_
+
+let eq = Alma__ffi.eq
+
+let ne = Alma__ffi.ne
+
+let gt = Alma__ffi.gt
+
+let ge = Alma__ffi.ge
+
+let lt = Alma__ffi.lt
+
+let le = Alma__ffi.le
+
+let add = Alma__ffi.add
+
+let sub = Alma__ffi.sub
+
+let mult = Alma__ffi.mult
+
+let div = Alma__ffi.div
+
+export {
+    // type Bool
+    True,
+    False,
+    or_,
+    and_,
+    eq,
+    ne,
+    gt,
+    ge,
+    lt,
+    le,
+    add,
+    sub,
+    mult,
+    div,
+}
+
+
+
+// alma_out/Test.js
+
+/*
+
+module Test
+
+None : ∀ a . Option a
+
+Some : ∀ a . a -> Option a
+
+main : ∀ ∅ . Option Float
+
+*/
+
+
+
+import * as Alma from "./Alma.js"
+import { True, False } from "./Alma.js"
+
+// type Option
+
+function Some(_0) {
+    return {
+        __tag: "Test.Option.Some",
+        _0,
+    }
+}
+
+let None = {
+    __tag: "Test.Option.None",
+    _0: null,
+}
+
+// type Id
+
+function Id(_0) {
+    return {
+        __tag: "Test.Id.Id",
+        _0,
+    }
+}
+
+let main = function() {
+    let { _0: id } = Id(1)
+    return Some(id)
+}()
+
+export {
+    main,
+    // type Option
+    Some,
+    None,
+}
+
+
+
+

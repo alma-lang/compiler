@@ -242,6 +242,20 @@ fn generate_import_from_part_with_newline(code: &mut String, path: &str) {
     write!(code, " from \"{dot_slash}{path}\"\n").unwrap();
 }
 
+const UNION_TYPE_FIELD: &str = "__tag";
+
+fn generate_union_discriminant_field(
+    code: &mut String,
+    module_name: &ModuleName,
+    type_name: &str,
+    constructor_name: &str,
+    strings: &Strings,
+) {
+    write!(code, "{UNION_TYPE_FIELD}: \"").unwrap();
+    module_full_name(code, module_name, strings);
+    writeln!(code, ".{type_name}.{constructor_name}\",").unwrap();
+}
+
 fn generate_types(
     indent: usize,
     code: &mut String,
@@ -312,7 +326,13 @@ fn generate_types(
                             {
                                 let indent = add_indent(indent);
                                 indented(code, indent, "");
-                                writeln!(code, "tag: \"{constructor_name}\",").unwrap();
+                                generate_union_discriminant_field(
+                                    code,
+                                    module_name,
+                                    type_name,
+                                    constructor_name,
+                                    strings,
+                                );
 
                                 for i in 0..max_params {
                                     indented(code, indent, "");
@@ -332,7 +352,13 @@ fn generate_types(
                         {
                             let indent = add_indent(indent);
                             indented(code, indent, "");
-                            writeln!(code, "tag: \"{constructor_name}\",").unwrap();
+                            generate_union_discriminant_field(
+                                code,
+                                module_name,
+                                type_name,
+                                constructor_name,
+                                strings,
+                            );
 
                             for i in 0..max_params {
                                 indented(code, indent, "");
@@ -489,11 +515,17 @@ fn generate_function(
 fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings: &Strings) {
     match &pattern.typ {
         P::Identifier(identifier) => code.push_str(identifier.to_string(strings)),
-        P::Type {
-            module: _,
-            constructor: _,
-            params: _,
-        } => todo!(),
+        P::Type { params, .. } => {
+            code.push_str("{ ");
+            for (i, param) in params.iter().enumerate() {
+                if i > 0 {
+                    code.push_str(", ");
+                }
+                write!(code, "_{i}: ").unwrap();
+                generate_binding_destructuring(code, param, strings);
+            }
+            code.push_str(" }");
+        }
         P::Hole | P::String_(_) | P::Float(_) => code.push('_'),
     }
 }
