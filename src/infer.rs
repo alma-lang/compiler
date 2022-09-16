@@ -2055,20 +2055,9 @@ fn infer_definitions<'ast>(
 
                     let t = check_signature(&typed_definition, t, state, types_env, types, errors);
 
-                    let t = state.generalize(t, types);
-                    match &pattern.typ {
-                        P::Hole => (),
-                        P::Identifier(x) => env.insert(x.name, t),
-                        P::String_(_s) => (),
-                        P::Float(_n) => (),
-                        P::Type {
-                            module: _,
-                            constructor: _,
-                            params: _,
-                        } => {
-                            todo!("make new types for all variables and insert them in the environment")
-                        }
-                    }
+                    check_pattern_and_add_bindings(
+                        &pattern, t, None, state, env, types_env, strings, types, errors,
+                    );
                 }
             }
         } else if let Some(typ) = typed_definition.typ() {
@@ -2405,38 +2394,29 @@ fn infer_lambda<'ast>(
     types: &mut Types,
     errors: &mut Vec<Error>,
 ) -> typ::Index {
-    let params_with_type: Vec<(&Pattern, PolyType)> = lambda
+    let param_types: Vec<typ::Index> = lambda
         .parameters
         .iter()
-        .map(|p| {
-            (
-                p,
-                PolyType::new(
-                    IndexSet::new(),
-                    types.push_and_get_key(state.new_type_var()),
-                ),
-            )
-        })
+        .map(|_| types.push_and_get_key(state.new_type_var()))
         .collect();
 
-    let mut env = params_with_type
-        .iter()
-        .fold(env.clone(), |mut env, (param, param_type)| {
-            match &(**param).typ {
-                P::Hole => (),
-                P::Identifier(x) => env.insert(x.name, param_type.clone()),
-                P::String_(_s) => (),
-                P::Float(_n) => (),
-                P::Type {
-                    module: _,
-                    constructor: _,
-                    params: _,
-                } => {
-                    todo!("make new types for all variables and insert them in the environment")
-                }
-            };
+    let mut env = lambda.parameters.iter().zip(&param_types).fold(
+        env.clone(),
+        |mut env, (param, param_type)| {
+            check_pattern_and_add_bindings(
+                param,
+                *param_type,
+                None,
+                state,
+                &mut env,
+                types_env,
+                strings,
+                types,
+                errors,
+            );
             env
-        });
+        },
+    );
 
     let return_type = infer_rec(
         lambda.body,
@@ -2451,12 +2431,7 @@ fn infer_lambda<'ast>(
     );
 
     types.push_and_get_key(Fn {
-        params: Rc::new(
-            params_with_type
-                .iter()
-                .map(|(_, param_type)| param_type.typ)
-                .collect(),
-        ),
+        params: Rc::new(param_types),
         ret: return_type,
     })
 }
@@ -3563,6 +3538,34 @@ type Test a = X a | Y
 
 test = when X 1 is
     Y -> True
+"
+            ));
+        }
+
+        #[test]
+        fn test_patterns_in_function_parameters() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+type Test a = Test a
+
+main (Test a) = a
+"
+            ));
+        }
+
+        #[test]
+        fn test_patterns_in_top_level_definitions() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+type Test a = Test a
+
+Test a = Test 1
+
+main = a
 "
             ));
         }
