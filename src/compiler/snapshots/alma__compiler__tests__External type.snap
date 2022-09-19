@@ -105,6 +105,7 @@ export {
     // type Bool
     True,
     False,
+    // end type Bool
     or_,
     and_,
     eq,
@@ -159,6 +160,7 @@ export {
     // type Option
     Some,
     None,
+    // end type Option
 }
 
 

@@ -3570,6 +3570,44 @@ main = a
             ));
         }
 
+        #[test]
+        fn test_qualified_constructor_in_pattern_matching() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Types
+
+module Test.Types exposing (Test(Test))
+    type Test a = Test a
+
+Test.Types.Test a = Test.Types.Test 1
+
+test = when Test.Types.Test 2 is
+    Test.Types.Test a -> a
+
+main = a + test
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (main)
+
+import Test.Types as Types
+
+module Test.Types exposing (Test(Test))
+    type Test a = Test a
+
+Types.Test a = Types.Test 1
+
+test = when Types.Test 2 is
+    Types.Test a -> a
+
+main = a + test
+"
+            ));
+        }
+
         fn infer(code: &str) -> String {
             let mut state = compiler::State::new();
             let alma_source = Source::new_file("Alma.alma").unwrap();

@@ -18,6 +18,8 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 const INDENT: usize = 4;
+const UNION_TYPE_FIELD: &str = "__tag";
+const PATTERN_MATCHING_EXPRESSION_RESULT: &str = "__result";
 
 pub enum OutputFile {
     File(String),
@@ -212,22 +214,36 @@ fn generate_imports(
         generate_import_from_part_with_newline(code, import_output_path);
 
         if !import.exposing.is_empty() {
-            let mut identifiers = vec![];
+            indented(code, indent, "import { ");
+            let mut first = true;
             for exposing in &import.exposing {
                 match &exposing.typ {
                     ExportData::Identifier(identifier) => {
-                        identifiers.push(identifier.to_string(strings));
+                        if !first {
+                            code.push_str(", ");
+                        } else {
+                            first = false;
+                        }
+                        code.push_str(identifier.to_string(strings));
                     }
                     ExportData::Type { constructors, .. } => {
-                        for constructor in constructors {
-                            identifiers.push(constructor.to_string(strings));
+                        if !constructors.is_empty() {
+                            if !first {
+                                code.push_str(", ");
+                            } else {
+                                first = false;
+                            }
+                            for (i, constructor) in constructors.iter().enumerate() {
+                                if i > 0 {
+                                    code.push_str(", ");
+                                }
+                                code.push_str(constructor.to_string(strings));
+                            }
                         }
                     }
                 }
             }
-            indented(code, indent, "");
-            let fields = identifiers.join(", ");
-            write!(code, "import {{ {fields} }}").unwrap();
+            code.push_str(" }");
             generate_import_from_part_with_newline(code, import_output_path);
         }
     }
@@ -242,18 +258,8 @@ fn generate_import_from_part_with_newline(code: &mut String, path: &str) {
     write!(code, " from \"{dot_slash}{path}\"\n").unwrap();
 }
 
-const UNION_TYPE_FIELD: &str = "__tag";
-
-fn generate_union_discriminant_field(
-    code: &mut String,
-    module_name: &ModuleName,
-    type_name: &str,
-    constructor_name: &str,
-    strings: &Strings,
-) {
-    write!(code, "{UNION_TYPE_FIELD}: \"").unwrap();
-    module_full_name(code, module_name, strings);
-    writeln!(code, ".{type_name}.{constructor_name}\",").unwrap();
+fn generate_union_discriminant_field_value(code: &mut String, constructor_name: &str) {
+    write!(code, "\"{constructor_name}\"").unwrap();
 }
 
 fn generate_types(
@@ -316,7 +322,7 @@ fn generate_types(
                             if i > 0 {
                                 code.push_str(", ");
                             }
-                            write!(code, "_{i}").unwrap();
+                            generate_union_field(code, i);
                         }
                         code.push_str(") {\n");
 
@@ -326,20 +332,18 @@ fn generate_types(
                             {
                                 let indent = add_indent(indent);
                                 indented(code, indent, "");
-                                generate_union_discriminant_field(
-                                    code,
-                                    module_name,
-                                    type_name,
-                                    constructor_name,
-                                    strings,
-                                );
+                                write!(code, "{UNION_TYPE_FIELD}: ").unwrap();
+                                generate_union_discriminant_field_value(code, constructor_name);
+                                code.push_str(",\n");
 
                                 for i in 0..max_params {
                                     indented(code, indent, "");
                                     if i < num_params {
-                                        writeln!(code, "_{i},").unwrap();
+                                        generate_union_field(code, i);
+                                        code.push_str(",\n");
                                     } else {
-                                        writeln!(code, "_{i}: null,").unwrap();
+                                        generate_union_field(code, i);
+                                        code.push_str(": null,\n");
                                     }
                                 }
                             }
@@ -352,17 +356,14 @@ fn generate_types(
                         {
                             let indent = add_indent(indent);
                             indented(code, indent, "");
-                            generate_union_discriminant_field(
-                                code,
-                                module_name,
-                                type_name,
-                                constructor_name,
-                                strings,
-                            );
+                            write!(code, "{UNION_TYPE_FIELD}: ").unwrap();
+                            generate_union_discriminant_field_value(code, constructor_name);
+                            code.push_str(",\n");
 
                             for i in 0..max_params {
                                 indented(code, indent, "");
-                                writeln!(code, "_{i}: null,").unwrap();
+                                generate_union_field(code, i);
+                                code.push_str(": null,\n");
                             }
                         }
                     }
@@ -373,6 +374,10 @@ fn generate_types(
             types::TypeDefinitionData::Record(_) => (),
         }
     }
+}
+
+fn generate_union_field(code: &mut String, i: usize) {
+    write!(code, "_{i}").unwrap();
 }
 
 fn generate_definitions(
@@ -460,13 +465,18 @@ fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: 
                 writeln!(code, "{},", identifier.to_string(strings)).unwrap();
             }
             ExportData::Type { constructors, name } => {
+                let indent = add_indent(indent);
                 if !constructors.is_empty() {
-                    indented(code, add_indent(indent), "");
+                    indented(code, indent, "");
                     writeln!(code, "// type {}", name.to_string(strings)).unwrap();
                 }
                 for constructor in constructors {
-                    indented(code, add_indent(indent), "");
+                    indented(code, indent, "");
                     writeln!(code, "{},", constructor.to_string(strings)).unwrap();
+                }
+                if !constructors.is_empty() {
+                    indented(code, indent, "");
+                    writeln!(code, "// end type {}", name.to_string(strings)).unwrap();
                 }
             }
         }
@@ -521,7 +531,8 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
                 if i > 0 {
                     code.push_str(", ");
                 }
-                write!(code, "_{i}: ").unwrap();
+                generate_union_field(code, i);
+                code.push_str(": ");
                 generate_binding_destructuring(code, param, strings);
             }
             code.push_str(" }");
@@ -777,7 +788,7 @@ fn generate_expression(
                     strings,
                     expressions,
                 );
-                code.push_str(") {");
+                code.push_str(") {\n");
 
                 {
                     let indent = add_indent(indent);
@@ -790,6 +801,7 @@ fn generate_expression(
                         strings,
                         expressions,
                     );
+                    code.push('\n');
                 }
 
                 line(code, indent, "} else {");
@@ -805,6 +817,7 @@ fn generate_expression(
                         strings,
                         expressions,
                     );
+                    code.push('\n');
                 }
 
                 line(code, indent, "}");
@@ -813,8 +826,206 @@ fn generate_expression(
             indented(code, indent, "}()");
         }
 
-        E::PatternMatching { .. } => todo!(),
+        E::PatternMatching {
+            expression,
+            branches,
+        } => {
+            code.push_str("function () {\n");
+            {
+                let indent = add_indent(indent);
+
+                indented(code, indent, "");
+                write!(code, "let {PATTERN_MATCHING_EXPRESSION_RESULT} = ").unwrap();
+                generate_expression(
+                    indent,
+                    code,
+                    module_name,
+                    &expressions[*expression],
+                    strings,
+                    expressions,
+                );
+                code.push_str("\n");
+
+                for branch in branches {
+                    generate_pattern_matching_if(
+                        code,
+                        indent,
+                        PATTERN_MATCHING_EXPRESSION_RESULT,
+                        &branch.pattern,
+                        Vec::new(),
+                        |code, indent, module_name, expressions, strings| {
+                            indented(code, indent, "return ");
+                            generate_expression(
+                                indent,
+                                code,
+                                module_name,
+                                &expressions[branch.body],
+                                strings,
+                                expressions,
+                            );
+                            code.push('\n');
+                        },
+                        module_name,
+                        expressions,
+                        strings,
+                    );
+                }
+            }
+            indented(code, indent, "}()");
+        }
     };
+}
+
+fn generate_pattern_matching_if<'a, F>(
+    code: &mut String,
+    indent: usize,
+    parent_result_var: &str,
+    pattern: &'a Pattern,
+    mut pattern_queue: Vec<(String, &'a Pattern)>,
+    generate_body: F,
+    module_name: &ModuleName,
+    expressions: &Expressions,
+    strings: &Strings,
+) where
+    F: Fn(&mut String, usize, &ModuleName, &Expressions, &Strings),
+{
+    let has_conditions = pattern_has_pattern_matching_conditions(pattern);
+    if has_conditions {
+        indented(code, indent, "if (");
+        generate_pattern_matching_conditions(code, parent_result_var, pattern, strings);
+        code.push_str(") {\n");
+    }
+    {
+        let indent = if has_conditions {
+            add_indent(indent)
+        } else {
+            indent
+        };
+        if pattern_needs_bindings(pattern) {
+            generate_pattern_matching_bindings(code, indent, parent_result_var, pattern, strings);
+        }
+
+        pattern_fill_queue(&parent_result_var, pattern, &mut pattern_queue);
+        let pattern = pattern_queue.pop();
+        if let Some((parent_result_var, pattern)) = pattern {
+            generate_pattern_matching_if(
+                code,
+                indent,
+                &parent_result_var,
+                pattern,
+                pattern_queue,
+                generate_body,
+                module_name,
+                expressions,
+                strings,
+            );
+        } else {
+            generate_body(code, indent, module_name, expressions, strings);
+        }
+    }
+    if has_conditions {
+        line(code, indent, "}");
+    }
+}
+
+fn generate_pattern_matching_bindings(
+    code: &mut String,
+    indent: usize,
+    parent_result_var: &str,
+    pattern: &Pattern,
+    strings: &Strings,
+) {
+    match &pattern.typ {
+        P::Hole | P::String_(_) | P::Float(_) => (),
+        P::Identifier(ident) => {
+            let ident = ident.to_string(strings);
+            indented(code, indent, "");
+            writeln!(code, "let {ident} = {parent_result_var}").unwrap();
+        }
+        P::Type { params, .. } => {
+            for (i, param) in params.iter().enumerate() {
+                if pattern_needs_bindings(param) {
+                    indented(code, indent, "let ");
+                    // These variable names are added in pattern_fill_queue for later be read
+                    let var_name = {
+                        let mut var = String::new();
+                        var.push_str(parent_result_var);
+                        generate_union_field(&mut var, i);
+                        var
+                    };
+                    code.push_str(&var_name);
+                    write!(code, " = {parent_result_var}.").unwrap();
+                    generate_union_field(code, i);
+                    code.push_str("\n");
+                }
+            }
+        }
+    }
+}
+
+fn generate_pattern_matching_conditions(
+    code: &mut String,
+    parent_result_var: &str,
+    pattern: &Pattern,
+    strings: &Strings,
+) {
+    match &pattern.typ {
+        P::Hole => code.push_str("true"),
+        P::Identifier(_) => code.push_str("true"),
+        P::String_(string) => {
+            let string = strings.resolve(*string);
+            write!(code, "{parent_result_var} === \"{string}\"").unwrap();
+        }
+        P::Float(num) => {
+            let num = num.to_string();
+            write!(code, "{parent_result_var} === {num}").unwrap();
+        }
+        P::Type { constructor, .. } => {
+            write!(code, "{parent_result_var}.{UNION_TYPE_FIELD} === ").unwrap();
+            generate_union_discriminant_field_value(code, constructor.to_string(strings));
+        }
+    }
+}
+
+fn pattern_fill_queue<'a>(
+    parent_result_var: &str,
+    pattern: &'a Pattern,
+    queue: &mut Vec<(String, &'a Pattern)>,
+) {
+    match &pattern.typ {
+        P::Hole | P::Identifier(_) | P::String_(_) | P::Float(_) => (),
+        P::Type { params, .. } => {
+            for (i, param) in params.iter().enumerate() {
+                let var_name = {
+                    let mut var = String::new();
+                    var.push_str(parent_result_var);
+                    generate_union_field(&mut var, i);
+                    var
+                };
+                queue.push((var_name, &param));
+            }
+        }
+    }
+}
+
+fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
+    match &pattern.typ {
+        P::Hole => false,
+        P::Identifier(_) => false,
+        P::String_(_) => true,
+        P::Float(_) => true,
+        P::Type { .. } => true,
+    }
+}
+
+fn pattern_needs_bindings(pattern: &Pattern) -> bool {
+    match &pattern.typ {
+        P::Hole => false,
+        P::Identifier(_) => true,
+        P::String_(_) => true,
+        P::Float(_) => true,
+        P::Type { params, .. } => params.iter().any(|p| pattern_needs_bindings(p)),
+    }
 }
 
 fn generate_binary_operator(

@@ -294,8 +294,8 @@ main = Some 1
         );
 
         assert_snapshot!(
-            "Type",
-            compile(&[r"
+            "Type patterns and pattern matching",
+            compile(&[r#"
 module Test exposing (main, Option(Some, None))
 
 type Option a = Some a | None
@@ -304,9 +304,19 @@ type Id = Id Float
 
 main =
     let Id id = Id 1
+    let test = when Id 5 is
+        Id id -> id
+    let test = when "test" is
+        "banana" -> id
+        "phone" -> id
+    let test = when 5 is
+        5 -> id
+        _ -> id
+    let test = when Some(Id(1)) is
+        Some (Id id) -> id
     Some id
 
-        "])
+        "#])
         );
     }
 }
