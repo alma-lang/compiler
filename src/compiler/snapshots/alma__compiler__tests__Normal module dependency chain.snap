@@ -72,9 +72,13 @@ import * as Alma__ffi from "./Alma.ffi.js"
 
 // type Bool
 
-let True = Alma__ffi.Bool__True
+let True = {
+    __tag: "True",
+}
 
-let False = Alma__ffi.Bool__False
+let False = {
+    __tag: "False",
+}
 
 
 let or_ = Alma__ffi.or_

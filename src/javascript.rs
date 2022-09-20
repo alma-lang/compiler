@@ -145,13 +145,7 @@ fn generate_file(
 
     if !module.type_definitions.is_empty() {
         code.push('\n');
-        generate_types(
-            indent,
-            code,
-            &module.name,
-            &module.type_definitions,
-            strings,
-        );
+        generate_types(indent, code, &module.type_definitions, strings);
     }
 
     if !module.definitions.is_empty() {
@@ -262,13 +256,7 @@ fn generate_union_discriminant_field_value(code: &mut String, constructor_name: 
     write!(code, "\"{constructor_name}\"").unwrap();
 }
 
-fn generate_types(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
-    types: &[TypeDefinition],
-    strings: &Strings,
-) {
+fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], strings: &Strings) {
     for (i, type_def) in types.iter().enumerate() {
         let type_def = &type_def;
         if i > 0 {
@@ -276,25 +264,6 @@ fn generate_types(
         }
         match &type_def.typ {
             types::TypeDefinitionData::Empty => (),
-            types::TypeDefinitionData::External { constructors } => {
-                let type_name = type_def.name.to_string(strings);
-                indented(code, indent, "");
-                writeln!(code, "// type {type_name}\n").unwrap();
-
-                for (i, constructor) in constructors.iter().enumerate() {
-                    if i > 0 {
-                        code.push('\n')
-                    }
-                    let constructor = &constructor;
-                    let constructor_name = constructor.name.to_string(strings);
-
-                    indented(code, indent, "");
-                    write!(code, "let {constructor_name} = ").unwrap();
-                    module_ffi_full_name(code, module_name, strings);
-                    write!(code, ".{type_name}__{constructor_name}").unwrap();
-                    code.push_str("\n");
-                }
-            }
             types::TypeDefinitionData::Union { constructors } => {
                 let type_name = type_def.name.to_string(strings);
                 indented(code, indent, "");

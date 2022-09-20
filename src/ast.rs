@@ -142,10 +142,6 @@ impl Module {
         self.definitions
             .iter()
             .any(|def| matches!(def, TypedDefinition::External(_)))
-            || self
-                .type_definitions
-                .iter()
-                .any(|t| matches!(t.typ, types::TypeDefinitionData::External { .. }))
     }
 }
 
@@ -224,7 +220,6 @@ pub mod types {
 
     #[derive(Debug)]
     pub enum TypeDefinitionData {
-        External { constructors: Vec<Constructor> },
         Union { constructors: Vec<Constructor> },
         Record(RecordType),
         Empty,

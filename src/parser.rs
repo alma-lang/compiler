@@ -904,20 +904,10 @@ impl<'a> State<'a> {
 
     fn type_def_union(&mut self) -> ParseResult<Option<TypeDefinition>> {
         let (first_token_index, first_token) = self.get_token();
-        let second_token = self.peek_next_token();
 
-        let is_external = match (&first_token.kind, &second_token.kind) {
-            (TT::External, TT::Type) => {
-                self.advance();
-                self.advance();
-                true
-            }
-            (TT::Type, _) => {
-                self.advance();
-                false
-            }
-            (_, _) => return Ok(None),
-        };
+        if self.match_token(TT::Type).is_none() {
+            return Ok(None);
+        }
 
         let (name, vars) = self.type_def_name(&first_token)?;
 
@@ -927,14 +917,8 @@ impl<'a> State<'a> {
             self.advance();
 
             let branches = self.type_union_branches()?;
-            if is_external {
-                types::TypeDefinitionData::External {
-                    constructors: branches,
-                }
-            } else {
-                types::TypeDefinitionData::Union {
-                    constructors: branches,
-                }
+            types::TypeDefinitionData::Union {
+                constructors: branches,
             }
         } else {
             if self.is_token_equal_or_less_indented_than(first_token) {
@@ -3665,17 +3649,6 @@ main =
         test3 a b = c
 
     test
-"
-            ));
-        }
-
-        #[test]
-        fn test_external_types() {
-            assert_snapshot!(parse(
-                "\
-module Test exposing (Option)
-
-external type Option a = Some a | None
 "
             ));
         }

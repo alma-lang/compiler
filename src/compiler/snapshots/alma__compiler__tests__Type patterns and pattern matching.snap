@@ -1,6 +1,6 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 296
+assertion_line: 284
 expression: "compile(&[r#\"\nmodule Test exposing (main, Option(Some, None))\n\ntype Option a = Some a | None\n\ntype Id = Id Float\n\nmain =\n    let Id id = Id 1\n    let test = when Id 5 is\n        Id id -> id\n    let test = when \"test\" is\n        \"banana\" -> id\n        \"phone\" -> id\n    let test = when 5 is\n        5 -> id\n        _ -> id\n    let test = when Some(Id(1)) is\n        Some (Id id) -> id\n    Some id\n\n        \"#])"
 ---
 // alma_out/Alma.ffi.js
@@ -72,9 +72,13 @@ import * as Alma__ffi from "./Alma.ffi.js"
 
 // type Bool
 
-let True = Alma__ffi.Bool__True
+let True = {
+    __tag: "True",
+}
 
-let False = Alma__ffi.Bool__False
+let False = {
+    __tag: "False",
+}
 
 
 let or_ = Alma__ffi.or_
