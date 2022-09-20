@@ -174,7 +174,7 @@ let main = function() {
         let test = function () {
             let __result = Id(5)
             if (__result.__tag === "Id") {
-                let id = __result._0
+                let { _0: id } = __result
                 return id
             }
 
@@ -206,7 +206,7 @@ let main = function() {
                     let test = function () {
                         let __result = Some(Id(1))
                         if (__result.__tag === "Some" && __result._0.__tag === "Id") {
-                            let id = __result._0._0
+                            let { _0: { _0: id } } = __result
                             return id
                         }
 

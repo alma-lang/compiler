@@ -496,17 +496,21 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
         P::Identifier(identifier) => code.push_str(identifier.to_string(strings)),
         P::Type { params, .. } => {
             code.push_str("{ ");
+            let mut first = true;
             for (i, param) in params.iter().enumerate() {
-                if i > 0 {
-                    code.push_str(", ");
+                if pattern_needs_bindings(param) {
+                    if !first {
+                        code.push_str(", ");
+                    }
+                    first = false;
+                    generate_union_field(code, i);
+                    code.push_str(": ");
+                    generate_binding_destructuring(code, param, strings);
                 }
-                generate_union_field(code, i);
-                code.push_str(": ");
-                generate_binding_destructuring(code, param, strings);
             }
             code.push_str(" }");
         }
-        P::Hole | P::String_(_) | P::Float(_) => code.push('_'),
+        P::Hole | P::String_(_) | P::Float(_) => (),
     }
 }
 
@@ -878,15 +882,13 @@ fn generate_pattern_matching_if<'a, F>(
         } else {
             indent
         };
-        if pattern_needs_bindings(pattern) {
-            generate_pattern_matching_bindings(
-                code,
-                indent,
-                &mut vec![PATTERN_MATCHING_EXPRESSION_RESULT.to_owned()],
-                pattern,
-                strings,
-            );
-        }
+        generate_pattern_matching_bindings(
+            code,
+            indent,
+            PATTERN_MATCHING_EXPRESSION_RESULT,
+            pattern,
+            strings,
+        );
 
         generate_body(code, indent, module_name, expressions, strings);
     }
@@ -898,31 +900,14 @@ fn generate_pattern_matching_if<'a, F>(
 fn generate_pattern_matching_bindings(
     code: &mut String,
     indent: usize,
-    path: &mut Vec<String>,
+    result: &str,
     pattern: &Pattern,
     strings: &Strings,
 ) {
-    match &pattern.typ {
-        P::Hole | P::String_(_) | P::Float(_) => (),
-        P::Identifier(ident) => {
-            let ident = ident.to_string(strings);
-            indented(code, indent, "");
-            let prop = path.join(".");
-            writeln!(code, "let {ident} = {prop}").unwrap();
-        }
-        P::Type { params, .. } => {
-            for (i, param) in params.iter().enumerate() {
-                if pattern_needs_bindings(param) {
-                    path.push({
-                        let mut field = String::new();
-                        generate_union_field(&mut field, i);
-                        field
-                    });
-                    generate_pattern_matching_bindings(code, indent, path, param, strings);
-                    path.pop();
-                }
-            }
-        }
+    if pattern_needs_bindings(pattern) {
+        indented(code, indent, "let ");
+        generate_binding_destructuring(code, pattern, strings);
+        writeln!(code, " = {result}").unwrap();
     }
 }
 
