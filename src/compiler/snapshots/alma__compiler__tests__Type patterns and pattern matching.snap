@@ -177,6 +177,8 @@ let main = function() {
                 let id = __result._0
                 return id
             }
+
+            throw new Error("Incomplete pattern match")
         }()
         return function() {
             let test = function () {
@@ -187,6 +189,8 @@ let main = function() {
                 if (__result === "phone") {
                     return id
                 }
+
+                throw new Error("Incomplete pattern match")
             }()
             return function() {
                 let test = function () {
@@ -195,6 +199,8 @@ let main = function() {
                         return id
                     }
                     return id
+
+                    throw new Error("Incomplete pattern match")
                 }()
                 return function() {
                     let test = function () {
@@ -203,6 +209,8 @@ let main = function() {
                             let id = __result._0._0
                             return id
                         }
+
+                        throw new Error("Incomplete pattern match")
                     }()
                     return Some(id)
                 }()

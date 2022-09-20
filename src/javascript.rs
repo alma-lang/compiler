@@ -837,6 +837,13 @@ fn generate_expression(
                         strings,
                     );
                 }
+
+                code.push('\n');
+                line(
+                    code,
+                    indent,
+                    "throw new Error(\"Incomplete pattern match\")",
+                )
             }
             indented(code, indent, "}()");
         }
