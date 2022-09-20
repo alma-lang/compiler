@@ -819,9 +819,7 @@ fn generate_expression(
                     generate_pattern_matching_if(
                         code,
                         indent,
-                        PATTERN_MATCHING_EXPRESSION_RESULT,
                         &branch.pattern,
-                        Vec::new(),
                         |code, indent, module_name, expressions, strings| {
                             indented(code, indent, "return ");
                             generate_expression(
@@ -848,9 +846,7 @@ fn generate_expression(
 fn generate_pattern_matching_if<'a, F>(
     code: &mut String,
     indent: usize,
-    parent_result_var: &str,
     pattern: &'a Pattern,
-    mut pattern_queue: Vec<(String, &'a Pattern)>,
     generate_body: F,
     module_name: &ModuleName,
     expressions: &Expressions,
@@ -861,7 +857,12 @@ fn generate_pattern_matching_if<'a, F>(
     let has_conditions = pattern_has_pattern_matching_conditions(pattern);
     if has_conditions {
         indented(code, indent, "if (");
-        generate_pattern_matching_conditions(code, parent_result_var, pattern, strings);
+        generate_pattern_matching_conditions(
+            code,
+            &mut vec![PATTERN_MATCHING_EXPRESSION_RESULT.to_owned()],
+            pattern,
+            strings,
+        );
         code.push_str(") {\n");
     }
     {
@@ -871,26 +872,16 @@ fn generate_pattern_matching_if<'a, F>(
             indent
         };
         if pattern_needs_bindings(pattern) {
-            generate_pattern_matching_bindings(code, indent, parent_result_var, pattern, strings);
-        }
-
-        pattern_fill_queue(&parent_result_var, pattern, &mut pattern_queue);
-        let pattern = pattern_queue.pop();
-        if let Some((parent_result_var, pattern)) = pattern {
-            generate_pattern_matching_if(
+            generate_pattern_matching_bindings(
                 code,
                 indent,
-                &parent_result_var,
+                &mut vec![PATTERN_MATCHING_EXPRESSION_RESULT.to_owned()],
                 pattern,
-                pattern_queue,
-                generate_body,
-                module_name,
-                expressions,
                 strings,
             );
-        } else {
-            generate_body(code, indent, module_name, expressions, strings);
         }
+
+        generate_body(code, indent, module_name, expressions, strings);
     }
     if has_conditions {
         line(code, indent, "}");
@@ -900,7 +891,7 @@ fn generate_pattern_matching_if<'a, F>(
 fn generate_pattern_matching_bindings(
     code: &mut String,
     indent: usize,
-    parent_result_var: &str,
+    path: &mut Vec<String>,
     pattern: &Pattern,
     strings: &Strings,
 ) {
@@ -909,23 +900,19 @@ fn generate_pattern_matching_bindings(
         P::Identifier(ident) => {
             let ident = ident.to_string(strings);
             indented(code, indent, "");
-            writeln!(code, "let {ident} = {parent_result_var}").unwrap();
+            let prop = path.join(".");
+            writeln!(code, "let {ident} = {prop}").unwrap();
         }
         P::Type { params, .. } => {
             for (i, param) in params.iter().enumerate() {
                 if pattern_needs_bindings(param) {
-                    indented(code, indent, "let ");
-                    // These variable names are added in pattern_fill_queue for later be read
-                    let var_name = {
-                        let mut var = String::new();
-                        var.push_str(parent_result_var);
-                        generate_union_field(&mut var, i);
-                        var
-                    };
-                    code.push_str(&var_name);
-                    write!(code, " = {parent_result_var}.").unwrap();
-                    generate_union_field(code, i);
-                    code.push_str("\n");
+                    path.push({
+                        let mut field = String::new();
+                        generate_union_field(&mut field, i);
+                        field
+                    });
+                    generate_pattern_matching_bindings(code, indent, path, param, strings);
+                    path.pop();
                 }
             }
         }
@@ -934,44 +921,42 @@ fn generate_pattern_matching_bindings(
 
 fn generate_pattern_matching_conditions(
     code: &mut String,
-    parent_result_var: &str,
+    path: &mut Vec<String>,
     pattern: &Pattern,
     strings: &Strings,
 ) {
     match &pattern.typ {
-        P::Hole => code.push_str("true"),
-        P::Identifier(_) => code.push_str("true"),
+        P::Hole | P::Identifier(_) => (),
         P::String_(string) => {
             let string = strings.resolve(*string);
-            write!(code, "{parent_result_var} === \"{string}\"").unwrap();
+            let prop = path.join(".");
+            write!(code, "{prop} === \"{string}\"").unwrap();
         }
         P::Float(num) => {
             let num = num.to_string();
-            write!(code, "{parent_result_var} === {num}").unwrap();
+            let prop = path.join(".");
+            write!(code, "{prop} === {num}").unwrap();
         }
-        P::Type { constructor, .. } => {
-            write!(code, "{parent_result_var}.{UNION_TYPE_FIELD} === ").unwrap();
+        P::Type {
+            constructor,
+            params,
+            ..
+        } => {
+            let prop = path.join(".");
+            write!(code, "{prop}.{UNION_TYPE_FIELD} === ").unwrap();
             generate_union_discriminant_field_value(code, constructor.to_string(strings));
-        }
-    }
-}
 
-fn pattern_fill_queue<'a>(
-    parent_result_var: &str,
-    pattern: &'a Pattern,
-    queue: &mut Vec<(String, &'a Pattern)>,
-) {
-    match &pattern.typ {
-        P::Hole | P::Identifier(_) | P::String_(_) | P::Float(_) => (),
-        P::Type { params, .. } => {
             for (i, param) in params.iter().enumerate() {
-                let var_name = {
-                    let mut var = String::new();
-                    var.push_str(parent_result_var);
-                    generate_union_field(&mut var, i);
-                    var
-                };
-                queue.push((var_name, &param));
+                if pattern_has_pattern_matching_conditions(param) {
+                    code.push_str(" && ");
+                    path.push({
+                        let mut field = String::new();
+                        generate_union_field(&mut field, i);
+                        field
+                    });
+                    generate_pattern_matching_conditions(code, path, param, strings);
+                    path.pop();
+                }
             }
         }
     }
@@ -991,8 +976,8 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
     match &pattern.typ {
         P::Hole => false,
         P::Identifier(_) => true,
-        P::String_(_) => true,
-        P::Float(_) => true,
+        P::String_(_) => false,
+        P::Float(_) => false,
         P::Type { params, .. } => params.iter().any(|p| pattern_needs_bindings(p)),
     }
 }

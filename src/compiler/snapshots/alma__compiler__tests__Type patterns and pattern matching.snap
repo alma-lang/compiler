@@ -174,8 +174,7 @@ let main = function() {
         let test = function () {
             let __result = Id(5)
             if (__result.__tag === "Id") {
-                let __result_0 = __result._0
-                let id = __result_0
+                let id = __result._0
                 return id
             }
         }()
@@ -200,13 +199,9 @@ let main = function() {
                 return function() {
                     let test = function () {
                         let __result = Some(Id(1))
-                        if (__result.__tag === "Some") {
-                            let __result_0 = __result._0
-                            if (__result_0.__tag === "Id") {
-                                let __result_0_0 = __result_0._0
-                                let id = __result_0_0
-                                return id
-                            }
+                        if (__result.__tag === "Some" && __result._0.__tag === "Id") {
+                            let id = __result._0._0
+                            return id
                         }
                     }()
                     return Some(id)
