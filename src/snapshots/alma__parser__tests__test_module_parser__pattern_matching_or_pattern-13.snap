@@ -1,0 +1,34 @@
+---
+source: src/parser.rs
+assertion_line: 4051
+expression: "parse(\"\\\nmodule Test\n\ntest a as b = 5\n\")"
+---
+Input:
+
+module Test
+
+test a as b = 5
+
+
+Result:
+
+Test.alma:3:7
+
+Expected an = and an expression for the right side of the definition, but instead found: `as`
+
+  1│  module Test
+  2│  
+  3│  test a as b = 5
+   │         ↑↑
+
+Error {
+    kind: InvalidLetBindingSeparator,
+    token: Token {
+        kind: As,
+        indent: 0,
+        start: 20,
+        end: 22,
+        line: 3,
+        column: 7,
+    },
+}

@@ -564,13 +564,19 @@ pub mod expression {
             constructor: CapitalizedIdentifier,
             params: Vec<Pattern>,
         },
+        Named {
+            pattern: Box<Pattern>,
+            name: Identifier,
+        },
+        Or(Vec<Pattern>),
     }
     impl PatternData {
         pub fn is_useless_in_bindings(&self) -> bool {
             use PatternData::*;
             match self {
                 String_(_) | Float(_) => true,
-                Hole | Identifier(_) | Type { .. } => false,
+                Hole | Identifier(_) | Type { .. } | Named { .. } => false,
+                Or(patterns) => patterns.iter().any(|p| p.typ.is_useless_in_bindings()),
             }
         }
     }

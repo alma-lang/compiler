@@ -1,0 +1,34 @@
+---
+source: src/parser.rs
+assertion_line: 4058
+expression: "parse(\"\\\nmodule Test\n\ntest (a as b) | hello = 5\n\")"
+---
+Input:
+
+module Test
+
+test (a as b) | hello = 5
+
+
+Result:
+
+Test.alma:3:14
+
+Expected an = and an expression for the right side of the definition, but instead found: `|`
+
+  1│  module Test
+  2│  
+  3│  test (a as b) | hello = 5
+   │                ↑
+
+Error {
+    kind: InvalidLetBindingSeparator,
+    token: Token {
+        kind: Pipe,
+        indent: 0,
+        start: 27,
+        end: 28,
+        line: 3,
+        column: 14,
+    },
+}

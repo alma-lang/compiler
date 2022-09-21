@@ -2340,6 +2340,7 @@ fn check_pattern_and_add_bindings(
                 errors,
             );
         }
+        _ => todo!(),
     }
 }
 

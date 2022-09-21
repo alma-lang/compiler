@@ -1,0 +1,734 @@
+---
+source: src/parser.rs
+assertion_line: 3927
+expression: "parse(\"\\\nmodule Test\n\ntest = when test is\n    Banana as hello -> True\n    Banana asdf as hello-> True\n    Banana (asdf as hello) -> True\n\")"
+---
+Input:
+
+module Test
+
+test = when test is
+    Banana as hello -> True
+    Banana asdf as hello-> True
+    Banana (asdf as hello) -> True
+
+
+Result:
+
+(
+    Module {
+        name: ModuleName {
+            parts: [
+                CapitalizedIdentifier {
+                    name: SymbolU32 {
+                        value: 1,
+                    },
+                    span: Index(
+                        0,
+                    ),
+                },
+            ],
+            full_name: SymbolU32 {
+                value: 1,
+            },
+        },
+        exports: [],
+        imports: [
+            Import {
+                span: Index(
+                    1,
+                ),
+                module_name: ModuleName {
+                    parts: [
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 7,
+                            },
+                            span: Index(
+                                1,
+                            ),
+                        },
+                    ],
+                    full_name: SymbolU32 {
+                        value: 7,
+                    },
+                },
+                alias: None,
+                exposing: [
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 8,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 9,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [],
+                        },
+                    },
+                    Export {
+                        span: Index(
+                            1,
+                        ),
+                        typ: Type {
+                            name: CapitalizedIdentifier {
+                                name: SymbolU32 {
+                                    value: 10,
+                                },
+                                span: Index(
+                                    1,
+                                ),
+                            },
+                            constructors: [
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 5,
+                                    },
+                                    span: Index(
+                                        1,
+                                    ),
+                                },
+                                CapitalizedIdentifier {
+                                    name: SymbolU32 {
+                                        value: 11,
+                                    },
+                                    span: Index(
+                                        1,
+                                    ),
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
+        definitions: [
+            Untyped(
+                Pattern(
+                    Pattern {
+                        span: Index(
+                            2,
+                        ),
+                        typ: Identifier(
+                            Identifier {
+                                name: SymbolU32 {
+                                    value: 2,
+                                },
+                                span: Index(
+                                    2,
+                                ),
+                            },
+                        ),
+                    },
+                    Index(
+                        4,
+                    ),
+                ),
+            ),
+        ],
+        type_definitions: [],
+        expressions: {
+            Index(
+                0,
+            ): Expression {
+                span: Index(
+                    10,
+                ),
+                expr: Identifier {
+                    module: None,
+                    identifier: CapitalizedIdentifier(
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 5,
+                            },
+                            span: Index(
+                                9,
+                            ),
+                        },
+                    ),
+                },
+            },
+            Index(
+                1,
+            ): Expression {
+                span: Index(
+                    19,
+                ),
+                expr: Identifier {
+                    module: None,
+                    identifier: CapitalizedIdentifier(
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 5,
+                            },
+                            span: Index(
+                                18,
+                            ),
+                        },
+                    ),
+                },
+            },
+            Index(
+                2,
+            ): Expression {
+                span: Index(
+                    28,
+                ),
+                expr: Identifier {
+                    module: None,
+                    identifier: CapitalizedIdentifier(
+                        CapitalizedIdentifier {
+                            name: SymbolU32 {
+                                value: 5,
+                            },
+                            span: Index(
+                                27,
+                            ),
+                        },
+                    ),
+                },
+            },
+            Index(
+                3,
+            ): Expression {
+                span: Index(
+                    4,
+                ),
+                expr: Identifier {
+                    module: None,
+                    identifier: Identifier(
+                        Identifier {
+                            name: SymbolU32 {
+                                value: 2,
+                            },
+                            span: Index(
+                                4,
+                            ),
+                        },
+                    ),
+                },
+            },
+            Index(
+                4,
+            ): Expression {
+                span: Index(
+                    30,
+                ),
+                expr: PatternMatching {
+                    expression: Index(
+                        3,
+                    ),
+                    branches: [
+                        PatternMatchingBranch {
+                            span: Index(
+                                11,
+                            ),
+                            pattern: Pattern {
+                                span: Index(
+                                    8,
+                                ),
+                                typ: Named {
+                                    pattern: Pattern {
+                                        span: Index(
+                                            6,
+                                        ),
+                                        typ: Type {
+                                            module: None,
+                                            constructor: CapitalizedIdentifier {
+                                                name: SymbolU32 {
+                                                    value: 3,
+                                                },
+                                                span: Index(
+                                                    5,
+                                                ),
+                                            },
+                                            params: [],
+                                        },
+                                    },
+                                    name: Identifier {
+                                        name: SymbolU32 {
+                                            value: 4,
+                                        },
+                                        span: Index(
+                                            7,
+                                        ),
+                                    },
+                                },
+                            },
+                            condition: None,
+                            body: Index(
+                                0,
+                            ),
+                        },
+                        PatternMatchingBranch {
+                            span: Index(
+                                20,
+                            ),
+                            pattern: Pattern {
+                                span: Index(
+                                    17,
+                                ),
+                                typ: Named {
+                                    pattern: Pattern {
+                                        span: Index(
+                                            15,
+                                        ),
+                                        typ: Type {
+                                            module: None,
+                                            constructor: CapitalizedIdentifier {
+                                                name: SymbolU32 {
+                                                    value: 3,
+                                                },
+                                                span: Index(
+                                                    12,
+                                                ),
+                                            },
+                                            params: [
+                                                Pattern {
+                                                    span: Index(
+                                                        14,
+                                                    ),
+                                                    typ: Identifier(
+                                                        Identifier {
+                                                            name: SymbolU32 {
+                                                                value: 6,
+                                                            },
+                                                            span: Index(
+                                                                13,
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    },
+                                    name: Identifier {
+                                        name: SymbolU32 {
+                                            value: 4,
+                                        },
+                                        span: Index(
+                                            16,
+                                        ),
+                                    },
+                                },
+                            },
+                            condition: None,
+                            body: Index(
+                                1,
+                            ),
+                        },
+                        PatternMatchingBranch {
+                            span: Index(
+                                29,
+                            ),
+                            pattern: Pattern {
+                                span: Index(
+                                    26,
+                                ),
+                                typ: Type {
+                                    module: None,
+                                    constructor: CapitalizedIdentifier {
+                                        name: SymbolU32 {
+                                            value: 3,
+                                        },
+                                        span: Index(
+                                            21,
+                                        ),
+                                    },
+                                    params: [
+                                        Pattern {
+                                            span: Index(
+                                                25,
+                                            ),
+                                            typ: Named {
+                                                pattern: Pattern {
+                                                    span: Index(
+                                                        23,
+                                                    ),
+                                                    typ: Identifier(
+                                                        Identifier {
+                                                            name: SymbolU32 {
+                                                                value: 6,
+                                                            },
+                                                            span: Index(
+                                                                22,
+                                                            ),
+                                                        },
+                                                    ),
+                                                },
+                                                name: Identifier {
+                                                    name: SymbolU32 {
+                                                        value: 4,
+                                                    },
+                                                    span: Index(
+                                                        24,
+                                                    ),
+                                                },
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                            condition: None,
+                            body: Index(
+                                2,
+                            ),
+                        },
+                    ],
+                },
+            },
+        },
+        expression_types: {
+            Index(
+                0,
+            ): None,
+            Index(
+                1,
+            ): None,
+            Index(
+                2,
+            ): None,
+            Index(
+                3,
+            ): None,
+            Index(
+                4,
+            ): None,
+        },
+    },
+    [],
+)
+
+{
+    Index(
+        0,
+    ): Span {
+        start: Index(
+            1,
+        ),
+        end: Index(
+            1,
+        ),
+    },
+    Index(
+        1,
+    ): Span {
+        start: Index(
+            0,
+        ),
+        end: Index(
+            0,
+        ),
+    },
+    Index(
+        2,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        3,
+    ): Span {
+        start: Index(
+            2,
+        ),
+        end: Index(
+            2,
+        ),
+    },
+    Index(
+        4,
+    ): Span {
+        start: Index(
+            5,
+        ),
+        end: Index(
+            5,
+        ),
+    },
+    Index(
+        5,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        6,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            7,
+        ),
+    },
+    Index(
+        7,
+    ): Span {
+        start: Index(
+            9,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        8,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            9,
+        ),
+    },
+    Index(
+        9,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        10,
+    ): Span {
+        start: Index(
+            11,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        11,
+    ): Span {
+        start: Index(
+            7,
+        ),
+        end: Index(
+            11,
+        ),
+    },
+    Index(
+        12,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            12,
+        ),
+    },
+    Index(
+        13,
+    ): Span {
+        start: Index(
+            13,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        14,
+    ): Span {
+        start: Index(
+            13,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        15,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            13,
+        ),
+    },
+    Index(
+        16,
+    ): Span {
+        start: Index(
+            15,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        17,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            15,
+        ),
+    },
+    Index(
+        18,
+    ): Span {
+        start: Index(
+            17,
+        ),
+        end: Index(
+            17,
+        ),
+    },
+    Index(
+        19,
+    ): Span {
+        start: Index(
+            17,
+        ),
+        end: Index(
+            17,
+        ),
+    },
+    Index(
+        20,
+    ): Span {
+        start: Index(
+            12,
+        ),
+        end: Index(
+            17,
+        ),
+    },
+    Index(
+        21,
+    ): Span {
+        start: Index(
+            18,
+        ),
+        end: Index(
+            18,
+        ),
+    },
+    Index(
+        22,
+    ): Span {
+        start: Index(
+            20,
+        ),
+        end: Index(
+            20,
+        ),
+    },
+    Index(
+        23,
+    ): Span {
+        start: Index(
+            20,
+        ),
+        end: Index(
+            20,
+        ),
+    },
+    Index(
+        24,
+    ): Span {
+        start: Index(
+            22,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        25,
+    ): Span {
+        start: Index(
+            20,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        26,
+    ): Span {
+        start: Index(
+            18,
+        ),
+        end: Index(
+            22,
+        ),
+    },
+    Index(
+        27,
+    ): Span {
+        start: Index(
+            25,
+        ),
+        end: Index(
+            25,
+        ),
+    },
+    Index(
+        28,
+    ): Span {
+        start: Index(
+            25,
+        ),
+        end: Index(
+            25,
+        ),
+    },
+    Index(
+        29,
+    ): Span {
+        start: Index(
+            18,
+        ),
+        end: Index(
+            25,
+        ),
+    },
+    Index(
+        30,
+    ): Span {
+        start: Index(
+            4,
+        ),
+        end: Index(
+            25,
+        ),
+    },
+}

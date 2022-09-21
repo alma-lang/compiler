@@ -51,7 +51,7 @@ use typed_index_collections::TiSlice;
     ● type_function            → type ( ( "->" type )* "->" type )?
     ● type                     → type_constructor | type_var | type_record | type_parens
 
-    ● type_signature           → identifier ":" type_function
+    ● type_signature           → IDENTIFIER ":" type_function
 
     // Expressions
     ● expression               → let | if | lambda | pattern_matching
@@ -60,17 +60,19 @@ use typed_index_collections::TiSlice;
                                | typed_binding
     ● typed_binding            → type_signature binding
                                | binding
-    ● binding                  → ( identifier ( params )? | pattern ) "=" expression
+    ● binding                  → ( IDENTIFIER ( params )? | pattern_or ) "=" expression
     ● lambda                   → "\" params "->" expression
+    ● pattern_or               → pattern_named ( "|" pattern_named )*
+    ● pattern_named            → pattern ( "as" IDENTIFIER )?
     ● pattern                  → "_"
-                               | identifier
+                               | IDENTIFIER
                                | NUMBER
                                | STRING
                                | ( module_name "." )? type_identifier ( pattern )*
-                               | "(" pattern ")"
+                               | "(" pattern_or ")"
     ● if                       → "if" binary "then" expression "else" expression
     ● pattern_matching         → "when" expression "is" ( pattern_matching_branch )+
-    ● pattern_matching_branch  → pattern ( "if" expression ) "->" expression
+    ● pattern_matching_branch  → pattern_or ( "if" expression ) "->" expression
     // Operators
     ● binary                   → unary ( binop unary )*
     ● binop                    → // parsed from Ast.Binop operator list
@@ -178,6 +180,8 @@ enum ErrorType {
     // Patterns
     InvalidParenthesizedPattern,
     InvalidParenthesizedPatternLastDelimiter { first_delimiter: Token },
+    InvalidNamedPatternIdentifier,
+    InvalidPatternInOrPattern,
     UselessPattern,
 }
 
@@ -570,6 +574,14 @@ impl ErrorType {
             // TODO: This error message can be better
             {
                 expected_but_found("Expected `)` after parenthesized pattern")
+            }
+
+            InvalidNamedPatternIdentifier => {
+                expected_but_found("Expected an identifier for the name of the pattern")
+            }
+
+            InvalidPatternInOrPattern => {
+                expected_but_found("Expected a valid pattern after the or `|`")
             }
 
             UselessPattern => "This incomplete pattern can't be exhaustive here.".to_owned(),
@@ -1395,7 +1407,7 @@ impl<'a> State<'a> {
     }
 
     fn binding(&mut self) -> ParseResult<Option<Definition>> {
-        let pattern = self.pattern()?;
+        let pattern = self.pattern_or()?;
 
         if let Some(pattern) = &pattern {
             self.error_if_useless_binding_pattern(&pattern)?;
@@ -1562,7 +1574,7 @@ impl<'a> State<'a> {
     fn pattern_matching_branch(&mut self) -> ParseResult<Option<PatternMatchingBranch>> {
         let token_index = self.get_token_index();
 
-        let pattern = if let Some(pattern) = self.pattern()? {
+        let pattern = if let Some(pattern) = self.pattern_or()? {
             pattern
         } else {
             return Ok(None);
@@ -1605,11 +1617,55 @@ impl<'a> State<'a> {
         }
     }
 
+    fn pattern_or(&mut self) -> ParseResult<Option<Pattern>> {
+        let token_index = self.get_token_index();
+        let mut patterns = self.many_sep(
+            |self_| Ok(self_.match_token(TT::Pipe)),
+            Self::pattern_named,
+            |self_| self_.error(InvalidPatternInOrPattern),
+        )?;
+        if patterns.is_empty() {
+            Ok(None)
+        } else if patterns.len() == 1 {
+            Ok(Some(patterns.pop().unwrap()))
+        } else {
+            let end_token_index = self.spans[patterns.last().unwrap().span].end;
+            Ok(Some(Pattern {
+                typ: PatternData::Or(patterns),
+                span: self.span(token_index, end_token_index),
+            }))
+        }
+    }
+
+    fn pattern_named(&mut self) -> ParseResult<Option<Pattern>> {
+        let token_index = self.get_token_index();
+        if let Some(pattern) = self.pattern()? {
+            if self.match_token(TT::As).is_some() {
+                if let Some(identifier) = self.identifier() {
+                    let end_token_index = self.spans[identifier.span].end;
+                    Ok(Some(Pattern {
+                        typ: PatternData::Named {
+                            pattern: Box::new(pattern),
+                            name: identifier,
+                        },
+                        span: self.span(token_index, end_token_index),
+                    }))
+                } else {
+                    Err(self.error(InvalidNamedPatternIdentifier))
+                }
+            } else {
+                Ok(Some(pattern))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
     fn pattern(&mut self) -> ParseResult<Option<Pattern>> {
         let (token_index, token) = self.get_token();
 
         if self.match_token(TT::LeftParen).is_some() {
-            if let Some(pattern) = self.pattern()? {
+            if let Some(pattern) = self.pattern_or()? {
                 if self.match_token(RightParen).is_some() {
                     Ok(Some(pattern))
                 } else {
@@ -2481,6 +2537,43 @@ impl<'a> State<'a> {
         } else {
             Ok(items)
         }
+    }
+
+    fn many_sep<Parser, ParserResult, Delimiter, DelimiterParser, E>(
+        &mut self,
+        delimiter: DelimiterParser,
+        parse: Parser,
+        on_parse_non_commit_after_first: E,
+    ) -> ParseResult<Vec<ParserResult>>
+    where
+        Parser: Fn(&mut Self) -> ParseResult<Option<ParserResult>>,
+        DelimiterParser: Fn(&mut Self) -> ParseResult<Option<Delimiter>>,
+        E: Fn(&mut Self) -> Error,
+    {
+        let mut i = 0;
+        let mut items = vec![];
+        loop {
+            if i > 0 {
+                let del = delimiter(self)?;
+                if del.is_none() {
+                    break;
+                }
+            }
+            if let Some(item) = parse(self)? {
+                items.push(item);
+            } else {
+                // Parser didn't commit. If it is the first item, then fine, but otherwise need to
+                // error out since we already ate a delimiter.
+                if i == 0 {
+                    break;
+                } else {
+                    return Err(on_parse_non_commit_after_first(self));
+                }
+            }
+            i += 1;
+        }
+
+        Ok(items)
     }
 
     fn many<Parser, ParserResult>(&mut self, parse: Parser) -> ParseResult<Vec<ParserResult>>
@@ -3818,6 +3911,162 @@ test = when test is
     Banana -> True
     Banana asdf -> True
     Banana.Banana asdf -> True
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_named_pattern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+Dimensions widht height as dimensions = Dimensions 500 400
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana as hello -> True
+    Banana asdf as hello-> True
+    Banana (asdf as hello) -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    _ as hello -> True
+    hi as hello -> True
+    \"hello\" as hello -> True
+    5 as hello -> True
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_or_pattern() {
+            assert_snapshot!(parse(
+                "\
+module Test
+
+Dimensions widht height as dimensions | dimensions = Dimensions 500 400
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana as hello | hello -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana asdf as hello | hello -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana (asdf as hello) | hello -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana | hi as hello  -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana asdf | hi as hello  -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Banana (asdf as hello | hi)  -> True
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    _ | smth -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    hi | smth -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    \"hello\" | smth -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    5 | smth -> True
+"
+            ));
+
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test = when test is
+    Some a | b -> True
+    Some (a | b) -> True
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test a as b = 5
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test (a as b) | hello = 5
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+module Test
+
+test ((a as b) | hello) = 5
 "
             ));
         }

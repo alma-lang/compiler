@@ -511,6 +511,7 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
             code.push_str(" }");
         }
         P::Hole | P::String_(_) | P::Float(_) => (),
+        _ => todo!(),
     }
 }
 
@@ -951,6 +952,7 @@ fn generate_pattern_matching_conditions(
                 }
             }
         }
+        _ => todo!(),
     }
 }
 
@@ -961,6 +963,7 @@ fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
         P::String_(_) => true,
         P::Float(_) => true,
         P::Type { .. } => true,
+        _ => todo!(),
     }
 }
 
@@ -971,6 +974,7 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
         P::String_(_) => false,
         P::Float(_) => false,
         P::Type { params, .. } => params.iter().any(|p| pattern_needs_bindings(p)),
+        _ => todo!(),
     }
 }
 
