@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2371
+assertion_line: 2775
 expression: "infer(\"\\\nlet add x y = x + y\n\nadd 5\")"
 ---
 Input:
@@ -25,8 +25,8 @@ Expected
 
 to be
 
-Float -> Float -> Float
+    Float -> Float -> Float
 
 but seems to be
 
-Float -> a
+    Float -> a

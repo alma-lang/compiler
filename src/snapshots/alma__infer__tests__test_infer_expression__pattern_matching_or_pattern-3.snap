@@ -1,0 +1,46 @@
+---
+source: src/infer.rs
+assertion_line: 2920
+expression: "infer(\"\\\nlet\n    f x = when x is\n        1 | False | 3 -> True\n        _ -> False\nf 5\n            \")"
+---
+Input:
+
+let
+    f x = when x is
+        1 | False | 3 -> True
+        _ -> False
+f 5
+            
+
+---
+Output:
+
+Test.alma [5:12]
+
+Type mismatch:  Bool  ≠  Float
+
+Expected
+
+  3│  test = let
+  4│      f x = when x is
+  5│          1 | False | 3 -> True
+   │              ↑↑↑↑↑
+  6│          _ -> False
+  7│  f 5
+
+with type
+
+    Bool
+
+to have the same type as
+
+  3│  test = let
+  4│      f x = when x is
+  5│          1 | False | 3 -> True
+   │          ↑
+  6│          _ -> False
+  7│  f 5
+
+with type
+
+    Float

@@ -1,0 +1,41 @@
+---
+source: src/infer.rs
+assertion_line: 2942
+expression: "infer(\"\\\nwhen 1 is\n    a | 2 as b | 3 as c -> True\n            \")"
+---
+Input:
+
+when 1 is
+    a | 2 as b | 3 as c -> True
+            
+
+---
+Output:
+
+Test.alma [4:4]
+
+Patterns introduce different bindings:
+
+Expected
+
+  2│  
+  3│  test = when 1 is
+  4│      a | 2 as b | 3 as c -> True
+   │      ↑
+  5│              
+
+which introduces
+
+    a
+
+to introduce the same bindings as
+
+  2│  
+  3│  test = when 1 is
+  4│      a | 2 as b | 3 as c -> True
+   │          ↑↑↑↑↑↑
+  5│              
+
+which introduces
+
+    b

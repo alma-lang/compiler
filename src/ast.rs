@@ -1156,18 +1156,19 @@ pub mod expression {
         };
     }
     use binop::Binop;
+    use fnv::FnvHashSet;
 
     // Patterns
 
     #[derive(PartialEq, Debug, Clone)]
     pub struct Pattern {
         pub span: span::Index,
-        pub typ: PatternData,
+        pub data: PatternData,
     }
     impl Pattern {
         #[cfg(test)]
         pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
-            self.typ
+            self.data
                 .to_test_string(ctx.spans[self.span].to_test_string(ctx), ctx)
         }
     }
@@ -1195,7 +1196,31 @@ pub mod expression {
             match self {
                 String_(_) | Float(_) => true,
                 Hole | Identifier(_) | Type { .. } | Named { .. } => false,
-                Or(patterns) => patterns.iter().any(|p| p.typ.is_useless_in_bindings()),
+                Or(patterns) => patterns.iter().any(|p| p.data.is_useless_in_bindings()),
+            }
+        }
+
+        pub fn get_bindings(&self, names: &mut FnvHashSet<StringSymbol>) {
+            use PatternData::*;
+            match self {
+                String_(_) | Float(_) | Hole => (),
+                Identifier(ident) => {
+                    names.insert(ident.name);
+                }
+                Type { params, .. } => {
+                    for param in params {
+                        param.data.get_bindings(names);
+                    }
+                }
+                Named { name, pattern } => {
+                    names.insert(name.name);
+                    pattern.data.get_bindings(names);
+                }
+                Or(patterns) => {
+                    for pattern in patterns {
+                        pattern.data.get_bindings(names);
+                    }
+                }
             }
         }
 

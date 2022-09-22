@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 3542
+assertion_line: 3727
 expression: "infer(\"\\\nmodule Test exposing (test)\n\ntype Test a = X a | Y\n\ntest = when X 1 is\n    Y a -> a\n\")"
 ---
 Input:
@@ -29,8 +29,8 @@ Expected
 
 to be
 
-Test a
+    Test a
 
 but seems to be
 
-Test Float -> Test Float
+    Test Float -> Test Float

@@ -1,0 +1,44 @@
+---
+source: src/infer.rs
+assertion_line: 2929
+expression: "infer(\"\\\nwhen True is\n    1 | 2 | 3 -> True\n    _ -> False\n            \")"
+---
+Input:
+
+when True is
+    1 | 2 | 3 -> True
+    _ -> False
+            
+
+---
+Output:
+
+Test.alma [4:4]
+
+Type mismatch:  Float  ≠  Bool
+
+Expected
+
+  2│  
+  3│  test = when True is
+  4│      1 | 2 | 3 -> True
+   │      ↑
+  5│      _ -> False
+  6│              
+
+with type
+
+    Float
+
+to have the same type as
+
+  1│  module Test exposing (test)
+  2│  
+  3│  test = when True is
+   │              ↑↑↑↑
+  4│      1 | 2 | 3 -> True
+  5│      _ -> False
+
+with type
+
+    Bool

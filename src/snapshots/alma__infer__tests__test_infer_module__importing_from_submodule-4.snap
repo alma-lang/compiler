@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2568
+assertion_line: 3092
 expression: "infer(r#\"\nmodule Test\n\nimport Test.TestInner exposing (test)\n\nadd = \\x -> x + test x\n\nmodule Test.TestInner exposing (test)\n\n    test = \\x -> x + \"hi\"\n\"#)"
 ---
 Input:
@@ -33,8 +33,8 @@ Expected
 
 to be
 
-Float
+    Float
 
 but seems to be
 
-String
+    String

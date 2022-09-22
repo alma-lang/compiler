@@ -1,0 +1,44 @@
+---
+source: src/infer.rs
+assertion_line: 2913
+expression: "infer(\"\\\nwhen 5 is\n    1 | False | 3 -> True\n    _ -> False\n            \")"
+---
+Input:
+
+when 5 is
+    1 | False | 3 -> True
+    _ -> False
+            
+
+---
+Output:
+
+Test.alma [4:8]
+
+Type mismatch:  Bool  ≠  Float
+
+Expected
+
+  2│  
+  3│  test = when 5 is
+  4│      1 | False | 3 -> True
+   │          ↑↑↑↑↑
+  5│      _ -> False
+  6│              
+
+with type
+
+    Bool
+
+to have the same type as
+
+  2│  
+  3│  test = when 5 is
+  4│      1 | False | 3 -> True
+   │      ↑
+  5│      _ -> False
+  6│              
+
+with type
+
+    Float

@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2396
+assertion_line: 2800
 expression: "infer(r#\"{ age = 1, msg = \"Hello\" }.wat\"#)"
 ---
 Input:
@@ -23,8 +23,8 @@ Expected
 
 to be
 
-{ a | wat : b }
+    { a | wat : b }
 
 but seems to be
 
-{ age : Float, msg : String }
+    { age : Float, msg : String }

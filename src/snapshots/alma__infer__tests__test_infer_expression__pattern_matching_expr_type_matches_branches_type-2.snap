@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2576
+assertion_line: 2861
 expression: "infer(\"\\\nwhen True is\n    1 -> True\n    \\\"hi\\\" -> True\n            \")"
 ---
 Input:
@@ -28,7 +28,7 @@ Expected
 
 with type
 
-Float
+    Float
 
 to have the same type as
 
@@ -41,7 +41,7 @@ to have the same type as
 
 with type
 
-Bool
+    Bool
 
 ----------------------------------------
 
@@ -59,7 +59,7 @@ Expected
 
 with type
 
-String
+    String
 
 to have the same type as
 
@@ -72,4 +72,4 @@ to have the same type as
 
 with type
 
-Bool
+    Bool

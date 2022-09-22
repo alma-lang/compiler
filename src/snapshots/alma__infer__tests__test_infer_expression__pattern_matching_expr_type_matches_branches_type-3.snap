@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2745
+assertion_line: 2868
 expression: "infer(\"\\\nwhen {x = 1} is\n    True -> True\n            \")"
 ---
 Input:
@@ -26,7 +26,7 @@ Expected
 
 with type
 
-Bool
+    Bool
 
 to have the same type as
 
@@ -39,4 +39,4 @@ to have the same type as
 
 with type
 
-{ x : Float }
+    { x : Float }

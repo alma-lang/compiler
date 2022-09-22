@@ -1381,7 +1381,7 @@ impl<'a> State<'a> {
                         let valid_name = match &binding {
                             Definition::Pattern(
                                 Pattern {
-                                    typ: PatternData::Identifier(identifier),
+                                    data: PatternData::Identifier(identifier),
                                     ..
                                 },
                                 _,
@@ -1415,7 +1415,7 @@ impl<'a> State<'a> {
 
         let definition = match pattern {
             Some(Pattern {
-                typ: PatternData::Identifier(identifier),
+                data: PatternData::Identifier(identifier),
                 ..
             }) => {
                 // Peek to see if it is just an identifier and =, and return a pattern
@@ -1425,7 +1425,7 @@ impl<'a> State<'a> {
                     let span = identifier.span;
                     Some(Definition::Pattern(
                         Pattern {
-                            typ: PatternData::Identifier(identifier),
+                            data: PatternData::Identifier(identifier),
                             span,
                         },
                         self.add_expression(expr),
@@ -1607,7 +1607,7 @@ impl<'a> State<'a> {
     }
 
     fn error_if_useless_binding_pattern(&mut self, pattern: &Pattern) -> ParseResult<()> {
-        if pattern.typ.is_useless_in_bindings() {
+        if pattern.data.is_useless_in_bindings() {
             Err(Error::new(
                 self.tokens[self.spans[pattern.span].start],
                 UselessPattern,
@@ -1631,7 +1631,7 @@ impl<'a> State<'a> {
         } else {
             let end_token_index = self.spans[patterns.last().unwrap().span].end;
             Ok(Some(Pattern {
-                typ: PatternData::Or(patterns),
+                data: PatternData::Or(patterns),
                 span: self.span(token_index, end_token_index),
             }))
         }
@@ -1644,7 +1644,7 @@ impl<'a> State<'a> {
                 if let Some(identifier) = self.identifier() {
                     let end_token_index = self.spans[identifier.span].end;
                     Ok(Some(Pattern {
-                        typ: PatternData::Named {
+                        data: PatternData::Named {
                             pattern: Box::new(pattern),
                             name: identifier,
                         },
@@ -1678,18 +1678,18 @@ impl<'a> State<'a> {
             }
         } else if self.match_token(TT::Underscore).is_some() {
             Ok(Some(Pattern {
-                typ: PatternData::Hole,
+                data: PatternData::Hole,
                 span: self.span(token_index, token_index),
             }))
         } else if let Some(identifier) = self.identifier() {
             Ok(Some(Pattern {
-                typ: PatternData::Identifier(identifier),
+                data: PatternData::Identifier(identifier),
                 span: self.span(token_index, token_index),
             }))
         } else if let TT::String_(s) = token.kind {
             self.advance();
             Ok(Some(Pattern {
-                typ: PatternData::String_(s),
+                data: PatternData::String_(s),
                 span: self.span(token_index, token_index),
             }))
         } else if let TT::Float(n) = token.kind {
@@ -1701,7 +1701,7 @@ impl<'a> State<'a> {
 
             self.advance();
             Ok(Some(Pattern {
-                typ: PatternData::Float(n),
+                data: PatternData::Float(n),
                 span: self.span(token_index, token_index),
             }))
         } else if let Some(pattern) = self.type_pattern()? {
@@ -1722,7 +1722,7 @@ impl<'a> State<'a> {
                 .map(|p| self.spans[p.span].end)
                 .unwrap_or_else(|| self.spans[constructor.span].end);
             Ok(Some(Pattern {
-                typ: PatternData::Type {
+                data: PatternData::Type {
                     module,
                     constructor,
                     params,

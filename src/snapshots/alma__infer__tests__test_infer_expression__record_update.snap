@@ -1,6 +1,6 @@
 ---
 source: src/infer.rs
-assertion_line: 2410
+assertion_line: 2814
 expression: "infer(\"{ {} | age = 1 }\")"
 ---
 Input:
@@ -23,8 +23,8 @@ Expected
 
 to be
 
-{ a | age : Float }
+    { a | age : Float }
 
 but seems to be
 
-{}
+    {}

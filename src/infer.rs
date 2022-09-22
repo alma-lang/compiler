@@ -16,6 +16,7 @@ use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token::Tokens;
 use crate::typ::{self, Type::*, TypeVar::*, *};
 use crate::type_env::{PolyTypeEnv, TypeEnv};
+use fnv::FnvHashSet;
 use indexmap::IndexSet;
 use std::cmp::min;
 use std::rc::Rc;
@@ -75,6 +76,12 @@ pub enum Error {
     },
     UnknownType(CapitalizedIdentifier),
     UnknownTypeVar(Identifier),
+    PatternsIntroduceDifferentBindings {
+        names1: FnvHashSet<StringSymbol>,
+        span1: span::Index,
+        names2: FnvHashSet<StringSymbol>,
+        span2: span::Index,
+    },
 }
 
 impl Error {
@@ -115,6 +122,7 @@ impl Error {
                 UnknownImportConstructor { constructor, .. } => constructor.span,
                 UnknownType(name) => name.span,
                 UnknownTypeVar(var) => var.span,
+                PatternsIntroduceDifferentBindings { span1, .. } => *span1,
             }];
             let start_token = tokens[location.start];
             let end_token = tokens[location.end];
@@ -186,11 +194,11 @@ Expected
 
 to be
 
-{typ2}
+    {typ2}
 
 but seems to be
 
-{typ}",
+    {typ}",
                 ));
             }
 
@@ -221,7 +229,7 @@ Expected
 
 with type
 
-{actual_type}
+    {actual_type}
 
 to have the same type as
 
@@ -229,7 +237,7 @@ to have the same type as
 
 with type
 
-{expected_type}",
+    {expected_type}",
                 ));
             }
 
@@ -262,11 +270,11 @@ with type
 
 The type signature says the type is
 
-{signature_type}
+    {signature_type}
 
 but it seems to be
 
-{inferred_type}",
+    {inferred_type}",
                 ));
             }
 
@@ -284,11 +292,11 @@ but it seems to be
 
 The type signature says the type is
 
-{signature_type}
+    {signature_type}
 
 which it is more general than
 
-{inferred_type}
+    {inferred_type}
 
 which was inferred from the code.
 
@@ -339,6 +347,52 @@ Change the signature to be more specific or try to make your code more generic."
                 let type_name = name.to_string(strings);
                 s.push_str(&format!(
                     "Type variable `{type_name}` has not been declared\n\n{code}"
+                ));
+            }
+
+            PatternsIntroduceDifferentBindings {
+                names1,
+                names2,
+                span2,
+                ..
+            } => {
+                let node_token = tokens[spans[*span2].start];
+                let node_end_token = tokens[spans[*span2].end];
+                let code2 = source
+                    .lines_report_at_position_with_pointer(
+                        node_token.start,
+                        Some(node_end_token.end),
+                        node_token.line,
+                    )
+                    .unwrap();
+                let names1 = names1
+                    .iter()
+                    .map(|n| strings.resolve(*n))
+                    .collect::<Vec<&str>>()
+                    .join(", ");
+                let names2 = names2
+                    .iter()
+                    .map(|n| strings.resolve(*n))
+                    .collect::<Vec<&str>>()
+                    .join(", ");
+                s.push_str(&format!(
+                    "Patterns introduce different bindings:
+
+Expected
+
+{code}
+
+which introduces
+
+    {names1}
+
+to introduce the same bindings as
+
+{code2}
+
+which introduces
+
+    {names2}",
                 ));
             }
         };
@@ -2165,7 +2219,7 @@ fn check_pattern_and_add_bindings(
     types: &mut Types,
     errors: &mut Vec<Error>,
 ) {
-    match &pattern.typ {
+    match &pattern.data {
         P::Hole => (),
         P::Identifier(x) => env.insert(x.name, state.generalize(expected_pattern_type, types)),
         P::String_(_) => add_error(
@@ -2340,7 +2394,101 @@ fn check_pattern_and_add_bindings(
                 errors,
             );
         }
-        _ => todo!(),
+        P::Named { pattern, name } => {
+            env.insert(name.name, state.generalize(expected_pattern_type, types));
+            check_pattern_and_add_bindings(
+                pattern,
+                expected_pattern_type,
+                expected_pattern_type_span,
+                state,
+                env,
+                types_env,
+                strings,
+                types,
+                errors,
+            )
+        }
+        P::Or(patterns) => {
+            // Infer types for the different patterns separately
+            // Then unify the patterns against each other, for better errors
+            // And if they did, then unify with the expected_pattern_type
+
+            let all_patterns_type = types.push_and_get_key(state.new_type_var());
+            let mut pattern_types = Vec::with_capacity(patterns.len());
+            let mut last_unified_span = None;
+            for pattern in patterns {
+                let pattern_type = types.push_and_get_key(state.new_type_var());
+                check_pattern_and_add_bindings(
+                    pattern,
+                    pattern_type,
+                    None,
+                    state,
+                    env,
+                    types_env,
+                    strings,
+                    types,
+                    errors,
+                );
+                if let Err(e) = unify(
+                    state,
+                    pattern.span,
+                    pattern_type,
+                    last_unified_span,
+                    all_patterns_type,
+                    types,
+                ) {
+                    // TODO: Right now we error with only the first pattern to have a type mismatch,
+                    // but ideally we would unify all and store the patterns that have different
+                    // types, eg: (all_that_unified, all_that_didnt) and emit a specific nice error
+                    // message for it. For now this can do but it can be improved.
+                    add_error(Err(e), errors);
+                    return;
+                } else {
+                    last_unified_span = Some(pattern.span);
+                    pattern_types.push(pattern_type);
+                }
+            }
+
+            for (pattern, pattern_type) in patterns.iter().zip(pattern_types) {
+                let result = unify(
+                    state,
+                    pattern.span,
+                    pattern_type,
+                    expected_pattern_type_span,
+                    expected_pattern_type,
+                    types,
+                );
+                if result.is_err() {
+                    add_error(result, errors);
+                    return;
+                }
+            }
+
+            // If all unified fine, then check all branches introduce the same bindings
+            let mut names: Option<FnvHashSet<StringSymbol>> = None;
+            for pattern in patterns {
+                if let Some(names) = &names {
+                    let mut pattern_names = FnvHashSet::default();
+                    pattern.data.get_bindings(&mut pattern_names);
+                    if names.symmetric_difference(&pattern_names).count() > 0 {
+                        add_error(
+                            Err(Error::PatternsIntroduceDifferentBindings {
+                                names1: names.clone(),
+                                span1: patterns.first().unwrap().span,
+                                names2: pattern_names,
+                                span2: pattern.span,
+                            }),
+                            errors,
+                        );
+                        return;
+                    }
+                } else {
+                    let mut names_set = FnvHashSet::default();
+                    pattern.data.get_bindings(&mut names_set);
+                    names = Some(names_set);
+                }
+            }
+        }
     }
 }
 
@@ -2739,6 +2887,62 @@ when 5 is
 when 5 is
     1 -> True
     1.2 -> 2
+            "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_named_pattern() {
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 as a -> a
+            "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_or_pattern() {
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 | 2 | 3 -> True
+    _ -> False
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    1 | False | 3 -> True
+    _ -> False
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+let
+    f x = when x is
+        1 | False | 3 -> True
+        _ -> False
+f 5
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when True is
+    1 | 2 | 3 -> True
+    _ -> False
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when 1 is
+    a | 2 as a | 3 as a -> True
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when 1 is
+    a | 2 as b | 3 as c -> True
             "
             ));
         }

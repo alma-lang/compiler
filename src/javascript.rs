@@ -492,7 +492,7 @@ fn generate_function(
 }
 
 fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings: &Strings) {
-    match &pattern.typ {
+    match &pattern.data {
         P::Identifier(identifier) => code.push_str(identifier.to_string(strings)),
         P::Type { params, .. } => {
             code.push_str("{ ");
@@ -918,7 +918,7 @@ fn generate_pattern_matching_conditions(
     pattern: &Pattern,
     strings: &Strings,
 ) {
-    match &pattern.typ {
+    match &pattern.data {
         P::Hole | P::Identifier(_) => (),
         P::String_(string) => {
             let string = strings.resolve(*string);
@@ -957,7 +957,7 @@ fn generate_pattern_matching_conditions(
 }
 
 fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
-    match &pattern.typ {
+    match &pattern.data {
         P::Hole => false,
         P::Identifier(_) => false,
         P::String_(_) => true,
@@ -968,7 +968,7 @@ fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
 }
 
 fn pattern_needs_bindings(pattern: &Pattern) -> bool {
-    match &pattern.typ {
+    match &pattern.data {
         P::Hole => false,
         P::Identifier(_) => true,
         P::String_(_) => false,
