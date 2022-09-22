@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2616
+assertion_line: 2974
 expression: "parse(\"A\")"
 ---
 Input:
@@ -9,52 +9,4 @@ A
 
 Result:
 
-Index(
-    0,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: CapitalizedIdentifier(
-                CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-}
+Identifier A 0:1 0:1

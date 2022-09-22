@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2459
+assertion_line: 2778
 expression: "parse(\"hello {}\")"
 ---
 Input:
@@ -9,89 +9,8 @@ hello {}
 
 Result:
 
-Index(
-    2,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            0,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: Identifier(
-                Identifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Record {
-            fields: [],
-        },
-    },
-    Index(
-        2,
-    ): Expression {
-        span: Index(
-            2,
-        ),
-        expr: FnCall {
-            function: Index(
-                0,
-            ),
-            arguments: [
-                Index(
-                    1,
-                ),
-            ],
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            2,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            2,
-        ),
-    },
-}
+FnCall 0:8
+    fn:
+        Identifier hello 0:5 0:5
+    args:
+        { 6:8 }

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2583
+assertion_line: 2941
 expression: "parse(\"{ x : 5 , y : 10 }\")"
 ---
 Input:
@@ -9,119 +9,9 @@ Input:
 
 Result:
 
-Index(
-    2,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Float(
-            5.0,
-        ),
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            3,
-        ),
-        expr: Float(
-            10.0,
-        ),
-    },
-    Index(
-        2,
-    ): Expression {
-        span: Index(
-            4,
-        ),
-        expr: Record {
-            fields: [
-                (
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                        span: Index(
-                            0,
-                        ),
-                    },
-                    Index(
-                        0,
-                    ),
-                ),
-                (
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 3,
-                        },
-                        span: Index(
-                            2,
-                        ),
-                    },
-                    Index(
-                        1,
-                    ),
-                ),
-            ],
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            3,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            5,
-        ),
-        end: Index(
-            5,
-        ),
-    },
-    Index(
-        3,
-    ): Span {
-        start: Index(
-            7,
-        ),
-        end: Index(
-            7,
-        ),
-    },
-    Index(
-        4,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            8,
-        ),
-    },
+{ 0:18
+    x 2:3 :
+        Float 5 6:7
+    y 10:11 :
+        Float 10 14:16
 }

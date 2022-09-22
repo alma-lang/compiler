@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2346
+assertion_line: 2704
 expression: "parse(\"True\")"
 ---
 Input:
@@ -9,52 +9,4 @@ True
 
 Result:
 
-Index(
-    0,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: CapitalizedIdentifier(
-                CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-}
+Identifier True 0:4 0:4

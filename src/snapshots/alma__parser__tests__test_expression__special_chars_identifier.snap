@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2377
+assertion_line: 2735
 expression: "parse(\"espaÆàʥñÑol\")"
 ---
 Input:
@@ -9,42 +9,4 @@ espaÆàʥñÑol
 
 Result:
 
-Index(
-    0,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            0,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: Identifier(
-                Identifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-}
+Identifier espaÆàʥñÑol 0:16 0:16

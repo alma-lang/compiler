@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2607
+assertion_line: 2965
 expression: "parse(\"{ 5 | x = 1, y = 3 }\")"
 ---
 Input:
@@ -9,142 +9,12 @@ Input:
 
 Result:
 
-Index(
-    3,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            2,
-        ),
-        expr: Float(
-            1.0,
-        ),
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            4,
-        ),
-        expr: Float(
-            3.0,
-        ),
-    },
-    Index(
-        2,
-    ): Expression {
-        span: Index(
-            0,
-        ),
-        expr: Float(
-            5.0,
-        ),
-    },
-    Index(
-        3,
-    ): Expression {
-        span: Index(
-            5,
-        ),
-        expr: RecordUpdate {
-            record: Index(
-                2,
-            ),
-            fields: [
-                (
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 2,
-                        },
-                        span: Index(
-                            1,
-                        ),
-                    },
-                    Index(
-                        0,
-                    ),
-                ),
-                (
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 4,
-                        },
-                        span: Index(
-                            3,
-                        ),
-                    },
-                    Index(
-                        1,
-                    ),
-                ),
-            ],
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            3,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            5,
-        ),
-        end: Index(
-            5,
-        ),
-    },
-    Index(
-        3,
-    ): Span {
-        start: Index(
-            7,
-        ),
-        end: Index(
-            7,
-        ),
-    },
-    Index(
-        4,
-    ): Span {
-        start: Index(
-            9,
-        ),
-        end: Index(
-            9,
-        ),
-    },
-    Index(
-        5,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            10,
-        ),
-    },
+{ 0:20
+    record:
+        Float 5 2:3
+    |
+        x 6:7 :
+            Float 1 10:11
+        y 13:14 :
+            Float 3 17:18
 }

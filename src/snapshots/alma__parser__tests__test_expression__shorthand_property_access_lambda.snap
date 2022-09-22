@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2597
+assertion_line: 2955
 expression: "parse(\".b\")"
 ---
 Input:
@@ -9,49 +9,4 @@ Input:
 
 Result:
 
-Index(
-    0,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: PropertyAccessLambda {
-            property: Identifier {
-                name: SymbolU32 {
-                    value: 1,
-                },
-                span: Index(
-                    0,
-                ),
-            },
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-}
+PropertyAccessLambda 0:2 b 1:2

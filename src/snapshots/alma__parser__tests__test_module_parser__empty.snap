@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3066
+assertion_line: 3400
 expression: "parse(\"\nmodule Test\n\nalias Fruit = {}\n\")"
 ---
 Input:
@@ -13,196 +13,19 @@ alias Fruit = {}
 
 Result:
 
-(
-    Module {
-        name: ModuleName {
-            parts: [
-                CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ],
-            full_name: SymbolU32 {
-                value: 1,
-            },
-        },
-        exports: [],
-        imports: [
-            Import {
-                span: Index(
-                    1,
-                ),
-                module_name: ModuleName {
-                    parts: [
-                        CapitalizedIdentifier {
-                            name: SymbolU32 {
-                                value: 3,
-                            },
-                            span: Index(
-                                1,
-                            ),
-                        },
-                    ],
-                    full_name: SymbolU32 {
-                        value: 3,
-                    },
-                },
-                alias: None,
-                exposing: [
-                    Export {
-                        span: Index(
-                            1,
-                        ),
-                        typ: Type {
-                            name: CapitalizedIdentifier {
-                                name: SymbolU32 {
-                                    value: 4,
-                                },
-                                span: Index(
-                                    1,
-                                ),
-                            },
-                            constructors: [],
-                        },
-                    },
-                    Export {
-                        span: Index(
-                            1,
-                        ),
-                        typ: Type {
-                            name: CapitalizedIdentifier {
-                                name: SymbolU32 {
-                                    value: 5,
-                                },
-                                span: Index(
-                                    1,
-                                ),
-                            },
-                            constructors: [],
-                        },
-                    },
-                    Export {
-                        span: Index(
-                            1,
-                        ),
-                        typ: Type {
-                            name: CapitalizedIdentifier {
-                                name: SymbolU32 {
-                                    value: 6,
-                                },
-                                span: Index(
-                                    1,
-                                ),
-                            },
-                            constructors: [
-                                CapitalizedIdentifier {
-                                    name: SymbolU32 {
-                                        value: 7,
-                                    },
-                                    span: Index(
-                                        1,
-                                    ),
-                                },
-                                CapitalizedIdentifier {
-                                    name: SymbolU32 {
-                                        value: 8,
-                                    },
-                                    span: Index(
-                                        1,
-                                    ),
-                                },
-                            ],
-                        },
-                    },
-                ],
-            },
-        ],
-        definitions: [],
-        type_definitions: [
-            TypeDefinition {
-                span: Index(
-                    4,
-                ),
-                name: CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 2,
-                    },
-                    span: Index(
-                        2,
-                    ),
-                },
-                vars: [],
-                typ: Record(
-                    Record(
-                        Record {
-                            span: Index(
-                                3,
-                            ),
-                            fields: [],
-                        },
-                    ),
-                ),
-            },
-        ],
-        expressions: {},
-        expression_types: {},
-    },
-    [],
-)
+module Test
+    exports:
 
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            3,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        3,
-    ): Span {
-        start: Index(
-            5,
-        ),
-        end: Index(
-            6,
-        ),
-    },
-    Index(
-        4,
-    ): Span {
-        start: Index(
-            2,
-        ),
-        end: Index(
-            6,
-        ),
-    },
-}
+    imports:
+        Alma 1:7
+            Float 1:7 1:7
+            String 1:7 1:7
+            Bool 1:7 (True 1:7, False 1:7) 1:7
+    type_definitions:
+        Fruit 20:25
+            { 28:30 }
+    definitions:
+
+
+
+

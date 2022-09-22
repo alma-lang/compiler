@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2372
+assertion_line: 2730
 expression: "parse(\"variable_one\")"
 ---
 Input:
@@ -9,42 +9,4 @@ variable_one
 
 Result:
 
-Index(
-    0,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            0,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: Identifier(
-                Identifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-}
+Identifier variable_one 0:12 0:12

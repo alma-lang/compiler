@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2427
+assertion_line: 2785
 expression: "parse(\"incr (-5)\")"
 ---
 Input:
@@ -9,127 +9,9 @@ incr (-5)
 
 Result:
 
-Index(
-    3,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Float(
-            5.0,
-        ),
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            0,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: Identifier(
-                Identifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-    Index(
-        2,
-    ): Expression {
-        span: Index(
-            3,
-        ),
-        expr: Unary {
-            op: Unary {
-                span: Index(
-                    2,
-                ),
-                typ: Minus,
-            },
-            expression: Index(
-                0,
-            ),
-        },
-    },
-    Index(
-        3,
-    ): Expression {
-        span: Index(
-            4,
-        ),
-        expr: FnCall {
-            function: Index(
-                1,
-            ),
-            arguments: [
-                Index(
-                    2,
-                ),
-            ],
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            0,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            3,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            2,
-        ),
-        end: Index(
-            2,
-        ),
-    },
-    Index(
-        3,
-    ): Span {
-        start: Index(
-            2,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        4,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-}
+FnCall 0:8
+    fn:
+        Identifier incr 0:4 0:4
+    args:
+        Unary 6:8 Minus 6:7
+            Float 5 7:8

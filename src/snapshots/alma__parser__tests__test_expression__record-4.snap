@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2579
+assertion_line: 2937
 expression: "parse(\"{ x : 5 }\")"
 ---
 Input:
@@ -9,76 +9,7 @@ Input:
 
 Result:
 
-Index(
-    1,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Float(
-            5.0,
-        ),
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            2,
-        ),
-        expr: Record {
-            fields: [
-                (
-                    Identifier {
-                        name: SymbolU32 {
-                            value: 1,
-                        },
-                        span: Index(
-                            0,
-                        ),
-                    },
-                    Index(
-                        0,
-                    ),
-                ),
-            ],
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            3,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            4,
-        ),
-    },
+{ 0:9
+    x 2:3 :
+        Float 5 6:7
 }

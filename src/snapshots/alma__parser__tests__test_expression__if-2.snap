@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2448
+assertion_line: 2806
 expression: "parse(\"\nif True then\n  1\n\nelse\n  2\")"
 ---
 Input:
@@ -14,120 +14,10 @@ else
 
 Result:
 
-Index(
-    3,
-)
-
-{
-    Index(
-        0,
-    ): Expression {
-        span: Index(
-            1,
-        ),
-        expr: Identifier {
-            module: None,
-            identifier: CapitalizedIdentifier(
-                CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 1,
-                    },
-                    span: Index(
-                        0,
-                    ),
-                },
-            ),
-        },
-    },
-    Index(
-        1,
-    ): Expression {
-        span: Index(
-            2,
-        ),
-        expr: Float(
-            1.0,
-        ),
-    },
-    Index(
-        2,
-    ): Expression {
-        span: Index(
-            3,
-        ),
-        expr: Float(
-            2.0,
-        ),
-    },
-    Index(
-        3,
-    ): Expression {
-        span: Index(
-            4,
-        ),
-        expr: If {
-            condition: Index(
-                0,
-            ),
-            then: Index(
-                1,
-            ),
-            else_: Index(
-                2,
-            ),
-        },
-    },
-}
-
-{
-    Index(
-        0,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        1,
-    ): Span {
-        start: Index(
-            1,
-        ),
-        end: Index(
-            1,
-        ),
-    },
-    Index(
-        2,
-    ): Span {
-        start: Index(
-            3,
-        ),
-        end: Index(
-            3,
-        ),
-    },
-    Index(
-        3,
-    ): Span {
-        start: Index(
-            5,
-        ),
-        end: Index(
-            5,
-        ),
-    },
-    Index(
-        4,
-    ): Span {
-        start: Index(
-            0,
-        ),
-        end: Index(
-            5,
-        ),
-    },
-}
+If 1:27
+    condition:
+        Identifier True 4:8 4:8
+    then:
+        Float 1 16:17
+    else:
+        Float 2 26:27

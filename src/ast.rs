@@ -8,13 +8,53 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use typed_index_collections::TiVec;
 
+#[cfg(test)]
+use self::span::Spans;
+#[cfg(test)]
+use crate::token::Tokens;
+#[cfg(test)]
+use std::fmt::Write;
+
+// Ast to_test_string context helper
+
+#[cfg(test)]
+pub struct TestToStringContext<'a> {
+    pub strings: &'a Strings,
+    pub tokens: &'a Tokens,
+    pub spans: &'a Spans,
+    pub expressions: &'a Expressions,
+    pub indent: usize,
+}
+#[cfg(test)]
+impl<'a> TestToStringContext<'a> {
+    pub fn indented(&self) -> Self {
+        Self {
+            strings: self.strings,
+            tokens: self.tokens,
+            spans: self.spans,
+            expressions: self.expressions,
+            indent: self.indent + 4,
+        }
+    }
+}
+
 pub mod span {
+
     use super::*;
 
     #[derive(PartialEq, Debug, Copy, Clone)]
     pub struct Span {
         pub start: token::Index,
         pub end: token::Index,
+    }
+    impl Span {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{}:{}",
+                ctx.tokens[self.start].start, ctx.tokens[self.end].end
+            )
+        }
     }
 
     pub type Index = index::Index<Span>;
@@ -116,6 +156,11 @@ impl ModuleName {
     pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
         strings.resolve(self.full_name)
     }
+
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        format!("{name}", name = ctx.strings.resolve(self.full_name))
+    }
 }
 
 #[derive(Debug)]
@@ -143,6 +188,62 @@ impl Module {
             .iter()
             .any(|def| matches!(def, TypedDefinition::External(_)))
     }
+
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        let mut out = String::new();
+        writeln!(out, "module {name}", name = self.name.to_test_string(ctx)).unwrap();
+        writeln!(out, "    exports:").unwrap();
+        writeln!(
+            out,
+            "{}",
+            &self
+                .exports
+                .iter()
+                .map(|export| export.to_test_string(&ctx.indented().indented()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        )
+        .unwrap();
+        writeln!(out, "    imports:").unwrap();
+        writeln!(
+            out,
+            "{}",
+            &self
+                .imports
+                .iter()
+                .map(|import| import.to_test_string(&ctx.indented().indented()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        )
+        .unwrap();
+        writeln!(out, "    type_definitions:").unwrap();
+        writeln!(
+            out,
+            "{}",
+            &self
+                .type_definitions
+                .iter()
+                .map(|type_definition| type_definition.to_test_string(&ctx.indented().indented()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        )
+        .unwrap();
+        writeln!(out, "    definitions:").unwrap();
+        writeln!(
+            out,
+            "{}",
+            &self
+                .definitions
+                .iter()
+                .map(|definition| definition.to_test_string(&ctx.indented().indented()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        )
+        .unwrap();
+
+        out
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -152,12 +253,49 @@ pub struct Import {
     pub alias: Option<CapitalizedIdentifier>,
     pub exposing: Vec<Export>,
 }
+impl Import {
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        format!(
+            "{0:indent$}{name}{alias} {span}{nl}{exports}",
+            "",
+            indent = ctx.indent,
+            span = ctx.spans[self.span].to_test_string(ctx),
+            name = self.module_name.to_test_string(ctx),
+            alias = self
+                .alias
+                .as_ref()
+                .map(|a| format!(" alias {}", a.to_test_string(ctx)))
+                .unwrap_or("".to_owned()),
+            nl = if self.exposing.is_empty() { "" } else { "\n" },
+            exports = self
+                .exposing
+                .iter()
+                .map(|e| e.to_test_string(&ctx.indented()))
+                .collect::<Vec<String>>()
+                .join("\n")
+        )
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Export {
     pub span: span::Index,
     pub typ: ExportData,
 }
+impl Export {
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        format!(
+            "{0:indent$}{export} {span}",
+            "",
+            indent = ctx.indent,
+            export = self.typ.to_test_string(ctx),
+            span = ctx.spans[self.span].to_test_string(ctx)
+        )
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum ExportData {
     Identifier(Identifier),
@@ -165,6 +303,25 @@ pub enum ExportData {
         name: CapitalizedIdentifier,
         constructors: Vec<CapitalizedIdentifier>,
     },
+}
+impl ExportData {
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        match self {
+            ExportData::Identifier(id) => id.to_test_string(ctx),
+            ExportData::Type { name, constructors } => format!(
+                "{name}{ps}{ctors}{pe}",
+                name = name.to_test_string(ctx),
+                ps = if constructors.is_empty() { "" } else { " (" },
+                pe = if constructors.is_empty() { "" } else { ")" },
+                ctors = constructors
+                    .iter()
+                    .map(|c| c.to_test_string(ctx))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -191,6 +348,29 @@ impl TypedDefinition {
             Untyped(_) => None,
         }
     }
+
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        let (typ, content) = {
+            let ctx = &ctx.indented();
+            match self {
+                TypedDefinition::External(signature) => ("External", signature.to_test_string(ctx)),
+                TypedDefinition::TypeSignature(signature) => {
+                    ("TypeSignature", signature.to_test_string(ctx))
+                }
+                TypedDefinition::Typed(signature, definition) => (
+                    "Typed",
+                    format!(
+                        "{}\n{}",
+                        signature.to_test_string(ctx),
+                        definition.to_test_string(ctx),
+                    ),
+                ),
+                TypedDefinition::Untyped(definition) => ("Untyped", definition.to_test_string(ctx)),
+            }
+        };
+        format!("{0:indent$}{typ}\n{content}", "", indent = ctx.indent,)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -198,11 +378,44 @@ pub struct TypeSignature {
     pub name: Identifier,
     pub typ: types::Type,
 }
+impl TypeSignature {
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        format!(
+            "{0:indent$}{name}:\n{typ}",
+            "",
+            indent = ctx.indent,
+            name = self.name.to_test_string(ctx),
+            typ = self.typ.to_test_string(&ctx.indented()),
+        )
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Definition {
     Lambda(Identifier, Lambda),
     Pattern(Pattern, expression::Index),
+}
+impl Definition {
+    #[cfg(test)]
+    pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+        match self {
+            Definition::Lambda(identifier, lambda) => format!(
+                "{0:indent$}Lambda {name}\n{lambda}",
+                "",
+                indent = ctx.indent,
+                name = identifier.to_test_string(ctx),
+                lambda = lambda.to_test_string(&ctx.indented()),
+            ),
+            Definition::Pattern(pattern, expression_idx) => format!(
+                "{0:indent$}pattern:\n{pattern}\n{0:indent$}expr:\n{expression}",
+                "",
+                indent = ctx.indent,
+                pattern = pattern.to_test_string(&ctx.indented()),
+                expression = ctx.expressions[*expression_idx].to_test_string(&ctx.indented())
+            ),
+        }
+    }
 }
 
 // Types
@@ -217,6 +430,27 @@ pub mod types {
         pub vars: Vec<Identifier>,
         pub typ: TypeDefinitionData,
     }
+    impl TypeDefinition {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            let typ = self.typ.to_test_string(&ctx.indented());
+            format!(
+                "{0:indent$}{name}{ps}{vars}{pe}{nl}{typ}",
+                "",
+                indent = ctx.indent,
+                name = self.name.to_test_string(ctx),
+                ps = if self.vars.is_empty() { "" } else { " (" },
+                pe = if self.vars.is_empty() { "" } else { ")" },
+                vars = self
+                    .vars
+                    .iter()
+                    .map(|var| var.to_test_string(ctx))
+                    .collect::<Vec<String>>()
+                    .join(", "),
+                nl = if typ.is_empty() { "" } else { "\n" }
+            )
+        }
+    }
 
     #[derive(Debug)]
     pub enum TypeDefinitionData {
@@ -224,12 +458,51 @@ pub mod types {
         Record(RecordType),
         Empty,
     }
+    impl TypeDefinitionData {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            match self {
+                TypeDefinitionData::Union { constructors } => {
+                    if constructors.is_empty() {
+                        "".to_owned()
+                    } else {
+                        constructors
+                            .iter()
+                            .map(|constructor| constructor.to_test_string(ctx))
+                            .collect::<Vec<String>>()
+                            .join("\n")
+                    }
+                }
+                TypeDefinitionData::Record(record) => record.to_test_string(ctx),
+                TypeDefinitionData::Empty => "".to_owned(),
+            }
+        }
+    }
 
     #[derive(Debug, Clone)]
     pub struct Constructor {
         pub span: span::Index,
         pub name: CapitalizedIdentifier,
         pub params: Vec<Type>,
+    }
+    impl Constructor {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{0:indent$}{name} {span}{nl}{params}",
+                "",
+                indent = ctx.indent,
+                span = ctx.spans[self.span].to_test_string(ctx),
+                name = self.name.to_test_string(ctx),
+                params = self
+                    .params
+                    .iter()
+                    .map(|p| p.to_test_string(&ctx.indented()))
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+                nl = if self.params.is_empty() { "" } else { "\n" }
+            )
+        }
     }
 
     #[derive(Debug, Clone)]
@@ -258,10 +531,37 @@ pub mod types {
                 Record(record) => record.fill_vars(vars),
             }
         }
+
         pub fn vars(&self) -> Vec<&Identifier> {
             let mut vars = Vec::new();
             self.fill_vars(&mut vars);
             vars
+        }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            match self {
+                Type::Fun { params, ret } => format!(
+                    "{0:indent$}Fn\n{0:indent2$}params:\n{params}\n{ret}",
+                    "",
+                    indent = ctx.indent,
+                    indent2 = ctx.indented().indent,
+                    params = params
+                        .iter()
+                        .map(|p| p.to_test_string(&ctx.indented().indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                    ret = ret.to_test_string(&ctx.indented()),
+                ),
+                Type::App(constructor) => constructor.to_test_string(ctx),
+                Type::Var(identifier) => format!(
+                    "{0:indent$}{identifier}",
+                    "",
+                    indent = ctx.indent,
+                    identifier = identifier.to_test_string(ctx),
+                ),
+                Type::Record(record) => record.to_test_string(ctx),
+            }
         }
     }
 
@@ -278,6 +578,14 @@ pub mod types {
                 RecordExt(rec) => rec.fill_vars(vars),
             }
         }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            match self {
+                RecordType::Record(record) => record.to_test_string(ctx),
+                RecordType::RecordExt(record) => record.to_test_string(ctx),
+            }
+        }
     }
 
     #[derive(Debug, Clone)]
@@ -290,6 +598,34 @@ pub mod types {
             for (_, typ) in &self.fields {
                 typ.fill_vars(vars);
             }
+        }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{0:indent$}{{ {span}{nl}{fields}{nl}{0:closing_indent$}}}",
+                "",
+                indent = ctx.indent,
+                span = ctx.spans[self.span].to_test_string(ctx),
+                nl = if self.fields.is_empty() { "" } else { "\n" },
+                closing_indent = if self.fields.is_empty() {
+                    1
+                } else {
+                    ctx.indent
+                },
+                fields = self
+                    .fields
+                    .iter()
+                    .map(|(id, typ)| format!(
+                        "{0:indent$}{id} :\n{typ}",
+                        "",
+                        indent = ctx.indented().indent,
+                        id = id.to_test_string(ctx),
+                        typ = typ.to_test_string(&ctx.indented().indented())
+                    ))
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+            )
         }
     }
 
@@ -305,6 +641,36 @@ pub mod types {
             for (_, typ) in &self.fields {
                 typ.fill_vars(vars);
             }
+        }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{0:indent$}{{ {span}\n{0:indent2$}{extension} |{nl}{fields}{nl}{0:closing_indent$}}}",
+                "",
+                indent = ctx.indent,
+                indent2 = ctx.indented().indent,
+                span = ctx.spans[self.span].to_test_string(ctx),
+                extension = self.extension.to_test_string(ctx),
+                nl = if self.fields.is_empty() { "" } else { "\n" },
+                closing_indent = if self.fields.is_empty() {
+                    1
+                } else {
+                    ctx.indent
+                },
+                fields = self
+                    .fields
+                    .iter()
+                    .map(|(id, typ)| format!(
+                        "{0:indent$}{id} :\n{typ}",
+                        "",
+                        indent = ctx.indented().indent,
+                        id = id.to_test_string(ctx),
+                        typ = typ.to_test_string(&ctx.indented().indented())
+                    ))
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+            )
         }
     }
 }
@@ -328,6 +694,12 @@ pub mod expression {
     impl Expression {
         pub fn untyped(expr: ExpressionData, span: span::Index) -> Self {
             Self { expr, span }
+        }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            self.expr
+                .to_test_string(ctx.spans[self.span].to_test_string(ctx), ctx)
         }
     }
 
@@ -381,11 +753,206 @@ pub mod expression {
             branches: Vec<PatternMatchingBranch>,
         },
     }
+    impl ExpressionData {
+        #[cfg(test)]
+        pub fn to_test_string(&self, span: String, ctx: &TestToStringContext) -> String {
+            let expr = match self {
+                ExpressionData::Float(num) => format!("Float {num} {span}"),
+                ExpressionData::String_(str_sym) => {
+                    format!("String \"{}\" {span}", ctx.strings.resolve(*str_sym))
+                }
+                ExpressionData::Identifier { module, identifier } => {
+                    format!(
+                        "Identifier {module}{id} {span}",
+                        module = module
+                            .as_ref()
+                            .map(|m| format!("{}. ", m.to_test_string(ctx)))
+                            .unwrap_or("".to_owned()),
+                        id = identifier.to_test_string(ctx)
+                    )
+                }
+                ExpressionData::PropertyAccess {
+                    expression,
+                    property,
+                } => format!(
+                    "PropertyAccess {span}\n\
+                    {0:indent$}expression:\n{expression}\n\
+                    {0:indent$}property: {property}",
+                    "",
+                    indent = ctx.indented().indent,
+                    expression =
+                        ctx.expressions[*expression].to_test_string(&ctx.indented().indented()),
+                    property = property.to_test_string(ctx)
+                ),
+                ExpressionData::PropertyAccessLambda { property } => format!(
+                    "PropertyAccessLambda {span} {property}",
+                    property = property.to_test_string(ctx)
+                ),
+                ExpressionData::Record { fields } => format!(
+                    "{{ {span}{nl}\
+                    {fields}{nl}\
+                    {0:closing_indent$}}}",
+                    "",
+                    nl = if fields.is_empty() { "" } else { "\n" },
+                    closing_indent = if fields.is_empty() { 1 } else { ctx.indent },
+                    fields = fields
+                        .iter()
+                        .map(|(id, expr)| format!(
+                            "{0:indent$}{id} :\n{expr}",
+                            "",
+                            indent = ctx.indented().indent,
+                            id = id.to_test_string(ctx),
+                            expr =
+                                ctx.expressions[*expr].to_test_string(&ctx.indented().indented())
+                        ))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                ),
+                ExpressionData::RecordUpdate { record, fields } => format!(
+                    "{{ {span}\n\
+                    {0:indent2$}record:\n\
+                    {record}{nl}{sep}{nl}\
+                    {fields}{nl}\
+                    {0:closing_indent$}}}",
+                    "",
+                    indent2 = ctx.indented().indent,
+                    record = ctx.expressions[*record].to_test_string(&ctx.indented().indented()),
+                    nl = if fields.is_empty() { "" } else { "\n" },
+                    sep = if fields.is_empty() {
+                        "".to_owned()
+                    } else {
+                        format!("{0:indent$}|", "", indent = ctx.indented().indent)
+                    },
+                    closing_indent = if fields.is_empty() { 1 } else { ctx.indent },
+                    fields = fields
+                        .iter()
+                        .map(|(id, expr)| format!(
+                            "{0:indent$}{id} :\n{expr}",
+                            "",
+                            indent = ctx.indented().indented().indent,
+                            id = id.to_test_string(ctx),
+                            expr = ctx.expressions[*expr]
+                                .to_test_string(&ctx.indented().indented().indented())
+                        ))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                ),
+                ExpressionData::Unary { op, expression } => format!(
+                    "Unary {span} {op}\n{expression}",
+                    expression = ctx.expressions[*expression].to_test_string(&ctx.indented()),
+                    op = op.to_test_string(ctx)
+                ),
+                ExpressionData::Binary { op, arguments, .. } => format!(
+                    "Binary {span} {op}\n\
+                    {0:indent$}lhs:\n\
+                    {lhs}\n\
+                    {0:indent$}rhs:\n\
+                    {rhs}",
+                    "",
+                    indent = ctx.indented().indent,
+                    lhs = ctx.expressions[arguments[0]].to_test_string(&ctx.indented().indented()),
+                    rhs = ctx.expressions[arguments[1]].to_test_string(&ctx.indented().indented()),
+                    op = op.to_test_string()
+                ),
+                ExpressionData::Lambda(lambda) => format!(
+                    "Lambda {span}\n{lambda}",
+                    lambda = lambda.to_test_string(&ctx.indented())
+                ),
+                ExpressionData::FnCall {
+                    function,
+                    arguments,
+                } => format!(
+                    "FnCall {span}\n\
+                    {0:indent$}fn:\n\
+                    {fun}\n\
+                    {0:indent$}args:\n\
+                    {args}",
+                    "",
+                    indent = ctx.indented().indent,
+                    fun = ctx.expressions[*function].to_test_string(&ctx.indented().indented()),
+                    args = arguments
+                        .iter()
+                        .map(|a| ctx.expressions[*a].to_test_string(&ctx.indented().indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                ),
+                ExpressionData::Let { definitions, body } => format!(
+                    "Let {span}\n\
+                    {0:indent$}definitions:\n\
+                    {defs}\n\
+                    {body}",
+                    "",
+                    indent = ctx.indented().indent,
+                    body = ctx.expressions[*body].to_test_string(&ctx.indented()),
+                    defs = definitions
+                        .iter()
+                        .map(|d| d.to_test_string(&ctx.indented().indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                ),
+                ExpressionData::If {
+                    condition,
+                    then,
+                    else_,
+                } => format!(
+                    "If {span}\n\
+                    {0:indent$}condition:\n\
+                    {condition}\n\
+                    {0:indent$}then:\n\
+                    {then}\n\
+                    {0:indent$}else:\n\
+                    {else_}",
+                    "",
+                    indent = ctx.indented().indent,
+                    condition =
+                        ctx.expressions[*condition].to_test_string(&ctx.indented().indented()),
+                    then = ctx.expressions[*then].to_test_string(&ctx.indented().indented()),
+                    else_ = ctx.expressions[*else_].to_test_string(&ctx.indented().indented()),
+                ),
+                ExpressionData::PatternMatching {
+                    expression,
+                    branches,
+                } => format!(
+                    "PatternMatching {span}\n\
+                    {0:indent$}condition:\n\
+                    {condition}\n\
+                    {branches}",
+                    "",
+                    indent = ctx.indented().indent,
+                    condition =
+                        ctx.expressions[*expression].to_test_string(&ctx.indented().indented()),
+                    branches = branches
+                        .iter()
+                        .map(|b| b.to_test_string(&ctx.indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                ),
+            };
+            format!("{0:indent$}{expr}", "", indent = ctx.indent)
+        }
+    }
 
     #[derive(Debug, Clone)]
     pub struct Lambda {
         pub parameters: Vec<Pattern>,
         pub body: expression::Index,
+    }
+    impl Lambda {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{0:indent$}params:\n{parameters}\n{body}",
+                "",
+                indent = ctx.indent,
+                parameters = self
+                    .parameters
+                    .iter()
+                    .map(|p| p.to_test_string(&ctx.indented()))
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+                body = ctx.expressions[self.body].to_test_string(ctx),
+            )
+        }
     }
 
     #[derive(Debug, Clone)]
@@ -395,6 +962,34 @@ pub mod expression {
         pub condition: Option<expression::Index>,
         pub body: expression::Index,
     }
+    impl PatternMatchingBranch {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{0:indent$}PatternMatchingBranch {span}\n\
+                {0:indent2$}pattern:\n\
+                {pattern}\n\
+                {condition}\
+                {0:indent2$}body:\n\
+                {body}",
+                "",
+                indent = ctx.indent,
+                indent2 = ctx.indented().indent,
+                pattern = self.pattern.to_test_string(&ctx.indented().indented()),
+                condition = self
+                    .condition
+                    .map(|c| format!(
+                        "{0:indent$}condition:\n{condition}\n",
+                        "",
+                        indent = ctx.indented().indent,
+                        condition = ctx.expressions[c].to_test_string(&ctx.indented().indented())
+                    ))
+                    .unwrap_or("".to_owned()),
+                body = ctx.expressions[self.body].to_test_string(&ctx.indented().indented()),
+                span = ctx.spans[self.span].to_test_string(ctx)
+            )
+        }
+    }
 
     // Operators
 
@@ -403,6 +998,17 @@ pub mod expression {
         pub span: span::Index,
         pub typ: UnaryData,
     }
+    impl Unary {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{:?} {span}",
+                self.typ,
+                span = ctx.spans[self.span].to_test_string(ctx)
+            )
+        }
+    }
+
     #[derive(PartialEq, Debug, Clone)]
     pub enum UnaryData {
         Not,
@@ -466,6 +1072,11 @@ pub mod expression {
                     name: name_sym,
                     span,
                 }
+            }
+
+            #[cfg(test)]
+            pub fn to_test_string(&self) -> String {
+                format!("{:?}", self.typ,)
             }
         }
 
@@ -553,6 +1164,14 @@ pub mod expression {
         pub span: span::Index,
         pub typ: PatternData,
     }
+    impl Pattern {
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            self.typ
+                .to_test_string(ctx.spans[self.span].to_test_string(ctx), ctx)
+        }
+    }
+
     #[derive(PartialEq, Debug, Clone)]
     pub enum PatternData {
         Hole,
@@ -579,6 +1198,65 @@ pub mod expression {
                 Or(patterns) => patterns.iter().any(|p| p.typ.is_useless_in_bindings()),
             }
         }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, span: String, ctx: &TestToStringContext) -> String {
+            match self {
+                PatternData::Hole => format!("{0:indent$}_ {span}", "", indent = ctx.indent),
+                PatternData::Identifier(identifier) => format!(
+                    "{0:indent$}Identifier {identifier} {span}",
+                    "",
+                    indent = ctx.indent,
+                    identifier = identifier.to_test_string(ctx)
+                ),
+                PatternData::String_(str_sym) => format!(
+                    "{0:indent$}String \"{str}\" {span}",
+                    "",
+                    indent = ctx.indent,
+                    str = ctx.strings.resolve(*str_sym)
+                ),
+                PatternData::Float(num) => {
+                    format!("{0:indent$}Float {num} {span}", "", indent = ctx.indent)
+                }
+                PatternData::Type {
+                    module,
+                    constructor,
+                    params,
+                } => format!(
+                    "{0:indent$}{module}{constructor} {span}{nl}{params}",
+                    "",
+                    indent = ctx.indent,
+                    module = module
+                        .as_ref()
+                        .map(|m| format!("{}.", m.to_test_string(ctx)))
+                        .unwrap_or("".to_owned()),
+                    constructor = constructor.to_test_string(ctx),
+                    nl = if params.is_empty() { "" } else { "\n" },
+                    params = params
+                        .iter()
+                        .map(|p| p.to_test_string(&ctx.indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                ),
+                PatternData::Named { pattern, name } => format!(
+                    "{0:indent$}Named: {name} {span}\n{pattern}",
+                    "",
+                    indent = ctx.indent,
+                    name = name.to_test_string(ctx),
+                    pattern = pattern.to_test_string(&ctx.indented()),
+                ),
+                PatternData::Or(patterns) => format!(
+                    "{0:indent$}Or {span}\n{patterns}",
+                    "",
+                    indent = ctx.indent,
+                    patterns = patterns
+                        .iter()
+                        .map(|p| p.to_test_string(&ctx.indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                ),
+            }
+        }
     }
 
     // Identifiers
@@ -594,6 +1272,15 @@ pub mod expression {
         pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
             strings.resolve(self.name)
         }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{} {}",
+                ctx.strings.resolve(self.name),
+                ctx.spans[self.span].to_test_string(ctx)
+            )
+        }
     }
 
     #[derive(PartialEq, Debug, Clone)]
@@ -605,6 +1292,15 @@ pub mod expression {
     impl Identifier {
         pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
             strings.resolve(self.name)
+        }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            format!(
+                "{} {}",
+                ctx.strings.resolve(self.name),
+                ctx.spans[self.span].to_test_string(ctx)
+            )
         }
     }
 
@@ -635,6 +1331,15 @@ pub mod expression {
             match self {
                 Identifier(i) => i.to_string(strings),
                 CapitalizedIdentifier(i) => i.to_string(strings),
+            }
+        }
+
+        #[cfg(test)]
+        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
+            use AnyIdentifier::*;
+            match self {
+                Identifier(i) => i.to_test_string(ctx),
+                CapitalizedIdentifier(i) => i.to_test_string(ctx),
             }
         }
     }

@@ -54,7 +54,7 @@ use typed_index_collections::TiSlice;
     ● type_signature           → IDENTIFIER ":" type_function
 
     // Expressions
-    ● expression               → let | if | lambda | pattern_matching
+    ● expression               → let | if | lambda | pattern_matching | binary
     ● let                      → "let" ( typed_binding )+ ( "in" )? expression
     ● top_level_binding        → "external" type_signature
                                | typed_binding
@@ -2694,6 +2694,8 @@ pub mod tests {
     }
 
     mod test_expression {
+        use crate::ast::TestToStringContext;
+
         use super::*;
         use insta::assert_snapshot;
 
@@ -2993,7 +2995,17 @@ add 5"
                 &mut spans,
                 &mut expressions,
             ) {
-                Ok(ast) => format!("{ast:#?}\n\n{expressions:#?}\n\n{spans:#?}"),
+                Ok(ast) => {
+                    let ctx = TestToStringContext {
+                        indent: 0,
+                        spans: &spans,
+                        tokens: &tokens,
+                        expressions: &expressions,
+                        strings: &strings,
+                    };
+                    let ast = expressions[*ast].to_test_string(&ctx);
+                    format!("{ast}")
+                }
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);
                     format!("{error_str}\n\n{error:#?}")
@@ -3004,6 +3016,8 @@ add 5"
     }
 
     mod test_module_parser {
+        use crate::ast::TestToStringContext;
+
         use super::*;
         use insta::assert_snapshot;
 
@@ -4078,7 +4092,35 @@ test ((a as b) | hello) = 5
             let mut spans = Spans::new();
             tokenizer::parse(&source, &mut strings, &mut tokens).unwrap();
             let result = match &super::parse(&source, &tokens, &mut strings, &mut spans) {
-                Ok(ast) => format!("{ast:#?}\n\n{spans:#?}"),
+                Ok((module, submodules)) => {
+                    format!(
+                        "{module}\n\n{submodules}",
+                        module = {
+                            let ctx = TestToStringContext {
+                                indent: 0,
+                                spans: &spans,
+                                tokens: &tokens,
+                                expressions: &module.expressions,
+                                strings: &strings,
+                            };
+                            module.to_test_string(&ctx)
+                        },
+                        submodules = submodules
+                            .iter()
+                            .map(|ast| {
+                                let ctx = TestToStringContext {
+                                    indent: 0,
+                                    spans: &spans,
+                                    tokens: &tokens,
+                                    expressions: &ast.expressions,
+                                    strings: &strings,
+                                };
+                                ast.to_test_string(&ctx)
+                            })
+                            .collect::<Vec<String>>()
+                            .join("\n\n")
+                    )
+                }
                 Err(error) => {
                     let error_str = error.to_string(&source, &strings);
                     format!("{error_str}\n\n{error:#?}")
