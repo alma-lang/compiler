@@ -290,18 +290,34 @@ type Option a = Some a | None
 
 type Id = Id Float
 
+type List a = Cons a (List a) | Nil
+
+type Pair a b = Pair a b
+
 main =
-    let Id id = Id 1
-    let test = when Id 5 is
-        Id id -> id
-    let test = when "test" is
-        "banana" -> id
-        "phone" -> id
-    let test = when 5 is
-        5 -> id
-        _ -> id
-    let test = when Some(Id(1)) is
-        Some (Id id) -> id
+    let
+        Id id = Id 1
+        test = when Id 5 is
+            Id id -> id
+        test = when "test" is
+            "banana" -> id
+            "phone" -> id
+        test = when 5 is
+            5 -> id
+            _ -> id
+        test = when Some(Id(1)) is
+            Some (Id id) -> id
+        test = when 5 is
+            5 as a -> a
+            1 as b | 2 as b | b -> b
+            _ -> id
+        test = when Nil is
+            Cons a _ |
+            Cons (Cons a _) _ |
+            Cons (Cons (Cons a _) _) _ -> a
+        test = when Pair None (Some 3) is
+            Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->
+                True
     Some id
 
         "#])

@@ -511,7 +511,25 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
             code.push_str(" }");
         }
         P::Hole | P::String_(_) | P::Float(_) => (),
-        _ => todo!(),
+        P::Named { pattern, name } => {
+            code.push_str(name.to_string(strings));
+            if pattern_needs_bindings(pattern) {
+                code.push_str(", ");
+                generate_binding_destructuring(code, pattern, strings);
+            }
+        }
+        P::Or(patterns) => {
+            let mut first = true;
+            for pattern in patterns {
+                if pattern_needs_bindings(pattern) {
+                    if !first {
+                        code.push_str(", ");
+                    }
+                    first = false;
+                    generate_binding_destructuring(code, pattern, strings);
+                }
+            }
+        }
     }
 }
 
@@ -952,7 +970,28 @@ fn generate_pattern_matching_conditions(
                 }
             }
         }
-        _ => todo!(),
+        P::Named { pattern, .. } => {
+            generate_pattern_matching_conditions(code, path, pattern, strings)
+        }
+        P::Or(patterns) => {
+            let mut first = true;
+            for pattern in patterns {
+                if pattern_has_pattern_matching_conditions(pattern) {
+                    if first {
+                        code.push('(');
+                        first = false;
+                    } else {
+                        code.push_str(" || ");
+                    }
+                    code.push('(');
+                    generate_pattern_matching_conditions(code, path, pattern, strings);
+                    code.push(')');
+                }
+            }
+            if !first {
+                code.push(')');
+            }
+        }
     }
 }
 
@@ -963,7 +1002,10 @@ fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
         P::String_(_) => true,
         P::Float(_) => true,
         P::Type { .. } => true,
-        _ => todo!(),
+        P::Named { pattern, .. } => pattern_has_pattern_matching_conditions(pattern),
+        P::Or(patterns) => patterns
+            .iter()
+            .any(|p| pattern_has_pattern_matching_conditions(p)),
     }
 }
 
@@ -974,7 +1016,8 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
         P::String_(_) => false,
         P::Float(_) => false,
         P::Type { params, .. } => params.iter().any(|p| pattern_needs_bindings(p)),
-        _ => todo!(),
+        P::Named { .. } => true,
+        P::Or(patterns) => patterns.iter().any(|p| pattern_needs_bindings(p)),
     }
 }
 
