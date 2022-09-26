@@ -312,9 +312,9 @@ main =
             1 as b | 2 as b | b -> b
             _ -> id
         test = when Nil is
-            Cons a _ |
-            Cons (Cons a _) _ |
-            Cons (Cons (Cons a _) _) _ -> a
+            Cons a Nil |
+            Cons _ (Cons a Nil) |
+            Cons _ (Cons _ (Cons a Nil)) -> a
         test = when Pair None (Some 3) is
             Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->
                 True

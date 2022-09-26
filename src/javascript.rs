@@ -1,4 +1,4 @@
-use crate::ast::expression::{binop, Expressions};
+use crate::ast::expression::{binop, Expressions, IdentifierName};
 use crate::compiler::state::ModuleIndex;
 use crate::compiler::types::ModuleInterface;
 use crate::strings::Strings;
@@ -12,6 +12,7 @@ use crate::{
     },
     compiler,
 };
+use fnv::FnvHashSet;
 use pathdiff::diff_paths;
 use std::cmp::min;
 use std::fmt::Write;
@@ -469,7 +470,11 @@ fn generate_function(
         if i > 0 {
             code.push_str(", ");
         }
-        generate_binding_destructuring(code, pattern, strings);
+        if pattern_needs_bindings(pattern) {
+            generate_binding_destructuring(code, pattern, strings);
+        } else {
+            code.push('_');
+        }
     }
 
     code.push_str(") {\n");
@@ -542,9 +547,12 @@ fn generate_let(
     strings: &Strings,
     expressions: &Expressions,
 ) {
-    indented(code, indent, "let ");
-    generate_binding_destructuring(code, pattern, strings);
-    code.push_str(" = ");
+    indented(code, indent, "");
+    if pattern_needs_bindings(pattern) {
+        code.push_str("let ");
+        generate_binding_destructuring(code, pattern, strings);
+        code.push_str(" = ");
+    }
     generate_expression(indent, code, module_name, expression, strings, expressions);
     code.push('\n');
 }
@@ -838,6 +846,12 @@ fn generate_expression(
                 );
                 code.push_str("\n");
 
+                let mut names = FnvHashSet::default();
+                for branch in branches {
+                    branch.pattern.data.get_bindings(&mut names);
+                }
+                generate_pattern_matching_bindings(code, indent, &names, strings);
+
                 for branch in branches {
                     generate_pattern_matching_if(
                         code,
@@ -901,14 +915,6 @@ fn generate_pattern_matching_if<'a, F>(
         } else {
             indent
         };
-        generate_pattern_matching_bindings(
-            code,
-            indent,
-            PATTERN_MATCHING_EXPRESSION_RESULT,
-            pattern,
-            strings,
-        );
-
         generate_body(code, indent, module_name, expressions, strings);
     }
     if has_conditions {
@@ -919,14 +925,18 @@ fn generate_pattern_matching_if<'a, F>(
 fn generate_pattern_matching_bindings(
     code: &mut String,
     indent: usize,
-    result: &str,
-    pattern: &Pattern,
+    names: &FnvHashSet<IdentifierName>,
     strings: &Strings,
 ) {
-    if pattern_needs_bindings(pattern) {
+    if !names.is_empty() {
         indented(code, indent, "let ");
-        generate_binding_destructuring(code, pattern, strings);
-        writeln!(code, " = {result}").unwrap();
+        for (i, name) in names.iter().enumerate() {
+            if i > 0 {
+                code.push_str(", ");
+            }
+            code.push_str(strings.resolve(*name));
+        }
+        code.push('\n');
     }
 }
 
@@ -937,7 +947,14 @@ fn generate_pattern_matching_conditions(
     strings: &Strings,
 ) {
     match &pattern.data {
-        P::Hole | P::Identifier(_) => (),
+        P::Hole => write!(code, "true").unwrap(),
+        P::Identifier(identifier) => write!(
+            code,
+            "({name} = {path}, true)",
+            name = identifier.to_string(strings),
+            path = path.join(".")
+        )
+        .unwrap(),
         P::String_(string) => {
             let string = strings.resolve(*string);
             let prop = path.join(".");
@@ -970,8 +987,31 @@ fn generate_pattern_matching_conditions(
                 }
             }
         }
-        P::Named { pattern, .. } => {
-            generate_pattern_matching_conditions(code, path, pattern, strings)
+        P::Named {
+            pattern,
+            name: identifier,
+        } => {
+            if pattern_has_pattern_matching_conditions(pattern) {
+                code.push('(');
+                code.push('(');
+                generate_pattern_matching_conditions(code, path, pattern, strings);
+                code.push(')');
+                write!(
+                    code,
+                    " ? ({name} = {path}, true) : false)",
+                    name = identifier.to_string(strings),
+                    path = path.join(".")
+                )
+                .unwrap();
+            } else {
+                write!(
+                    code,
+                    "({name} = {path}, true)",
+                    name = identifier.to_string(strings),
+                    path = path.join(".")
+                )
+                .unwrap();
+            }
         }
         P::Or(patterns) => {
             let mut first = true;
@@ -998,11 +1038,11 @@ fn generate_pattern_matching_conditions(
 fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
     match &pattern.data {
         P::Hole => false,
-        P::Identifier(_) => false,
+        P::Identifier(_) => true,
         P::String_(_) => true,
         P::Float(_) => true,
         P::Type { .. } => true,
-        P::Named { pattern, .. } => pattern_has_pattern_matching_conditions(pattern),
+        P::Named { .. } => true,
         P::Or(patterns) => patterns
             .iter()
             .any(|p| pattern_has_pattern_matching_conditions(p)),

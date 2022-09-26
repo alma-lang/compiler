@@ -2,8 +2,8 @@ use crate::ast::{
     self,
     expression::{
         self, AnyIdentifier, CapitalizedIdentifier, Expression, ExpressionData as E,
-        ExpressionTypes, Expressions, Identifier, Lambda, Pattern, PatternData as P,
-        UnaryData as U,
+        ExpressionTypes, Expressions, Identifier, IdentifierName, Lambda, Pattern,
+        PatternData as P, UnaryData as U,
     },
     span::{self, Spans},
     Definition, Import, ModuleName, TypeSignature, TypedDefinition,
@@ -622,7 +622,10 @@ impl State {
  */
 fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> bool {
     match &types[t] {
-        Named { .. } => false,
+        Named { params, .. } => params
+            .clone()
+            .iter()
+            .any(|param| occurs(a_id, a_level, *param, types)),
 
         Var(var) => match var {
             Bound(t) => occurs(a_id, a_level, *t, types),
@@ -738,35 +741,24 @@ fn unify(
 }
 
 fn unify_var(
-    state: &mut State,
     t: typ::Index,
-    var: &TypeVar,
+    id: TypeVarId,
+    level: Level,
     other_type: typ::Index,
-    span1: span::Index,
-    typ: typ::Index,
-    span2: Option<span::Index>,
-    typ2: typ::Index,
+    span: span::Index,
     types: &mut Types,
 ) -> Result<(), Error> {
-    match var {
-        // The 'find' in the union-find algorithm
-        Bound(dest_var) => unify_rec(state, *dest_var, other_type, span1, typ, span2, typ2, types),
-
+    if t == other_type {
+        Ok(())
+    } else if occurs(id, level, other_type, types) {
+        Err(Error::InfiniteType {
+            location: span,
+            typ: t,
+        })
+    } else {
         // Create binding for unbound type variable
-        Unbound(a_id, a_level) => {
-            if t == other_type {
-                Ok(())
-            } else if occurs(*a_id, *a_level, other_type, types) {
-                // a = a, but dont create a recursive binding to itself
-                Err(Error::InfiniteType {
-                    location: span1,
-                    typ: t,
-                })
-            } else {
-                types[t] = Var(Bound(other_type));
-                Ok(())
-            }
-        }
+        types[t] = Var(Bound(other_type));
+        Ok(())
     }
 }
 
@@ -811,15 +803,12 @@ fn unify_rec(
             }
         }
 
-        (Var(var), _) => {
-            let var = *var;
-            unify_var(state, t1, &var, t2, ast, typ, ast2, typ2, types)
-        }
+        // The 'find' in the union-find algorithm
+        (Var(Bound(dest)), _) => unify_rec(state, *dest, t2, ast, typ, ast2, typ2, types),
+        (_, Var(Bound(dest))) => unify_rec(state, t1, *dest, ast, typ, ast2, typ2, types),
 
-        (_, Var(var)) => {
-            let var = *var;
-            unify_var(state, t2, &var, t1, ast, typ, ast2, typ2, types)
-        }
+        (Var(Unbound(id, level)), _) => unify_var(t1, *id, *level, t2, ast, types),
+        (_, Var(Unbound(id, level))) => unify_var(t2, *id, *level, t1, ast, types),
 
         (
             Fn { params, ret },
@@ -2008,6 +1997,7 @@ fn infer_rec<'ast>(
                     expression_type_span,
                     state,
                     &mut env,
+                    &mut Vec::new(),
                     types_env,
                     strings,
                     types,
@@ -2109,7 +2099,16 @@ fn infer_definitions<'ast>(
                     let t = check_signature(&typed_definition, t, state, types_env, types, errors);
 
                     check_pattern_and_add_bindings(
-                        &pattern, t, None, state, env, types_env, strings, types, errors,
+                        &pattern,
+                        t,
+                        None,
+                        state,
+                        env,
+                        &mut Vec::new(),
+                        types_env,
+                        strings,
+                        types,
+                        errors,
                     );
                 }
             }
@@ -2214,6 +2213,7 @@ fn check_pattern_and_add_bindings(
     expected_pattern_type_span: Option<span::Index>,
     state: &mut State,
     env: &mut PolyTypeEnv,
+    introduced_bindings: &mut Vec<(Identifier, typ::Index)>,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
     types: &mut Types,
@@ -2221,7 +2221,11 @@ fn check_pattern_and_add_bindings(
 ) {
     match &pattern.data {
         P::Hole => (),
-        P::Identifier(x) => env.insert(x.name, state.generalize(expected_pattern_type, types)),
+        P::Identifier(x) => {
+            let t = state.generalize(expected_pattern_type, types);
+            introduced_bindings.push((*x, t.typ));
+            env.insert(x.name, t);
+        }
         P::String_(_) => add_error(
             unify(
                 state,
@@ -2285,6 +2289,7 @@ fn check_pattern_and_add_bindings(
                             None,
                             state,
                             env,
+                            introduced_bindings,
                             types_env,
                             strings,
                             types,
@@ -2325,6 +2330,7 @@ fn check_pattern_and_add_bindings(
                             None,
                             state,
                             env,
+                            introduced_bindings,
                             types_env,
                             strings,
                             types,
@@ -2345,13 +2351,14 @@ fn check_pattern_and_add_bindings(
 
                     for param in pattern_params {
                         let expected_param_type = types.push_and_get_key(state.new_type_var());
-                        params.push(expected_pattern_type);
+                        params.push(expected_param_type);
                         check_pattern_and_add_bindings(
                             param,
                             expected_param_type,
                             None,
                             state,
                             env,
+                            introduced_bindings,
                             types_env,
                             strings,
                             types,
@@ -2395,13 +2402,17 @@ fn check_pattern_and_add_bindings(
             );
         }
         P::Named { pattern, name } => {
-            env.insert(name.name, state.generalize(expected_pattern_type, types));
+            let t = state.generalize(expected_pattern_type, types);
+            introduced_bindings.push((*name, t.typ));
+            env.insert(name.name, t);
+
             check_pattern_and_add_bindings(
                 pattern,
                 expected_pattern_type,
                 expected_pattern_type_span,
                 state,
                 env,
+                introduced_bindings,
                 types_env,
                 strings,
                 types,
@@ -2409,6 +2420,8 @@ fn check_pattern_and_add_bindings(
             )
         }
         P::Or(patterns) => {
+            let mut introduced_bindings = Vec::new();
+
             // Infer types for the different patterns separately
             // Then unify the patterns against each other, for better errors
             // And if they did, then unify with the expected_pattern_type
@@ -2424,6 +2437,7 @@ fn check_pattern_and_add_bindings(
                     None,
                     state,
                     env,
+                    &mut introduced_bindings,
                     types_env,
                     strings,
                     types,
@@ -2465,7 +2479,7 @@ fn check_pattern_and_add_bindings(
             }
 
             // If all unified fine, then check all branches introduce the same bindings
-            let mut names: Option<FnvHashSet<StringSymbol>> = None;
+            let mut names: Option<FnvHashSet<IdentifierName>> = None;
             for pattern in patterns {
                 if let Some(names) = &names {
                     let mut pattern_names = FnvHashSet::default();
@@ -2486,6 +2500,26 @@ fn check_pattern_and_add_bindings(
                     let mut names_set = FnvHashSet::default();
                     pattern.data.get_bindings(&mut names_set);
                     names = Some(names_set);
+                }
+            }
+
+            for (i, (identifier, type_idx)) in introduced_bindings.iter().enumerate() {
+                for j in i..introduced_bindings.len() {
+                    let (identifier2, type_idx2) = &introduced_bindings[j];
+                    if i != j && identifier.name == identifier2.name && type_idx != type_idx2 {
+                        let result = unify(
+                            state,
+                            identifier.span,
+                            *type_idx,
+                            Some(identifier2.span),
+                            *type_idx2,
+                            types,
+                        );
+                        if result.is_err() {
+                            add_error(result, errors);
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -2557,6 +2591,7 @@ fn infer_lambda<'ast>(
                 None,
                 state,
                 &mut env,
+                &mut Vec::new(),
                 types_env,
                 strings,
                 types,
@@ -3808,6 +3843,50 @@ test = when Types.Test 2 is
     Types.Test a -> a
 
 main = a + test
+"
+            ));
+        }
+
+        #[test]
+        fn test_introduced_bindings_type_in_pattern_matching() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type Option a = Some a | None 
+
+test = when Some (Some 1) is
+    Some a | Some (Some a) -> a
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type List a = Cons a (List a) | Nil
+
+test = when Nil is
+    Cons a Nil |
+    Cons _ (Cons a Nil) |
+    Cons _ (Cons _ (Cons a Nil)) -> a
+    _ -> 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_infinite_type_shenanigans_in_pattern_matching() {
+            assert_snapshot!(infer(
+                "\
+module Test exposing (test)
+
+type List a = Cons a (List a) | Nil
+
+test = when Nil is
+    Cons a Nil -> a
+    Cons (Cons a Nil) Nil -> a
+    Cons (Cons (Cons a Nil) Nil) Nil -> a
+    _ -> 5
 "
             ));
         }

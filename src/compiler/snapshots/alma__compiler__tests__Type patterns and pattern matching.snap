@@ -1,7 +1,7 @@
 ---
 source: src/compiler/mod.rs
 assertion_line: 284
-expression: "compile(&[r#\"\nmodule Test exposing (main, Option(Some, None))\n\ntype Option a = Some a | None\n\ntype Id = Id Float\n\ntype List a = Cons a (List a) | Nil\n\ntype Pair a b = Pair a b\n\nmain =\n    let\n        Id id = Id 1\n        test = when Id 5 is\n            Id id -> id\n        test = when \"test\" is\n            \"banana\" -> id\n            \"phone\" -> id\n        test = when 5 is\n            5 -> id\n            _ -> id\n        test = when Some(Id(1)) is\n            Some (Id id) -> id\n        test = when 5 is\n            5 as a -> a\n            1 as b | 2 as b | b -> b\n            _ -> id\n        test = when Nil is\n            Cons a _ |\n            Cons (Cons a _) _ |\n            Cons (Cons (Cons a _) _) _ -> a\n        test = when Pair None (Some 3) is\n            Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->\n                True\n    Some id\n\n        \"#])"
+expression: "compile(&[r#\"\nmodule Test exposing (main, Option(Some, None))\n\ntype Option a = Some a | None\n\ntype Id = Id Float\n\ntype List a = Cons a (List a) | Nil\n\ntype Pair a b = Pair a b\n\nmain =\n    let\n        Id id = Id 1\n        test = when Id 5 is\n            Id id -> id\n        test = when \"test\" is\n            \"banana\" -> id\n            \"phone\" -> id\n        test = when 5 is\n            5 -> id\n            _ -> id\n        test = when Some(Id(1)) is\n            Some (Id id) -> id\n        test = when 5 is\n            5 as a -> a\n            1 as b | 2 as b | b -> b\n            _ -> id\n        test = when Nil is\n            Cons a Nil |\n            Cons _ (Cons a Nil) |\n            Cons _ (Cons _ (Cons a Nil)) -> a\n        test = when Pair None (Some 3) is\n            Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->\n                True\n    Some id\n\n        \"#])"
 ---
 // alma_out/Alma.ffi.js
 
@@ -198,8 +198,8 @@ let main = function() {
     let { _0: id } = Id(1)
     let test = function () {
         let __result = Id(5)
-        if (__result.__tag === "Id") {
-            let { _0: id } = __result
+        let id
+        if (__result.__tag === "Id" && (id = __result._0, true)) {
             return id
         }
 
@@ -227,8 +227,8 @@ let main = function() {
     }()
     let test = function () {
         let __result = Some(Id(1))
-        if (__result.__tag === "Some" && __result._0.__tag === "Id") {
-            let { _0: { _0: id } } = __result
+        let id
+        if (__result.__tag === "Some" && __result._0.__tag === "Id" && (id = __result._0._0, true)) {
             return id
         }
 
@@ -236,12 +236,11 @@ let main = function() {
     }()
     let test = function () {
         let __result = 5
-        if (__result === 5) {
-            let a = __result
+        let a, b
+        if (((__result === 5) ? (a = __result, true) : false)) {
             return a
         }
-        if (((__result === 1) || (__result === 2))) {
-            let b, b, b = __result
+        if (((((__result === 1) ? (b = __result, true) : false)) || (((__result === 2) ? (b = __result, true) : false)) || ((b = __result, true)))) {
             return b
         }
         return id
@@ -250,8 +249,8 @@ let main = function() {
     }()
     let test = function () {
         let __result = Nil
-        if (((__result.__tag === "Cons") || (__result.__tag === "Cons" && __result._0.__tag === "Cons") || (__result.__tag === "Cons" && __result._0.__tag === "Cons" && __result._0._0.__tag === "Cons"))) {
-            let { _0: a }, { _0: { _0: a } }, { _0: { _0: { _0: a } } } = __result
+        let a
+        if (((__result.__tag === "Cons" && (a = __result._0, true) && __result._1.__tag === "Nil") || (__result.__tag === "Cons" && __result._1.__tag === "Cons" && (a = __result._1._0, true) && __result._1._1.__tag === "Nil") || (__result.__tag === "Cons" && __result._1.__tag === "Cons" && __result._1._1.__tag === "Cons" && (a = __result._1._1._0, true) && __result._1._1._1.__tag === "Nil"))) {
             return a
         }
 
@@ -259,8 +258,8 @@ let main = function() {
     }()
     let test = function () {
         let __result = Pair(None, Some(3))
-        if (__result.__tag === "Pair" && __result._0.__tag === "Some" && ((__result._0._0.__tag === "Some" && ((__result._0._0._0 === 5) || (__result._0._0._0 === 7))) || (__result._0._0.__tag === "Some" && __result._0._0._0 === 1)) && __result._1.__tag === "Some" && ((__result._1._0 === 3))) {
-            let { _0: { _0: { _0: a, a }, { _0: a } }, _1: { _0: b, b } } = __result
+        let a, b
+        if (__result.__tag === "Pair" && __result._0.__tag === "Some" && ((__result._0._0.__tag === "Some" && ((((__result._0._0._0 === 5) ? (a = __result._0._0._0, true) : false)) || (((__result._0._0._0 === 7) ? (a = __result._0._0._0, true) : false)))) || (__result._0._0.__tag === "Some" && ((__result._0._0._0 === 1) ? (a = __result._0._0._0, true) : false))) && __result._1.__tag === "Some" && ((((__result._1._0 === 3) ? (b = __result._1._0, true) : false)) || ((b = __result._1._0, true)))) {
             return True
         }
 

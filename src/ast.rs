@@ -1286,7 +1286,7 @@ pub mod expression {
 
     // Identifiers
 
-    type IdentifierName = StringSymbol;
+    pub type IdentifierName = StringSymbol;
 
     #[derive(PartialEq, Debug, Clone)]
     pub struct CapitalizedIdentifier {
@@ -1308,7 +1308,7 @@ pub mod expression {
         }
     }
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Debug, Copy, Clone)]
     pub struct Identifier {
         pub name: IdentifierName,
         pub span: span::Index,
