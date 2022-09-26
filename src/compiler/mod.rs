@@ -5,18 +5,10 @@ pub mod types;
 
 use std::path::Path;
 
-use self::state::ModuleIndex;
 pub use self::state::State;
-use crate::ast::{self /*, ReplEntry, TypedDefinition*/};
 use crate::compiler::stages::{check_cycles, infer, parse_files};
-use crate::compiler::types::ModuleInterfaces;
 use crate::javascript::{self, OutputFile};
-// use crate::parser;
-use crate::source::Source;
-use crate::strings::Strings;
-// use crate::tokenizer;
-use crate::type_env::PolyTypeEnv;
-use crate::{infer, source};
+use crate::source;
 
 pub fn compile(
     entry_sources: &[source::Index],
@@ -25,131 +17,131 @@ pub fn compile(
 ) -> Result<Vec<(String, OutputFile)>, String> {
     let entry_modules = parse_files(entry_sources, state)?;
 
-    let mut sorted_modules = check_cycles(&entry_modules, &state)?;
+    let mut sorted_modules = check_cycles(&entry_modules, state)?;
     sorted_modules.reverse();
 
     infer(entry_modules, state)?;
 
-    Ok(javascript::generate(&sorted_modules, &state, output))
+    Ok(javascript::generate(&sorted_modules, state, output))
 }
 
-pub fn compile_repl_entry(
-    _module_idx: &ModuleIndex,
-    _source: Source,
-    _state: &mut State,
-    _primitive_types: &PolyTypeEnv,
-) -> Result<String, String> {
-    unimplemented!();
-    /*
-    tokenizer::parse(source, strings, module).map_err(|errors| {
-        errors
-            .iter()
-            .map(|e| e.to_string(source))
-            .collect::<Vec<String>>()
-            .join("\n\n")
-    })?;
+// pub fn compile_repl_entry(
+//     _module_idx: &ModuleIndex,
+//     _source: Source,
+//     _state: &mut State,
+//     _primitive_types: &PolyTypeEnv,
+// ) -> Result<String, String> {
+//     unimplemented!();
+/*
+tokenizer::parse(source, strings, module).map_err(|errors| {
+    errors
+        .iter()
+        .map(|e| e.to_string(source))
+        .collect::<Vec<String>>()
+        .join("\n\n")
+})?;
 
-    let entry = parser::parse_repl(source, &module.tokens, strings)
-        .map_err(|error| error.to_string(source, strings))?;
+let entry = parser::parse_repl(source, &module.tokens, strings)
+    .map_err(|error| error.to_string(source, strings))?;
 
-    let mut errors = vec![];
+let mut errors = vec![];
 
-    // TODO: Annotate the AST with types. After inference, fetch what we stored in the module and
-    // print the type of it
-    match entry {
-        ReplEntry::Import(import) => {
-            module.ast_mut().imports.push(import);
-            let result = compile_repl_entry_helper(
-                &module,
-                module_interfaces,
-                source,
-                &mut errors,
-                strings,
-                primitive_types,
-            );
-            if result.is_err() {
-                module.ast_mut().imports.pop();
-            }
-            result
+// TODO: Annotate the AST with types. After inference, fetch what we stored in the module and
+// print the type of it
+match entry {
+    ReplEntry::Import(import) => {
+        module.ast_mut().imports.push(import);
+        let result = compile_repl_entry_helper(
+            &module,
+            module_interfaces,
+            source,
+            &mut errors,
+            strings,
+            primitive_types,
+        );
+        if result.is_err() {
+            module.ast_mut().imports.pop();
         }
-        ReplEntry::Definition(definition) => {
-            module
-                .ast_mut()
-                .definitions
-                .push(TypedDefinition::Untyped(definition));
-            let result = compile_repl_entry_helper(
-                module,
-                module_interfaces,
-                source,
-                &mut errors,
-                strings,
-                primitive_types,
-            );
-            if result.is_err() {
-                module.ast_mut().definitions.pop();
-            }
-            result
-        }
-        ReplEntry::Expression(expression) => {
-            module
-                .ast_mut()
-                .definitions
-                .push(TypedDefinition::Untyped(ast::Definition::Pattern(
-                    ast::Node {
-                        value: ast::Pattern_::Hole,
-                        start: 0.into(),
-                        end: 0.into(),
-                    },
-                    expression,
-                )));
-            let result = compile_repl_entry_helper(
-                module,
-                module_interfaces,
-                source,
-                &mut errors,
-                strings,
-                primitive_types,
-            );
-            module.ast_mut().definitions.pop();
-            result
-        }
+        result
     }
-    .map(|()| "ok.".to_string())
-    */
+    ReplEntry::Definition(definition) => {
+        module
+            .ast_mut()
+            .definitions
+            .push(TypedDefinition::Untyped(definition));
+        let result = compile_repl_entry_helper(
+            module,
+            module_interfaces,
+            source,
+            &mut errors,
+            strings,
+            primitive_types,
+        );
+        if result.is_err() {
+            module.ast_mut().definitions.pop();
+        }
+        result
+    }
+    ReplEntry::Expression(expression) => {
+        module
+            .ast_mut()
+            .definitions
+            .push(TypedDefinition::Untyped(ast::Definition::Pattern(
+                ast::Node {
+                    value: ast::Pattern_::Hole,
+                    start: 0.into(),
+                    end: 0.into(),
+                },
+                expression,
+            )));
+        let result = compile_repl_entry_helper(
+            module,
+            module_interfaces,
+            source,
+            &mut errors,
+            strings,
+            primitive_types,
+        );
+        module.ast_mut().definitions.pop();
+        result
+    }
 }
+.map(|()| "ok.".to_string())
+*/
+// }
 
 // Encapsulate the compiler logic regardless of repl entry type
-fn compile_repl_entry_helper<'ast>(
-    _module: &'ast ast::Module,
-    _module_interfaces: &mut ModuleInterfaces,
-    _source: &Source,
-    _errors: &mut Vec<infer::Error>,
-    _strings: &mut Strings,
-    _primitive_types: &PolyTypeEnv,
-) -> Result<(), String> {
-    unimplemented!();
-    /*
-    let result = infer::infer(module_interfaces, module, primitive_types, strings);
-    match result {
-        Ok(typ) => {
-            module_interfaces.insert(module.ast().name.full_name, typ);
-        }
-        Err((_, mut module_errors)) => {
-            errors.append(&mut module_errors);
-        }
+// fn compile_repl_entry_helper<'ast>(
+//     _module: &'ast ast::Module,
+//     _module_interfaces: &mut ModuleInterfaces,
+//     _source: &Source,
+//     _errors: &mut [infer::Error],
+//     _strings: &mut Strings,
+//     _primitive_types: &PolyTypeEnv,
+// ) -> Result<(), String> {
+//     unimplemented!();
+/*
+let result = infer::infer(module_interfaces, module, primitive_types, strings);
+match result {
+    Ok(typ) => {
+        module_interfaces.insert(module.ast().name.full_name, typ);
     }
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors
-            .iter()
-            .map(|e| e.to_string(source, strings, module))
-            .collect::<Vec<String>>()
-            .join("\n\n"))
+    Err((_, mut module_errors)) => {
+        errors.append(&mut module_errors);
     }
-    */
 }
+
+if errors.is_empty() {
+    Ok(())
+} else {
+    Err(errors
+        .iter()
+        .map(|e| e.to_string(source, strings, module))
+        .collect::<Vec<String>>()
+        .join("\n\n"))
+}
+*/
+// }
 
 #[cfg(test)]
 pub mod tests {

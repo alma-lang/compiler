@@ -1,11 +1,11 @@
-use std::iter::Peekable;
-use std::str::CharIndices;
-
 use crate::source::Source;
 use crate::strings::{self, Strings};
 use crate::token::{self, Token, Tokens};
+use std::fmt::Write;
+use std::iter::Peekable;
+use std::str::CharIndices;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct Error {
     pub line: u32,
     pub column: u32,
@@ -16,13 +16,15 @@ impl Error {
     pub fn to_string(&self, source: &Source) -> String {
         let mut msg = String::new();
 
-        msg.push_str(&format!(
+        write!(
+            msg,
             "{name}:{line}:{column}\n\n{message}",
             name = source.path_str(),
             line = self.line,
             column = self.column,
             message = self.message
-        ));
+        )
+        .unwrap();
 
         msg
     }
@@ -222,7 +224,7 @@ impl<'source, 'strings> State<'source, 'strings> {
 
                     '\r' | '\t' => self.status = Status::Reset,
 
-                    ch if ch.is_digit(10) => {
+                    ch if ch.is_ascii_digit() => {
                         self.status = Status::NumberToken { seen_dot: false };
                         self.parse_token(Some(ch));
                     }
@@ -313,15 +315,15 @@ impl<'source, 'strings> State<'source, 'strings> {
                     }
 
                     match self.peek() {
-                        Some(c) if c.is_digit(10) => (),
+                        Some(c) if c.is_ascii_digit() => (),
                         _ => self.add_error("Expected more digits after a dot in a number.", false),
                     }
                 }
 
-                Some(c) if c.is_digit(10) => match self.peek() {
+                Some(c) if c.is_ascii_digit() => match self.peek() {
                     // Continue munching until there are no numbers or dot
                     Some('.') => (),
-                    Some(c) if c.is_digit(10) => (),
+                    Some(c) if c.is_ascii_digit() => (),
 
                     // Anything else we find ends the number token
                     _ => {
@@ -347,10 +349,7 @@ impl<'source, 'strings> State<'source, 'strings> {
                     match self.peek() {
                         Some(c)
                             if (lexing_first_char && c.is_alphabetic())
-                                || is_identifier_rest(c) =>
-                        {
-                            ()
-                        }
+                                || is_identifier_rest(c) => {}
 
                         // Anything else we find ends the identifier token
                         _ => {

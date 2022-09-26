@@ -88,7 +88,7 @@ pub fn compile_files(arg_files: Vec<String>, output: &Path) {
     let mut state = compiler::State::new();
     let entry_sources = process_sources(sources, &mut state);
 
-    match compiler::compile(&entry_sources, &mut state, &output) {
+    match compiler::compile(&entry_sources, &mut state, output) {
         Ok(files) => {
             for (path, file) in files {
                 let mut dir = PathBuf::from(&path);

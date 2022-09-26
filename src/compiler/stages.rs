@@ -18,7 +18,7 @@ pub fn process_sources(entry_sources: Vec<Source>, state: &mut State) -> Vec<sou
     entry_files
 }
 
-pub fn parse_files<'sources>(
+pub fn parse_files(
     entry_files: &[source::Index],
     state: &mut State,
 ) -> Result<Vec<ModuleIndex>, String> {
@@ -62,7 +62,7 @@ pub fn parse_files<'sources>(
     }
 }
 
-fn parse_file<'source>(
+fn parse_file(
     file: source::Index,
     parse_queue: &mut Vec<ModuleFullName>,
     state: &mut State,

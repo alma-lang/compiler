@@ -6,7 +6,6 @@ use crate::token::Tokens;
 use crate::typ::Types;
 use derive_more::{From, Into};
 use fnv::FnvHashMap;
-use std::fmt::Write;
 use typed_index_collections::TiVec;
 
 type HashMap<K, V> = FnvHashMap<K, V>;
@@ -81,10 +80,7 @@ impl State {
     }
 
     pub fn get_module_idx_with_name(&self, name: ModuleFullName) -> Option<ModuleIndex> {
-        match self.module_name_to_module_idx.get(&name) {
-            Some(idx) => Some(*idx),
-            None => None,
-        }
+        self.module_name_to_module_idx.get(&name).copied()
     }
 
     pub fn has_types(&self, name: ModuleFullName) -> bool {
@@ -99,7 +95,10 @@ impl State {
         }
     }
 
+    #[cfg(test)]
     pub fn types_to_string(&self, out: &mut String) {
+        use std::fmt::Write;
+
         for (i, (module_idx, interface)) in self.module_interfaces.iter_enumerated().enumerate() {
             if i > 0 {
                 out.push_str("\n\n\n");

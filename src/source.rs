@@ -2,6 +2,7 @@ use crate::ast::ModuleName;
 use crate::index;
 use std::cmp::{max, min};
 use std::fmt;
+use std::fmt::Write;
 use std::fs;
 use std::io;
 use std::ops::Range;
@@ -41,7 +42,7 @@ impl fmt::Display for Error {
 
 type LinesAround<'str> = (Vec<&'str str>, (usize, Vec<&'str str>), Vec<&'str str>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Source {
     pub path: PathBuf,
     code: String,
@@ -102,6 +103,7 @@ impl Source {
         fs::read_to_string(file_path).map_err(Error::IO)
     }
 
+    #[cfg(test)]
     pub fn new(path: &str, code: String) -> Self {
         Source {
             path: Path::new(path).to_path_buf(),
@@ -182,10 +184,12 @@ impl Source {
             if !message.is_empty() {
                 message.push('\n');
             }
-            message.push_str(&format!(
+            write!(
+                message,
                 "  {line_number:line_number_width$}│  {l}",
                 line_number = line_number - lines_before.len() as u32 + i as u32,
-            ));
+            )
+            .unwrap();
         }
 
         match lines.as_slice() {
@@ -194,7 +198,7 @@ impl Source {
                 if !message.is_empty() {
                     message.push('\n');
                 }
-                message.push_str(&format!("  {line_number:line_number_width$}│  {line}\n"));
+                writeln!(message, "  {line_number:line_number_width$}│  {line}").unwrap();
 
                 if show_pointer {
                     let num_pointers = max(1, end_position.unwrap_or(position) - position);
@@ -210,12 +214,14 @@ impl Source {
                     // the end of line at the furthest.
                     let num_spaces = min(line.len(), num_spaces);
 
-                    message.push_str(&format!(
+                    write!(
+                        message,
                         "  {space:line_number_width$}│  {spaces}{pointers}",
                         space = ' ',
                         spaces = str::repeat(" ", num_spaces as usize),
                         pointers = str::repeat("↑", num_pointers as usize)
-                    ));
+                    )
+                    .unwrap();
                 }
             }
             lines => {
@@ -223,21 +229,25 @@ impl Source {
                     if !message.is_empty() {
                         message.push('\n');
                     }
-                    message.push_str(&format!(
+                    write!(
+                        message,
                         "  {line_number:line_number_width$}│{line_marker} {l}",
                         line_number = line_number + i as u32,
                         line_marker = if show_pointer { "→" } else { " " },
-                    ));
+                    )
+                    .unwrap();
                 }
             }
         }
 
         for (i, l) in lines_after.iter().enumerate() {
             message.push('\n');
-            message.push_str(&format!(
+            write!(
+                message,
                 "  {line_number:line_number_width$}│  {l}",
                 line_number = line_number + 1 + i as u32,
-            ));
+            )
+            .unwrap();
         }
         Some(message)
     }

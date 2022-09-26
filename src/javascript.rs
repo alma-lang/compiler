@@ -66,7 +66,7 @@ pub fn generate(
             output,
             state,
             module_ast,
-            &state.module_interfaces[*module_idx]
+            state.module_interfaces[*module_idx]
                 .as_ref()
                 .unwrap_or_else(|| {
                     let name = module_ast.name.to_string(strings);
@@ -103,7 +103,7 @@ pub fn generate(
 }
 
 fn generate_file(
-    module_output_path: &PathBuf,
+    module_output_path: &Path,
     code: &mut String,
     output: &Path,
     state: &compiler::State,
@@ -173,7 +173,7 @@ fn generate_file(
 fn generate_imports(
     indent: usize,
     code: &mut String,
-    module_output_path: &PathBuf,
+    module_output_path: &Path,
     output: &Path,
     state: &compiler::State,
     module: &Module,
@@ -190,8 +190,7 @@ fn generate_imports(
             .path
             .with_file_name(format!("{}.js", import.module_name.to_string(strings)));
             let path = output.to_path_buf().join(path);
-            let relative_path = get_relative_path(module_output_dir, &path);
-            relative_path
+            get_relative_path(module_output_dir, &path)
         };
         let import_output_path = import_output_path.to_str().unwrap();
 
@@ -245,12 +244,12 @@ fn generate_imports(
 }
 
 fn generate_import_from_part_with_newline(code: &mut String, path: &str) {
-    let dot_slash = if path.starts_with("./") || path.starts_with("../") || path.starts_with("/") {
+    let dot_slash = if path.starts_with("./") || path.starts_with("../") || path.starts_with('/') {
         ""
     } else {
         "./"
     };
-    write!(code, " from \"{dot_slash}{path}\"\n").unwrap();
+    writeln!(code, " from \"{dot_slash}{path}\"").unwrap();
 }
 
 fn generate_union_discriminant_field_value(code: &mut String, constructor_name: &str) {
@@ -569,7 +568,7 @@ fn generate_expression(
         E::Float(float) => write!(code, "{float}").unwrap(),
 
         E::String_(string) => {
-            let escaped_string = strings.resolve(*string).replace("\n", "\\n");
+            let escaped_string = strings.resolve(*string).replace('\n', "\\n");
             write!(code, "\"{escaped_string}\"").unwrap()
         }
 
@@ -844,7 +843,7 @@ fn generate_expression(
                     strings,
                     expressions,
                 );
-                code.push_str("\n");
+                code.push('\n');
 
                 let mut names = FnvHashSet::default();
                 for branch in branches {
@@ -961,7 +960,7 @@ fn generate_pattern_matching_conditions(
             write!(code, "{prop} === \"{string}\"").unwrap();
         }
         P::Float(num) => {
-            let num = num.to_string();
+            let num = strings.resolve(*num);
             let prop = path.join(".");
             write!(code, "{prop} === {num}").unwrap();
         }
@@ -1043,9 +1042,7 @@ fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
         P::Float(_) => true,
         P::Type { .. } => true,
         P::Named { .. } => true,
-        P::Or(patterns) => patterns
-            .iter()
-            .any(|p| pattern_has_pattern_matching_conditions(p)),
+        P::Or(patterns) => patterns.iter().any(pattern_has_pattern_matching_conditions),
     }
 }
 
@@ -1055,9 +1052,9 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
         P::Identifier(_) => true,
         P::String_(_) => false,
         P::Float(_) => false,
-        P::Type { params, .. } => params.iter().any(|p| pattern_needs_bindings(p)),
+        P::Type { params, .. } => params.iter().any(pattern_needs_bindings),
         P::Named { .. } => true,
-        P::Or(patterns) => patterns.iter().any(|p| pattern_needs_bindings(p)),
+        P::Or(patterns) => patterns.iter().any(pattern_needs_bindings),
     }
 }
 

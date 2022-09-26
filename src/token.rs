@@ -6,7 +6,7 @@ pub type Index = index::Index<Token>;
 
 pub type Tokens = TiVec<Index, Token>;
 
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Token {
     pub kind: Type,
     pub indent: u32,
@@ -16,7 +16,7 @@ pub struct Token {
     pub column: u32,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Type {
     // SingleToken-character tokens.
     LeftParen,
@@ -75,7 +75,7 @@ pub enum Type {
     Eof,
 }
 impl Type {
-    pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+    pub fn to_string(self, strings: &Strings) -> &str {
         use self::Type::*;
         match self {
             LeftParen => "(",
@@ -104,10 +104,10 @@ impl Type {
             LessEqual => "<=",
             Arrow => "->",
 
-            Identifier(symbol) => strings.resolve(*symbol),
-            CapitalizedIdentifier(symbol) => strings.resolve(*symbol),
-            String_(symbol) => strings.resolve(*symbol),
-            Float(symbol) => strings.resolve(*symbol),
+            Identifier(symbol) => strings.resolve(symbol),
+            CapitalizedIdentifier(symbol) => strings.resolve(symbol),
+            String_(symbol) => strings.resolve(symbol),
+            Float(symbol) => strings.resolve(symbol),
 
             And => "and",
             Or => "or",

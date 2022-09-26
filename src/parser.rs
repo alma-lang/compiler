@@ -735,7 +735,7 @@ impl<'a> State<'a> {
             imports.push(Import {
                 module_name: ModuleName::new(
                     vec![CapitalizedIdentifier { name, span }],
-                    &mut self.strings,
+                    self.strings,
                 )
                 .unwrap(),
                 alias: None,
@@ -834,7 +834,7 @@ impl<'a> State<'a> {
                 |self_| self_.error(InvalidModuleExportConstructorsSeparatorOrLastDelimiter),
             )?;
 
-            let constructors = constructors.unwrap_or_else(|| vec![]);
+            let constructors = constructors.unwrap_or_default();
 
             let start = self.spans[export.span].start;
             let end = self.prev_token_index();
@@ -921,7 +921,7 @@ impl<'a> State<'a> {
             return Ok(None);
         }
 
-        let (name, vars) = self.type_def_name(&first_token)?;
+        let (name, vars) = self.type_def_name(first_token)?;
 
         let (_, token) = self.get_token();
 
@@ -932,12 +932,10 @@ impl<'a> State<'a> {
             types::TypeDefinitionData::Union {
                 constructors: branches,
             }
+        } else if self.is_token_equal_or_less_indented_than(first_token) {
+            types::TypeDefinitionData::Empty
         } else {
-            if self.is_token_equal_or_less_indented_than(first_token) {
-                types::TypeDefinitionData::Empty
-            } else {
-                return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
-            }
+            return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
         };
 
         let (end_index, _) = self.prev_token();
@@ -956,7 +954,7 @@ impl<'a> State<'a> {
             return Ok(None);
         }
 
-        let (name, vars) = self.type_def_name(&alias_token)?;
+        let (name, vars) = self.type_def_name(alias_token)?;
 
         let (_, token) = self.get_token();
 
@@ -968,12 +966,10 @@ impl<'a> State<'a> {
             } else {
                 return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
             }
+        } else if self.is_token_equal_or_less_indented_than(alias_token) {
+            types::TypeDefinitionData::Empty
         } else {
-            if self.is_token_equal_or_less_indented_than(alias_token) {
-                types::TypeDefinitionData::Empty
-            } else {
-                return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
-            }
+            return Err(self.error(InvalidTypeDefinitionTypeVarsOrEqualSeparator));
         };
 
         let (end_index, _) = self.prev_token();
@@ -1410,7 +1406,7 @@ impl<'a> State<'a> {
         let pattern = self.pattern_or()?;
 
         if let Some(pattern) = &pattern {
-            self.error_if_useless_binding_pattern(&pattern)?;
+            self.error_if_useless_binding_pattern(pattern)?;
         }
 
         let definition = match pattern {
@@ -1434,7 +1430,7 @@ impl<'a> State<'a> {
                     // Otherwise this is a lambda lhs, identifier + params
                     let params = self.one_or_many(Self::pattern, |self_| {
                         self_.error(InvalidLetBindingParametersOrEqualSeparator {
-                            definition_identifier: identifier.clone(),
+                            definition_identifier: identifier,
                         })
                     })?;
 
@@ -1693,8 +1689,7 @@ impl<'a> State<'a> {
                 span: self.span(token_index, token_index),
             }))
         } else if let TT::Float(n) = token.kind {
-            let n = self
-                .strings
+            self.strings
                 .resolve(n)
                 .parse::<f64>()
                 .map_err(|_| Error::new(*token, InvalidFloat(*token)))?;
@@ -2381,7 +2376,7 @@ impl<'a> State<'a> {
                 }
             };
         }
-        (i.into(), token)
+        (i, token)
     }
 
     fn prev_non_comment_token(&self, start: token::Index) -> (token::Index, &'a Token) {
@@ -2403,7 +2398,7 @@ impl<'a> State<'a> {
                 }
             };
         }
-        (i.into(), token)
+        (i, token)
     }
 
     fn is_token_in_same_indent_and_column_as(&self, parent_token: &Token) -> bool {

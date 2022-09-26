@@ -42,7 +42,7 @@ pub mod span {
 
     use super::*;
 
-    #[derive(PartialEq, Debug, Copy, Clone)]
+    #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct Span {
         pub start: token::Index,
         pub end: token::Index,
@@ -75,7 +75,7 @@ pub enum ReplEntry {
 
 pub type ModuleFullName = StringSymbol;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModuleName {
     pub parts: Vec<CapitalizedIdentifier>,
     pub full_name: ModuleFullName,
@@ -246,7 +246,7 @@ impl Module {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Import {
     pub span: span::Index,
     pub module_name: ModuleName,
@@ -278,7 +278,7 @@ impl Import {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Export {
     pub span: span::Index,
     pub typ: ExportData,
@@ -296,7 +296,7 @@ impl Export {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExportData {
     Identifier(Identifier),
     Type {
@@ -993,7 +993,7 @@ pub mod expression {
 
     // Operators
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Eq, Debug, Clone)]
     pub struct Unary {
         pub span: span::Index,
         pub typ: UnaryData,
@@ -1009,7 +1009,7 @@ pub mod expression {
         }
     }
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Eq, Debug, Clone)]
     pub enum UnaryData {
         Not,
         Minus,
@@ -1019,7 +1019,7 @@ pub mod expression {
         use super::{span, Identifier};
         use crate::strings::Strings;
 
-        #[derive(PartialEq, Debug, Clone)]
+        #[derive(PartialEq, Eq, Debug, Clone)]
         pub enum Type {
             Or,
             And,
@@ -1035,13 +1035,13 @@ pub mod expression {
             Division,
         }
 
-        #[derive(PartialEq, Debug, Clone)]
+        #[derive(PartialEq, Eq, Debug, Clone)]
         pub enum Associativity {
             Ltr,
             // RTL,
         }
 
-        #[derive(PartialEq, Debug, Clone)]
+        #[derive(PartialEq, Eq, Debug, Clone)]
         pub struct Binop {
             pub typ: Type,
             pub precedence: u32,
@@ -1160,7 +1160,7 @@ pub mod expression {
 
     // Patterns
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Eq, Debug, Clone)]
     pub struct Pattern {
         pub span: span::Index,
         pub data: PatternData,
@@ -1173,12 +1173,12 @@ pub mod expression {
         }
     }
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Eq, Debug, Clone)]
     pub enum PatternData {
         Hole,
         Identifier(Identifier),
         String_(StringSymbol),
-        Float(f64),
+        Float(StringSymbol),
         Type {
             module: Option<ModuleName>,
             constructor: CapitalizedIdentifier,
@@ -1241,7 +1241,12 @@ pub mod expression {
                     str = ctx.strings.resolve(*str_sym)
                 ),
                 PatternData::Float(num) => {
-                    format!("{0:indent$}Float {num} {span}", "", indent = ctx.indent)
+                    format!(
+                        "{0:indent$}Float {num} {span}",
+                        "",
+                        indent = ctx.indent,
+                        num = ctx.strings.resolve(*num)
+                    )
                 }
                 PatternData::Type {
                     module,
@@ -1288,7 +1293,7 @@ pub mod expression {
 
     pub type IdentifierName = StringSymbol;
 
-    #[derive(PartialEq, Debug, Clone)]
+    #[derive(PartialEq, Eq, Debug, Clone)]
     pub struct CapitalizedIdentifier {
         pub name: IdentifierName,
         pub span: span::Index,
@@ -1308,14 +1313,14 @@ pub mod expression {
         }
     }
 
-    #[derive(PartialEq, Debug, Copy, Clone)]
+    #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct Identifier {
         pub name: IdentifierName,
         pub span: span::Index,
     }
 
     impl Identifier {
-        pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
+        pub fn to_string(self, strings: &Strings) -> &str {
             strings.resolve(self.name)
         }
 

@@ -19,6 +19,7 @@ use crate::type_env::{PolyTypeEnv, TypeEnv};
 use fnv::FnvHashSet;
 use indexmap::IndexSet;
 use std::cmp::min;
+use std::fmt::Write;
 use std::rc::Rc;
 
 /*
@@ -143,10 +144,12 @@ impl Error {
 
         match self {
             UndefinedIdentifier { identifier, .. } => {
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Undefined identifier `{identifier}`\n\n{code}",
                     identifier = strings.resolve(*identifier),
-                ));
+                )
+                .unwrap();
             }
 
             DuplicateField { field, expr } => {
@@ -162,7 +165,8 @@ impl Error {
                     .unwrap();
                 let identifier = field.to_string(strings);
 
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Duplicate field `{identifier}`
 
 {code}
@@ -170,11 +174,12 @@ impl Error {
 in record
 
 {record_code}",
-                ));
+                )
+                .unwrap();
             }
 
             InfiniteType { .. } => {
-                s.push_str(&format!("Infinite type\n\n{code}"));
+                write!(s, "Infinite type\n\n{code}").unwrap();
             }
 
             TypeMismatch {
@@ -185,7 +190,8 @@ in record
             } => {
                 let typ = types[*actual_type].to_string(strings, types);
                 let typ2 = types[*typ2].to_string(strings, types);
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Type mismatch:  {typ}  ≠  {typ2}
 
 Expected
@@ -199,7 +205,8 @@ to be
 but seems to be
 
     {typ}",
-                ));
+                )
+                .unwrap();
             }
 
             TypeMismatch {
@@ -220,7 +227,8 @@ but seems to be
                 let actual_type = types[*actual_type].to_string(strings, types);
                 let expected_type = types[*expected_type].to_string(strings, types);
 
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Type mismatch:  {actual_type}  ≠  {expected_type}
 
 Expected
@@ -238,7 +246,8 @@ to have the same type as
 with type
 
     {expected_type}",
-                ));
+                )
+                .unwrap();
             }
 
             WrongArity {
@@ -249,11 +258,14 @@ with type
             } => {
                 let plural = if *num_params == 1 { "" } else { "s" };
                 let typ = types[*typ].to_string(strings, types);
-                s.push_str(&format!(
-                    "Type `{typ}` accepts {num_params} parameter{plural} but it was called with {num_params_applied}.
+                write!(
+                    s,
+                    "Type `{typ}` accepts {num_params} parameter{plural} \
+                    but it was called with {num_params_applied}.
 
 {code}",
-                ));
+                )
+                .unwrap();
             }
 
             SignatureMismatch {
@@ -263,7 +275,8 @@ with type
             } => {
                 let signature_type = types[*signature_type].to_string(strings, types);
                 let inferred_type = types[*inferred_type].to_string(strings, types);
-                s.push_str(&format!(
+                write!(
+                    s,
                     "The type signature and inferred type don't match
 
 {code}
@@ -275,7 +288,8 @@ The type signature says the type is
 but it seems to be
 
     {inferred_type}",
-                ));
+                )
+                .unwrap();
             }
 
             SignatureTooGeneral {
@@ -285,7 +299,8 @@ but it seems to be
             } => {
                 let signature_type = types[*signature_type].to_string(strings, types);
                 let inferred_type = types[*inferred_type].to_string(strings, types);
-                s.push_str(&format!(
+                write!(
+                    s,
                     "The type signature is more generic than the inferred type:
 
 {code}
@@ -301,30 +316,33 @@ which it is more general than
 which was inferred from the code.
 
 Change the signature to be more specific or try to make your code more generic.",
-                ));
+                )
+                .unwrap();
             }
 
             UndefinedExport(export) => {
                 let export = export.to_string(strings);
-                s.push_str(&format!("Undefined identifier `{export}`\n\n{code}"));
+                write!(s, "Undefined identifier `{export}`\n\n{code}").unwrap();
             }
 
             UndefinedExportConstructor(constructor) => {
                 let constructor = constructor.to_string(strings);
-                s.push_str(&format!("Undefined identifier `{constructor}`\n\n{code}"));
+                write!(s, "Undefined identifier `{constructor}`\n\n{code}").unwrap();
             }
 
             UnknownImport(import) => {
                 let module = import.module_name.to_string(strings);
-                s.push_str(&format!("Couldn't find module `{module}`\n\n{code}"));
+                write!(s, "Couldn't find module `{module}`\n\n{code}").unwrap();
             }
 
             UnknownImportDefinition { export, import } => {
                 let module = import.module_name.to_string(strings);
                 let export = export.to_string(strings);
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Module `{module}` doesn't appear to expose `{export}`\n\n{code}"
-                ));
+                )
+                .unwrap();
             }
 
             UnknownImportConstructor {
@@ -333,21 +351,25 @@ Change the signature to be more specific or try to make your code more generic."
             } => {
                 let module = import.module_name.to_string(strings);
                 let export = constructor.to_string(strings);
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Module `{module}` doesn't appear to expose `{export}`\n\n{code}"
-                ));
+                )
+                .unwrap();
             }
 
             UnknownType(name) => {
                 let type_name = name.to_string(strings);
-                s.push_str(&format!("Couldn't find type `{type_name}`\n\n{code}"));
+                write!(s, "Couldn't find type `{type_name}`\n\n{code}").unwrap();
             }
 
             UnknownTypeVar(name) => {
                 let type_name = name.to_string(strings);
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Type variable `{type_name}` has not been declared\n\n{code}"
-                ));
+                )
+                .unwrap();
             }
 
             PatternsIntroduceDifferentBindings {
@@ -375,7 +397,8 @@ Change the signature to be more specific or try to make your code more generic."
                     .map(|n| strings.resolve(*n))
                     .collect::<Vec<&str>>()
                     .join(", ");
-                s.push_str(&format!(
+                write!(
+                    s,
                     "Patterns introduce different bindings:
 
 Expected
@@ -393,7 +416,8 @@ to introduce the same bindings as
 which introduces
 
     {names2}",
-                ));
+                )
+                .unwrap();
             }
         };
 
@@ -467,7 +491,7 @@ impl State {
 
                 Var(var) => match var {
                     Bound(t) => replace_type_vars(vars_to_replace, *t, types),
-                    Unbound(n, _level) => match vars_to_replace.get(&n) {
+                    Unbound(n, _level) => match vars_to_replace.get(n) {
                         Some(t_) => *t_,
                         None => t,
                     },
@@ -1143,8 +1167,8 @@ fn signature_is_too_generic(
  *
  * Infer the types of the whole module and produce its module interface with types.
  */
-pub fn infer<'state>(
-    compiler_state: &'state mut compiler::State,
+pub fn infer(
+    compiler_state: &mut compiler::State,
     module_idx: ModuleIndex,
 ) -> Result<(), Vec<Error>> {
     let strings = &mut compiler_state.strings;
@@ -1154,7 +1178,7 @@ pub fn infer<'state>(
     let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = PolyTypeEnv::new();
-    let mut types_vec = &mut compiler_state.types;
+    let types_vec = &mut compiler_state.types;
     let mut errors: Vec<Error> = vec![];
 
     let mut module_definitions = PolyTypeEnv::new();
@@ -1224,7 +1248,7 @@ pub fn infer<'state>(
                             let name = &name_ast.name;
                             match import_types.types.get(name) {
                                 Some(typ) => {
-                                    types_env.insert(*name, state.generalize(typ, &types_vec));
+                                    types_env.insert(*name, state.generalize(typ, types_vec));
 
                                     let constructor_types =
                                         import_types.type_constructors.get(name).unwrap();
@@ -1271,7 +1295,7 @@ pub fn infer<'state>(
                     name,
                     params: Rc::new(type_vars.iter().map(|(_, t)| *t).collect()),
                 });
-                types_env.insert(name, state.generalize(type_def_type, &types_vec));
+                types_env.insert(name, state.generalize(type_def_type, types_vec));
             }
             ast::types::TypeDefinitionData::Union { constructors } => {
                 let type_def_type = types_vec.push_and_get_key(Type::Named {
@@ -1279,7 +1303,7 @@ pub fn infer<'state>(
                     name,
                     params: Rc::new(type_vars.iter().map(|(_, t)| *t).collect()),
                 });
-                types_env.insert(name, state.generalize(type_def_type, &types_vec));
+                types_env.insert(name, state.generalize(type_def_type, types_vec));
 
                 for constructor in constructors {
                     let name = &constructor.name.name;
@@ -1287,12 +1311,12 @@ pub fn infer<'state>(
 
                     for param in &constructor.params {
                         let typ = match ast_type_to_type(
-                            &param,
+                            param,
                             &type_vars_env,
                             &mut errors,
                             &mut state,
                             &types_env,
-                            &mut types_vec,
+                            types_vec,
                         ) {
                             Ok(t) => t,
                             Err(err) => {
@@ -1312,7 +1336,7 @@ pub fn infer<'state>(
                         })
                     };
 
-                    env.insert(*name, state.generalize(typ, &types_vec));
+                    env.insert(*name, state.generalize(typ, types_vec));
                 }
             }
             ast::types::TypeDefinitionData::Record(record_type) => {
@@ -1322,7 +1346,7 @@ pub fn infer<'state>(
                     &mut errors,
                     &mut state,
                     &types_env,
-                    &mut types_vec,
+                    types_vec,
                 ) {
                     Ok(t) => t,
                     Err(err) => {
@@ -1336,7 +1360,7 @@ pub fn infer<'state>(
                     params: Rc::new(type_vars),
                     destination: typ,
                 });
-                types_env.insert(name, state.generalize(typ, &types_vec));
+                types_env.insert(name, state.generalize(typ, types_vec));
             }
         }
     }
@@ -1350,7 +1374,7 @@ pub fn infer<'state>(
         strings,
         expressions,
         expression_types,
-        &mut types_vec,
+        types_vec,
         &mut errors,
     );
 
@@ -1417,10 +1441,10 @@ fn ast_type_to_type<'ast>(
             let mut params_types = vec![];
             for param in params {
                 params_types.push(ast_type_to_type(
-                    &param, type_vars, errors, state, types_env, types,
+                    param, type_vars, errors, state, types_env, types,
                 )?);
             }
-            let ret_type = ast_type_to_type(&ret, type_vars, errors, state, types_env, types)?;
+            let ret_type = ast_type_to_type(ret, type_vars, errors, state, types_env, types)?;
             Ok(types.push_and_get_key(Fn {
                 params: Rc::new(params_types),
                 ret: ret_type,
@@ -1538,7 +1562,7 @@ fn ast_record_type_to_type<'ast>(
 
             let mut fields = TypeEnv::new();
             for (name, ast_type) in &record_ext.fields {
-                let typ = ast_type_to_type(&ast_type, type_vars, errors, state, types_env, types)?;
+                let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env, types)?;
                 fields.insert(name.name, typ);
             }
 
@@ -1948,7 +1972,7 @@ fn infer_rec<'ast>(
                 definitions,
                 state,
                 &mut new_env,
-                &types_env,
+                types_env,
                 strings,
                 expressions,
                 expression_types,
@@ -2076,7 +2100,7 @@ fn infer_definitions<'ast>(
                     );
                     state.exit_level();
 
-                    let t = check_signature(&typed_definition, t, state, types_env, types, errors);
+                    let t = check_signature(typed_definition, t, state, types_env, types, errors);
 
                     let t = state.generalize(t, types);
                     env.insert(identifier.name, t);
@@ -2096,10 +2120,10 @@ fn infer_definitions<'ast>(
                     );
                     state.exit_level();
 
-                    let t = check_signature(&typed_definition, t, state, types_env, types, errors);
+                    let t = check_signature(typed_definition, t, state, types_env, types, errors);
 
                     check_pattern_and_add_bindings(
-                        &pattern,
+                        pattern,
                         t,
                         None,
                         state,
@@ -2321,7 +2345,7 @@ fn check_pattern_and_add_bindings(
                     for (i, param) in pattern_params.iter().enumerate() {
                         let expected_param_type = constructor_type_params
                             .get(i)
-                            .map(|t| *t)
+                            .copied()
                             .unwrap_or_else(|| types.push_and_get_key(state.new_type_var()));
 
                         check_pattern_and_add_bindings(
@@ -2504,8 +2528,8 @@ fn check_pattern_and_add_bindings(
             }
 
             for (i, (identifier, type_idx)) in introduced_bindings.iter().enumerate() {
-                for j in i..introduced_bindings.len() {
-                    let (identifier2, type_idx2) = &introduced_bindings[j];
+                for (j, (identifier2, type_idx2)) in introduced_bindings.iter().enumerate().skip(i)
+                {
                     if i != j && identifier.name == identifier2.name && type_idx != type_idx2 {
                         let result = unify(
                             state,
@@ -2699,7 +2723,7 @@ where
     return_type
 }
 
-fn add_error<'ast>(result: Result<(), Error>, errors: &mut Vec<Error>) {
+fn add_error(result: Result<(), Error>, errors: &mut Vec<Error>) {
     if let Err(e) = result {
         errors.push(e);
     }
