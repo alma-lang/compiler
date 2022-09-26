@@ -1,6 +1,6 @@
 use crate::ast::expression::{binop, Expressions, IdentifierName};
 use crate::compiler::state::ModuleIndex;
-use crate::compiler::types::ModuleInterface;
+use crate::module_interface::ModuleInterface;
 use crate::strings::Strings;
 use crate::{
     ast::{

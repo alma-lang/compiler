@@ -4,6 +4,7 @@ mod compiler;
 mod index;
 mod infer;
 mod javascript;
+mod module_interface;
 mod parser;
 mod source;
 mod strings;

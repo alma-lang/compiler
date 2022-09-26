@@ -1,5 +1,4 @@
 use crate::ast::ModuleFullName;
-use crate::compiler::errors;
 use crate::compiler::state::{ModuleIndex, State};
 use crate::parser;
 use crate::source::Source;
@@ -58,7 +57,7 @@ pub fn parse_files(
     if errors.is_empty() {
         Ok(entry_modules)
     } else {
-        Err(errors::to_string(errors))
+        Err(errors_to_string(errors))
     }
 }
 
@@ -217,7 +216,7 @@ pub fn check_cycles(
     if errors.is_empty() {
         Ok(sorted_modules)
     } else {
-        Err(errors::to_string(errors))
+        Err(errors_to_string(errors))
     }
 }
 
@@ -337,6 +336,10 @@ pub fn infer(entry_modules: Vec<ModuleIndex>, state: &mut State) -> Result<(), S
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(errors::to_string(errors))
+        Err(errors_to_string(errors))
     }
+}
+
+pub fn errors_to_string(errors: Vec<String>) -> String {
+    errors.join("\n\n----------------------------------------\n\n")
 }

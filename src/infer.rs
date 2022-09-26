@@ -10,7 +10,7 @@ use crate::ast::{
 };
 use crate::compiler;
 use crate::compiler::state::ModuleIndex;
-use crate::compiler::types::{HashMap, ModuleInterface};
+use crate::module_interface::{HashMap, ModuleInterface};
 use crate::source::Source;
 use crate::strings::Strings;
 use crate::token::Tokens;
