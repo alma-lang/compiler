@@ -1,6 +1,7 @@
+use crate::ast::expression::IdentifierName;
 use crate::ast::ModuleFullName;
 use crate::index;
-use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::strings::Strings;
 use crate::type_env::TypeEnv;
 use fnv::FnvHashMap as HashMap;
 use indexmap::IndexSet;
@@ -28,7 +29,7 @@ pub enum Type {
     // Named type (Int, Bool, List a, ...)
     Named {
         module: ModuleFullName,
-        name: StringSymbol,
+        name: IdentifierName,
         params: Rc<Vec<Index>>,
     },
 
@@ -74,8 +75,8 @@ pub enum Type {
     // Alias to another type. Used when defining a record type with a name
     Alias {
         module: ModuleFullName,
-        name: StringSymbol,
-        params: Rc<Vec<(StringSymbol, Index)>>,
+        name: IdentifierName,
+        params: Rc<Vec<(IdentifierName, Index)>>,
         destination: Index,
     },
 }

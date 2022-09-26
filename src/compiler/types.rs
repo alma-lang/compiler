@@ -1,4 +1,6 @@
-use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::ast::expression::IdentifierName;
+use crate::ast::ModuleFullName;
+use crate::strings::Strings;
 use crate::typ::Types;
 use crate::type_env::{PolyTypeEnv, TypeEnv};
 use fnv::FnvHashMap;
@@ -9,7 +11,7 @@ pub type HashMap<K, V> = FnvHashMap<K, V>;
 #[derive(Debug)]
 pub struct ModuleInterface {
     pub types: TypeEnv,
-    pub type_constructors: HashMap<StringSymbol, PolyTypeEnv>,
+    pub type_constructors: HashMap<IdentifierName, PolyTypeEnv>,
     pub definitions: PolyTypeEnv,
 }
 
@@ -25,7 +27,7 @@ impl ModuleInterface {
 }
 
 #[derive(Debug)]
-pub struct ModuleInterfaces(HashMap<StringSymbol, ModuleInterface>);
+pub struct ModuleInterfaces(HashMap<ModuleFullName, ModuleInterface>);
 
 impl ModuleInterfaces {
     pub fn new() -> Self {
@@ -34,15 +36,15 @@ impl ModuleInterfaces {
         Self(env)
     }
 
-    pub fn get(&self, key: &StringSymbol) -> Option<&ModuleInterface> {
+    pub fn get(&self, key: &ModuleFullName) -> Option<&ModuleInterface> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: StringSymbol, value: ModuleInterface) {
+    pub fn insert(&mut self, key: ModuleFullName, value: ModuleInterface) {
         self.0.insert(key, value);
     }
 
-    pub fn map(&self) -> &HashMap<StringSymbol, ModuleInterface> {
+    pub fn map(&self) -> &HashMap<ModuleFullName, ModuleInterface> {
         &self.0
     }
 

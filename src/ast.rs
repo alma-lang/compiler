@@ -1200,7 +1200,7 @@ pub mod expression {
             }
         }
 
-        pub fn get_bindings(&self, names: &mut FnvHashSet<StringSymbol>) {
+        pub fn get_bindings(&self, names: &mut FnvHashSet<IdentifierName>) {
             use PatternData::*;
             match self {
                 String_(_) | Float(_) | Hole => (),

@@ -1,20 +1,21 @@
-use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::ast::expression::IdentifierName;
+use crate::strings::Strings;
 use crate::typ::{self, PolyType, Types};
 use fnv::FnvBuildHasher;
 use im_rc::HashMap;
 use std::fmt::Write;
 
-type TypeMap = HashMap<StringSymbol, typ::Index, FnvBuildHasher>;
+type TypeMap = HashMap<IdentifierName, typ::Index, FnvBuildHasher>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeEnv(TypeMap);
 
 impl TypeEnv {
-    pub fn get(&self, key: &StringSymbol) -> Option<typ::Index> {
+    pub fn get(&self, key: &IdentifierName) -> Option<typ::Index> {
         self.0.get(key).copied()
     }
 
-    pub fn insert(&mut self, key: StringSymbol, value: typ::Index) {
+    pub fn insert(&mut self, key: IdentifierName, value: typ::Index) {
         self.0.insert(key, value);
     }
 
@@ -45,7 +46,7 @@ impl TypeEnv {
     }
 }
 
-type PolyTypeMap = HashMap<StringSymbol, PolyType, FnvBuildHasher>;
+type PolyTypeMap = HashMap<IdentifierName, PolyType, FnvBuildHasher>;
 
 // TODO: Join this with TypeEnv and parametrize it, and use a trait for the
 // to_string(strings: &Strings)
@@ -53,11 +54,11 @@ type PolyTypeMap = HashMap<StringSymbol, PolyType, FnvBuildHasher>;
 pub struct PolyTypeEnv(PolyTypeMap);
 
 impl PolyTypeEnv {
-    pub fn get(&self, key: &StringSymbol) -> Option<&PolyType> {
+    pub fn get(&self, key: &IdentifierName) -> Option<&PolyType> {
         self.0.get(key)
     }
 
-    pub fn insert(&mut self, key: StringSymbol, value: PolyType) {
+    pub fn insert(&mut self, key: IdentifierName, value: PolyType) {
         self.0.insert(key, value);
     }
 

@@ -12,7 +12,7 @@ use crate::compiler;
 use crate::compiler::state::ModuleIndex;
 use crate::compiler::types::{HashMap, ModuleInterface};
 use crate::source::Source;
-use crate::strings::{Strings, Symbol as StringSymbol};
+use crate::strings::Strings;
 use crate::token::Tokens;
 use crate::typ::{self, Type::*, TypeVar::*, *};
 use crate::type_env::{PolyTypeEnv, TypeEnv};
@@ -30,7 +30,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum Error {
     UndefinedIdentifier {
-        identifier: StringSymbol,
+        identifier: IdentifierName,
         location: span::Index,
     },
     DuplicateField {
@@ -77,9 +77,9 @@ pub enum Error {
     UnknownType(CapitalizedIdentifier),
     UnknownTypeVar(Identifier),
     PatternsIntroduceDifferentBindings {
-        names1: FnvHashSet<StringSymbol>,
+        names1: FnvHashSet<IdentifierName>,
         span1: span::Index,
-        names2: FnvHashSet<StringSymbol>,
+        names2: FnvHashSet<IdentifierName>,
         span2: span::Index,
     },
 }
@@ -2708,37 +2708,6 @@ fn add_error<'ast>(result: Result<(), Error>, errors: &mut Vec<Error>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::expression;
-
-    pub fn infer_expression<'ast>(
-        ast: expression::Index,
-        state: &mut State,
-        env: &mut PolyTypeEnv,
-        types_env: &PolyTypeEnv,
-        strings: &mut Strings,
-        expressions: &'ast Expressions,
-        expression_types: &'ast mut ExpressionTypes,
-        types: &mut Types,
-    ) -> Result<typ::Index, Vec<Error>> {
-        let mut errors: Vec<Error> = vec![];
-        let t = infer_rec(
-            ast,
-            state,
-            env,
-            types_env,
-            strings,
-            expressions,
-            expression_types,
-            types,
-            &mut errors,
-        );
-
-        if errors.is_empty() {
-            Ok(t)
-        } else {
-            Err(errors)
-        }
-    }
 
     mod test_infer_expression {
         use super::*;
