@@ -2976,6 +2976,16 @@ add 5"
             assert_snapshot!(parse("A.b"));
         }
 
+        #[test]
+        fn test_pattern_matching_if_condition() {
+            assert_snapshot!(parse(
+                "\
+when 5 is
+    x if x > 3 -> 5
+"
+            ));
+        }
+
         fn parse(code: &str) -> String {
             let source = Source::new("Test.alma", code.to_string());
             let mut strings = Strings::new();

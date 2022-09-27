@@ -308,6 +308,9 @@ main =
         test = when Pair None (Some 3) is
             Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->
                 True
+        test = when 5 is
+            n if n > 3 ->
+                True
     Some id
 
         "#])

@@ -857,16 +857,45 @@ fn generate_expression(
                         indent,
                         &branch.pattern,
                         |code, indent, module_name, expressions, strings| {
-                            indented(code, indent, "return ");
-                            generate_expression(
-                                indent,
-                                code,
-                                module_name,
-                                &expressions[branch.body],
-                                strings,
-                                expressions,
-                            );
-                            code.push('\n');
+                            if let Some(condition) = branch.condition {
+                                indented(code, indent, "if (");
+                                generate_expression(
+                                    indent,
+                                    code,
+                                    module_name,
+                                    &expressions[condition],
+                                    strings,
+                                    expressions,
+                                );
+                                code.push_str(") {\n");
+
+                                {
+                                    let indent = add_indent(indent);
+                                    indented(code, indent, "return ");
+                                    generate_expression(
+                                        indent,
+                                        code,
+                                        module_name,
+                                        &expressions[branch.body],
+                                        strings,
+                                        expressions,
+                                    );
+                                    code.push('\n');
+                                }
+
+                                line(code, indent, "}");
+                            } else {
+                                indented(code, indent, "return ");
+                                generate_expression(
+                                    indent,
+                                    code,
+                                    module_name,
+                                    &expressions[branch.body],
+                                    strings,
+                                    expressions,
+                                );
+                                code.push('\n');
+                            }
                         },
                         module_name,
                         expressions,

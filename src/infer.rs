@@ -2028,6 +2028,32 @@ fn infer_rec<'ast>(
                     errors,
                 );
 
+                if let Some(condition_idx) = &branch.condition {
+                    let condition = &expressions[*condition_idx];
+                    let condition_type = infer_rec(
+                        *condition_idx,
+                        state,
+                        &mut env,
+                        types_env,
+                        strings,
+                        expressions,
+                        expression_types,
+                        types,
+                        errors,
+                    );
+                    add_error(
+                        unify(
+                            state,
+                            condition.span,
+                            condition_type,
+                            None,
+                            types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
+                            types,
+                        ),
+                        errors,
+                    );
+                }
+
                 branch_types.push(infer_rec(
                     branch.body,
                     state,
@@ -2971,6 +2997,22 @@ when 1 is
                 "\
 when 1 is
     a | 2 as b | 3 as c -> True
+            "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_if_condition() {
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    n if n > 3 -> n
+            "
+            ));
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    n if n - 5 -> n
             "
             ));
         }

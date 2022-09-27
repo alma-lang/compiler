@@ -1,7 +1,7 @@
 ---
 source: src/compiler/mod.rs
-assertion_line: 284
-expression: "compile(&[r#\"\nmodule Test exposing (main, Option(Some, None))\n\ntype Option a = Some a | None\n\ntype Id = Id Float\n\ntype List a = Cons a (List a) | Nil\n\ntype Pair a b = Pair a b\n\nmain =\n    let\n        Id id = Id 1\n        test = when Id 5 is\n            Id id -> id\n        test = when \"test\" is\n            \"banana\" -> id\n            \"phone\" -> id\n        test = when 5 is\n            5 -> id\n            _ -> id\n        test = when Some(Id(1)) is\n            Some (Id id) -> id\n        test = when 5 is\n            5 as a -> a\n            1 as b | 2 as b | b -> b\n            _ -> id\n        test = when Nil is\n            Cons a Nil |\n            Cons _ (Cons a Nil) |\n            Cons _ (Cons _ (Cons a Nil)) -> a\n        test = when Pair None (Some 3) is\n            Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->\n                True\n    Some id\n\n        \"#])"
+assertion_line: 274
+expression: "compile(&[r#\"\nmodule Test exposing (main, Option(Some, None))\n\ntype Option a = Some a | None\n\ntype Id = Id Float\n\ntype List a = Cons a (List a) | Nil\n\ntype Pair a b = Pair a b\n\nmain =\n    let\n        Id id = Id 1\n        test = when Id 5 is\n            Id id -> id\n        test = when \"test\" is\n            \"banana\" -> id\n            \"phone\" -> id\n        test = when 5 is\n            5 -> id\n            _ -> id\n        test = when Some(Id(1)) is\n            Some (Id id) -> id\n        test = when 5 is\n            5 as a -> a\n            1 as b | 2 as b | b -> b\n            _ -> id\n        test = when Nil is\n            Cons a Nil |\n            Cons _ (Cons a Nil) |\n            Cons _ (Cons _ (Cons a Nil)) -> a\n        test = when Pair None (Some 3) is\n            Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->\n                True\n        test = when 5 is\n            n if n > 3 ->\n                True\n    Some id\n\n        \"#])"
 ---
 // alma_out/Alma.ffi.js
 
@@ -261,6 +261,17 @@ let main = function() {
         let a, b
         if (__result.__tag === "Pair" && __result._0.__tag === "Some" && ((__result._0._0.__tag === "Some" && ((((__result._0._0._0 === 5) ? (a = __result._0._0._0, true) : false)) || (((__result._0._0._0 === 7) ? (a = __result._0._0._0, true) : false)))) || (__result._0._0.__tag === "Some" && ((__result._0._0._0 === 1) ? (a = __result._0._0._0, true) : false))) && __result._1.__tag === "Some" && ((((__result._1._0 === 3) ? (b = __result._1._0, true) : false)) || ((b = __result._1._0, true)))) {
             return True
+        }
+
+        throw new Error("Incomplete pattern match")
+    }()
+    let test = function () {
+        let __result = 5
+        let n
+        if ((n = __result, true)) {
+            if ((n > 3)) {
+                return True
+            }
         }
 
         throw new Error("Incomplete pattern match")

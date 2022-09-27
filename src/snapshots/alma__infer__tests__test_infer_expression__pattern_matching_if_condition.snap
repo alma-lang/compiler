@@ -1,0 +1,52 @@
+---
+source: src/infer.rs
+assertion_line: 3006
+expression: "infer(\"\\\nwhen 5 is\n    n if n > 3 -> n\n            \")"
+---
+Input:
+
+when 5 is
+    n if n > 3 -> n
+            
+
+---
+Output:
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
+
+module Test
+
+test : ∀ ∅ . Float
