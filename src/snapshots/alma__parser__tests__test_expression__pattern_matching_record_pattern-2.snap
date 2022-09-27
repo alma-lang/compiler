@@ -1,0 +1,32 @@
+---
+source: src/parser.rs
+assertion_line: 3180
+expression: "parse(\"\\\nwhen 5 is\n    { world: , } -> banana\n\")"
+---
+Input:
+
+when 5 is
+    { world: , } -> banana
+
+
+Result:
+
+Test.alma:2:13
+
+Expected a valid pattern for the record field value, but instead found: `,`
+
+  1│  when 5 is
+  2│      { world: , } -> banana
+   │               ↑
+
+Error {
+    kind: InvalidRecordPatternFieldValue,
+    token: Token {
+        kind: Comma,
+        indent: 4,
+        start: 23,
+        end: 24,
+        line: 2,
+        column: 13,
+    },
+}

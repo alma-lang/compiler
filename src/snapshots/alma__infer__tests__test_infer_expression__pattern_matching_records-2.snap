@@ -1,0 +1,40 @@
+---
+source: src/infer.rs
+assertion_line: 3092
+expression: "infer(\"\\\nwhen 5 is\n    {x} -> x\n\")"
+---
+Input:
+
+when 5 is
+    {x} -> x
+
+
+---
+Output:
+
+Test.alma [4:4]
+
+Type mismatch:  { a | x : b }  ≠  Float
+
+Expected
+
+  2│  
+  3│  test = when 5 is
+  4│      {x} -> x
+   │      ↑↑↑
+
+with type
+
+    { a | x : b }
+
+to have the same type as
+
+  1│  module Test exposing (test)
+  2│  
+  3│  test = when 5 is
+   │              ↑
+  4│      {x} -> x
+
+with type
+
+    Float

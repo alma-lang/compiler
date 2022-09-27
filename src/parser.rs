@@ -70,6 +70,8 @@ use typed_index_collections::TiSlice;
                                | STRING
                                | ( module_name "." )? type_identifier ( pattern )*
                                | "(" pattern_or ")"
+                               | "{" ( pattern_record_field ( "," pattern_record_field )* )? "}"
+    ● pattern_record_field     → IDENTIFIER ( ":" pattern_or )?
     ● if                       → "if" binary "then" expression "else" expression
     ● pattern_matching         → "when" expression "is" ( pattern_matching_branch )+
     ● pattern_matching_branch  → pattern_or ( "if" expression ) "->" expression
@@ -92,7 +94,7 @@ use typed_index_collections::TiSlice;
     ● field                    → IDENTIFIER ( ":" expression )?
 */
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum ErrorType {
     // Top level
     InvalidReplEntry,
@@ -103,10 +105,10 @@ enum ErrorType {
     InvalidModuleNameSegment,
     MissingTopLevelModule,
     ModuleAndFileNameMismatch {
-        module: ModuleName,
+        module: ModuleFullName,
     },
     SubmoduleAndParentModuleNameMismatch {
-        submodule: ModuleName,
+        submodule: ModuleFullName,
     },
     InvalidModuleDefinitionLhs,
     InvalidModuleDefinition,
@@ -204,6 +206,7 @@ enum ErrorType {
     },
     InvalidNamedPatternIdentifier,
     InvalidPatternInOrPattern,
+    InvalidRecordPatternFieldValue,
     UselessPattern,
 }
 
@@ -237,7 +240,7 @@ impl ErrorType {
                 "The module name '{name}' differs from the name of the file.\n\n\
                 Module names need to match the folder and file names from the \
                 file system",
-                name = &name.to_string(strings)
+                name = strings.resolve(*name)
             ),
 
             // TODO: Store the parent module name in the error too, to improve the error message
@@ -249,7 +252,7 @@ impl ErrorType {
                 \n        module Admin.User\
                 \n            module Admin.User.Id\
                 \n\n",
-                name = &name.to_string(strings)
+                name = strings.resolve(*name)
             ),
 
             MissingTopLevelModule => {
@@ -554,7 +557,7 @@ impl ErrorType {
             ),
 
             InvalidRecordFieldSeparatorOrLastDelimiter => {
-                expected_but_found("Expected `}` to close a record literal")
+                expected_but_found("Expected `}` to close a record")
             }
 
             InvalidRecordFieldsOrExtensibleRecordExpression => expected_but_found(
@@ -615,6 +618,10 @@ impl ErrorType {
 
             InvalidPatternInOrPattern => {
                 expected_but_found("Expected a valid pattern after the or `|`")
+            }
+
+            InvalidRecordPatternFieldValue => {
+                expected_but_found("Expected a valid pattern for the record field value")
             }
 
             UselessPattern => "This incomplete pattern can't be exhaustive here.".to_owned(),
@@ -708,7 +715,9 @@ impl<'a> State<'a> {
             if top_level && !name.valid_top_level_in_file(self.source, self.strings) {
                 return Err(Error::new(
                     *module_token,
-                    ErrorType::ModuleAndFileNameMismatch { module: name },
+                    ErrorType::ModuleAndFileNameMismatch {
+                        module: name.full_name,
+                    },
                 ));
             } else if parent_module
                 .map(|m| !name.valid_in_parent_module(m))
@@ -716,7 +725,9 @@ impl<'a> State<'a> {
             {
                 return Err(Error::new(
                     *module_token,
-                    ErrorType::SubmoduleAndParentModuleNameMismatch { submodule: name },
+                    ErrorType::SubmoduleAndParentModuleNameMismatch {
+                        submodule: name.full_name,
+                    },
                 ));
             }
 
@@ -1759,6 +1770,27 @@ impl<'a> State<'a> {
                 data: PatternData::Float(n),
                 span: self.span(token_index, token_index),
             }))
+        } else if self.match_token(TT::LeftBrace).is_some() {
+            let fields = self.record_fields(
+                Self::pattern_or,
+                |_, identifier| {
+                    let span = identifier.span;
+                    Pattern {
+                        span,
+                        data: PatternData::Identifier(identifier),
+                    }
+                },
+                ErrorType::InvalidRecordPatternFieldValue,
+            )?;
+
+            if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
+                Ok(Some(Pattern {
+                    span: self.span(token_index, right_brace_token_index),
+                    data: PatternData::Record(fields),
+                }))
+            } else {
+                Err(self.error(InvalidRecordFieldSeparatorOrLastDelimiter))
+            }
         } else if let Some(pattern) = self.type_pattern()? {
             Ok(Some(pattern))
         } else {
@@ -2127,7 +2159,21 @@ impl<'a> State<'a> {
                     // Record field punning
                     | (TT::Identifier(_), Comma)
                     | (TT::Identifier(_), RightBrace) => {
-                        let fields = self.record_fields()?;
+                        let fields = self.record_fields(
+                            |self_| self_.expression().map(|maybe_expr| maybe_expr.map(|expr| self_.add_expression(expr))),
+                            |self_, identifier| {
+                                let span = identifier.span;
+                                self_.add_expression(
+                                E::untyped(
+                                    ED::Identifier {
+                                        module: None,
+                                        identifier: AnyIdentifier::Identifier(identifier),
+                                    },
+                                    span,
+                                ))
+                            },
+                            ErrorType::InvalidRecordFieldValue,
+                        )?;
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(E::untyped(
@@ -2149,7 +2195,21 @@ impl<'a> State<'a> {
                             return Err(self.error(InvalidRecordFieldsOrExtensibleRecordExpression));
                         }
 
-                        let fields = self.record_fields()?;
+                        let fields = self.record_fields(
+                            |self_| self_.expression().map(|maybe_expr| maybe_expr.map(|expr| self_.add_expression(expr))),
+                            |self_, identifier| {
+                                let span = identifier.span;
+                                self_.add_expression(
+                                E::untyped(
+                                    ED::Identifier {
+                                        module: None,
+                                        identifier: AnyIdentifier::Identifier(identifier),
+                                    },
+                                    span,
+                                ))
+                            },
+                            ErrorType::InvalidRecordFieldValue,
+                        )?;
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(E::untyped(
@@ -2218,18 +2278,40 @@ impl<'a> State<'a> {
         }
     }
 
-    fn record_fields(&mut self) -> ParseResult<Vec<(Identifier, expression::Index)>> {
+    fn record_fields<Parser, Pun, T>(
+        &mut self,
+        field_value_parser: Parser,
+        get_value_for_field_pun: Pun,
+        invalid_field_value_error: ErrorType,
+    ) -> ParseResult<Vec<(Identifier, T)>>
+    where
+        Parser: Fn(&mut Self) -> ParseResult<Option<T>> + Copy,
+        Pun: Fn(&mut Self, Identifier) -> T + Copy,
+    {
         self.one_or_many_sep(
             |self_| Ok(self_.match_token(TT::Comma)),
             |self_| {
-                let (name, expr) = self_.record_field()?;
-                Ok((name, self_.add_expression(expr)))
+                let (name, value) = self_.record_field(
+                    field_value_parser,
+                    get_value_for_field_pun,
+                    invalid_field_value_error,
+                )?;
+                Ok((name, value))
             },
             |self_| self_.error(MissingRecordFields),
         )
     }
 
-    fn record_field(&mut self) -> ParseResult<(Identifier, Expression)> {
+    fn record_field<Parser, Pun, T>(
+        &mut self,
+        field_value_parser: Parser,
+        get_value_for_field_pun: Pun,
+        invalid_field_value_error: ErrorType,
+    ) -> ParseResult<(Identifier, T)>
+    where
+        Parser: Fn(&mut Self) -> ParseResult<Option<T>>,
+        Pun: Fn(&mut Self, Identifier) -> T,
+    {
         let identifier = self.required(
             |self_| Ok(self_.identifier()),
             |self_| self_.error(InvalidRecordFieldKey),
@@ -2237,20 +2319,13 @@ impl<'a> State<'a> {
 
         let (_, separator) = self.get_token();
         if !matches!(separator.kind, Colon | Equal) {
-            let span = identifier.span;
-            let expr = E::untyped(
-                ED::Identifier {
-                    module: None,
-                    identifier: AnyIdentifier::Identifier(identifier),
-                },
-                span,
-            );
-            return Ok((identifier, expr));
+            let value = get_value_for_field_pun(self, identifier);
+            return Ok((identifier, value));
         }
         self.advance();
 
-        let expr = self.required(Self::expression, |self_| {
-            self_.error(InvalidRecordFieldValue)
+        let expr = self.required(field_value_parser, |self_| {
+            self_.error(invalid_field_value_error)
         })?;
 
         Ok((identifier, expr))
@@ -3087,6 +3162,23 @@ when 5, 5 is
                 "\
 when 5, 5 is
     x,  -> x + y
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_record_pattern() {
+            assert_snapshot!(parse(
+                "\
+when 5 is
+    { hello } -> hello
+    { world: banana } -> banana
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+when 5 is
+    { world: , } -> banana
 "
             ));
         }

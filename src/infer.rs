@@ -2584,6 +2584,43 @@ fn check_pattern_and_add_bindings(
                 }
             }
         }
+        P::Record(fields) => {
+            let mut field_types = TypeEnv::new();
+            for (identifier, field) in fields {
+                let expected_field_type = types.push_and_get_key(state.new_type_var());
+                field_types.insert(identifier.name, expected_field_type);
+                check_pattern_and_add_bindings(
+                    field,
+                    expected_field_type,
+                    None,
+                    state,
+                    env,
+                    introduced_bindings,
+                    types_env,
+                    strings,
+                    types,
+                    errors,
+                );
+            }
+
+            let base_record = types.push_and_get_key(state.new_type_var());
+            let pattern_type = types.push_and_get_key(RecordExt {
+                base_record,
+                fields: Rc::new(field_types),
+            });
+
+            add_error(
+                unify(
+                    state,
+                    pattern.span,
+                    pattern_type,
+                    expected_pattern_type_span,
+                    expected_pattern_type,
+                    types,
+                ),
+                errors,
+            );
+        }
     }
 }
 
@@ -3040,6 +3077,35 @@ when 5, False is
                 "\
 when 5, 3, 4 is
     x, y, z if x + y + z > 0 -> x + y - z
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_records() {
+            assert_snapshot!(infer(
+                "\
+when {x: 5} is
+    {x} -> x
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+when 5 is
+    {x} -> x
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+when {x: 5, y: 3} is
+    {x} -> x
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+when {x: 5, y: 3} is
+    {x: 5 | 7, y} -> y
+    {x: ( 1 | 3 ) as x} -> x
 "
             ));
         }

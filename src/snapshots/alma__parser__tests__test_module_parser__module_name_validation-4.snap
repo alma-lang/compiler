@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2860
+assertion_line: 3465
 expression: "parse(\"\nmodule Test\n\nmodule Testo.Banana\n\")"
 ---
 Input:
@@ -34,28 +34,8 @@ Like this:
 
 Error {
     kind: SubmoduleAndParentModuleNameMismatch {
-        submodule: ModuleName {
-            parts: [
-                CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 2,
-                    },
-                    span: Index(
-                        2,
-                    ),
-                },
-                CapitalizedIdentifier {
-                    name: SymbolU32 {
-                        value: 3,
-                    },
-                    span: Index(
-                        3,
-                    ),
-                },
-            ],
-            full_name: SymbolU32 {
-                value: 10,
-            },
+        submodule: SymbolU32 {
+            value: 10,
         },
     },
     token: Token {

@@ -533,6 +533,7 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
                 }
             }
         }
+        P::Record(_) => todo!(),
     }
 }
 
@@ -1081,6 +1082,7 @@ fn generate_pattern_matching_conditions(
                 code.push(')');
             }
         }
+        P::Record(_) => todo!(),
     }
 }
 
@@ -1093,6 +1095,7 @@ fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
         P::Type { .. } => true,
         P::Named { .. } => true,
         P::Or(patterns) => patterns.iter().any(pattern_has_pattern_matching_conditions),
+        P::Record(_) => todo!(),
     }
 }
 
@@ -1105,6 +1108,7 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
         P::Type { params, .. } => params.iter().any(pattern_needs_bindings),
         P::Named { .. } => true,
         P::Or(patterns) => patterns.iter().any(pattern_needs_bindings),
+        P::Record(_) => todo!(),
     }
 }
 

@@ -1193,6 +1193,7 @@ pub mod expression {
             constructor: CapitalizedIdentifier,
             params: Vec<Pattern>,
         },
+        Record(Vec<(Identifier, Pattern)>),
         Named {
             pattern: Box<Pattern>,
             name: Identifier,
@@ -1206,6 +1207,7 @@ pub mod expression {
                 String_(_) | Float(_) => true,
                 Hole | Identifier(_) | Type { .. } | Named { .. } => false,
                 Or(patterns) => patterns.iter().any(|p| p.data.is_useless_in_bindings()),
+                Record(fields) => fields.iter().all(|(_, p)| p.data.is_useless_in_bindings()),
             }
         }
 
@@ -1216,40 +1218,35 @@ pub mod expression {
                 Identifier(ident) => {
                     names.insert(ident.name);
                 }
-                Type { params, .. } => {
-                    for param in params {
-                        param.data.get_bindings(names);
-                    }
-                }
+                Type { params, .. } => params.iter().for_each(|p| p.data.get_bindings(names)),
                 Named { name, pattern } => {
                     names.insert(name.name);
                     pattern.data.get_bindings(names);
                 }
-                Or(patterns) => {
-                    for pattern in patterns {
-                        pattern.data.get_bindings(names);
-                    }
-                }
+                Or(patterns) => patterns.iter().for_each(|p| p.data.get_bindings(names)),
+                Record(fields) => fields.iter().for_each(|(_, p)| p.data.get_bindings(names)),
             }
         }
 
         #[cfg(test)]
         pub fn to_test_string(&self, span: String, ctx: &TestToStringContext) -> String {
+            use PatternData::*;
+
             match self {
-                PatternData::Hole => format!("{0:indent$}_ {span}", "", indent = ctx.indent),
-                PatternData::Identifier(identifier) => format!(
+                Hole => format!("{0:indent$}_ {span}", "", indent = ctx.indent),
+                Identifier(identifier) => format!(
                     "{0:indent$}Identifier {identifier} {span}",
                     "",
                     indent = ctx.indent,
                     identifier = identifier.to_test_string(ctx)
                 ),
-                PatternData::String_(str_sym) => format!(
+                String_(str_sym) => format!(
                     "{0:indent$}String \"{str}\" {span}",
                     "",
                     indent = ctx.indent,
                     str = ctx.strings.resolve(*str_sym)
                 ),
-                PatternData::Float(num) => {
+                Float(num) => {
                     format!(
                         "{0:indent$}Float {num} {span}",
                         "",
@@ -1257,7 +1254,7 @@ pub mod expression {
                         num = ctx.strings.resolve(*num)
                     )
                 }
-                PatternData::Type {
+                Type {
                     module,
                     constructor,
                     params,
@@ -1277,14 +1274,14 @@ pub mod expression {
                         .collect::<Vec<String>>()
                         .join("\n")
                 ),
-                PatternData::Named { pattern, name } => format!(
+                Named { pattern, name } => format!(
                     "{0:indent$}Named: {name} {span}\n{pattern}",
                     "",
                     indent = ctx.indent,
                     name = name.to_test_string(ctx),
                     pattern = pattern.to_test_string(&ctx.indented()),
                 ),
-                PatternData::Or(patterns) => format!(
+                Or(patterns) => format!(
                     "{0:indent$}Or {span}\n{patterns}",
                     "",
                     indent = ctx.indent,
@@ -1293,6 +1290,24 @@ pub mod expression {
                         .map(|p| p.to_test_string(&ctx.indented()))
                         .collect::<Vec<String>>()
                         .join("\n")
+                ),
+                Record(fields) => format!(
+                    "{0:indent$}{{ {span}{nl}{fields}{nl}{0:closing_indent$}}}",
+                    "",
+                    indent = ctx.indent,
+                    nl = if fields.is_empty() { "" } else { "\n" },
+                    closing_indent = if fields.is_empty() { 1 } else { ctx.indent },
+                    fields = fields
+                        .iter()
+                        .map(|(id, p)| format!(
+                            "{0:indent$}{id} :\n{p}",
+                            "",
+                            indent = ctx.indented().indent,
+                            id = id.to_test_string(ctx),
+                            p = p.to_test_string(&ctx.indented().indented())
+                        ))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
                 ),
             }
         }

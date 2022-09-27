@@ -1,0 +1,33 @@
+---
+source: src/parser.rs
+assertion_line: 3173
+expression: "parse(\"\\\nwhen 5 is\n    { hello } -> hello\n    { world: banana } -> banana\n\")"
+---
+Input:
+
+when 5 is
+    { hello } -> hello
+    { world: banana } -> banana
+
+
+Result:
+
+PatternMatching 0:64
+    conditions:
+        Float 5 5:6
+    PatternMatchingBranch 14:32
+        patterns:
+            { 14:23
+                hello 16:21 :
+                    Identifier hello 16:21 16:21
+            }
+        body:
+            Identifier hello 27:32 27:32
+    PatternMatchingBranch 37:64
+        patterns:
+            { 37:54
+                world 39:44 :
+                    Identifier banana 46:52 46:52
+            }
+        body:
+            Identifier banana 58:64 58:64
