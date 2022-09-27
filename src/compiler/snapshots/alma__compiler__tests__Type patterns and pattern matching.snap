@@ -197,28 +197,28 @@ function Pair(_0, _1) {
 let main = function() {
     let { _0: id } = Id(1)
     let test = function () {
-        let __result = Id(5)
+        let __result_0 = Id(5)
         let id
-        if (__result.__tag === "Id" && (id = __result._0, true)) {
+        if (__result_0.__tag === "Id" && (id = __result_0._0, true)) {
             return id
         }
 
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = "test"
-        if (__result === "banana") {
+        let __result_0 = "test"
+        if (__result_0 === "banana") {
             return id
         }
-        if (__result === "phone") {
+        if (__result_0 === "phone") {
             return id
         }
 
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = 5
-        if (__result === 5) {
+        let __result_0 = 5
+        if (__result_0 === 5) {
             return id
         }
         return id
@@ -226,21 +226,21 @@ let main = function() {
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = Some(Id(1))
+        let __result_0 = Some(Id(1))
         let id
-        if (__result.__tag === "Some" && __result._0.__tag === "Id" && (id = __result._0._0, true)) {
+        if (__result_0.__tag === "Some" && __result_0._0.__tag === "Id" && (id = __result_0._0._0, true)) {
             return id
         }
 
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = 5
+        let __result_0 = 5
         let a, b
-        if (((__result === 5) ? (a = __result, true) : false)) {
+        if (((__result_0 === 5) ? (a = __result_0, true) : false)) {
             return a
         }
-        if (((((__result === 1) ? (b = __result, true) : false)) || (((__result === 2) ? (b = __result, true) : false)) || ((b = __result, true)))) {
+        if (((((__result_0 === 1) ? (b = __result_0, true) : false)) || (((__result_0 === 2) ? (b = __result_0, true) : false)) || ((b = __result_0, true)))) {
             return b
         }
         return id
@@ -248,27 +248,27 @@ let main = function() {
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = Nil
+        let __result_0 = Nil
         let a
-        if (((__result.__tag === "Cons" && (a = __result._0, true) && __result._1.__tag === "Nil") || (__result.__tag === "Cons" && __result._1.__tag === "Cons" && (a = __result._1._0, true) && __result._1._1.__tag === "Nil") || (__result.__tag === "Cons" && __result._1.__tag === "Cons" && __result._1._1.__tag === "Cons" && (a = __result._1._1._0, true) && __result._1._1._1.__tag === "Nil"))) {
+        if (((__result_0.__tag === "Cons" && (a = __result_0._0, true) && __result_0._1.__tag === "Nil") || (__result_0.__tag === "Cons" && __result_0._1.__tag === "Cons" && (a = __result_0._1._0, true) && __result_0._1._1.__tag === "Nil") || (__result_0.__tag === "Cons" && __result_0._1.__tag === "Cons" && __result_0._1._1.__tag === "Cons" && (a = __result_0._1._1._0, true) && __result_0._1._1._1.__tag === "Nil"))) {
             return a
         }
 
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = Pair(None, Some(3))
+        let __result_0 = Pair(None, Some(3))
         let a, b
-        if (__result.__tag === "Pair" && __result._0.__tag === "Some" && ((__result._0._0.__tag === "Some" && ((((__result._0._0._0 === 5) ? (a = __result._0._0._0, true) : false)) || (((__result._0._0._0 === 7) ? (a = __result._0._0._0, true) : false)))) || (__result._0._0.__tag === "Some" && ((__result._0._0._0 === 1) ? (a = __result._0._0._0, true) : false))) && __result._1.__tag === "Some" && ((((__result._1._0 === 3) ? (b = __result._1._0, true) : false)) || ((b = __result._1._0, true)))) {
+        if (__result_0.__tag === "Pair" && __result_0._0.__tag === "Some" && ((__result_0._0._0.__tag === "Some" && ((((__result_0._0._0._0 === 5) ? (a = __result_0._0._0._0, true) : false)) || (((__result_0._0._0._0 === 7) ? (a = __result_0._0._0._0, true) : false)))) || (__result_0._0._0.__tag === "Some" && ((__result_0._0._0._0 === 1) ? (a = __result_0._0._0._0, true) : false))) && __result_0._1.__tag === "Some" && ((((__result_0._1._0 === 3) ? (b = __result_0._1._0, true) : false)) || ((b = __result_0._1._0, true)))) {
             return True
         }
 
         throw new Error("Incomplete pattern match")
     }()
     let test = function () {
-        let __result = 5
+        let __result_0 = 5
         let n
-        if ((n = __result, true)) {
+        if ((n = __result_0, true)) {
             if ((n > 3)) {
                 return True
             }

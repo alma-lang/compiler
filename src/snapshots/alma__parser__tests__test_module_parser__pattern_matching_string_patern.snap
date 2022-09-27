@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3884
+assertion_line: 3967
 expression: "parse(\"\\\nmodule Test\n\ntest = when test is\n    \\\"test\\\" -> True\n\")"
 ---
 Input:
@@ -29,10 +29,10 @@ module Test
                 Identifier test 13:17 13:17
             expr:
                 PatternMatching 20:51
-                    condition:
+                    conditions:
                         Identifier test 25:29 25:29
                     PatternMatchingBranch 37:51
-                        pattern:
+                        patterns:
                             String "test" 37:43
                         body:
                             Identifier True 47:51 47:51

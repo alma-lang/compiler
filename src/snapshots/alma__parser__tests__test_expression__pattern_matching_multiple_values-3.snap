@@ -1,0 +1,27 @@
+---
+source: src/parser.rs
+assertion_line: 3069
+expression: "parse(\"\\\nwhen 5, 5 is\n    x, y -> x + y\n\")"
+---
+Input:
+
+when 5, 5 is
+    x, y -> x + y
+
+
+Result:
+
+PatternMatching 0:30
+    conditions:
+        Float 5 5:6
+        Float 5 8:9
+    PatternMatchingBranch 17:30
+        patterns:
+            Identifier x 17:18 17:18
+            Identifier y 20:21 20:21
+        body:
+            Binary 25:30 Addition
+                lhs:
+                    Identifier x 25:26 25:26
+                rhs:
+                    Identifier y 29:30 29:30

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3939
+assertion_line: 4022
 expression: "parse(\"\\\nmodule Test\n\ntest = when test is\n    _ as hello -> True\n    hi as hello -> True\n    \\\"hello\\\" as hello -> True\n    5 as hello -> True\n\")"
 ---
 Input:
@@ -32,28 +32,28 @@ module Test
                 Identifier test 13:17 13:17
             expr:
                 PatternMatching 20:131
-                    condition:
+                    conditions:
                         Identifier test 25:29 25:29
                     PatternMatchingBranch 37:55
-                        pattern:
+                        patterns:
                             Named: hello 42:47 37:47
                                 _ 37:38
                         body:
                             Identifier True 51:55 51:55
                     PatternMatchingBranch 60:79
-                        pattern:
+                        patterns:
                             Named: hello 66:71 60:71
                                 Identifier hi 60:62 60:62
                         body:
                             Identifier True 75:79 75:79
                     PatternMatchingBranch 84:108
-                        pattern:
+                        patterns:
                             Named: hello 95:100 84:100
                                 String "hello" 84:91
                         body:
                             Identifier True 104:108 104:108
                     PatternMatchingBranch 113:131
-                        pattern:
+                        patterns:
                             Named: hello 118:123 113:123
                                 Float 5 113:114
                         body:

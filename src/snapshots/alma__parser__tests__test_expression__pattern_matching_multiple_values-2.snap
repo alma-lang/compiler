@@ -1,0 +1,39 @@
+---
+source: src/parser.rs
+assertion_line: 3063
+expression: "parse(\"\\\nwhen 5, 5 is\n    x -> 5\n\")"
+---
+Input:
+
+when 5, 5 is
+    x -> 5
+
+
+Result:
+
+Test.alma:2:4
+
+This branch has 1 pattern but the `when` has 2 expressions. Pattern matching branches need to have as many comma separated patterns as expressions in the `when` above.
+
+  1│  when 5, 5 is
+  2│      x -> 5
+   │      ↑
+
+Error {
+    kind: InvalidPatternMatchingBranchPatternAmountMismatch {
+        num_patterns: 1,
+        num_expressions: 2,
+    },
+    token: Token {
+        kind: Identifier(
+            SymbolU32 {
+                value: 2,
+            },
+        ),
+        indent: 4,
+        start: 17,
+        end: 18,
+        line: 2,
+        column: 4,
+    },
+}

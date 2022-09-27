@@ -1,0 +1,52 @@
+---
+source: src/infer.rs
+assertion_line: 3039
+expression: "infer(\"\\\nwhen 5, 3, 4 is\n    x, y, z if x + y + z > 0 -> x + y - z\n\")"
+---
+Input:
+
+when 5, 3, 4 is
+    x, y, z if x + y + z > 0 -> x + y - z
+
+
+---
+Output:
+
+module Alma
+
+
+
+False : ∀ ∅ . Bool
+
+True : ∀ ∅ . Bool
+
+
+
+add : ∀ ∅ . Float -> Float -> Float
+
+and_ : ∀ ∅ . Bool -> Bool -> Bool
+
+div : ∀ ∅ . Float -> Float -> Float
+
+eq : ∀ a . a -> a -> Bool
+
+ge : ∀ ∅ . Float -> Float -> Bool
+
+gt : ∀ ∅ . Float -> Float -> Bool
+
+le : ∀ ∅ . Float -> Float -> Bool
+
+lt : ∀ ∅ . Float -> Float -> Bool
+
+mult : ∀ ∅ . Float -> Float -> Float
+
+ne : ∀ a . a -> a -> Bool
+
+or_ : ∀ ∅ . Bool -> Bool -> Bool
+
+sub : ∀ ∅ . Float -> Float -> Float
+
+
+module Test
+
+test : ∀ ∅ . Float

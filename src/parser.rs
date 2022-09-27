@@ -102,8 +102,12 @@ enum ErrorType {
     MissingModuleName,
     InvalidModuleNameSegment,
     MissingTopLevelModule,
-    ModuleAndFileNameMismatch { module: ModuleName },
-    SubmoduleAndParentModuleNameMismatch { submodule: ModuleName },
+    ModuleAndFileNameMismatch {
+        module: ModuleName,
+    },
+    SubmoduleAndParentModuleNameMismatch {
+        submodule: ModuleName,
+    },
     InvalidModuleDefinitionLhs,
     InvalidModuleDefinition,
     InvalidExternalDefinition,
@@ -127,14 +131,18 @@ enum ErrorType {
     InvalidUnionTypeDefinitionConstructor,
     MissingUnionTypeDefinitionConstructors,
     InvalidAliasDefinitionType,
-    InvalidRecordTypeFieldTypeOrLastRecordDelimiter { first_delimiter: Token },
+    InvalidRecordTypeFieldTypeOrLastRecordDelimiter {
+        first_delimiter: Token,
+    },
     InvalidRecordTypeFieldKeyOrExtensibleRecordVariable,
     InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator,
     MissingRecordTypeFields,
     InvalidRecordTypeFieldKey,
     InvalidRecordTypeFieldType,
     InvalidRecordTypeFieldSeparator,
-    InvalidParenthesizedTypeDelimiter { first_delimiter: Token },
+    InvalidParenthesizedTypeDelimiter {
+        first_delimiter: Token,
+    },
     InvalidFunctionParameterType,
     InvalidParenthesizedTypeType,
     InvalidTypeSignatureType,
@@ -143,7 +151,9 @@ enum ErrorType {
     MissingLetBindings,
     InvalidLetBodyIndent,
     InvalidLetBodyExpression,
-    InvalidLetBindingParametersOrEqualSeparator { definition_identifier: Identifier },
+    InvalidLetBindingParametersOrEqualSeparator {
+        definition_identifier: Identifier,
+    },
     InvalidLetBindingSeparator,
     InvalidLetBindingRhs,
     InvalidIfCondition,
@@ -157,11 +167,20 @@ enum ErrorType {
     InvalidPatternMatchingExpression,
     InvalidPatternMatchingIsKeyword,
     MissingPatternMatchingBranch,
+    InvalidPatternMatchingBranchPattern,
     InvalidPatternMatchingBranchConditionExpression,
     InvalidPatternMatchingBranchSeparator,
     InvalidPatternMatchingBranchExpression,
-    InvalidBinopRhs { op: Token },
-    InvalidUnaryRhs { op: Token },
+    InvalidPatternMatchingBranchPatternAmountMismatch {
+        num_patterns: usize,
+        num_expressions: usize,
+    },
+    InvalidBinopRhs {
+        op: Token,
+    },
+    InvalidUnaryRhs {
+        op: Token,
+    },
     InvalidPropertyAccessSeparator,
     InvalidPropertyAccessIdentifier,
     InvalidFloat(Token),
@@ -169,7 +188,9 @@ enum ErrorType {
     InvalidRecordFieldsOrExtensibleRecordExpression,
     InvalidExtensibleRecordFieldSeparatorOrLastDelimiter,
     InvalidParenthesizedExpression,
-    InvalidParenthesizedExpressionLastDelimiter { first_delimiter: Token },
+    InvalidParenthesizedExpressionLastDelimiter {
+        first_delimiter: Token,
+    },
     InvalidPropertyAccessLambdaWhitespace,
     InvalidPropertyAccessLambdaIdentifier,
     MissingRecordFields,
@@ -179,7 +200,9 @@ enum ErrorType {
 
     // Patterns
     InvalidParenthesizedPattern,
-    InvalidParenthesizedPatternLastDelimiter { first_delimiter: Token },
+    InvalidParenthesizedPatternLastDelimiter {
+        first_delimiter: Token,
+    },
     InvalidNamedPatternIdentifier,
     InvalidPatternInOrPattern,
     UselessPattern,
@@ -476,6 +499,8 @@ impl ErrorType {
                 expected_but_found("Expected at least a pattern matching branch")
             }
 
+            InvalidPatternMatchingBranchPattern => expected_but_found("Expected a pattern"),
+
             InvalidPatternMatchingBranchConditionExpression => expected_but_found(
                 "Expected an expression for the condition \
                 of the if in the pattern matching branch",
@@ -490,6 +515,20 @@ impl ErrorType {
                 "Expected an expression after the arrow for the \
                 pattern matching branch",
             ),
+            InvalidPatternMatchingBranchPatternAmountMismatch {
+                num_patterns,
+                num_expressions,
+            } => {
+                let patterns_plural = if *num_patterns != 1 { "s" } else { "" };
+                let expressions_plural = if *num_expressions != 1 { "s" } else { "" };
+                format!(
+                    "This branch has {num_patterns} pattern{patterns_plural} \
+                    but the `when` has \
+                    {num_expressions} expression{expressions_plural}. \
+                    Pattern matching branches need to have as many comma \
+                    separated patterns as expressions in the `when` above."
+                )
+            }
 
             InvalidBinopRhs { op } => expected_but_found(&format!(
                 "Expected an expression after the binary operator `{lexeme}`",
@@ -1538,9 +1577,19 @@ impl<'a> State<'a> {
             return Ok(None);
         }
 
-        let expression = self.required(Self::expression, |self_| {
-            self_.error(InvalidPatternMatchingExpression)
-        })?;
+        let expressions: Vec<_> = self
+            .one_or_many_sep(
+                |self_| Ok(self_.match_token(TT::Comma)),
+                |self_| {
+                    self_.required(Self::expression, |self_| {
+                        self_.error(InvalidPatternMatchingExpression)
+                    })
+                },
+                |self_| self_.error(InvalidPatternMatchingExpression),
+            )?
+            .into_iter()
+            .map(|e| self.add_expression(e))
+            .collect();
 
         if self.match_token(TT::Is).is_none() {
             return Err(self.error(InvalidPatternMatchingIsKeyword));
@@ -1557,10 +1606,24 @@ impl<'a> State<'a> {
             |self_| self_.error(MissingPatternMatchingBranch),
         )?;
 
+        // Verify we have only as many branch patterns as expressions
+        let num_expressions = expressions.len();
+        for branch in &branches {
+            if branch.patterns.len() != num_expressions {
+                return Err(Error::new(
+                    self.tokens[self.spans[branch.span].start],
+                    InvalidPatternMatchingBranchPatternAmountMismatch {
+                        num_expressions,
+                        num_patterns: branch.patterns.len(),
+                    },
+                ));
+            }
+        }
+
         let end = self.spans[branches.last().unwrap().span].end;
         Ok(Some(E::untyped(
             ED::PatternMatching {
-                expression: self.add_expression(expression),
+                conditions: expressions,
                 branches,
             },
             self.span(when_token_index, end),
@@ -1570,9 +1633,12 @@ impl<'a> State<'a> {
     fn pattern_matching_branch(&mut self) -> ParseResult<Option<PatternMatchingBranch>> {
         let token_index = self.get_token_index();
 
-        let pattern = if let Some(pattern) = self.pattern_or()? {
-            pattern
-        } else {
+        let patterns = self.many_sep(
+            |self_| Ok(self_.match_token(TT::Comma)),
+            Self::pattern_or,
+            |self_| self_.error(InvalidPatternMatchingBranchPattern),
+        )?;
+        if patterns.is_empty() {
             return Ok(None);
         };
 
@@ -1596,7 +1662,7 @@ impl<'a> State<'a> {
 
         Ok(Some(PatternMatchingBranch {
             span: self.span(token_index, end),
-            pattern,
+            patterns,
             condition: condition.map(|c| self.add_expression(c)),
             body: self.add_expression(body),
         }))
@@ -2982,6 +3048,34 @@ add 5"
                 "\
 when 5 is
     x if x > 3 -> 5
+"
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_multiple_values() {
+            assert_snapshot!(parse(
+                "\
+when 5, is
+    x if x > 3 -> 5
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+when 5, 5 is
+    x -> 5
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+when 5, 5 is
+    x, y -> x + y
+"
+            ));
+            assert_snapshot!(parse(
+                "\
+when 5, 5 is
+    x,  -> x + y
 "
             ));
         }

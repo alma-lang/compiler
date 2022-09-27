@@ -1,0 +1,32 @@
+---
+source: src/parser.rs
+assertion_line: 3075
+expression: "parse(\"\\\nwhen 5, 5 is\n    x,  -> x + y\n\")"
+---
+Input:
+
+when 5, 5 is
+    x,  -> x + y
+
+
+Result:
+
+Test.alma:2:8
+
+Expected a pattern, but instead found: `->`
+
+  1│  when 5, 5 is
+  2│      x,  -> x + y
+   │          ↑↑
+
+Error {
+    kind: InvalidPatternMatchingBranchPattern,
+    token: Token {
+        kind: Arrow,
+        indent: 4,
+        start: 21,
+        end: 23,
+        line: 2,
+        column: 8,
+    },
+}

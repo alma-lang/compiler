@@ -749,7 +749,7 @@ pub mod expression {
             else_: expression::Index,
         },
         PatternMatching {
-            expression: expression::Index,
+            conditions: Vec<expression::Index>,
             branches: Vec<PatternMatchingBranch>,
         },
     }
@@ -910,17 +910,21 @@ pub mod expression {
                     else_ = ctx.expressions[*else_].to_test_string(&ctx.indented().indented()),
                 ),
                 ExpressionData::PatternMatching {
-                    expression,
+                    conditions: expressions,
                     branches,
                 } => format!(
                     "PatternMatching {span}\n\
-                    {0:indent$}condition:\n\
+                    {0:indent$}conditions:\n\
                     {condition}\n\
                     {branches}",
                     "",
                     indent = ctx.indented().indent,
-                    condition =
-                        ctx.expressions[*expression].to_test_string(&ctx.indented().indented()),
+                    condition = expressions
+                        .iter()
+                        .map(|expression| ctx.expressions[*expression]
+                            .to_test_string(&ctx.indented().indented()))
+                        .collect::<Vec<String>>()
+                        .join("\n"),
                     branches = branches
                         .iter()
                         .map(|b| b.to_test_string(&ctx.indented()))
@@ -958,7 +962,7 @@ pub mod expression {
     #[derive(Debug, Clone)]
     pub struct PatternMatchingBranch {
         pub span: span::Index,
-        pub pattern: Pattern,
+        pub patterns: Vec<Pattern>,
         pub condition: Option<expression::Index>,
         pub body: expression::Index,
     }
@@ -967,15 +971,20 @@ pub mod expression {
         pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
             format!(
                 "{0:indent$}PatternMatchingBranch {span}\n\
-                {0:indent2$}pattern:\n\
-                {pattern}\n\
+                {0:indent2$}patterns:\n\
+                {patterns}\n\
                 {condition}\
                 {0:indent2$}body:\n\
                 {body}",
                 "",
                 indent = ctx.indent,
                 indent2 = ctx.indented().indent,
-                pattern = self.pattern.to_test_string(&ctx.indented().indented()),
+                patterns = self
+                    .patterns
+                    .iter()
+                    .map(|pattern| pattern.to_test_string(&ctx.indented().indented()))
+                    .collect::<Vec<String>>()
+                    .join("\n"),
                 condition = self
                     .condition
                     .map(|c| format!(

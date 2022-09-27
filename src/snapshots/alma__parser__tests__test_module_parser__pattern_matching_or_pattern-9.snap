@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 4019
+assertion_line: 4102
 expression: "parse(\"\\\nmodule Test\n\ntest = when test is\n    hi | smth -> True\n\")"
 ---
 Input:
@@ -29,10 +29,10 @@ module Test
                 Identifier test 13:17 13:17
             expr:
                 PatternMatching 20:54
-                    condition:
+                    conditions:
                         Identifier test 25:29 25:29
                     PatternMatchingBranch 37:54
-                        pattern:
+                        patterns:
                             Or 37:46
                                 Identifier hi 37:39 37:39
                                 Identifier smth 42:46 42:46

@@ -20,7 +20,6 @@ use std::path::{Path, PathBuf};
 
 const INDENT: usize = 4;
 const UNION_TYPE_FIELD: &str = "__tag";
-const PATTERN_MATCHING_EXPRESSION_RESULT: &str = "__result";
 
 pub enum OutputFile {
     File(String),
@@ -826,28 +825,33 @@ fn generate_expression(
         }
 
         E::PatternMatching {
-            expression,
+            conditions,
             branches,
         } => {
             code.push_str("function () {\n");
             {
                 let indent = add_indent(indent);
 
-                indented(code, indent, "");
-                write!(code, "let {PATTERN_MATCHING_EXPRESSION_RESULT} = ").unwrap();
-                generate_expression(
-                    indent,
-                    code,
-                    module_name,
-                    &expressions[*expression],
-                    strings,
-                    expressions,
-                );
-                code.push('\n');
+                for (i, condition) in conditions.iter().enumerate() {
+                    indented(code, indent, "let ");
+                    pattern_matching_expression_result(code, i);
+                    code.push_str(" = ");
+                    generate_expression(
+                        indent,
+                        code,
+                        module_name,
+                        &expressions[*condition],
+                        strings,
+                        expressions,
+                    );
+                    code.push('\n');
+                }
 
                 let mut names = FnvHashSet::default();
                 for branch in branches {
-                    branch.pattern.data.get_bindings(&mut names);
+                    for pattern in &branch.patterns {
+                        pattern.data.get_bindings(&mut names);
+                    }
                 }
                 generate_pattern_matching_bindings(code, indent, &names, strings);
 
@@ -855,7 +859,7 @@ fn generate_expression(
                     generate_pattern_matching_if(
                         code,
                         indent,
-                        &branch.pattern,
+                        &branch.patterns,
                         |code, indent, module_name, expressions, strings| {
                             if let Some(condition) = branch.condition {
                                 indented(code, indent, "if (");
@@ -918,7 +922,7 @@ fn generate_expression(
 fn generate_pattern_matching_if<'a, F>(
     code: &mut String,
     indent: usize,
-    pattern: &'a Pattern,
+    patterns: &'a Vec<Pattern>,
     generate_body: F,
     module_name: &ModuleName,
     expressions: &Expressions,
@@ -926,15 +930,32 @@ fn generate_pattern_matching_if<'a, F>(
 ) where
     F: Fn(&mut String, usize, &ModuleName, &Expressions, &Strings),
 {
-    let has_conditions = pattern_has_pattern_matching_conditions(pattern);
+    let has_conditions = patterns
+        .iter()
+        .any(|pattern| pattern_has_pattern_matching_conditions(pattern));
     if has_conditions {
         indented(code, indent, "if (");
-        generate_pattern_matching_conditions(
-            code,
-            &mut vec![PATTERN_MATCHING_EXPRESSION_RESULT.to_owned()],
-            pattern,
-            strings,
-        );
+        let mut first = true;
+        for (i, pattern) in patterns.iter().enumerate() {
+            if pattern_has_pattern_matching_conditions(pattern) {
+                if first {
+                    first = false;
+                } else {
+                    code.push_str(" && ");
+                }
+                let result = {
+                    let mut r = String::new();
+                    pattern_matching_expression_result(&mut r, i);
+                    r
+                };
+                generate_pattern_matching_conditions(
+                    code,
+                    &mut vec![result.to_owned()],
+                    pattern,
+                    strings,
+                );
+            }
+        }
         code.push_str(") {\n");
     }
     {
@@ -1173,4 +1194,8 @@ where
         let to = to.as_ref().to_str().unwrap();
         panic!("Couldn't find a relative path from {from} to {to}")
     })
+}
+
+fn pattern_matching_expression_result(out: &mut String, i: usize) {
+    write!(out, "__result_{i}").unwrap();
 }

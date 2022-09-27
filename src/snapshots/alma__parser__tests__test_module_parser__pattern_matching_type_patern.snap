@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3908
+assertion_line: 3991
 expression: "parse(\"\\\nmodule Test\n\ntest = when test is\n    Banana -> True\n    Banana asdf -> True\n    Banana.Banana asdf -> True\n\")"
 ---
 Input:
@@ -31,21 +31,21 @@ module Test
                 Identifier test 13:17 13:17
             expr:
                 PatternMatching 20:106
-                    condition:
+                    conditions:
                         Identifier test 25:29 25:29
                     PatternMatchingBranch 37:51
-                        pattern:
+                        patterns:
                             Banana 37:43 37:43
                         body:
                             Identifier True 47:51 47:51
                     PatternMatchingBranch 56:75
-                        pattern:
+                        patterns:
                             Banana 56:62 56:67
                                 Identifier asdf 63:67 63:67
                         body:
                             Identifier True 71:75 71:75
                     PatternMatchingBranch 80:106
-                        pattern:
+                        patterns:
                             Banana.Banana 87:93 80:98
                                 Identifier asdf 94:98 94:98
                         body:

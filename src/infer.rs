@@ -1994,39 +1994,50 @@ fn infer_rec<'ast>(
         }
 
         E::PatternMatching {
-            expression,
+            conditions,
             branches,
         } => {
             let return_type = types.push_and_get_key(state.new_type_var());
 
-            let expression_type = infer_rec(
-                *expression,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                types,
-                errors,
-            );
-            let expression_type_span = Some(expressions[*expression].span);
+            let expression_types_and_spans: Vec<_> = conditions
+                .iter()
+                .map(|expression| {
+                    let typ = infer_rec(
+                        *expression,
+                        state,
+                        env,
+                        types_env,
+                        strings,
+                        expressions,
+                        expression_types,
+                        types,
+                        errors,
+                    );
+                    let span = Some(expressions[*expression].span);
+                    (typ, span)
+                })
+                .collect();
 
             let mut branch_types = Vec::with_capacity(branches.len());
             for branch in branches {
                 let mut env = env.clone();
-                check_pattern_and_add_bindings(
-                    &branch.pattern,
-                    expression_type,
-                    expression_type_span,
-                    state,
-                    &mut env,
-                    &mut Vec::new(),
-                    types_env,
-                    strings,
-                    types,
-                    errors,
-                );
+
+                for (pattern, (expression_type, expression_type_span)) in
+                    branch.patterns.iter().zip(&expression_types_and_spans)
+                {
+                    check_pattern_and_add_bindings(
+                        pattern,
+                        *expression_type,
+                        *expression_type_span,
+                        state,
+                        &mut env,
+                        &mut Vec::new(),
+                        types_env,
+                        strings,
+                        types,
+                        errors,
+                    );
+                }
 
                 if let Some(condition_idx) = &branch.condition {
                     let condition = &expressions[*condition_idx];
@@ -3014,6 +3025,22 @@ when 5 is
 when 5 is
     n if n - 5 -> n
             "
+            ));
+        }
+
+        #[test]
+        fn test_pattern_matching_multiple_patterns() {
+            assert_snapshot!(infer(
+                "\
+when 5, False is
+    x, y -> x > 3 and y
+"
+            ));
+            assert_snapshot!(infer(
+                "\
+when 5, 3, 4 is
+    x, y, z if x + y + z > 0 -> x + y - z
+"
             ));
         }
 
