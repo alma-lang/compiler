@@ -89,7 +89,7 @@ use typed_index_collections::TiSlice;
 
     // Records
     ● record                   → "{" ( expression "|" )? ( field ( "," field )* )? "}"
-    ● field                    → IDENTIFIER ":" expression
+    ● field                    → IDENTIFIER ( ":" expression )?
 */
 
 #[derive(Debug)]
@@ -195,7 +195,6 @@ enum ErrorType {
     InvalidPropertyAccessLambdaIdentifier,
     MissingRecordFields,
     InvalidRecordFieldKey,
-    InvalidRecordFieldKeyValueSeparator,
     InvalidRecordFieldValue,
 
     // Patterns
@@ -349,8 +348,8 @@ impl ErrorType {
             }
 
             InvalidRecordTypeFieldKeyOrExtensibleRecordVariable => expected_but_found(
-                "Expected a record literal `{ x : Int, y : Int }`\
-                    or an extensible record `{ a | x : Int, y : Int }`",
+                "Expected a record literal `{ x : Int, y : Int }` \
+                or an extensible record `{ a | x : Int, y : Int }`",
             ),
 
             InvalidRecordTypeFieldSeparatorOrExtensibleRecordSeparator => {
@@ -559,8 +558,8 @@ impl ErrorType {
             }
 
             InvalidRecordFieldsOrExtensibleRecordExpression => expected_but_found(
-                "Expected a record literal `{ x = 1, y = 2 }`\
-                or a record update `{ record | x = 5, y = 4 }`",
+                "Expected a record literal `{ x: 1, y: 2 }` \
+                or a record update `{ record | x: 5, y: 4 }`",
             ),
 
             InvalidExtensibleRecordFieldSeparatorOrLastDelimiter =>
@@ -588,17 +587,12 @@ impl ErrorType {
                 .to_owned(),
 
             MissingRecordFields => {
-                expected_but_found("Expected a record field (like this `{ field = 5 }`)")
+                expected_but_found("Expected a record field (like this `{ field: 5 }`)")
             }
 
             InvalidRecordFieldKey => {
                 expected_but_found("Expected an identifier for the name of the field in the record")
             }
-
-            InvalidRecordFieldKeyValueSeparator => expected_but_found(
-                "Expected a `:` separating the name of \
-                the field and the value in the record",
-            ),
 
             InvalidRecordFieldValue => expected_but_found(
                 "Expected an expression for the value \
@@ -2126,8 +2120,13 @@ impl<'a> State<'a> {
                         )))
                     }
 
-                    // Record literal
-                    (TT::Identifier(_), Colon) | (TT::Identifier(_), Equal) => {
+                    // Record literal:
+                    // Record field with value
+                    (TT::Identifier(_), Colon)
+                    | (TT::Identifier(_), Equal)
+                    // Record field punning
+                    | (TT::Identifier(_), Comma)
+                    | (TT::Identifier(_), RightBrace) => {
                         let fields = self.record_fields()?;
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
@@ -2238,7 +2237,15 @@ impl<'a> State<'a> {
 
         let (_, separator) = self.get_token();
         if !matches!(separator.kind, Colon | Equal) {
-            return Err(self.error(InvalidRecordFieldKeyValueSeparator));
+            let span = identifier.span;
+            let expr = E::untyped(
+                ED::Identifier {
+                    module: None,
+                    identifier: AnyIdentifier::Identifier(identifier),
+                },
+                span,
+            );
+            return Ok((identifier, expr));
         }
         self.advance();
 
@@ -3002,6 +3009,8 @@ add 5"
             assert_snapshot!(parse("{ x : 5 , y : 10 }"));
             assert_snapshot!(parse("{ x = 5 }"));
             assert_snapshot!(parse("{ x = { x = 5 } }"));
+            assert_snapshot!(parse("{ x }"));
+            assert_snapshot!(parse("{ x, y }"));
         }
 
         #[test]
@@ -3028,6 +3037,8 @@ add 5"
                 "arbitrary expression in the record slot",
                 parse("{ if True then {} else {} | x = 1, y = 3 }")
             );
+            assert_snapshot!(parse("{ r | x }"));
+            assert_snapshot!(parse("{ r | x, y }"));
         }
 
         #[test]

@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 3076
+assertion_line: 3523
 expression: "parse(\"\nmodule Test\n\nalias Fruit = {\n\")"
 ---
 Input:
@@ -15,7 +15,7 @@ Result:
 
 Test.alma:5:0
 
-Expected a record literal `{ x : Int, y : Int }`or an extensible record `{ a | x : Int, y : Int }`, but instead found: `[End of file]`
+Expected a record literal `{ x : Int, y : Int }` or an extensible record `{ a | x : Int, y : Int }`, but instead found: `[End of file]`
 
   3│  module Test
   4│  

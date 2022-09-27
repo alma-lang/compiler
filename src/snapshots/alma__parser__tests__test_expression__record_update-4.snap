@@ -1,0 +1,18 @@
+---
+source: src/parser.rs
+assertion_line: 3040
+expression: "parse(\"{ r | x }\")"
+---
+Input:
+
+{ r | x }
+
+Result:
+
+{ 0:9
+    record:
+        Identifier r 2:3 2:3
+    |
+        x 6:7 :
+            Identifier x 6:7 6:7
+}

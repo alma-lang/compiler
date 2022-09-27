@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2543
+assertion_line: 3001
 expression: "parse(\"{ Sneaky : 5 }\")"
 ---
 Input:
@@ -11,7 +11,7 @@ Result:
 
 Test.alma:1:9
 
-Expected a record literal `{ x = 1, y = 2 }`or a record update `{ record | x = 5, y = 4 }`, but instead found: `:`
+Expected a record literal `{ x: 1, y: 2 }` or a record update `{ record | x: 5, y: 4 }`, but instead found: `:`
 
   1│  { Sneaky : 5 }
    │           ↑
