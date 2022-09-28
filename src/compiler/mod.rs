@@ -287,30 +287,33 @@ type Pair a b = Pair a b
 main =
     let
         Id id = Id 1
-        test = when Id 5 is
+        _ = when Id 5 is
             Id id -> id
-        test = when "test" is
+        _ = when "test" is
             "banana" -> id
             "phone" -> id
-        test = when 5 is
+        _ = when 5 is
             5 -> id
             _ -> id
-        test = when Some(Id(1)) is
+        _ = when Some(Id(1)) is
             Some (Id id) -> id
-        test = when 5 is
+        _ = when 5 is
             5 as a -> a
             1 as b | 2 as b | b -> b
             _ -> id
-        test = when Nil is
+        _ = when Nil is
             Cons a Nil |
             Cons _ (Cons a Nil) |
             Cons _ (Cons _ (Cons a Nil)) -> a
-        test = when Pair None (Some 3) is
+        _ = when Pair None (Some 3) is
             Pair (Some (Some (5 as a | 7 as a) | Some (1 as a))) (Some (3 as b | b)) ->
                 True
-        test = when 5 is
+        _ = when 5 is
             n if n > 3 ->
                 True
+        _ = when { x: 5 }, { x: { x: 5 } } is
+            { x }, { x: { x: y } } ->
+                x + y
     Some id
 
         "#])

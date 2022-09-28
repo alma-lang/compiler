@@ -533,7 +533,22 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
                 }
             }
         }
-        P::Record(_) => todo!(),
+        P::Record(fields) => {
+            code.push_str("{ ");
+            let mut first = true;
+            for (name, value) in fields {
+                if pattern_needs_bindings(value) {
+                    if !first {
+                        code.push_str(", ");
+                    }
+                    first = false;
+                    let name = name.to_string(strings);
+                    write!(code, "{name}: ").unwrap();
+                    generate_binding_destructuring(code, value, strings);
+                }
+            }
+            code.push_str(" }");
+        }
     }
 }
 
@@ -1082,7 +1097,21 @@ fn generate_pattern_matching_conditions(
                 code.push(')');
             }
         }
-        P::Record(_) => todo!(),
+        P::Record(fields) => {
+            let mut first = true;
+            for (name, value) in fields {
+                if pattern_has_pattern_matching_conditions(value) {
+                    if first {
+                        first = false;
+                    } else {
+                        code.push_str(" && ");
+                    }
+                    path.push(name.to_string(strings).to_owned());
+                    generate_pattern_matching_conditions(code, path, value, strings);
+                    path.pop();
+                }
+            }
+        }
     }
 }
 
@@ -1095,7 +1124,9 @@ fn pattern_has_pattern_matching_conditions(pattern: &Pattern) -> bool {
         P::Type { .. } => true,
         P::Named { .. } => true,
         P::Or(patterns) => patterns.iter().any(pattern_has_pattern_matching_conditions),
-        P::Record(_) => todo!(),
+        P::Record(fields) => fields
+            .iter()
+            .any(|(_, v)| pattern_has_pattern_matching_conditions(v)),
     }
 }
 
@@ -1108,7 +1139,7 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
         P::Type { params, .. } => params.iter().any(pattern_needs_bindings),
         P::Named { .. } => true,
         P::Or(patterns) => patterns.iter().any(pattern_needs_bindings),
-        P::Record(_) => todo!(),
+        P::Record(fields) => fields.iter().any(|(_, v)| pattern_needs_bindings(v)),
     }
 }
 
