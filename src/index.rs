@@ -1,6 +1,7 @@
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Index<I> {
     _phantom_type: PhantomData<I>,
     value: usize,
@@ -60,5 +61,10 @@ impl<I> ::core::ops::AddAssign for Index<I> {
 impl<I> ::core::ops::SubAssign for Index<I> {
     fn sub_assign(&mut self, rhs: Index<I>) {
         self.value.sub_assign(rhs.value);
+    }
+}
+impl<I> Hash for Index<I> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
     }
 }
