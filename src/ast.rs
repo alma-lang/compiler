@@ -4,6 +4,7 @@ use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token;
 use crate::typ;
 use expression::*;
+use fnv::FnvHashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
 use typed_index_collections::TiVec;
@@ -172,6 +173,8 @@ pub struct Module {
     pub type_definitions: Vec<types::TypeDefinition>,
     pub expressions: Expressions,
     pub expression_types: ExpressionTypes,
+    pub compiled_pattern_matching_expressions:
+        FnvHashMap<expression::Index, pattern_matching::CompiledPatternMatch>,
 }
 
 impl Module {
@@ -1395,6 +1398,394 @@ pub mod expression {
                 Identifier(i) => i.to_test_string(ctx),
                 CapitalizedIdentifier(i) => i.to_test_string(ctx),
             }
+        }
+    }
+}
+
+pub mod pattern_matching {
+    use super::expression::{self, IdentifierName, Pattern, PatternData};
+    use crate::typ::{self, Type, Types};
+    use fnv::FnvHashMap;
+
+    #[derive(Debug)]
+    pub struct CompiledPatternMatch {
+        pub tree: Decision,
+        pub diagnostics: Diagnostics,
+    }
+
+    #[derive(Debug)]
+    pub enum Decision {
+        Success(Body),
+        Failure,
+        Guard(expression::Index, Body, Box<Decision>),
+        Switch(
+            PatternVariable,
+            Vec<DecisionSwitchCase>,
+            Option<Box<Decision>>,
+        ),
+    }
+
+    #[derive(Debug)]
+    pub struct DecisionSwitchCase {
+        pattern: Pattern,
+        arguments: Vec<PatternVariable>,
+        body: Decision,
+    }
+
+    impl DecisionSwitchCase {
+        fn new(pattern: Pattern, arguments: Vec<PatternVariable>, body: Decision) -> Self {
+            Self {
+                pattern,
+                arguments,
+                body,
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct Diagnostics {
+        incomplete_pattern_match: bool,
+        reachable_branches: Vec<expression::Index>,
+    }
+
+    #[derive(PartialEq, Hash, Eq, Debug, Clone)]
+    pub struct PatternVariable {
+        id: usize,
+        type_id: typ::Index,
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct Body {
+        bindings: Vec<(IdentifierName, PatternVariable)>,
+        expression: expression::Index,
+    }
+
+    #[derive(Clone)]
+    pub struct Row {
+        columns: Vec<Column>,
+        guard: Option<expression::Index>,
+        body: Body,
+    }
+
+    impl Row {
+        fn new(columns: Vec<Column>, guard: Option<expression::Index>, body: Body) -> Self {
+            Self {
+                columns,
+                guard,
+                body,
+            }
+        }
+
+        fn remove_column(&mut self, variable: &PatternVariable) -> Option<Column> {
+            self.columns
+                .iter()
+                .position(|c| &c.variable == variable)
+                .map(|idx| self.columns.remove(idx))
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct Column {
+        variable: PatternVariable,
+        pattern: Pattern,
+    }
+
+    impl Column {
+        fn new(variable: PatternVariable, pattern: Pattern) -> Self {
+            Self { variable, pattern }
+        }
+    }
+
+    pub struct Compiler<'a> {
+        variable_id: usize,
+        types: &'a Types,
+        diagnostics: Diagnostics,
+    }
+
+    impl<'a> Compiler<'a> {
+        pub fn new(types: &'a Types) -> Self {
+            Self {
+                variable_id: 0,
+                types,
+                diagnostics: Diagnostics {
+                    incomplete_pattern_match: false,
+                    reachable_branches: Vec::new(),
+                },
+            }
+        }
+
+        pub fn compile(
+            mut self,
+            types: Vec<typ::Index>,
+            branches: Vec<(Vec<Pattern>, Body)>,
+        ) -> CompiledPatternMatch {
+            let mut rows = Vec::new();
+            for (patterns, body) in branches {
+                let columns = vec![];
+                for (typ, pattern) in types.iter().zip(patterns) {
+                    let var = self.new_variable(*typ);
+                    columns.push(Column::new(var, pattern));
+                }
+                rows.push(Row::new(columns, None, body));
+            }
+
+            CompiledPatternMatch {
+                tree: self.compile_rows(rows),
+                diagnostics: self.diagnostics,
+            }
+        }
+
+        fn compile_rows(&mut self, rows: Vec<Row>) -> Decision {
+            if rows.is_empty() {
+                self.diagnostics.incomplete_pattern_match = true;
+
+                return Decision::Failure;
+            }
+
+            let mut rows = rows
+                .into_iter()
+                .map(|row| self.move_variable_patterns(row))
+                .collect::<Vec<_>>();
+
+            // There may be multiple rows, but if the first one has no patterns
+            // those extra rows are redundant, as a row without columns/patterns
+            // always matches.
+            if rows.first().map_or(false, |c| c.columns.is_empty()) {
+                let row = rows.remove(0);
+
+                self.diagnostics
+                    .reachable_branches
+                    .push(row.body.expression);
+
+                return if let Some(guard) = row.guard {
+                    Decision::Guard(guard, row.body, Box::new(self.compile_rows(rows)))
+                } else {
+                    Decision::Success(row.body)
+                };
+            }
+
+            let branch_var = self.branch_variable(&rows[0], &rows);
+
+            match self.variable_type(branch_var) {
+                Type::Named {
+                    module,
+                    name,
+                    params,
+                } => {
+                    let cases = todo!("Get constructors")
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, constructor)| {
+                            (
+                                todo!("Get all constructors"),
+                                todo!("Get params of constructor"), /* self.new_variables(args) */
+                                Vec::new(),
+                            )
+                        })
+                        .collect();
+
+                    Decision::Switch(
+                        branch_var,
+                        self.compile_constructor_cases(rows, branch_var, cases),
+                        None,
+                    )
+                }
+            }
+        }
+
+        /// Compiles the cases and fallback cases for integer and range patterns.
+        ///
+        /// Integers have an infinite number of constructors, so we specialise the
+        /// compilation of integer and range patterns.
+        fn compile_int_cases(
+            &mut self,
+            rows: Vec<Row>,
+            branch_var: PatternVariable,
+        ) -> (Vec<DecisionSwitchCase>, Box<Decision>) {
+            let mut raw_cases: Vec<(Constructor, Vec<PatternVariable>, Vec<Row>)> = Vec::new();
+            let mut fallback_rows = Vec::new();
+            let mut tested: FnvHashMap<(i64, i64), usize> = FnvHashMap::default();
+
+            for mut row in rows {
+                if let Some(col) = row.remove_column(&branch_var) {
+                    for (pat, row) in flatten_or(col.pattern, row) {
+                        let (key, cons) = match pat {
+                            Pattern::Int(val) => ((val, val), Constructor::Int(val)),
+                            Pattern::Range(start, stop) => {
+                                ((start, stop), Constructor::Range(start, stop))
+                            }
+                            _ => unreachable!(),
+                        };
+
+                        if let Some(index) = tested.get(&key) {
+                            raw_cases[*index].2.push(row);
+                            continue;
+                        }
+
+                        tested.insert(key, raw_cases.len());
+                        raw_cases.push((cons, Vec::new(), vec![row]));
+                    }
+                } else {
+                    fallback_rows.push(row);
+                }
+            }
+
+            for (_, _, rows) in &mut raw_cases {
+                rows.append(&mut fallback_rows.clone());
+            }
+
+            let cases = raw_cases
+                .into_iter()
+                .map(|(cons, vars, rows)| {
+                    DecisionSwitchCase::new(cons, vars, self.compile_rows(rows))
+                })
+                .collect();
+
+            (cases, Box::new(self.compile_rows(fallback_rows)))
+        }
+
+        /// Compiles the cases and sub cases for the constructor located at the
+        /// column of the branching variable.
+        ///
+        /// What exactly this method does may be a bit hard to understand from the
+        /// code, as there's simply quite a bit going on. Roughly speaking, it does
+        /// the following:
+        ///
+        /// 1. It takes the column we're branching on (based on the branching
+        ///    variable) and removes it from every row.
+        /// 2. We add additional columns to this row, if the constructor takes any
+        ///    arguments (which we'll handle in a nested match).
+        /// 3. We turn the resulting list of rows into a list of cases, then compile
+        ///    those into decision (sub) trees.
+        ///
+        /// If a row didn't include the branching variable, we simply copy that row
+        /// into the list of rows for every constructor to test.
+        ///
+        /// For this to work, the `cases` variable must be prepared such that it has
+        /// a triple for every constructor we need to handle. For an ADT with 10
+        /// constructors, that means 10 triples. This is needed so this method can
+        /// assign the correct sub matches to these constructors.
+        ///
+        /// Types with infinite constructors (e.g. int and string) are handled
+        /// separately; they don't need most of this work anyway.
+        fn compile_constructor_cases(
+            &mut self,
+            rows: Vec<Row>,
+            branch_var: PatternVariable,
+            mut cases: Vec<(Constructor, Vec<PatternVariable>, Vec<Row>)>,
+        ) -> Vec<DecisionSwitchCase> {
+            for mut row in rows {
+                if let Some(col) = row.remove_column(&branch_var) {
+                    for (pat, row) in flatten_or(col.pattern, row) {
+                        if let Pattern::Constructor(cons, args) = pat {
+                            let idx = cons.index();
+                            let mut cols = row.columns;
+
+                            for (var, pat) in cases[idx].1.iter().zip(args.into_iter()) {
+                                cols.push(Column::new(*var, pat));
+                            }
+
+                            cases[idx].2.push(Row::new(cols, row.guard, row.body));
+                        }
+                    }
+                } else {
+                    for (_, _, rows) in &mut cases {
+                        rows.push(row.clone());
+                    }
+                }
+            }
+
+            cases
+                .into_iter()
+                .map(|(cons, vars, rows)| {
+                    DecisionSwitchCase::new(cons, vars, self.compile_rows(rows))
+                })
+                .collect()
+        }
+
+        /// Moves variable-only patterns/tests into the right-hand side/body of a
+        /// case.
+        ///
+        /// This turns cases like this:
+        ///
+        ///     case foo -> print(foo)
+        ///
+        /// Into this:
+        ///
+        ///     case -> {
+        ///       let foo = it
+        ///       print(foo)
+        ///     }
+        ///
+        /// Where `it` is a variable holding the value `case foo` is compared
+        /// against, and the case/row has no patterns (i.e. always matches).
+        fn move_variable_patterns(&self, row: Row) -> Row {
+            let mut bindings = row.body.bindings;
+
+            for col in &row.columns {
+                if let PatternData::Named { name, .. } | PatternData::Identifier(name) =
+                    &col.pattern.data
+                {
+                    bindings.push((name.name, col.variable));
+                }
+            }
+
+            let columns = row
+                .columns
+                .into_iter()
+                .filter(|col| !matches!(col.pattern.data, PatternData::Identifier(_)))
+                .collect();
+
+            Row {
+                columns,
+                guard: row.guard,
+                body: Body {
+                    bindings,
+                    expression: row.body.expression,
+                },
+            }
+        }
+
+        fn branch_variable(&self, row: &Row, rows: &[Row]) -> PatternVariable {
+            let mut counts = FnvHashMap::default();
+
+            for row in rows {
+                for col in &row.columns {
+                    *counts.entry(&col.variable).or_insert(0_usize) += 1
+                }
+            }
+
+            row.columns
+                .iter()
+                .map(|col| col.variable)
+                .max_by_key(|var| counts[var])
+                .unwrap()
+        }
+
+        fn new_variable(&mut self, type_id: typ::Index) -> PatternVariable {
+            let var = PatternVariable {
+                id: self.variable_id,
+                type_id,
+            };
+
+            self.variable_id += 1;
+            var
+        }
+
+        fn new_variables(&mut self, type_ids: &[typ::Index]) -> Vec<PatternVariable> {
+            type_ids.iter().map(|t| self.new_variable(*t)).collect()
+        }
+
+        fn variable_type(&self, id: PatternVariable) -> &Type {
+            &self.types[id.type_id]
+        }
+    }
+
+    fn flatten_or(pattern: Pattern, row: Row) -> Vec<(Pattern, Row)> {
+        if let PatternData::Or(args) = pattern.data {
+            args.into_iter().map(|p| (p, row.clone())).collect()
+        } else {
+            vec![(pattern, row)]
         }
     }
 }
