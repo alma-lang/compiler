@@ -701,7 +701,7 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> 
     }
 }
 
-fn find(typ: typ::Index, types: &Types) -> typ::Index {
+pub fn find(typ: typ::Index, types: &Types) -> typ::Index {
     match &types[typ] {
         Var(var) => match var {
             Bound(t) => find(*t, types),

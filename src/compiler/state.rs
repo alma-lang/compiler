@@ -12,7 +12,7 @@ type HashMap<K, V> = FnvHashMap<K, V>;
 
 #[derive(Debug, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct ModuleIndex(usize);
-type Modules<T> = TiVec<ModuleIndex, T>;
+pub type Modules<T> = TiVec<ModuleIndex, T>;
 
 #[derive(Debug)]
 pub struct State {

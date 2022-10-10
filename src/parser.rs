@@ -21,6 +21,7 @@ use crate::token::{
     self, Token, Tokens,
     Type::{self as TT, *},
 };
+use fnv::FnvHashMap;
 use typed_index_collections::TiSlice;
 
 /* Grammar draft (●○):
@@ -760,6 +761,7 @@ impl<'a> State<'a> {
                 type_definitions,
                 expressions,
                 expression_types,
+                compiled_pattern_matching_expressions: FnvHashMap::default(),
             };
 
             modules.push(module);

@@ -1404,13 +1404,171 @@ pub mod expression {
 
 pub mod pattern_matching {
     use super::expression::{self, IdentifierName, Pattern, PatternData};
-    use crate::typ::{self, Type, Types};
-    use fnv::FnvHashMap;
+    use crate::{
+        compiler,
+        strings::Strings,
+        typ::{self, Type, Types},
+    };
+    use fnv::{FnvHashMap, FnvHashSet};
 
     #[derive(Debug)]
     pub struct CompiledPatternMatch {
         pub tree: Decision,
         pub diagnostics: Diagnostics,
+    }
+
+    impl CompiledPatternMatch {
+        /// Returns a list of patterns not covered by the match expression.
+        pub fn missing_patterns(&self, compiler: &compiler::State) -> Vec<String> {
+            let mut names = FnvHashSet::default();
+            let mut steps = Vec::new();
+
+            self.add_missing_patterns(&self.tree, &mut steps, &mut names, compiler);
+
+            let mut missing: Vec<String> = names.into_iter().collect();
+
+            // Sorting isn't necessary, but it makes it a bit easier to write tests.
+            missing.sort();
+            missing
+        }
+
+        fn add_missing_patterns(
+            &self,
+            node: &Decision,
+            missing_patterns: &mut Vec<MissingPattern>,
+            missing: &mut FnvHashSet<String>,
+            compiler: &compiler::State,
+        ) {
+            match node {
+                Decision::Success(_) => {}
+                Decision::Failure => {
+                    let mut mapping = FnvHashMap::default();
+
+                    // At this point the missing_patterns stack looks something like this:
+                    // `[missing_pattern, missing_pattern + arguments, missing_pattern, ...]`. To construct a pattern
+                    // name from this stack, we first map all variables to their
+                    // missing_pattern indexes. This is needed because when a missing_pattern defines
+                    // arguments, the missing_patterns for those arguments don't necessarily
+                    // appear in order in the missing_pattern stack.
+                    //
+                    // This mapping is then used when (recursively) generating a
+                    // pattern name.
+                    //
+                    // This approach could probably be done more efficiently, so if
+                    // you're reading this and happen to know of a way, please
+                    // submit a merge request :)
+                    for (index, step) in missing_patterns.iter().enumerate() {
+                        mapping.insert(&step.variable, index);
+                    }
+
+                    let name = missing_patterns
+                        .first()
+                        .map(|missing_pattern| {
+                            missing_pattern.pattern_name(
+                                missing_patterns,
+                                &mapping,
+                                &compiler.strings,
+                            )
+                        })
+                        .unwrap_or_else(|| "_".to_string());
+
+                    missing.insert(name);
+                }
+                Decision::Guard(_, _, fallback) => {
+                    self.add_missing_patterns(&*fallback, missing_patterns, missing, compiler);
+                }
+                Decision::Switch(var, cases, fallback) => {
+                    for case in cases {
+                        match &case.condition {
+                            // Constructor::True => {
+                            //     let name = "true".to_string();
+
+                            //     missing_patterns.push(MissingPattern::new(*var, name, Vec::new()));
+                            // }
+                            // Constructor::False => {
+                            //     let name = "false".to_string();
+
+                            //     missing_patterns.push(MissingPattern::new(*var, name, Vec::new()));
+                            // }
+                            // Constructor::Int(_) | Constructor::Range(_, _) => {
+                            //     let name = "_".to_string();
+
+                            //     missing_patterns.push(MissingPattern::new(*var, name, Vec::new()));
+                            // }
+                            // Constructor::Pair(_, _) => {
+                            //     let args = case.arguments.clone();
+
+                            //     missing_patterns.push(MissingPattern::new(
+                            //         *var,
+                            //         String::new(),
+                            //         args,
+                            //     ));
+                            // }
+                            DecisionCaseCondition::Constructor(name, _idx) => {
+                                let args = case.arguments.clone();
+                                missing_patterns.push(MissingPattern::new(*var, *name, args));
+                            }
+                        }
+
+                        self.add_missing_patterns(&case.body, missing_patterns, missing, compiler);
+                        missing_patterns.pop();
+                    }
+
+                    if let Some(node) = fallback {
+                        self.add_missing_patterns(&*node, missing_patterns, missing, compiler);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Information about a single constructor/value (aka missing_pattern) being tested, used
+    /// to build a list of names of missing patterns.
+    #[derive(Debug)]
+    struct MissingPattern {
+        variable: PatternVariable,
+        name: IdentifierName,
+        arguments: Vec<PatternVariable>,
+    }
+
+    impl MissingPattern {
+        fn new(
+            variable: PatternVariable,
+            name: IdentifierName,
+            arguments: Vec<PatternVariable>,
+        ) -> Self {
+            Self {
+                variable,
+                name,
+                arguments,
+            }
+        }
+
+        fn pattern_name(
+            &self,
+            terms: &[MissingPattern],
+            mapping: &FnvHashMap<&PatternVariable, usize>,
+            strings: &Strings,
+        ) -> String {
+            let name = strings.resolve(self.name);
+            if self.arguments.is_empty() {
+                name.to_owned()
+            } else {
+                let args = self
+                    .arguments
+                    .iter()
+                    .map(|arg| {
+                        mapping
+                            .get(arg)
+                            .map(|&idx| terms[idx].pattern_name(terms, mapping, strings))
+                            .unwrap_or_else(|| "_".to_string())
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                format!("{}({})", name, args)
+            }
+        }
     }
 
     #[derive(Debug)]
@@ -1427,19 +1585,28 @@ pub mod pattern_matching {
 
     #[derive(Debug)]
     pub struct DecisionSwitchCase {
-        pattern: Pattern,
+        condition: DecisionCaseCondition,
         arguments: Vec<PatternVariable>,
         body: Decision,
     }
 
     impl DecisionSwitchCase {
-        fn new(pattern: Pattern, arguments: Vec<PatternVariable>, body: Decision) -> Self {
+        fn new(
+            condition: DecisionCaseCondition,
+            arguments: Vec<PatternVariable>,
+            body: Decision,
+        ) -> Self {
             Self {
-                pattern,
+                condition,
                 arguments,
                 body,
             }
         }
+    }
+
+    #[derive(Debug)]
+    pub enum DecisionCaseCondition {
+        Constructor(IdentifierName, usize),
     }
 
     #[derive(Debug)]
@@ -1448,7 +1615,7 @@ pub mod pattern_matching {
         reachable_branches: Vec<expression::Index>,
     }
 
-    #[derive(PartialEq, Hash, Eq, Debug, Clone)]
+    #[derive(PartialEq, Hash, Eq, Debug, Copy, Clone)]
     pub struct PatternVariable {
         id: usize,
         type_id: typ::Index,
@@ -1499,14 +1666,16 @@ pub mod pattern_matching {
     pub struct Compiler<'a> {
         variable_id: usize,
         types: &'a Types,
+        compiler_state: &'a compiler::State,
         diagnostics: Diagnostics,
     }
 
     impl<'a> Compiler<'a> {
-        pub fn new(types: &'a Types) -> Self {
+        pub fn new(types: &'a Types, compiler_state: &'a compiler::State) -> Self {
             Self {
                 variable_id: 0,
                 types,
+                compiler_state,
                 diagnostics: Diagnostics {
                     incomplete_pattern_match: false,
                     reachable_branches: Vec::new(),
@@ -1521,7 +1690,7 @@ pub mod pattern_matching {
         ) -> CompiledPatternMatch {
             let mut rows = Vec::new();
             for (patterns, body) in branches {
-                let columns = vec![];
+                let mut columns = vec![];
                 for (typ, pattern) in types.iter().zip(patterns) {
                     let var = self.new_variable(*typ);
                     columns.push(Column::new(var, pattern));
@@ -1557,28 +1726,40 @@ pub mod pattern_matching {
                     .reachable_branches
                     .push(row.body.expression);
 
-                return if let Some(guard) = row.guard {
-                    Decision::Guard(guard, row.body, Box::new(self.compile_rows(rows)))
-                } else {
-                    Decision::Success(row.body)
-                };
+                return self.get_success_or_guard(row, rows);
             }
 
             let branch_var = self.branch_variable(&rows[0], &rows);
 
             match self.variable_type(branch_var) {
-                Type::Named {
-                    module,
-                    name,
-                    params,
-                } => {
-                    let cases = todo!("Get constructors")
+                Type::Named { module, name, .. } => {
+                    let cases = self
+                        .compiler_state
+                        .module_interfaces
+                        .get(
+                            *self
+                                .compiler_state
+                                .module_name_to_module_idx
+                                .get(module)
+                                .unwrap(),
+                        )
+                        .unwrap()
+                        .as_ref()
+                        .unwrap()
+                        .type_constructors
+                        .get(name)
+                        .unwrap()
+                        .map()
                         .iter()
                         .enumerate()
-                        .map(|(idx, constructor)| {
+                        .map(|(_idx, (name, poly_type))| {
                             (
-                                todo!("Get all constructors"),
-                                todo!("Get params of constructor"), /* self.new_variables(args) */
+                                *name,
+                                match &self.types[poly_type.typ] {
+                                    Type::Fn { params, .. } => Some(self.new_variables(params)),
+                                    Type::Named { .. } => None,
+                                    _ => panic!("Expected a constructor type to be a function"),
+                                },
                                 Vec::new(),
                             )
                         })
@@ -1590,9 +1771,24 @@ pub mod pattern_matching {
                         None,
                     )
                 }
+                Type::Var(_) => todo!(),
+                // Can get here with named patterns and identifier patterns
+                Type::Fn { params: _, ret: _ } => todo!(),
+                Type::Record { fields: _ } => todo!(),
+                Type::RecordExt {
+                    fields: _,
+                    base_record: _,
+                } => todo!(),
+                Type::Alias {
+                    module: _,
+                    name: _,
+                    params: _,
+                    destination: _,
+                } => todo!(),
             }
         }
 
+        /*
         /// Compiles the cases and fallback cases for integer and range patterns.
         ///
         /// Integers have an infinite number of constructors, so we specialise the
@@ -1643,6 +1839,7 @@ pub mod pattern_matching {
 
             (cases, Box::new(self.compile_rows(fallback_rows)))
         }
+        */
 
         /// Compiles the cases and sub cases for the constructor located at the
         /// column of the branching variable.
@@ -1672,17 +1869,27 @@ pub mod pattern_matching {
             &mut self,
             rows: Vec<Row>,
             branch_var: PatternVariable,
-            mut cases: Vec<(Constructor, Vec<PatternVariable>, Vec<Row>)>,
+            mut cases: Vec<(IdentifierName, Option<Vec<PatternVariable>>, Vec<Row>)>,
         ) -> Vec<DecisionSwitchCase> {
             for mut row in rows {
                 if let Some(col) = row.remove_column(&branch_var) {
                     for (pat, row) in flatten_or(col.pattern, row) {
-                        if let Pattern::Constructor(cons, args) = pat {
-                            let idx = cons.index();
+                        if let PatternData::Type {
+                            constructor,
+                            params,
+                            ..
+                        } = &pat.data
+                        {
+                            let idx = cases
+                                .iter()
+                                .position(|(c, _, _)| *c == constructor.name)
+                                .unwrap();
                             let mut cols = row.columns;
 
-                            for (var, pat) in cases[idx].1.iter().zip(args.into_iter()) {
-                                cols.push(Column::new(*var, pat));
+                            if let Some(type_params) = &cases[idx].1 {
+                                for (var, pat) in type_params.iter().zip(params.iter()) {
+                                    cols.push(Column::new(*var, pat.clone()));
+                                }
                             }
 
                             cases[idx].2.push(Row::new(cols, row.guard, row.body));
@@ -1697,10 +1904,23 @@ pub mod pattern_matching {
 
             cases
                 .into_iter()
-                .map(|(cons, vars, rows)| {
-                    DecisionSwitchCase::new(cons, vars, self.compile_rows(rows))
+                .enumerate()
+                .map(|(idx, (constructor, vars, rows))| {
+                    DecisionSwitchCase::new(
+                        DecisionCaseCondition::Constructor(constructor, idx),
+                        vars.unwrap_or(Vec::new()),
+                        self.compile_rows(rows),
+                    )
                 })
                 .collect()
+        }
+
+        fn get_success_or_guard(&mut self, row: Row, rows: Vec<Row>) -> Decision {
+            return if let Some(guard) = row.guard {
+                Decision::Guard(guard, row.body, Box::new(self.compile_rows(rows)))
+            } else {
+                Decision::Success(row.body)
+            };
         }
 
         /// Moves variable-only patterns/tests into the right-hand side/body of a
