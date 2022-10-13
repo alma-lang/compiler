@@ -1,6 +1,6 @@
 ---
 source: src/parser.rs
-assertion_line: 2467
+assertion_line: 3079
 expression: "parse(\"\\\nlet\n  x = a\n  x\nin\nx\")"
 ---
 Input:
@@ -29,9 +29,14 @@ Error {
             name: SymbolU32 {
                 value: 1,
             },
-            span: Index(
-                3,
-            ),
+            span: Span {
+                start: Index(
+                    4,
+                ),
+                end: Index(
+                    4,
+                ),
+            },
         },
     },
     token: Token {

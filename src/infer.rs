@@ -1,11 +1,11 @@
 use crate::ast::{
     self,
     expression::{
-        self, AnyIdentifier, CapitalizedIdentifier, Expression, ExpressionData as E,
-        ExpressionTypes, Expressions, Identifier, IdentifierName, Lambda, Pattern,
+        self, AnyIdentifier, CapitalizedIdentifier, Expression as E, ExpressionSpans,
+        ExpressionTypes, ExpressionValues, Identifier, IdentifierName, Lambda, Pattern,
         PatternData as P, UnaryData as U,
     },
-    span::{self, Spans},
+    span::Span,
     Definition, Import, ModuleName, TypeSignature, TypedDefinition,
 };
 use crate::compiler;
@@ -26,42 +26,43 @@ use std::rc::Rc;
  * Resources:
  *   - https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system#Algorithm_J
  *   - http://okmij.org/ftp/ML/generalization.html
+ *   - https://github.com/jfecher/algorithm-j
  */
 
 #[derive(Debug)]
 pub enum Error {
     UndefinedIdentifier {
         identifier: IdentifierName,
-        location: span::Index,
+        location: Span,
     },
     DuplicateField {
         field: Identifier,
-        expr: Expression,
+        expr: expression::Index,
     },
     TypeMismatch {
-        actual_type_location: span::Index,
+        actual_type_location: Span,
         actual_type: typ::Index,
-        expected_type_location: Option<span::Index>,
+        expected_type_location: Option<Span>,
         expected_type: typ::Index,
     },
     WrongArity {
-        location: span::Index,
+        location: Span,
         num_params_applied: usize,
         num_params: usize,
         typ: typ::Index,
     },
     SignatureMismatch {
-        signature_type_location: span::Index,
+        signature_type_location: Span,
         signature_type: typ::Index,
         inferred_type: typ::Index,
     },
     SignatureTooGeneral {
-        signature_type_location: span::Index,
+        signature_type_location: Span,
         signature_type: typ::Index,
         inferred_type: typ::Index,
     },
     InfiniteType {
-        location: span::Index,
+        location: Span,
         typ: typ::Index,
     },
     UndefinedExport(Identifier),
@@ -79,9 +80,9 @@ pub enum Error {
     UnknownTypeVar(Identifier),
     PatternsIntroduceDifferentBindings {
         names1: FnvHashSet<IdentifierName>,
-        span1: span::Index,
+        span1: Span,
         names2: FnvHashSet<IdentifierName>,
-        span2: span::Index,
+        span2: Span,
     },
 }
 
@@ -91,40 +92,40 @@ impl Error {
         source: &Source,
         strings: &Strings,
         tokens: &Tokens,
-        spans: &Spans,
         types: &Types,
+        expression_spans: &ExpressionSpans,
     ) -> String {
         use Error::*;
 
         let mut s = String::new();
 
         let (position, line_number, column, end) = {
-            let location = &spans[match self {
-                UndefinedIdentifier { location, .. } => *location,
-                DuplicateField { field, .. } => field.span,
+            let location = match self {
+                UndefinedIdentifier { location, .. } => location,
+                DuplicateField { field, .. } => &field.span,
                 TypeMismatch {
                     actual_type_location,
                     ..
-                } => *actual_type_location,
-                WrongArity { location, .. } => *location,
+                } => actual_type_location,
+                WrongArity { location, .. } => location,
                 SignatureMismatch {
                     signature_type_location,
                     ..
-                } => *signature_type_location,
+                } => signature_type_location,
                 SignatureTooGeneral {
                     signature_type_location,
                     ..
-                } => *signature_type_location,
-                InfiniteType { location, .. } => *location,
-                UndefinedExport(export) => export.span,
-                UndefinedExportConstructor(constructor) => constructor.span,
-                UnknownImport(import) => import.span,
-                UnknownImportDefinition { export, .. } => export.span,
-                UnknownImportConstructor { constructor, .. } => constructor.span,
-                UnknownType(name) => name.span,
-                UnknownTypeVar(var) => var.span,
-                PatternsIntroduceDifferentBindings { span1, .. } => *span1,
-            }];
+                } => signature_type_location,
+                InfiniteType { location, .. } => location,
+                UndefinedExport(export) => &export.span,
+                UndefinedExportConstructor(constructor) => &constructor.span,
+                UnknownImport(import) => &import.span,
+                UnknownImportDefinition { export, .. } => &export.span,
+                UnknownImportConstructor { constructor, .. } => &constructor.span,
+                UnknownType(name) => &name.span,
+                UnknownTypeVar(var) => &var.span,
+                PatternsIntroduceDifferentBindings { span1, .. } => span1,
+            };
             let start_token = tokens[location.start];
             let end_token = tokens[location.end];
             (
@@ -153,8 +154,8 @@ impl Error {
             }
 
             DuplicateField { field, expr } => {
-                let expr_token = tokens[spans[expr.span].start];
-                let expr_end_token = tokens[spans[expr.span].end];
+                let expr_token = tokens[expression_spans[*expr].start];
+                let expr_end_token = tokens[expression_spans[*expr].end];
                 let record_code = source
                     .lines_report_at_position(
                         expr_token.start,
@@ -215,8 +216,8 @@ but seems to be
                 expected_type,
                 ..
             } => {
-                let node_token = tokens[spans[*expected_type_location].start];
-                let node_end_token = tokens[spans[*expected_type_location].end];
+                let node_token = tokens[expected_type_location.start];
+                let node_end_token = tokens[expected_type_location.end];
                 let code2 = source
                     .lines_report_at_position_with_pointer(
                         node_token.start,
@@ -378,8 +379,8 @@ Change the signature to be more specific or try to make your code more generic."
                 span2,
                 ..
             } => {
-                let node_token = tokens[spans[*span2].start];
-                let node_end_token = tokens[spans[*span2].end];
+                let node_token = tokens[span2.start];
+                let node_end_token = tokens[span2.end];
                 let code2 = source
                     .lines_report_at_position_with_pointer(
                         node_token.start,
@@ -755,13 +756,13 @@ fn flatten_record(typ: typ::Index, types: &mut Types) -> Option<typ::Index> {
 
 fn unify(
     state: &mut State,
-    ast: span::Index,
+    span: Span,
     typ: typ::Index,
-    ast2: Option<span::Index>,
+    span2: Option<Span>,
     typ2: typ::Index,
     types: &mut Types,
 ) -> Result<(), Error> {
-    unify_rec(state, typ, typ2, ast, typ, ast2, typ2, types)
+    unify_rec(state, typ, typ2, span, typ, span2, typ2, types)
 }
 
 fn unify_var(
@@ -769,7 +770,7 @@ fn unify_var(
     id: TypeVarId,
     level: Level,
     other_type: typ::Index,
-    span: span::Index,
+    span: Span,
     types: &mut Types,
 ) -> Result<(), Error> {
     if t == other_type {
@@ -790,9 +791,9 @@ fn unify_rec(
     state: &mut State,
     t1: typ::Index,
     t2: typ::Index,
-    ast: span::Index,
+    span: Span,
     typ: typ::Index,
-    ast2: Option<span::Index>,
+    span2: Option<Span>,
     typ2: typ::Index,
     types: &mut Types,
 ) -> Result<(), Error> {
@@ -814,25 +815,25 @@ fn unify_rec(
             // error messages around the whole function.
             if module != module2 || name != name2 || params.len() != params2.len() {
                 Err(Error::TypeMismatch {
-                    actual_type_location: ast,
+                    actual_type_location: span,
                     actual_type: typ,
-                    expected_type_location: ast2,
+                    expected_type_location: span2,
                     expected_type: typ2,
                 })
             } else {
                 for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
-                    unify_rec(state, *p1, *p2, ast, typ, ast2, typ2, types)?;
+                    unify_rec(state, *p1, *p2, span, typ, span2, typ2, types)?;
                 }
                 Ok(())
             }
         }
 
         // The 'find' in the union-find algorithm
-        (Var(Bound(dest)), _) => unify_rec(state, *dest, t2, ast, typ, ast2, typ2, types),
-        (_, Var(Bound(dest))) => unify_rec(state, t1, *dest, ast, typ, ast2, typ2, types),
+        (Var(Bound(dest)), _) => unify_rec(state, *dest, t2, span, typ, span2, typ2, types),
+        (_, Var(Bound(dest))) => unify_rec(state, t1, *dest, span, typ, span2, typ2, types),
 
-        (Var(Unbound(id, level)), _) => unify_var(t1, *id, *level, t2, ast, types),
-        (_, Var(Unbound(id, level))) => unify_var(t2, *id, *level, t1, ast, types),
+        (Var(Unbound(id, level)), _) => unify_var(t1, *id, *level, t2, span, types),
+        (_, Var(Unbound(id, level))) => unify_var(t2, *id, *level, t1, span, types),
 
         (
             Fn { params, ret },
@@ -843,18 +844,18 @@ fn unify_rec(
         ) => {
             if params.len() != params2.len() {
                 Err(Error::TypeMismatch {
-                    actual_type_location: ast,
+                    actual_type_location: span,
                     actual_type: typ,
-                    expected_type_location: ast2,
+                    expected_type_location: span2,
                     expected_type: typ2,
                 })
             } else {
                 let ret = *ret;
                 let ret2 = *ret2;
                 for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
-                    unify_rec(state, *p1, *p2, ast, typ, ast2, typ2, types)?;
+                    unify_rec(state, *p1, *p2, span, typ, span2, typ2, types)?;
                 }
-                unify_rec(state, ret, ret2, ast, typ, ast2, typ2, types)
+                unify_rec(state, ret, ret2, span, typ, span2, typ2, types)
             }
         }
 
@@ -871,17 +872,17 @@ fn unify_rec(
                         state,
                         *value,
                         fields2.get(key).unwrap(),
-                        ast,
+                        span,
                         typ,
-                        ast2,
+                        span2,
                         typ2,
                         types,
                     )?;
                 } else {
                     return Err(Error::TypeMismatch {
-                        actual_type_location: ast,
+                        actual_type_location: span,
                         actual_type: typ,
-                        expected_type_location: ast2,
+                        expected_type_location: span2,
                         expected_type: typ2,
                     });
                 }
@@ -892,17 +893,17 @@ fn unify_rec(
                         state,
                         *value,
                         fields1.get(key).unwrap(),
-                        ast,
+                        span,
                         typ,
-                        ast2,
+                        span2,
                         typ2,
                         types,
                     )?;
                 } else {
                     return Err(Error::TypeMismatch {
-                        actual_type_location: ast,
+                        actual_type_location: span,
                         actual_type: typ,
-                        expected_type_location: ast2,
+                        expected_type_location: span2,
                         expected_type: typ2,
                     });
                 }
@@ -937,17 +938,17 @@ fn unify_rec(
                         state,
                         *value,
                         fields.get(key).unwrap(),
-                        ast,
+                        span,
                         typ,
-                        ast2,
+                        span2,
                         typ2,
                         types,
                     )?;
                 } else {
                     return Err(Error::TypeMismatch {
-                        actual_type_location: ast,
+                        actual_type_location: span,
                         actual_type: typ,
-                        expected_type_location: ast2,
+                        expected_type_location: span2,
                         expected_type: typ2,
                     });
                 }
@@ -964,7 +965,7 @@ fn unify_rec(
             let rem_rec = types.push_and_get_key(Record {
                 fields: Rc::new(rem_fields),
             });
-            unify_rec(state, base_record, rem_rec, ast, typ, ast2, typ2, types)
+            unify_rec(state, base_record, rem_rec, span, typ, span2, typ2, types)
         }
 
         (
@@ -989,9 +990,9 @@ fn unify_rec(
                         state,
                         *value,
                         fields2.get(key).unwrap(),
-                        ast,
+                        span,
                         typ,
-                        ast2,
+                        span2,
                         typ2,
                         types,
                     )?;
@@ -1012,7 +1013,7 @@ fn unify_rec(
                     fields: Rc::new(rem_fields1),
                     base_record: var,
                 });
-                unify_rec(state, base_record2, rem_rec1, ast, typ, ast2, typ2, types)?;
+                unify_rec(state, base_record2, rem_rec1, span, typ, span2, typ2, types)?;
             }
 
             // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
@@ -1027,20 +1028,24 @@ fn unify_rec(
                     fields: Rc::new(rem_fields2),
                     base_record: var,
                 });
-                unify_rec(state, base_record1, rem_rec2, ast, typ, ast2, typ2, types)?;
+                unify_rec(state, base_record1, rem_rec2, span, typ, span2, typ2, types)?;
             }
 
             Ok(())
         }
 
-        (Alias { destination: t, .. }, _) => unify_rec(state, *t, t2, ast, typ, ast2, typ2, types),
-        (_, Alias { destination: t, .. }) => unify_rec(state, t1, *t, ast, typ, ast2, typ2, types),
+        (Alias { destination: t, .. }, _) => {
+            unify_rec(state, *t, t2, span, typ, span2, typ2, types)
+        }
+        (_, Alias { destination: t, .. }) => {
+            unify_rec(state, t1, *t, span, typ, span2, typ2, types)
+        }
 
         (Named { .. }, _) | (Fn { .. }, _) | (Record { .. }, _) | (RecordExt { .. }, _) => {
             Err(Error::TypeMismatch {
-                actual_type_location: ast,
+                actual_type_location: span,
                 actual_type: typ,
-                expected_type_location: ast2,
+                expected_type_location: span2,
                 expected_type: typ2,
             })
         }
@@ -1173,8 +1178,9 @@ pub fn infer(
 ) -> Result<(), Vec<Error>> {
     let strings = &mut compiler_state.strings;
     let module_ast = &mut compiler_state.modules[module_idx];
-    let expressions = &module_ast.expressions;
-    let expression_types = &mut module_ast.expression_types;
+    let expressions = &module_ast.expressions.values;
+    let expression_types = &mut module_ast.expressions.types;
+    let expression_spans = &module_ast.expressions.spans;
     let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = PolyTypeEnv::new();
@@ -1374,6 +1380,7 @@ pub fn infer(
         strings,
         expressions,
         expression_types,
+        expression_spans,
         types_vec,
         &mut errors,
     );
@@ -1575,18 +1582,19 @@ fn ast_record_type_to_type<'ast>(
 }
 
 fn infer_rec<'ast>(
-    expr_idx: expression::Index,
+    expression_index: expression::Index,
     state: &mut State,
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    expressions: &'ast Expressions,
+    expressions: &'ast ExpressionValues,
     expression_types: &'ast mut ExpressionTypes,
+    expression_spans: &'ast ExpressionSpans,
     types: &mut Types,
     errors: &mut Vec<Error>,
 ) -> typ::Index {
-    let ast = &expressions[expr_idx];
-    let typ = match &ast.expr {
+    let expression = &expressions[expression_index];
+    let typ = match expression {
         E::Float(_) => types_env.get(&strings.get_or_intern("Float")).unwrap().typ,
 
         E::String_(_) => types_env.get(&strings.get_or_intern("String")).unwrap().typ,
@@ -1603,13 +1611,14 @@ fn infer_rec<'ast>(
                     strings,
                     expressions,
                     expression_types,
+                    expression_spans,
                     types,
                     errors,
                 );
                 if typed_fields.map().contains_key(&name.name) {
                     errors.push(Error::DuplicateField {
                         field: name.to_owned(),
-                        expr: ast.to_owned(),
+                        expr: expression_index.to_owned(),
                     });
                 } else {
                     typed_fields.insert(name.name, t);
@@ -1632,13 +1641,14 @@ fn infer_rec<'ast>(
                     strings,
                     expressions,
                     expression_types,
+                    expression_spans,
                     types,
                     errors,
                 );
                 if typed_fields.map().contains_key(&name.name) {
                     errors.push(Error::DuplicateField {
                         field: name.to_owned(),
-                        expr: ast.to_owned(),
+                        expr: expression_index.to_owned(),
                     });
                 } else {
                     typed_fields.insert(name.name, t);
@@ -1651,24 +1661,31 @@ fn infer_rec<'ast>(
                 base_record,
             });
 
-            let expression_index = *record;
-            let record = &expressions[expression_index];
+            let record_index = *record;
 
             let record_type = infer_rec(
-                expression_index,
+                record_index,
                 state,
                 env,
                 types_env,
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
 
             // Unify the base record with the extensible record represented by this update
             add_error(
-                unify(state, record.span, record_type, None, inferred_type, types),
+                unify(
+                    state,
+                    expression_spans[record_index],
+                    record_type,
+                    None,
+                    inferred_type,
+                    types,
+                ),
                 errors,
             );
 
@@ -1676,7 +1693,7 @@ fn infer_rec<'ast>(
         }
 
         E::PropertyAccess {
-            expression: expression_index,
+            expression: lhs_index,
             property,
         } => {
             let field_type = types.push_and_get_key(state.new_type_var());
@@ -1690,22 +1707,28 @@ fn infer_rec<'ast>(
                 base_record: remaining_fields_type,
             });
 
-            let expression = &expressions[*expression_index];
-
-            let expr_type = infer_rec(
-                *expression_index,
+            let lhs_type = infer_rec(
+                *lhs_index,
                 state,
                 env,
                 types_env,
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
 
             add_error(
-                unify(state, expression.span, expr_type, None, record_type, types),
+                unify(
+                    state,
+                    expression_spans[*lhs_index],
+                    lhs_type,
+                    None,
+                    record_type,
+                    types,
+                ),
                 errors,
             );
 
@@ -1732,44 +1755,40 @@ fn infer_rec<'ast>(
 
         E::Unary {
             op,
-            expression: expression_index,
+            expression: rhs_index,
         } => {
-            let expression = &expressions[*expression_index];
-            let t = infer_rec(
-                *expression_index,
+            let rhs_type = infer_rec(
+                *rhs_index,
                 state,
                 env,
                 types_env,
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
 
             add_error(
-                match op.typ {
-                    U::Not => unify(
-                        state,
-                        expression.span,
-                        t,
-                        None,
-                        types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
-                        types,
-                    ),
-                    U::Minus => unify(
-                        state,
-                        expression.span,
-                        t,
-                        None,
-                        types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
-                        types,
-                    ),
-                },
+                unify(
+                    state,
+                    expression_spans[*rhs_index],
+                    rhs_type,
+                    None,
+                    types_env
+                        .get(&strings.get_or_intern(match op.typ {
+                            U::Not => "Bool",
+                            U::Minus => "Float",
+                        }))
+                        .unwrap()
+                        .typ,
+                    types,
+                ),
                 errors,
             );
 
-            t
+            rhs_type
         }
 
         E::Binary {
@@ -1781,13 +1800,14 @@ fn infer_rec<'ast>(
             infer_fn_call(
                 *function,
                 arguments.iter().copied(),
-                ast,
+                expression_index,
                 state,
                 env,
                 types_env,
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             )
@@ -1813,10 +1833,6 @@ fn infer_rec<'ast>(
             then: then_index,
             else_: else_index,
         } => {
-            let condition = &expressions[*condition_index];
-            let then = &expressions[*then_index];
-            let else_ = &expressions[*else_index];
-
             let t = infer_rec(
                 *condition_index,
                 state,
@@ -1825,13 +1841,14 @@ fn infer_rec<'ast>(
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
             add_error(
                 unify(
                     state,
-                    condition.span,
+                    expression_spans[*condition_index],
                     t,
                     None,
                     types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
@@ -1848,6 +1865,7 @@ fn infer_rec<'ast>(
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
@@ -1859,11 +1877,19 @@ fn infer_rec<'ast>(
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
             add_error(
-                unify(state, then.span, t1, Some(else_.span), t2, types),
+                unify(
+                    state,
+                    expression_spans[*then_index],
+                    t1,
+                    Some(expression_spans[*else_index]),
+                    t2,
+                    types,
+                ),
                 errors,
             );
 
@@ -1878,7 +1904,14 @@ fn infer_rec<'ast>(
          *     t = inst s
          */
         E::Identifier { module, identifier } => infer_identifier(
-            module, identifier, ast.span, state, env, strings, types, errors,
+            module,
+            identifier,
+            expression_spans[expression_index],
+            state,
+            env,
+            strings,
+            types,
+            errors,
         ),
 
         /* FnCall
@@ -1901,13 +1934,14 @@ fn infer_rec<'ast>(
         } => infer_fn_call(
             *function,
             arguments.iter().copied(),
-            ast,
+            expression_index,
             state,
             env,
             types_env,
             strings,
             expressions,
             expression_types,
+            expression_spans,
             types,
             errors,
         ),
@@ -1940,6 +1974,7 @@ fn infer_rec<'ast>(
             strings,
             expressions,
             expression_types,
+            expression_spans,
             types,
             errors,
         ),
@@ -1976,6 +2011,7 @@ fn infer_rec<'ast>(
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             );
@@ -1988,6 +2024,7 @@ fn infer_rec<'ast>(
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             )
@@ -2010,10 +2047,11 @@ fn infer_rec<'ast>(
                         strings,
                         expressions,
                         expression_types,
+                        expression_spans,
                         types,
                         errors,
                     );
-                    let span = Some(expressions[*expression].span);
+                    let span = Some(expression_spans[*expression]);
                     (typ, span)
                 })
                 .collect();
@@ -2040,7 +2078,6 @@ fn infer_rec<'ast>(
                 }
 
                 if let Some(condition_idx) = &branch.condition {
-                    let condition = &expressions[*condition_idx];
                     let condition_type = infer_rec(
                         *condition_idx,
                         state,
@@ -2049,13 +2086,14 @@ fn infer_rec<'ast>(
                         strings,
                         expressions,
                         expression_types,
+                        expression_spans,
                         types,
                         errors,
                     );
                     add_error(
                         unify(
                             state,
-                            condition.span,
+                            expression_spans[*condition_idx],
                             condition_type,
                             None,
                             types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
@@ -2073,6 +2111,7 @@ fn infer_rec<'ast>(
                     strings,
                     expressions,
                     expression_types,
+                    expression_spans,
                     types,
                     errors,
                 ));
@@ -2103,7 +2142,7 @@ fn infer_rec<'ast>(
         }
     };
 
-    expression_types[expr_idx] = Some(typ);
+    expression_types[expression_index] = Some(typ);
 
     typ
 }
@@ -2114,8 +2153,9 @@ fn infer_definitions<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    expressions: &'ast Expressions,
+    expressions: &'ast ExpressionValues,
     expression_types: &'ast mut ExpressionTypes,
+    expression_spans: &'ast ExpressionSpans,
     types: &mut Types,
     errors: &mut Vec<Error>,
 ) {
@@ -2132,6 +2172,7 @@ fn infer_definitions<'ast>(
                         strings,
                         expressions,
                         expression_types,
+                        expression_spans,
                         types,
                         errors,
                     );
@@ -2152,6 +2193,7 @@ fn infer_definitions<'ast>(
                         strings,
                         expressions,
                         expression_types,
+                        expression_spans,
                         types,
                         errors,
                     );
@@ -2271,7 +2313,7 @@ fn check_signature<'ast>(
 fn check_pattern_and_add_bindings(
     pattern: &Pattern,
     expected_pattern_type: typ::Index,
-    expected_pattern_type_span: Option<span::Index>,
+    expected_pattern_type_span: Option<Span>,
     state: &mut State,
     env: &mut PolyTypeEnv,
     introduced_bindings: &mut Vec<(Identifier, typ::Index)>,
@@ -2627,7 +2669,7 @@ fn check_pattern_and_add_bindings(
 fn infer_identifier(
     module: &Option<ModuleName>,
     identifier: &AnyIdentifier,
-    span: span::Index,
+    span: Span,
     state: &mut State,
     env: &mut PolyTypeEnv,
     strings: &mut Strings,
@@ -2669,8 +2711,9 @@ fn infer_lambda<'ast>(
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    expressions: &'ast Expressions,
+    expressions: &'ast ExpressionValues,
     expression_types: &'ast mut ExpressionTypes,
+    expression_spans: &'ast ExpressionSpans,
     types: &mut Types,
     errors: &mut Vec<Error>,
 ) -> typ::Index {
@@ -2707,6 +2750,7 @@ fn infer_lambda<'ast>(
         strings,
         expressions,
         expression_types,
+        expression_spans,
         types,
         errors,
     );
@@ -2720,13 +2764,14 @@ fn infer_lambda<'ast>(
 fn infer_fn_call<'ast, Args>(
     f: expression::Index,
     args: Args,
-    ast: &'ast Expression,
+    expression: expression::Index,
     state: &mut State,
     env: &mut PolyTypeEnv,
     types_env: &PolyTypeEnv,
     strings: &mut Strings,
-    expressions: &'ast Expressions,
+    expressions: &'ast ExpressionValues,
     expression_types: &'ast mut ExpressionTypes,
+    expression_spans: &'ast ExpressionSpans,
     types: &mut Types,
     errors: &mut Vec<Error>,
 ) -> typ::Index
@@ -2741,6 +2786,7 @@ where
         strings,
         expressions,
         expression_types,
+        expression_spans,
         types,
         errors,
     );
@@ -2760,6 +2806,7 @@ where
                 strings,
                 expressions,
                 expression_types,
+                expression_spans,
                 types,
                 errors,
             )
@@ -2782,7 +2829,7 @@ where
             result.and_then(|_| {
                 unify(
                     state,
-                    expressions[arg].span,
+                    expression_spans[arg],
                     *arg_type,
                     None,
                     *param_type,
@@ -2791,7 +2838,16 @@ where
             })
         })
         // If there weren't any failures, unify the Fn and return types
-        .and_then(|_| unify(state, ast.span, call_type, None, fn_type, types));
+        .and_then(|_| {
+            unify(
+                state,
+                expression_spans[expression],
+                call_type,
+                None,
+                fn_type,
+                types,
+            )
+        });
     add_error(res, errors);
 
     return_type

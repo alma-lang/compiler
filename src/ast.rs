@@ -9,8 +9,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use typed_index_collections::TiVec;
 
-#[cfg(test)]
-use self::span::Spans;
+use self::span::Span;
 #[cfg(test)]
 use crate::token::Tokens;
 #[cfg(test)]
@@ -22,7 +21,6 @@ use std::fmt::Write;
 pub struct TestToStringContext<'a> {
     pub strings: &'a Strings,
     pub tokens: &'a Tokens,
-    pub spans: &'a Spans,
     pub expressions: &'a Expressions,
     pub indent: usize,
 }
@@ -32,7 +30,6 @@ impl<'a> TestToStringContext<'a> {
         Self {
             strings: self.strings,
             tokens: self.tokens,
-            spans: self.spans,
             expressions: self.expressions,
             indent: self.indent + 4,
         }
@@ -57,10 +54,6 @@ pub mod span {
             )
         }
     }
-
-    pub type Index = index::Index<Span>;
-
-    pub type Spans = TiVec<Index, Span>;
 }
 
 // Repl
@@ -147,7 +140,7 @@ impl ModuleName {
         true
     }
 
-    pub fn last_span(&self) -> span::Index {
+    pub fn last_span(&self) -> Span {
         self.parts
             .last()
             .expect("Module names should never be empty")
@@ -172,7 +165,6 @@ pub struct Module {
     pub definitions: Vec<TypedDefinition>,
     pub type_definitions: Vec<types::TypeDefinition>,
     pub expressions: Expressions,
-    pub expression_types: ExpressionTypes,
     pub compiled_pattern_matching_expressions:
         FnvHashMap<expression::Index, pattern_matching::CompiledPatternMatch>,
 }
@@ -251,7 +243,7 @@ impl Module {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Import {
-    pub span: span::Index,
+    pub span: Span,
     pub module_name: ModuleName,
     pub alias: Option<CapitalizedIdentifier>,
     pub exposing: Vec<Export>,
@@ -263,7 +255,7 @@ impl Import {
             "{0:indent$}{name}{alias} {span}{nl}{exports}",
             "",
             indent = ctx.indent,
-            span = ctx.spans[self.span].to_test_string(ctx),
+            span = self.span.to_test_string(ctx),
             name = self.module_name.to_test_string(ctx),
             alias = self
                 .alias
@@ -283,7 +275,7 @@ impl Import {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Export {
-    pub span: span::Index,
+    pub span: Span,
     pub typ: ExportData,
 }
 impl Export {
@@ -294,7 +286,7 @@ impl Export {
             "",
             indent = ctx.indent,
             export = self.typ.to_test_string(ctx),
-            span = ctx.spans[self.span].to_test_string(ctx)
+            span = self.span.to_test_string(ctx)
         )
     }
 }
@@ -415,7 +407,8 @@ impl Definition {
                 "",
                 indent = ctx.indent,
                 pattern = pattern.to_test_string(&ctx.indented()),
-                expression = ctx.expressions[*expression_idx].to_test_string(&ctx.indented())
+                expression = ctx.expressions.values[*expression_idx]
+                    .to_test_string(*expression_idx, &ctx.indented())
             ),
         }
     }
@@ -428,7 +421,7 @@ pub mod types {
 
     #[derive(Debug)]
     pub struct TypeDefinition {
-        pub span: span::Index,
+        pub span: Span,
         pub name: CapitalizedIdentifier,
         pub vars: Vec<Identifier>,
         pub typ: TypeDefinitionData,
@@ -484,7 +477,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub struct Constructor {
-        pub span: span::Index,
+        pub span: Span,
         pub name: CapitalizedIdentifier,
         pub params: Vec<Type>,
     }
@@ -495,7 +488,7 @@ pub mod types {
                 "{0:indent$}{name} {span}{nl}{params}",
                 "",
                 indent = ctx.indent,
-                span = ctx.spans[self.span].to_test_string(ctx),
+                span = self.span.to_test_string(ctx),
                 name = self.name.to_test_string(ctx),
                 params = self
                     .params
@@ -593,7 +586,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub struct Record {
-        pub span: span::Index,
+        pub span: Span,
         pub fields: Vec<(Identifier, Type)>,
     }
     impl Record {
@@ -609,7 +602,7 @@ pub mod types {
                 "{0:indent$}{{ {span}{nl}{fields}{nl}{0:closing_indent$}}}",
                 "",
                 indent = ctx.indent,
-                span = ctx.spans[self.span].to_test_string(ctx),
+                span = self.span.to_test_string(ctx),
                 nl = if self.fields.is_empty() { "" } else { "\n" },
                 closing_indent = if self.fields.is_empty() {
                     1
@@ -634,7 +627,7 @@ pub mod types {
 
     #[derive(Debug, Clone)]
     pub struct RecordExt {
-        pub span: span::Index,
+        pub span: Span,
         pub extension: Identifier,
         pub fields: Vec<(Identifier, Type)>,
     }
@@ -653,7 +646,7 @@ pub mod types {
                 "",
                 indent = ctx.indent,
                 indent2 = ctx.indented().indent,
-                span = ctx.spans[self.span].to_test_string(ctx),
+                span = self.span.to_test_string(ctx),
                 extension = self.extension.to_test_string(ctx),
                 nl = if self.fields.is_empty() { "" } else { "\n" },
                 closing_indent = if self.fields.is_empty() {
@@ -681,33 +674,39 @@ pub mod types {
 // Expressions
 
 pub mod expression {
-    use super::*;
+    use super::{span::Span, *};
     use crate::index;
 
     pub type Index = index::Index<Expression>;
-    pub type Expressions = TiVec<Index, Expression>;
+    pub type ExpressionValues = TiVec<Index, Expression>;
     pub type ExpressionTypes = TiVec<Index, Option<typ::Index>>;
+    pub type ExpressionSpans = TiVec<Index, Span>;
 
-    #[derive(Debug, Clone)]
-    pub struct Expression {
-        pub span: span::Index,
-        pub expr: ExpressionData,
+    #[derive(Debug)]
+    pub struct Expressions {
+        pub values: ExpressionValues,
+        pub types: ExpressionTypes,
+        pub spans: ExpressionSpans,
     }
-
-    impl Expression {
-        pub fn untyped(expr: ExpressionData, span: span::Index) -> Self {
-            Self { expr, span }
+    impl Expressions {
+        pub fn new() -> Self {
+            Self {
+                values: ExpressionValues::new(),
+                types: ExpressionTypes::new(),
+                spans: ExpressionSpans::new(),
+            }
         }
 
-        #[cfg(test)]
-        pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
-            self.expr
-                .to_test_string(ctx.spans[self.span].to_test_string(ctx), ctx)
+        pub fn untyped(&mut self, expression: Expression, span: Span) -> Index {
+            let idx = self.values.push_and_get_key(expression);
+            self.types.push(None);
+            self.spans.push(span);
+            idx
         }
     }
 
     #[derive(Debug, Clone)]
-    pub enum ExpressionData {
+    pub enum Expression {
         Float(f64),
         String_(StringSymbol),
         Identifier {
@@ -756,15 +755,16 @@ pub mod expression {
             branches: Vec<PatternMatchingBranch>,
         },
     }
-    impl ExpressionData {
+    impl Expression {
         #[cfg(test)]
-        pub fn to_test_string(&self, span: String, ctx: &TestToStringContext) -> String {
+        pub fn to_test_string(&self, idx: expression::Index, ctx: &TestToStringContext) -> String {
+            let span = ctx.expressions.spans[idx].to_test_string(ctx);
             let expr = match self {
-                ExpressionData::Float(num) => format!("Float {num} {span}"),
-                ExpressionData::String_(str_sym) => {
+                Expression::Float(num) => format!("Float {num} {span}"),
+                Expression::String_(str_sym) => {
                     format!("String \"{}\" {span}", ctx.strings.resolve(*str_sym))
                 }
-                ExpressionData::Identifier { module, identifier } => {
+                Expression::Identifier { module, identifier } => {
                     format!(
                         "Identifier {module}{id} {span}",
                         module = module
@@ -774,7 +774,7 @@ pub mod expression {
                         id = identifier.to_test_string(ctx)
                     )
                 }
-                ExpressionData::PropertyAccess {
+                Expression::PropertyAccess {
                     expression,
                     property,
                 } => format!(
@@ -783,15 +783,15 @@ pub mod expression {
                     {0:indent$}property: {property}",
                     "",
                     indent = ctx.indented().indent,
-                    expression =
-                        ctx.expressions[*expression].to_test_string(&ctx.indented().indented()),
+                    expression = ctx.expressions.values[*expression]
+                        .to_test_string(*expression, &ctx.indented().indented()),
                     property = property.to_test_string(ctx)
                 ),
-                ExpressionData::PropertyAccessLambda { property } => format!(
+                Expression::PropertyAccessLambda { property } => format!(
                     "PropertyAccessLambda {span} {property}",
                     property = property.to_test_string(ctx)
                 ),
-                ExpressionData::Record { fields } => format!(
+                Expression::Record { fields } => format!(
                     "{{ {span}{nl}\
                     {fields}{nl}\
                     {0:closing_indent$}}}",
@@ -805,13 +805,13 @@ pub mod expression {
                             "",
                             indent = ctx.indented().indent,
                             id = id.to_test_string(ctx),
-                            expr =
-                                ctx.expressions[*expr].to_test_string(&ctx.indented().indented())
+                            expr = ctx.expressions.values[*expr]
+                                .to_test_string(*expr, &ctx.indented().indented())
                         ))
                         .collect::<Vec<String>>()
                         .join("\n"),
                 ),
-                ExpressionData::RecordUpdate { record, fields } => format!(
+                Expression::RecordUpdate { record, fields } => format!(
                     "{{ {span}\n\
                     {0:indent2$}record:\n\
                     {record}{nl}{sep}{nl}\
@@ -819,7 +819,8 @@ pub mod expression {
                     {0:closing_indent$}}}",
                     "",
                     indent2 = ctx.indented().indent,
-                    record = ctx.expressions[*record].to_test_string(&ctx.indented().indented()),
+                    record = ctx.expressions.values[*record]
+                        .to_test_string(*record, &ctx.indented().indented()),
                     nl = if fields.is_empty() { "" } else { "\n" },
                     sep = if fields.is_empty() {
                         "".to_owned()
@@ -834,18 +835,19 @@ pub mod expression {
                             "",
                             indent = ctx.indented().indented().indent,
                             id = id.to_test_string(ctx),
-                            expr = ctx.expressions[*expr]
-                                .to_test_string(&ctx.indented().indented().indented())
+                            expr = ctx.expressions.values[*expr]
+                                .to_test_string(*expr, &ctx.indented().indented().indented())
                         ))
                         .collect::<Vec<String>>()
                         .join("\n"),
                 ),
-                ExpressionData::Unary { op, expression } => format!(
+                Expression::Unary { op, expression } => format!(
                     "Unary {span} {op}\n{expression}",
-                    expression = ctx.expressions[*expression].to_test_string(&ctx.indented()),
+                    expression = ctx.expressions.values[*expression]
+                        .to_test_string(*expression, &ctx.indented()),
                     op = op.to_test_string(ctx)
                 ),
-                ExpressionData::Binary { op, arguments, .. } => format!(
+                Expression::Binary { op, arguments, .. } => format!(
                     "Binary {span} {op}\n\
                     {0:indent$}lhs:\n\
                     {lhs}\n\
@@ -853,15 +855,17 @@ pub mod expression {
                     {rhs}",
                     "",
                     indent = ctx.indented().indent,
-                    lhs = ctx.expressions[arguments[0]].to_test_string(&ctx.indented().indented()),
-                    rhs = ctx.expressions[arguments[1]].to_test_string(&ctx.indented().indented()),
+                    lhs = ctx.expressions.values[arguments[0]]
+                        .to_test_string(arguments[0], &ctx.indented().indented()),
+                    rhs = ctx.expressions.values[arguments[1]]
+                        .to_test_string(arguments[1], &ctx.indented().indented()),
                     op = op.to_test_string()
                 ),
-                ExpressionData::Lambda(lambda) => format!(
+                Expression::Lambda(lambda) => format!(
                     "Lambda {span}\n{lambda}",
                     lambda = lambda.to_test_string(&ctx.indented())
                 ),
-                ExpressionData::FnCall {
+                Expression::FnCall {
                     function,
                     arguments,
                 } => format!(
@@ -872,28 +876,30 @@ pub mod expression {
                     {args}",
                     "",
                     indent = ctx.indented().indent,
-                    fun = ctx.expressions[*function].to_test_string(&ctx.indented().indented()),
+                    fun = ctx.expressions.values[*function]
+                        .to_test_string(*function, &ctx.indented().indented()),
                     args = arguments
                         .iter()
-                        .map(|a| ctx.expressions[*a].to_test_string(&ctx.indented().indented()))
+                        .map(|a| ctx.expressions.values[*a]
+                            .to_test_string(*a, &ctx.indented().indented()))
                         .collect::<Vec<String>>()
                         .join("\n"),
                 ),
-                ExpressionData::Let { definitions, body } => format!(
+                Expression::Let { definitions, body } => format!(
                     "Let {span}\n\
                     {0:indent$}definitions:\n\
                     {defs}\n\
                     {body}",
                     "",
                     indent = ctx.indented().indent,
-                    body = ctx.expressions[*body].to_test_string(&ctx.indented()),
+                    body = ctx.expressions.values[*body].to_test_string(*body, &ctx.indented()),
                     defs = definitions
                         .iter()
                         .map(|d| d.to_test_string(&ctx.indented().indented()))
                         .collect::<Vec<String>>()
                         .join("\n"),
                 ),
-                ExpressionData::If {
+                Expression::If {
                     condition,
                     then,
                     else_,
@@ -907,12 +913,14 @@ pub mod expression {
                     {else_}",
                     "",
                     indent = ctx.indented().indent,
-                    condition =
-                        ctx.expressions[*condition].to_test_string(&ctx.indented().indented()),
-                    then = ctx.expressions[*then].to_test_string(&ctx.indented().indented()),
-                    else_ = ctx.expressions[*else_].to_test_string(&ctx.indented().indented()),
+                    condition = ctx.expressions.values[*condition]
+                        .to_test_string(*condition, &ctx.indented().indented()),
+                    then = ctx.expressions.values[*then]
+                        .to_test_string(*then, &ctx.indented().indented()),
+                    else_ = ctx.expressions.values[*else_]
+                        .to_test_string(*else_, &ctx.indented().indented()),
                 ),
-                ExpressionData::PatternMatching {
+                Expression::PatternMatching {
                     conditions: expressions,
                     branches,
                 } => format!(
@@ -924,8 +932,8 @@ pub mod expression {
                     indent = ctx.indented().indent,
                     condition = expressions
                         .iter()
-                        .map(|expression| ctx.expressions[*expression]
-                            .to_test_string(&ctx.indented().indented()))
+                        .map(|expression| ctx.expressions.values[*expression]
+                            .to_test_string(*expression, &ctx.indented().indented()))
                         .collect::<Vec<String>>()
                         .join("\n"),
                     branches = branches
@@ -957,14 +965,14 @@ pub mod expression {
                     .map(|p| p.to_test_string(&ctx.indented()))
                     .collect::<Vec<String>>()
                     .join("\n"),
-                body = ctx.expressions[self.body].to_test_string(ctx),
+                body = ctx.expressions.values[self.body].to_test_string(self.body, ctx),
             )
         }
     }
 
     #[derive(Debug, Clone)]
     pub struct PatternMatchingBranch {
-        pub span: span::Index,
+        pub span: Span,
         pub patterns: Vec<Pattern>,
         pub condition: Option<expression::Index>,
         pub body: expression::Index,
@@ -994,11 +1002,13 @@ pub mod expression {
                         "{0:indent$}condition:\n{condition}\n",
                         "",
                         indent = ctx.indented().indent,
-                        condition = ctx.expressions[c].to_test_string(&ctx.indented().indented())
+                        condition =
+                            ctx.expressions.values[c].to_test_string(c, &ctx.indented().indented())
                     ))
                     .unwrap_or("".to_owned()),
-                body = ctx.expressions[self.body].to_test_string(&ctx.indented().indented()),
-                span = ctx.spans[self.span].to_test_string(ctx)
+                body = ctx.expressions.values[self.body]
+                    .to_test_string(self.body, &ctx.indented().indented()),
+                span = self.span.to_test_string(ctx)
             )
         }
     }
@@ -1007,7 +1017,7 @@ pub mod expression {
 
     #[derive(PartialEq, Eq, Debug, Clone)]
     pub struct Unary {
-        pub span: span::Index,
+        pub span: Span,
         pub typ: UnaryData,
     }
     impl Unary {
@@ -1016,7 +1026,7 @@ pub mod expression {
             format!(
                 "{:?} {span}",
                 self.typ,
-                span = ctx.spans[self.span].to_test_string(ctx)
+                span = self.span.to_test_string(ctx)
             )
         }
     }
@@ -1028,8 +1038,8 @@ pub mod expression {
     }
 
     pub mod binop {
-        use super::{span, Identifier};
-        use crate::strings::Strings;
+        use super::Identifier;
+        use crate::{ast::span::Span, strings::Strings};
 
         #[derive(PartialEq, Eq, Debug, Clone)]
         pub enum Type {
@@ -1061,11 +1071,7 @@ pub mod expression {
         }
 
         impl Binop {
-            pub fn get_function_identifier(
-                &self,
-                strings: &mut Strings,
-                span: span::Index,
-            ) -> Identifier {
+            pub fn get_function_identifier(&self, strings: &mut Strings, span: Span) -> Identifier {
                 let name_sym = strings.get_or_intern(match self.typ {
                     Or => "or_",
                     And => "and_",
@@ -1174,14 +1180,13 @@ pub mod expression {
 
     #[derive(PartialEq, Eq, Debug, Clone)]
     pub struct Pattern {
-        pub span: span::Index,
+        pub span: Span,
         pub data: PatternData,
     }
     impl Pattern {
         #[cfg(test)]
         pub fn to_test_string(&self, ctx: &TestToStringContext) -> String {
-            self.data
-                .to_test_string(ctx.spans[self.span].to_test_string(ctx), ctx)
+            self.data.to_test_string(self.span.to_test_string(ctx), ctx)
         }
     }
 
@@ -1323,7 +1328,7 @@ pub mod expression {
     #[derive(PartialEq, Eq, Debug, Clone)]
     pub struct CapitalizedIdentifier {
         pub name: IdentifierName,
-        pub span: span::Index,
+        pub span: Span,
     }
     impl CapitalizedIdentifier {
         pub fn to_string<'strings>(&self, strings: &'strings Strings) -> &'strings str {
@@ -1335,7 +1340,7 @@ pub mod expression {
             format!(
                 "{} {}",
                 ctx.strings.resolve(self.name),
-                ctx.spans[self.span].to_test_string(ctx)
+                self.span.to_test_string(ctx)
             )
         }
     }
@@ -1343,7 +1348,7 @@ pub mod expression {
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct Identifier {
         pub name: IdentifierName,
-        pub span: span::Index,
+        pub span: Span,
     }
 
     impl Identifier {
@@ -1356,7 +1361,7 @@ pub mod expression {
             format!(
                 "{} {}",
                 ctx.strings.resolve(self.name),
-                ctx.spans[self.span].to_test_string(ctx)
+                self.span.to_test_string(ctx)
             )
         }
     }
@@ -1375,7 +1380,7 @@ pub mod expression {
             }
         }
 
-        pub fn span(&self) -> span::Index {
+        pub fn span(&self) -> Span {
             use AnyIdentifier::*;
             match self {
                 Identifier(i) => i.span,

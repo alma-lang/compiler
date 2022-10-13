@@ -1,12 +1,10 @@
-use crate::ast::expression::{binop, Expressions, IdentifierName};
+use crate::ast::expression::{self, binop, Expressions, IdentifierName};
 use crate::compiler::state::ModuleIndex;
 use crate::module_interface::ModuleInterface;
 use crate::strings::Strings;
 use crate::{
     ast::{
-        expression::{
-            Expression, ExpressionData as E, Lambda, Pattern, PatternData as P, UnaryData as U,
-        },
+        expression::{Expression as E, Lambda, Pattern, PatternData as P, UnaryData as U},
         types::{self, TypeDefinition},
         Definition, ExportData, Module, ModuleName, TypedDefinition,
     },
@@ -416,7 +414,7 @@ fn generate_definition(
             code,
             module_name,
             pattern,
-            &expressions[*expression],
+            *expression,
             strings,
             expressions,
         ),
@@ -480,14 +478,7 @@ fn generate_function(
     {
         let indent = add_indent(indent);
         indented(code, indent, "return ");
-        generate_expression(
-            indent,
-            code,
-            module_name,
-            &expressions[lambda.body],
-            strings,
-            expressions,
-        );
+        generate_expression(indent, code, module_name, lambda.body, strings, expressions);
         code.push('\n');
     }
 
@@ -557,7 +548,7 @@ fn generate_let(
     code: &mut String,
     module_name: &ModuleName,
     pattern: &Pattern,
-    expression: &Expression,
+    expression: expression::Index,
     strings: &Strings,
     expressions: &Expressions,
 ) {
@@ -575,11 +566,11 @@ fn generate_expression(
     indent: usize,
     code: &mut String,
     module_name: &ModuleName,
-    expression: &Expression,
+    expression: expression::Index,
     strings: &Strings,
     expressions: &Expressions,
 ) {
-    match &expression.expr {
+    match &expressions.values[expression] {
         E::Float(float) => write!(code, "{float}").unwrap(),
 
         E::String_(string) => {
@@ -606,14 +597,7 @@ fn generate_expression(
                 for (key, value) in fields {
                     indented(code, indent, key.to_string(strings));
                     code.push_str(": ");
-                    generate_expression(
-                        indent,
-                        code,
-                        module_name,
-                        &expressions[*value],
-                        strings,
-                        expressions,
-                    );
+                    generate_expression(indent, code, module_name, *value, strings, expressions);
                     code.push_str(",\n");
                 }
             }
@@ -628,27 +612,13 @@ fn generate_expression(
                 let indent = add_indent(indent);
 
                 indented(code, indent, "...");
-                generate_expression(
-                    indent,
-                    code,
-                    module_name,
-                    &expressions[*record],
-                    strings,
-                    expressions,
-                );
+                generate_expression(indent, code, module_name, *record, strings, expressions);
                 code.push('\n');
 
                 for (key, value) in fields {
                     indented(code, indent, key.to_string(strings));
                     code.push_str(": ");
-                    generate_expression(
-                        indent,
-                        code,
-                        module_name,
-                        &expressions[*value],
-                        strings,
-                        expressions,
-                    );
+                    generate_expression(indent, code, module_name, *value, strings, expressions);
                     code.push_str(",\n");
                 }
             }
@@ -660,14 +630,7 @@ fn generate_expression(
             expression,
             property,
         } => {
-            generate_expression(
-                indent,
-                code,
-                module_name,
-                &expressions[*expression],
-                strings,
-                expressions,
-            );
+            generate_expression(indent, code, module_name, *expression, strings, expressions);
             code.push('.');
             code.push_str(property.to_string(strings));
         }
@@ -682,14 +645,7 @@ fn generate_expression(
                 U::Not => '!',
                 U::Minus => '-',
             });
-            generate_expression(
-                indent,
-                code,
-                module_name,
-                &expressions[*expression],
-                strings,
-                expressions,
-            );
+            generate_expression(indent, code, module_name, *expression, strings, expressions);
         }
 
         E::Binary {
@@ -719,8 +675,8 @@ fn generate_expression(
                     code,
                     module_name,
                     binop,
-                    &expressions[*left],
-                    &expressions[*right],
+                    *left,
+                    *right,
                     strings,
                     expressions,
                 )
@@ -729,8 +685,8 @@ fn generate_expression(
                     indent,
                     code,
                     module_name,
-                    &expressions[*expression],
-                    arguments.iter().map(|a| &expressions[*a]),
+                    *expression,
+                    arguments,
                     strings,
                     expressions,
                 )
@@ -748,8 +704,8 @@ fn generate_expression(
             indent,
             code,
             module_name,
-            &expressions[*function],
-            arguments.iter().map(|a| &expressions[*a]),
+            *function,
+            arguments,
             strings,
             expressions,
         ),
@@ -770,14 +726,7 @@ fn generate_expression(
                 );
 
                 indented(code, indent, "return ");
-                generate_expression(
-                    indent,
-                    code,
-                    module_name,
-                    &expressions[*body],
-                    strings,
-                    expressions,
-                );
+                generate_expression(indent, code, module_name, *body, strings, expressions);
                 code.push('\n');
             }
 
@@ -794,27 +743,13 @@ fn generate_expression(
                 let indent = add_indent(indent);
 
                 indented(code, indent, "if (");
-                generate_expression(
-                    indent,
-                    code,
-                    module_name,
-                    &expressions[*condition],
-                    strings,
-                    expressions,
-                );
+                generate_expression(indent, code, module_name, *condition, strings, expressions);
                 code.push_str(") {\n");
 
                 {
                     let indent = add_indent(indent);
                     indented(code, indent, "return ");
-                    generate_expression(
-                        indent,
-                        code,
-                        module_name,
-                        &expressions[*then],
-                        strings,
-                        expressions,
-                    );
+                    generate_expression(indent, code, module_name, *then, strings, expressions);
                     code.push('\n');
                 }
 
@@ -823,14 +758,7 @@ fn generate_expression(
                 {
                     let indent = add_indent(indent);
                     indented(code, indent, "return ");
-                    generate_expression(
-                        indent,
-                        code,
-                        module_name,
-                        &expressions[*else_],
-                        strings,
-                        expressions,
-                    );
+                    generate_expression(indent, code, module_name, *else_, strings, expressions);
                     code.push('\n');
                 }
 
@@ -856,7 +784,7 @@ fn generate_expression(
                         indent,
                         code,
                         module_name,
-                        &expressions[*condition],
+                        *condition,
                         strings,
                         expressions,
                     );
@@ -883,7 +811,7 @@ fn generate_expression(
                                     indent,
                                     code,
                                     module_name,
-                                    &expressions[condition],
+                                    condition,
                                     strings,
                                     expressions,
                                 );
@@ -896,7 +824,7 @@ fn generate_expression(
                                         indent,
                                         code,
                                         module_name,
-                                        &expressions[branch.body],
+                                        branch.body,
                                         strings,
                                         expressions,
                                     );
@@ -910,7 +838,7 @@ fn generate_expression(
                                     indent,
                                     code,
                                     module_name,
-                                    &expressions[branch.body],
+                                    branch.body,
                                     strings,
                                     expressions,
                                 );
@@ -1148,8 +1076,8 @@ fn generate_binary_operator(
     code: &mut String,
     module_name: &ModuleName,
     binop: &str,
-    left: &Expression,
-    right: &Expression,
+    left: expression::Index,
+    right: expression::Index,
     strings: &Strings,
     expressions: &Expressions,
 ) {
@@ -1160,24 +1088,22 @@ fn generate_binary_operator(
     code.push(')');
 }
 
-fn generate_fn_call<'ast, Args>(
+fn generate_fn_call(
     indent: usize,
     code: &mut String,
     module_name: &ModuleName,
-    fun: &Expression,
-    params: Args,
+    fun: expression::Index,
+    params: &[expression::Index],
     strings: &Strings,
     expressions: &Expressions,
-) where
-    Args: Iterator<Item = &'ast Expression>,
-{
+) {
     generate_expression(indent, code, module_name, fun, strings, expressions);
     code.push('(');
-    for (i, param) in params.enumerate() {
+    for (i, param) in params.iter().enumerate() {
         if i > 0 {
             code.push_str(", ");
         }
-        generate_expression(indent, code, module_name, param, strings, expressions);
+        generate_expression(indent, code, module_name, *param, strings, expressions);
     }
     code.push(')');
 }

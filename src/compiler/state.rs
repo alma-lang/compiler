@@ -1,4 +1,4 @@
-use crate::ast::{self, span::Spans, ModuleFullName};
+use crate::ast::{self, ModuleFullName};
 use crate::module_interface::ModuleInterface;
 use crate::source::{self, Source, Sources, SourcesData};
 use crate::strings::Strings;
@@ -21,7 +21,6 @@ pub struct State {
     pub module_name_to_module_idx: HashMap<ModuleFullName, ModuleIndex>,
     pub sources: Sources,
     pub tokens: SourcesData<Tokens>,
-    pub spans: SourcesData<Spans>,
     pub modules: Modules<ast::Module>,
     pub module_interfaces: Modules<Option<ModuleInterface>>,
     pub types: Types,
@@ -32,7 +31,6 @@ impl State {
         Self {
             sources: Sources::new(),
             tokens: SourcesData::new(),
-            spans: SourcesData::new(),
             modules: Modules::new(),
             module_interfaces: Modules::new(),
             strings: Strings::new(),
@@ -45,12 +43,10 @@ impl State {
     pub fn add_source(&mut self, source: Source) -> source::Index {
         let k = self.sources.push_and_get_key(source);
         self.tokens.push(Tokens::new());
-        self.spans.push(Spans::new());
 
-        // Return the newly created file index, sources and tokens and spans should always be in
-        // sync with file indexes
+        // Return the newly created file index, sources and tokens should always be in sync with
+        // file indexes
         debug_assert_eq!(self.sources.len(), self.tokens.len());
-        debug_assert_eq!(self.sources.len(), self.spans.len());
         k
     }
 
