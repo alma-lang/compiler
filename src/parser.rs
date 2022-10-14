@@ -1352,6 +1352,8 @@ impl<'a> State<'a> {
             return Ok(None);
         }
 
+        let idx = self.expressions.empty();
+
         let bindings = self.one_or_many(
             |self_| {
                 if self_.is_token_in_same_line_or_nested_indent_from(let_token) {
@@ -1375,6 +1377,7 @@ impl<'a> State<'a> {
 
         let end = self.expressions.spans[body].end;
         Ok(Some(self.expressions.untyped(
+            idx,
             E::Let {
                 definitions: bindings,
                 body,
@@ -1535,6 +1538,8 @@ impl<'a> State<'a> {
             return Ok(None);
         }
 
+        let idx = self.expressions.empty();
+
         let condition = self.required(Self::binary, |self_| self_.error(InvalidIfCondition))?;
 
         if self.match_token(TT::Then).is_none() {
@@ -1551,6 +1556,7 @@ impl<'a> State<'a> {
 
         let end = self.expressions.spans[else_].end;
         Ok(Some(self.expressions.untyped(
+            idx,
             E::If {
                 condition,
                 then,
@@ -1570,6 +1576,8 @@ impl<'a> State<'a> {
             return Ok(None);
         }
 
+        let idx = self.expressions.empty();
+
         let params =
             self.one_or_many(Self::pattern, |self_| self_.error(MissingLambdaParamaters))?;
 
@@ -1585,6 +1593,7 @@ impl<'a> State<'a> {
 
         let end = self.expressions.spans[body].end;
         Ok(Some(self.expressions.untyped(
+            idx,
             E::Lambda(Lambda {
                 parameters: params,
                 body,
@@ -1602,6 +1611,8 @@ impl<'a> State<'a> {
         if self.match_token(TT::When).is_none() {
             return Ok(None);
         }
+
+        let idx = self.expressions.empty();
 
         let expressions: Vec<_> = self
             .one_or_many_sep(
@@ -1648,6 +1659,7 @@ impl<'a> State<'a> {
 
         let end = branches.last().unwrap().span.end;
         Ok(Some(self.expressions.untyped(
+            idx,
             E::PatternMatching {
                 conditions: expressions,
                 branches,
@@ -1960,7 +1972,11 @@ impl<'a> State<'a> {
                             start: 0.into(),
                             end: 0.into(),
                         };
+                        let idx = self.expressions.empty();
                         let binary_expr = self.expressions.untyped(
+                            // TODO: This will end up in reverse order in the expressions vec. Should
+                            // probably be in tree traversal order instead
+                            idx,
                             E::Identifier {
                                 module: Some(
                                     // TODO: Creating this every time we have a binary expression
@@ -1984,7 +2000,11 @@ impl<'a> State<'a> {
                             },
                             op_span,
                         );
+                        let idx = self.expressions.empty();
                         left = self.expressions.untyped(
+                            // TODO: This will end up in reverse order in the expressions vec. Should
+                            // probably be in tree traversal order instead
+                            idx,
                             E::Binary {
                                 expression: binary_expr,
                                 op,
@@ -2017,15 +2037,17 @@ impl<'a> State<'a> {
             }
             _ => None,
         };
+        let u = u.map(|u| (u, self.expressions.empty()));
 
         match (u, self.call()?) {
-            (Some(op), Some(expr)) => {
+            (Some((op, idx)), Some(expr)) => {
                 let end = self.expressions.spans[expr].end;
                 let span = Span {
                     start: token_index,
                     end: token_index,
                 };
                 Ok(Some(self.expressions.untyped(
+                    idx,
                     E::Unary {
                         op: Unary { typ: op, span },
                         expression: expr,
@@ -2044,6 +2066,7 @@ impl<'a> State<'a> {
 
     fn call(&mut self) -> ParseResult<Option<expression::Index>> {
         let (_, token) = self.get_token();
+        let idx = self.expressions.empty();
 
         if let Some(expr) = self.property_access()? {
             let args = self.many(|self_| self_.argument(token))?;
@@ -2058,6 +2081,7 @@ impl<'a> State<'a> {
                     self.expressions.spans[*last_arg].end,
                 );
                 Ok(Some(self.expressions.untyped(
+                    idx,
                     E::FnCall {
                         function: expr,
                         arguments: args.into_iter().map(|a| a).collect(),
@@ -2090,24 +2114,35 @@ impl<'a> State<'a> {
         }
     }
     fn properties(&mut self, expr: expression::Index) -> ParseResult<expression::Index> {
-        let mut expr = expr;
-        while let Some(identifier) =
-            self.property(self.tokens[self.expressions.spans[expr].end].end)?
-        {
-            expr = {
-                let start = self.expressions.spans[expr].start;
-                let end = identifier.span.end;
-                self.expressions.untyped(
-                    E::PropertyAccess {
-                        expression: expr,
-                        property: identifier,
-                    },
-                    Span { start, end },
-                )
-            };
+        let mut properties = Vec::new();
+        let start = self.expressions.spans[expr].start;
+        let mut end = self.expressions.spans[expr].end;
+        while let Some(identifier) = self.property(self.tokens[end].end)? {
+            end = identifier.span.end;
+            properties.push((identifier, Span { start, end }));
         }
 
-        Ok(expr)
+        if !properties.is_empty() {
+            let mut idxs = Vec::new();
+            idxs.resize_with(properties.len(), || self.expressions.empty());
+
+            let expr = properties.into_iter().rev().zip(idxs).rev().fold(
+                expr,
+                |expr, ((identifier, span), idx)| {
+                    self.expressions.untyped(
+                        idx,
+                        E::PropertyAccess {
+                            expression: expr,
+                            property: identifier,
+                        },
+                        span,
+                    )
+                },
+            );
+            Ok(expr)
+        } else {
+            Ok(expr)
+        }
     }
     fn property(&mut self, prev_end_token_position: usize) -> ParseResult<Option<Identifier>> {
         let (_, dot_token) = self.get_token();
@@ -2154,7 +2189,9 @@ impl<'a> State<'a> {
 
                 self.advance();
 
+                let idx = self.expressions.empty();
                 Ok(Some(self.expressions.untyped(
+                    idx,
                     E::Float(n),
                     Span {
                         start: token_index,
@@ -2172,7 +2209,9 @@ impl<'a> State<'a> {
                 };
                 let identifier = Identifier { name: lexeme, span };
 
+                let idx = self.expressions.empty();
                 Ok(Some(self.expressions.untyped(
+                    idx,
                     E::Identifier {
                         module: None,
                         identifier: AnyIdentifier::Identifier(identifier),
@@ -2194,7 +2233,9 @@ impl<'a> State<'a> {
                     let span = identifier.span();
                     (span.start, span.end)
                 };
+                let idx = self.expressions.empty();
                 Ok(Some(self.expressions.untyped(
+                    idx,
                     E::Identifier { module, identifier },
                     Span { start, end },
                 )))
@@ -2202,7 +2243,9 @@ impl<'a> State<'a> {
 
             TT::String_(string) => {
                 self.advance();
+                let idx = self.expressions.empty();
                 Ok(Some(self.expressions.untyped(
+                    idx,
                     E::String_(string),
                     Span {
                         start: token_index,
@@ -2216,12 +2259,15 @@ impl<'a> State<'a> {
                 let (next_token_index, next_token) = self.get_token();
                 let second_next_token = self.peek_next_token();
 
+                let idx = self.expressions.empty();
+
                 match (next_token.kind, second_next_token.kind) {
                     // Unit record
                     (RightBrace, _) => {
                         self.advance();
 
                         Ok(Some(self.expressions.untyped(
+                            idx,
                             E::Record { fields: vec![] },
                             Span{ start: token_index, end: next_token_index },
                         )))
@@ -2238,7 +2284,9 @@ impl<'a> State<'a> {
                             Self::expression,
                             |self_, identifier| {
                                 let span = identifier.span;
+                                let idx = self_.expressions.empty();
                                 self_.expressions.untyped(
+                                    idx,
                                     E::Identifier {
                                         module: None,
                                         identifier: AnyIdentifier::Identifier(identifier),
@@ -2251,6 +2299,7 @@ impl<'a> State<'a> {
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(self.expressions.untyped(
+                                idx,
                                 E::Record { fields },
                                 Span{ start: token_index, end: right_brace_token_index },
                             )))
@@ -2273,7 +2322,9 @@ impl<'a> State<'a> {
                             Self::expression,
                             |self_, identifier| {
                                 let span = identifier.span;
+                                let idx = self_.expressions.empty();
                                 self_.expressions.untyped(
+                                    idx,
                                     E::Identifier {
                                         module: None,
                                         identifier: AnyIdentifier::Identifier(identifier),
@@ -2286,6 +2337,7 @@ impl<'a> State<'a> {
 
                         if let Some((right_brace_token_index, _)) = self.match_token(RightBrace) {
                             Ok(Some(self.expressions.untyped(
+                                idx,
                                 E::RecordUpdate {
                                     record,
                                     fields,
@@ -2333,7 +2385,9 @@ impl<'a> State<'a> {
                             },
                         };
 
+                        let idx = self.expressions.empty();
                         Ok(Some(self.expressions.untyped(
+                            idx,
                             E::PropertyAccessLambda {
                                 property: name_identifier,
                             },

@@ -697,10 +697,19 @@ pub mod expression {
             }
         }
 
-        pub fn untyped(&mut self, expression: Expression, span: Span) -> Index {
-            let idx = self.values.push_and_get_key(expression);
+        pub fn empty(&mut self) -> Index {
+            let idx = self.values.push_and_get_key(Expression::Float(0.0));
             self.types.push(None);
-            self.spans.push(span);
+            self.spans.push(Span {
+                start: 0.into(),
+                end: 0.into(),
+            });
+            idx
+        }
+
+        pub fn untyped(&mut self, idx: Index, expression: Expression, span: Span) -> Index {
+            self.values[idx] = expression;
+            self.spans[idx] = span;
             idx
         }
     }
