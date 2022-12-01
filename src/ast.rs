@@ -1,4 +1,3 @@
-use crate::index;
 use crate::source::Source;
 use crate::strings::{Strings, Symbol as StringSymbol};
 use crate::token;

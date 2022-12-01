@@ -426,14 +426,61 @@ which introduces
     }
 }
 
-pub struct State {
+pub struct State<'a> {
+    type_vars: &'a mut TypeVarsState,
+
+    env: &'a mut PolyTypeEnv,
+    types_env: &'a mut PolyTypeEnv,
+    strings: &'a mut Strings,
+
+    expressions: &'a ExpressionValues,
+    expression_types: &'a mut ExpressionTypes,
+    expression_spans: &'a ExpressionSpans,
+
+    types: &'a mut Types,
+
+    errors: &'a mut Vec<Error>,
+}
+impl<'a> State<'a> {
+    fn new(
+        type_vars_state: &'a mut TypeVarsState,
+        env: &'a mut PolyTypeEnv,
+        types_env: &'a mut PolyTypeEnv,
+        strings: &'a mut Strings,
+
+        expressions: &'a ExpressionValues,
+        expression_types: &'a mut ExpressionTypes,
+        expression_spans: &'a ExpressionSpans,
+
+        types: &'a mut Types,
+
+        errors: &'a mut Vec<Error>,
+    ) -> Self {
+        State {
+            type_vars: type_vars_state,
+
+            env,
+            types_env,
+            strings,
+
+            expressions,
+            expression_types,
+            expression_spans,
+
+            types,
+
+            errors,
+        }
+    }
+}
+
+struct TypeVarsState {
     current_level: Level,
     current_type_var: TypeVarId,
 }
-
-impl State {
+impl TypeVarsState {
     fn new() -> Self {
-        State {
+        Self {
             current_level: Level(1),
             current_type_var: TypeVarId(0),
         }
@@ -760,29 +807,28 @@ fn unify(
     typ: typ::Index,
     span2: Option<Span>,
     typ2: typ::Index,
-    types: &mut Types,
 ) -> Result<(), Error> {
-    unify_rec(state, typ, typ2, span, typ, span2, typ2, types)
+    unify_rec(state, typ, typ2, span, typ, span2, typ2)
 }
 
 fn unify_var(
+    state: &mut State,
     t: typ::Index,
     id: TypeVarId,
     level: Level,
     other_type: typ::Index,
     span: Span,
-    types: &mut Types,
 ) -> Result<(), Error> {
     if t == other_type {
         Ok(())
-    } else if occurs(id, level, other_type, types) {
+    } else if occurs(id, level, other_type, state.types) {
         Err(Error::InfiniteType {
             location: span,
             typ: t,
         })
     } else {
         // Create binding for unbound type variable
-        types[t] = Var(Bound(other_type));
+        state.types[t] = Var(Bound(other_type));
         Ok(())
     }
 }
@@ -795,9 +841,8 @@ fn unify_rec(
     typ: typ::Index,
     span2: Option<Span>,
     typ2: typ::Index,
-    types: &mut Types,
 ) -> Result<(), Error> {
-    match (&types[t1], &types[t2]) {
+    match (&state.types[t1], &state.types[t2]) {
         (
             Named {
                 module,
@@ -822,18 +867,18 @@ fn unify_rec(
                 })
             } else {
                 for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
-                    unify_rec(state, *p1, *p2, span, typ, span2, typ2, types)?;
+                    unify_rec(state, *p1, *p2, span, typ, span2, typ2)?;
                 }
                 Ok(())
             }
         }
 
         // The 'find' in the union-find algorithm
-        (Var(Bound(dest)), _) => unify_rec(state, *dest, t2, span, typ, span2, typ2, types),
-        (_, Var(Bound(dest))) => unify_rec(state, t1, *dest, span, typ, span2, typ2, types),
+        (Var(Bound(dest)), _) => unify_rec(state, *dest, t2, span, typ, span2, typ2),
+        (_, Var(Bound(dest))) => unify_rec(state, t1, *dest, span, typ, span2, typ2),
 
-        (Var(Unbound(id, level)), _) => unify_var(t1, *id, *level, t2, span, types),
-        (_, Var(Unbound(id, level))) => unify_var(t2, *id, *level, t1, span, types),
+        (Var(Unbound(id, level)), _) => unify_var(state, t1, *id, *level, t2, span),
+        (_, Var(Unbound(id, level))) => unify_var(state, t2, *id, *level, t1, span),
 
         (
             Fn { params, ret },
@@ -853,9 +898,9 @@ fn unify_rec(
                 let ret = *ret;
                 let ret2 = *ret2;
                 for (p1, p2) in params.clone().iter().zip(params2.clone().iter()) {
-                    unify_rec(state, *p1, *p2, span, typ, span2, typ2, types)?;
+                    unify_rec(state, *p1, *p2, span, typ, span2, typ2)?;
                 }
-                unify_rec(state, ret, ret2, span, typ, span2, typ2, types)
+                unify_rec(state, ret, ret2, span, typ, span2, typ2)
             }
         }
 
@@ -876,7 +921,6 @@ fn unify_rec(
                         typ,
                         span2,
                         typ2,
-                        types,
                     )?;
                 } else {
                     return Err(Error::TypeMismatch {
@@ -897,7 +941,6 @@ fn unify_rec(
                         typ,
                         span2,
                         typ2,
-                        types,
                     )?;
                 } else {
                     return Err(Error::TypeMismatch {
@@ -942,7 +985,6 @@ fn unify_rec(
                         typ,
                         span2,
                         typ2,
-                        types,
                     )?;
                 } else {
                     return Err(Error::TypeMismatch {
@@ -962,10 +1004,10 @@ fn unify_rec(
                     rem_fields.insert(*key, *value);
                 }
             }
-            let rem_rec = types.push_and_get_key(Record {
+            let rem_rec = state.types.push_and_get_key(Record {
                 fields: Rc::new(rem_fields),
             });
-            unify_rec(state, base_record, rem_rec, span, typ, span2, typ2, types)
+            unify_rec(state, base_record, rem_rec, span, typ, span2, typ2)
         }
 
         (
@@ -994,12 +1036,11 @@ fn unify_rec(
                         typ,
                         span2,
                         typ2,
-                        types,
                     )?;
                 }
             }
 
-            let var = types.push_and_get_key(state.new_type_var());
+            let var = state.types.push_and_get_key(state.type_vars.new_type_var());
 
             // unify { <fields-only-found-on-the-left-side> | new-type-var } varRight
             {
@@ -1009,11 +1050,11 @@ fn unify_rec(
                         rem_fields1.insert(*key, *value);
                     }
                 }
-                let rem_rec1 = types.push_and_get_key(RecordExt {
+                let rem_rec1 = state.types.push_and_get_key(RecordExt {
                     fields: Rc::new(rem_fields1),
                     base_record: var,
                 });
-                unify_rec(state, base_record2, rem_rec1, span, typ, span2, typ2, types)?;
+                unify_rec(state, base_record2, rem_rec1, span, typ, span2, typ2)?;
             }
 
             // unify { <fields-only-found-on-the-right-side> | new-type-var } varLeft
@@ -1024,22 +1065,18 @@ fn unify_rec(
                         rem_fields2.insert(*key, *value);
                     }
                 }
-                let rem_rec2 = types.push_and_get_key(RecordExt {
+                let rem_rec2 = state.types.push_and_get_key(RecordExt {
                     fields: Rc::new(rem_fields2),
                     base_record: var,
                 });
-                unify_rec(state, base_record1, rem_rec2, span, typ, span2, typ2, types)?;
+                unify_rec(state, base_record1, rem_rec2, span, typ, span2, typ2)?;
             }
 
             Ok(())
         }
 
-        (Alias { destination: t, .. }, _) => {
-            unify_rec(state, *t, t2, span, typ, span2, typ2, types)
-        }
-        (_, Alias { destination: t, .. }) => {
-            unify_rec(state, t1, *t, span, typ, span2, typ2, types)
-        }
+        (Alias { destination: t, .. }, _) => unify_rec(state, *t, t2, span, typ, span2, typ2),
+        (_, Alias { destination: t, .. }) => unify_rec(state, t1, *t, span, typ, span2, typ2),
 
         (Named { .. }, _) | (Fn { .. }, _) | (Record { .. }, _) | (RecordExt { .. }, _) => {
             Err(Error::TypeMismatch {
@@ -1181,15 +1218,27 @@ pub fn infer(
     let expressions = &module_ast.expressions.values;
     let expression_types = &mut module_ast.expressions.types;
     let expression_spans = &module_ast.expressions.spans;
-    let mut state = State::new();
     let mut env = PolyTypeEnv::new();
     let mut types_env = PolyTypeEnv::new();
     let types_vec = &mut compiler_state.types;
     let mut errors: Vec<Error> = vec![];
+    let mut type_vars_state = TypeVarsState::new();
 
     let mut module_definitions = PolyTypeEnv::new();
     let mut module_types = TypeEnv::new();
     let mut module_type_constructors = HashMap::default();
+
+    let mut state = State::new(
+        &mut type_vars_state,
+        &mut env,
+        &mut types_env,
+        strings,
+        expressions,
+        expression_types,
+        expression_spans,
+        types_vec,
+        &mut errors,
+    );
 
     // Check imports and add them to the env to type check this module
     for import in &module_ast.imports {
@@ -1211,26 +1260,26 @@ pub fn infer(
                 for constructors in import_types.type_constructors.values() {
                     for (constructor_name, constructor_type) in constructors.map() {
                         let full_name = {
-                            let module = strings.resolve(module_ident);
-                            let ident = strings.resolve(*constructor_name);
+                            let module = state.strings.resolve(module_ident);
+                            let ident = state.strings.resolve(*constructor_name);
                             // TODO: This should be done for all identifiers at some point instead
                             // of every time they are imported
                             format!("{module}.{ident}")
                         };
-                        let full_name = strings.get_or_intern(full_name);
-                        env.insert(full_name, constructor_type.clone());
+                        let full_name = state.strings.get_or_intern(full_name);
+                        state.env.insert(full_name, constructor_type.clone());
                     }
                 }
 
                 // Fully qualified definitions
                 for (ident, typ) in import_types.definitions.map() {
                     let full_name = {
-                        let module = strings.resolve(module_ident);
-                        let ident = strings.resolve(*ident);
+                        let module = state.strings.resolve(module_ident);
+                        let ident = state.strings.resolve(*ident);
                         format!("{module}.{ident}")
                     };
-                    let full_name = strings.get_or_intern(full_name);
-                    env.insert(full_name, typ.clone());
+                    let full_name = state.strings.get_or_intern(full_name);
+                    state.env.insert(full_name, typ.clone());
                 }
 
                 for exposed in &import.exposing {
@@ -1240,8 +1289,8 @@ pub fn infer(
                             match import_types.definitions.get(name) {
                                 // TODO: I'm cloning poly envs galore? it was rc before, why dont
                                 // i generalize here when I import the types?
-                                Some(definition) => env.insert(*name, definition.clone()),
-                                None => errors.push(Error::UnknownImportDefinition {
+                                Some(definition) => state.env.insert(*name, definition.clone()),
+                                None => state.errors.push(Error::UnknownImportDefinition {
                                     export: identifier.to_owned(),
                                     import: import.to_owned(),
                                 }),
@@ -1254,7 +1303,10 @@ pub fn infer(
                             let name = &name_ast.name;
                             match import_types.types.get(name) {
                                 Some(typ) => {
-                                    types_env.insert(*name, state.generalize(typ, types_vec));
+                                    state.types_env.insert(
+                                        *name,
+                                        state.type_vars.generalize(typ, state.types),
+                                    );
 
                                     let constructor_types =
                                         import_types.type_constructors.get(name).unwrap();
@@ -1262,22 +1314,24 @@ pub fn infer(
                                         let name = &constructor.name;
                                         match constructor_types.get(name) {
                                             Some(definition) => {
-                                                env.insert(*name, definition.clone())
+                                                state.env.insert(*name, definition.clone())
                                             }
-                                            None => errors.push(Error::UnknownImportConstructor {
-                                                constructor: constructor.to_owned(),
-                                                import: import.to_owned(),
-                                            }),
+                                            None => {
+                                                state.errors.push(Error::UnknownImportConstructor {
+                                                    constructor: constructor.to_owned(),
+                                                    import: import.to_owned(),
+                                                })
+                                            }
                                         };
                                     }
                                 }
-                                None => errors.push(Error::UnknownType(name_ast.to_owned())),
+                                None => state.errors.push(Error::UnknownType(name_ast.to_owned())),
                             }
                         }
                     }
                 }
             }
-            None => errors.push(Error::UnknownImport(import.to_owned())),
+            None => state.errors.push(Error::UnknownImport(import.to_owned())),
         }
     }
 
@@ -1285,49 +1339,46 @@ pub fn infer(
     for type_def in &module_ast.type_definitions {
         let mut type_vars = Vec::new();
         let mut type_vars_env = TypeEnv::new();
-        state.enter_level();
+        state.type_vars.enter_level();
         for var in &type_def.vars {
-            let tvar = types_vec.push_and_get_key(state.new_type_var());
+            let tvar = state.types.push_and_get_key(state.type_vars.new_type_var());
             type_vars.push((var.name, tvar));
             type_vars_env.insert(var.name, tvar);
         }
-        state.exit_level();
+        state.type_vars.exit_level();
         let name = type_def.name.name;
 
         match &type_def.typ {
             ast::types::TypeDefinitionData::Empty => {
-                let type_def_type = types_vec.push_and_get_key(Type::Named {
+                let type_def_type = state.types.push_and_get_key(Type::Named {
                     module: module_ast.name.full_name,
                     name,
                     params: Rc::new(type_vars.iter().map(|(_, t)| *t).collect()),
                 });
-                types_env.insert(name, state.generalize(type_def_type, types_vec));
+                state
+                    .types_env
+                    .insert(name, state.type_vars.generalize(type_def_type, state.types));
             }
             ast::types::TypeDefinitionData::Union { constructors } => {
-                let type_def_type = types_vec.push_and_get_key(Type::Named {
+                let type_def_type = state.types.push_and_get_key(Type::Named {
                     module: module_ast.name.full_name,
                     name,
                     params: Rc::new(type_vars.iter().map(|(_, t)| *t).collect()),
                 });
-                types_env.insert(name, state.generalize(type_def_type, types_vec));
+                state
+                    .types_env
+                    .insert(name, state.type_vars.generalize(type_def_type, state.types));
 
                 for constructor in constructors {
                     let name = &constructor.name.name;
                     let mut param_types = vec![];
 
                     for param in &constructor.params {
-                        let typ = match ast_type_to_type(
-                            param,
-                            &type_vars_env,
-                            &mut errors,
-                            &mut state,
-                            &types_env,
-                            types_vec,
-                        ) {
+                        let typ = match ast_type_to_type(param, &type_vars_env, &mut state) {
                             Ok(t) => t,
                             Err(err) => {
-                                errors.push(err);
-                                types_vec.push_and_get_key(state.new_type_var())
+                                state.errors.push(err);
+                                state.types.push_and_get_key(state.type_vars.new_type_var())
                             }
                         };
                         param_types.push(typ);
@@ -1336,54 +1387,40 @@ pub fn infer(
                     let typ = if param_types.is_empty() {
                         type_def_type
                     } else {
-                        types_vec.push_and_get_key(Type::Fn {
+                        state.types.push_and_get_key(Type::Fn {
                             params: Rc::new(param_types),
                             ret: type_def_type,
                         })
                     };
 
-                    env.insert(*name, state.generalize(typ, types_vec));
+                    state
+                        .env
+                        .insert(*name, state.type_vars.generalize(typ, state.types));
                 }
             }
             ast::types::TypeDefinitionData::Record(record_type) => {
-                let typ = match ast_record_type_to_type(
-                    record_type,
-                    &type_vars_env,
-                    &mut errors,
-                    &mut state,
-                    &types_env,
-                    types_vec,
-                ) {
+                let typ = match ast_record_type_to_type(record_type, &type_vars_env, &mut state) {
                     Ok(t) => t,
                     Err(err) => {
-                        errors.push(err);
-                        types_vec.push_and_get_key(state.new_type_var())
+                        state.errors.push(err);
+                        state.types.push_and_get_key(state.type_vars.new_type_var())
                     }
                 };
-                let typ = types_vec.push_and_get_key(Alias {
+                let typ = state.types.push_and_get_key(Alias {
                     module: module_ast.name.full_name,
                     name,
                     params: Rc::new(type_vars),
                     destination: typ,
                 });
-                types_env.insert(name, state.generalize(typ, types_vec));
+                state
+                    .types_env
+                    .insert(name, state.type_vars.generalize(typ, state.types));
             }
         }
     }
 
     // Type check the definitions in the module
-    infer_definitions(
-        &module_ast.definitions,
-        &mut state,
-        &mut env,
-        &types_env,
-        strings,
-        expressions,
-        expression_types,
-        expression_spans,
-        types_vec,
-        &mut errors,
-    );
+    infer_definitions(&module_ast.definitions, &mut state);
 
     // Check exports against this module type to see everything exists and is valid
     for export in &module_ast.exports {
@@ -1438,47 +1475,40 @@ pub fn infer(
 fn ast_type_to_type<'ast>(
     ast_type: &'ast ast::types::Type,
     type_vars: &TypeEnv,
-    errors: &mut Vec<Error>,
     state: &mut State,
-    types_env: &PolyTypeEnv,
-    types: &mut Types,
 ) -> Result<typ::Index, Error> {
     match ast_type {
         ast::types::Type::Fun { params, ret } => {
             let mut params_types = vec![];
             for param in params {
-                params_types.push(ast_type_to_type(
-                    param, type_vars, errors, state, types_env, types,
-                )?);
+                params_types.push(ast_type_to_type(param, type_vars, state)?);
             }
-            let ret_type = ast_type_to_type(ret, type_vars, errors, state, types_env, types)?;
-            Ok(types.push_and_get_key(Fn {
+            let ret_type = ast_type_to_type(ret, type_vars, state)?;
+            Ok(state.types.push_and_get_key(Fn {
                 params: Rc::new(params_types),
                 ret: ret_type,
             }))
         }
 
-        ast::types::Type::App(typ) => match types_env.get(&typ.name.name) {
+        ast::types::Type::App(typ) => match state.types_env.get(&typ.name.name) {
             Some(t) => {
-                state.enter_level();
-                let t = state.instantiate(t, types);
-                state.exit_level();
-                match &types[t] {
+                state.type_vars.enter_level();
+                let t = state.type_vars.instantiate(t, state.types);
+                state.type_vars.exit_level();
+                match &state.types[t] {
                     Named { module, .. } => {
                         let module = *module;
                         let mut params_types = vec![];
                         for param in &typ.params {
-                            params_types.push(ast_type_to_type(
-                                param, type_vars, errors, state, types_env, types,
-                            )?);
+                            params_types.push(ast_type_to_type(param, type_vars, state)?);
                         }
-                        let ast_typ = types.push_and_get_key(Named {
+                        let ast_typ = state.types.push_and_get_key(Named {
                             module,
                             name: typ.name.name,
                             params: Rc::new(params_types),
                         });
 
-                        unify(state, typ.span, ast_typ, None, t, types)?;
+                        unify(state, typ.span, ast_typ, None, t)?;
 
                         Ok(ast_typ)
                     }
@@ -1504,16 +1534,14 @@ fn ast_type_to_type<'ast>(
 
                         let mut params_types = vec![];
                         for (param, (name, dest_param_typ)) in typ.params.iter().zip(&**params) {
-                            let param_typ = ast_type_to_type(
-                                param, type_vars, errors, state, types_env, types,
-                            )?;
+                            let param_typ = ast_type_to_type(param, type_vars, state)?;
                             // TODO: param span (`typ.span`) here should have node to point at it
                             // directly in the error message
-                            unify(state, typ.span, param_typ, None, *dest_param_typ, types)?;
+                            unify(state, typ.span, param_typ, None, *dest_param_typ)?;
                             params_types.push((*name, param_typ));
                         }
 
-                        Ok(types.push_and_get_key(Alias {
+                        Ok(state.types.push_and_get_key(Alias {
                             module,
                             name,
                             params: Rc::new(params_types),
@@ -1537,26 +1565,23 @@ fn ast_type_to_type<'ast>(
         },
 
         ast::types::Type::Record(record_type) => {
-            ast_record_type_to_type(record_type, type_vars, errors, state, types_env, types)
+            ast_record_type_to_type(record_type, type_vars, state)
         }
     }
 }
 fn ast_record_type_to_type<'ast>(
     record_type: &'ast ast::types::RecordType,
     type_vars: &TypeEnv,
-    errors: &mut Vec<Error>,
     state: &mut State,
-    types_env: &PolyTypeEnv,
-    types: &mut Types,
 ) -> Result<typ::Index, Error> {
     match record_type {
         ast::types::RecordType::Record(record) => {
             let mut fields = TypeEnv::new();
             for (name, ast_type) in &record.fields {
-                let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env, types)?;
+                let typ = ast_type_to_type(ast_type, type_vars, state)?;
                 fields.insert(name.name, typ);
             }
-            Ok(types.push_and_get_key(Record {
+            Ok(state.types.push_and_get_key(Record {
                 fields: Rc::new(fields),
             }))
         }
@@ -1569,11 +1594,11 @@ fn ast_record_type_to_type<'ast>(
 
             let mut fields = TypeEnv::new();
             for (name, ast_type) in &record_ext.fields {
-                let typ = ast_type_to_type(ast_type, type_vars, errors, state, types_env, types)?;
+                let typ = ast_type_to_type(ast_type, type_vars, state)?;
                 fields.insert(name.name, typ);
             }
 
-            Ok(types.push_and_get_key(RecordExt {
+            Ok(state.types.push_and_get_key(RecordExt {
                 fields: Rc::new(fields),
                 base_record,
             }))
@@ -1581,42 +1606,32 @@ fn ast_record_type_to_type<'ast>(
     }
 }
 
-fn infer_rec<'ast>(
-    expression_index: expression::Index,
-    state: &mut State,
-    env: &mut PolyTypeEnv,
-    types_env: &PolyTypeEnv,
-    strings: &mut Strings,
-    expressions: &'ast ExpressionValues,
-    expression_types: &'ast mut ExpressionTypes,
-    expression_spans: &'ast ExpressionSpans,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
-) -> typ::Index {
-    let expression = &expressions[expression_index];
+fn infer_rec<'ast>(expression_index: expression::Index, state: &mut State) -> typ::Index {
+    let expression = &state.expressions[expression_index];
     let typ = match expression {
-        E::Float(_) => types_env.get(&strings.get_or_intern("Float")).unwrap().typ,
+        E::Float(_) => {
+            state
+                .types_env
+                .get(&state.strings.get_or_intern("Float"))
+                .unwrap()
+                .typ
+        }
 
-        E::String_(_) => types_env.get(&strings.get_or_intern("String")).unwrap().typ,
+        E::String_(_) => {
+            state
+                .types_env
+                .get(&state.strings.get_or_intern("String"))
+                .unwrap()
+                .typ
+        }
 
         E::Record { fields } => {
             let mut typed_fields = TypeEnv::new();
 
             for (name, value) in fields {
-                let t = infer_rec(
-                    *value,
-                    state,
-                    env,
-                    types_env,
-                    strings,
-                    expressions,
-                    expression_types,
-                    expression_spans,
-                    types,
-                    errors,
-                );
+                let t = infer_rec(*value, state);
                 if typed_fields.map().contains_key(&name.name) {
-                    errors.push(Error::DuplicateField {
+                    state.errors.push(Error::DuplicateField {
                         field: name.to_owned(),
                         expr: expression_index.to_owned(),
                     });
@@ -1625,7 +1640,7 @@ fn infer_rec<'ast>(
                 }
             }
 
-            types.push_and_get_key(Record {
+            state.types.push_and_get_key(Record {
                 fields: Rc::new(typed_fields),
             })
         }
@@ -1633,20 +1648,9 @@ fn infer_rec<'ast>(
         E::RecordUpdate { record, fields } => {
             let mut typed_fields = TypeEnv::new();
             for (name, value) in fields {
-                let t = infer_rec(
-                    *value,
-                    state,
-                    env,
-                    types_env,
-                    strings,
-                    expressions,
-                    expression_types,
-                    expression_spans,
-                    types,
-                    errors,
-                );
+                let t = infer_rec(*value, state);
                 if typed_fields.map().contains_key(&name.name) {
-                    errors.push(Error::DuplicateField {
+                    state.errors.push(Error::DuplicateField {
                         field: name.to_owned(),
                         expr: expression_index.to_owned(),
                     });
@@ -1655,38 +1659,26 @@ fn infer_rec<'ast>(
                 }
             }
 
-            let base_record = types.push_and_get_key(state.new_type_var());
-            let inferred_type = types.push_and_get_key(RecordExt {
+            let base_record = state.types.push_and_get_key(state.type_vars.new_type_var());
+            let inferred_type = state.types.push_and_get_key(RecordExt {
                 fields: Rc::new(typed_fields),
                 base_record,
             });
 
             let record_index = *record;
 
-            let record_type = infer_rec(
-                record_index,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
+            let record_type = infer_rec(record_index, state);
 
             // Unify the base record with the extensible record represented by this update
             add_error(
                 unify(
                     state,
-                    expression_spans[record_index],
+                    state.expression_spans[record_index],
                     record_type,
                     None,
                     inferred_type,
-                    types,
                 ),
-                errors,
+                state.errors,
             );
 
             inferred_type
@@ -1696,9 +1688,10 @@ fn infer_rec<'ast>(
             expression: lhs_index,
             property,
         } => {
-            let field_type = types.push_and_get_key(state.new_type_var());
-            let remaining_fields_type = types.push_and_get_key(state.new_type_var());
-            let record_type = types.push_and_get_key(RecordExt {
+            let field_type = state.types.push_and_get_key(state.type_vars.new_type_var());
+            let remaining_fields_type =
+                state.types.push_and_get_key(state.type_vars.new_type_var());
+            let record_type = state.types.push_and_get_key(RecordExt {
                 fields: {
                     let mut fields = TypeEnv::new();
                     fields.insert(property.name, field_type);
@@ -1707,39 +1700,28 @@ fn infer_rec<'ast>(
                 base_record: remaining_fields_type,
             });
 
-            let lhs_type = infer_rec(
-                *lhs_index,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
+            let lhs_type = infer_rec(*lhs_index, state);
 
             add_error(
                 unify(
                     state,
-                    expression_spans[*lhs_index],
+                    state.expression_spans[*lhs_index],
                     lhs_type,
                     None,
                     record_type,
-                    types,
                 ),
-                errors,
+                state.errors,
             );
 
             field_type
         }
 
         E::PropertyAccessLambda { property } => {
-            let field_type = types.push_and_get_key(state.new_type_var());
-            let remaining_fields_type = types.push_and_get_key(state.new_type_var());
+            let field_type = state.types.push_and_get_key(state.type_vars.new_type_var());
+            let remaining_fields_type =
+                state.types.push_and_get_key(state.type_vars.new_type_var());
 
-            let param = types.push_and_get_key(RecordExt {
+            let param = state.types.push_and_get_key(RecordExt {
                 fields: {
                     let mut fields = TypeEnv::new();
                     fields.insert(property.name, field_type);
@@ -1747,7 +1729,7 @@ fn infer_rec<'ast>(
                 },
                 base_record: remaining_fields_type,
             });
-            types.push_and_get_key(Fn {
+            state.types.push_and_get_key(Fn {
                 params: Rc::new(vec![param]),
                 ret: field_type,
             })
@@ -1757,35 +1739,25 @@ fn infer_rec<'ast>(
             op,
             expression: rhs_index,
         } => {
-            let rhs_type = infer_rec(
-                *rhs_index,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
+            let rhs_type = infer_rec(*rhs_index, state);
+            let op_type = state
+                .types_env
+                .get(&state.strings.get_or_intern(match op.typ {
+                    U::Not => "Bool",
+                    U::Minus => "Float",
+                }))
+                .unwrap()
+                .typ;
 
             add_error(
                 unify(
                     state,
-                    expression_spans[*rhs_index],
+                    state.expression_spans[*rhs_index],
                     rhs_type,
                     None,
-                    types_env
-                        .get(&strings.get_or_intern(match op.typ {
-                            U::Not => "Bool",
-                            U::Minus => "Float",
-                        }))
-                        .unwrap()
-                        .typ,
-                    types,
+                    op_type,
                 ),
-                errors,
+                state.errors,
             );
 
             rhs_type
@@ -1802,14 +1774,6 @@ fn infer_rec<'ast>(
                 arguments.iter().copied(),
                 expression_index,
                 state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
             )
         }
 
@@ -1833,64 +1797,28 @@ fn infer_rec<'ast>(
             then: then_index,
             else_: else_index,
         } => {
-            let t = infer_rec(
-                *condition_index,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
+            let t = infer_rec(*condition_index, state);
+            let t2 = state
+                .types_env
+                .get(&state.strings.get_or_intern("Bool"))
+                .unwrap()
+                .typ;
             add_error(
-                unify(
-                    state,
-                    expression_spans[*condition_index],
-                    t,
-                    None,
-                    types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
-                    types,
-                ),
-                errors,
+                unify(state, state.expression_spans[*condition_index], t, None, t2),
+                state.errors,
             );
 
-            let t1 = infer_rec(
-                *then_index,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
-            let t2 = infer_rec(
-                *else_index,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
+            let t1 = infer_rec(*then_index, state);
+            let t2 = infer_rec(*else_index, state);
             add_error(
                 unify(
                     state,
-                    expression_spans[*then_index],
+                    state.expression_spans[*then_index],
                     t1,
-                    Some(expression_spans[*else_index]),
+                    Some(state.expression_spans[*else_index]),
                     t2,
-                    types,
                 ),
-                errors,
+                state.errors,
             );
 
             t2
@@ -1906,12 +1834,8 @@ fn infer_rec<'ast>(
         E::Identifier { module, identifier } => infer_identifier(
             module,
             identifier,
-            expression_spans[expression_index],
+            state.expression_spans[expression_index],
             state,
-            env,
-            strings,
-            types,
-            errors,
         ),
 
         /* FnCall
@@ -1936,14 +1860,6 @@ fn infer_rec<'ast>(
             arguments.iter().copied(),
             expression_index,
             state,
-            env,
-            types_env,
-            strings,
-            expressions,
-            expression_types,
-            expression_spans,
-            types,
-            errors,
         ),
 
         /* Lambda
@@ -1966,18 +1882,7 @@ fn infer_rec<'ast>(
          *
          *     tparams -> t'
          */
-        E::Lambda(lambda) => infer_lambda(
-            lambda,
-            state,
-            env,
-            types_env,
-            strings,
-            expressions,
-            expression_types,
-            expression_spans,
-            types,
-            errors,
-        ),
+        E::Lambda(lambda) => infer_lambda(lambda, state),
 
         /* Let
          *
@@ -2001,64 +1906,33 @@ fn infer_rec<'ast>(
          * the environment.
          */
         E::Let { definitions, body } => {
-            let mut new_env = env.clone();
-
-            infer_definitions(
-                definitions,
-                state,
-                &mut new_env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            );
-
-            infer_rec(
-                *body,
-                state,
-                &mut new_env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            )
+            let mut new_env = state.env.clone();
+            std::mem::swap(state.env, &mut new_env);
+            infer_definitions(definitions, state);
+            let t = infer_rec(*body, state);
+            std::mem::swap(state.env, &mut new_env);
+            t
         }
 
         E::PatternMatching {
             conditions,
             branches,
         } => {
-            let return_type = types.push_and_get_key(state.new_type_var());
+            let return_type = state.types.push_and_get_key(state.type_vars.new_type_var());
 
             let expression_types_and_spans: Vec<_> = conditions
                 .iter()
                 .map(|expression| {
-                    let typ = infer_rec(
-                        *expression,
-                        state,
-                        env,
-                        types_env,
-                        strings,
-                        expressions,
-                        expression_types,
-                        expression_spans,
-                        types,
-                        errors,
-                    );
-                    let span = Some(expression_spans[*expression]);
+                    let typ = infer_rec(*expression, state);
+                    let span = Some(state.expression_spans[*expression]);
                     (typ, span)
                 })
                 .collect();
 
             let mut branch_types = Vec::with_capacity(branches.len());
             for branch in branches {
-                let mut env = env.clone();
+                let mut new_env = state.env.clone();
+                std::mem::swap(state.env, &mut new_env);
 
                 for (pattern, (expression_type, expression_type_span)) in
                     branch.patterns.iter().zip(&expression_types_and_spans)
@@ -2068,53 +1942,32 @@ fn infer_rec<'ast>(
                         *expression_type,
                         *expression_type_span,
                         state,
-                        &mut env,
                         &mut Vec::new(),
-                        types_env,
-                        strings,
-                        types,
-                        errors,
                     );
                 }
 
                 if let Some(condition_idx) = &branch.condition {
-                    let condition_type = infer_rec(
-                        *condition_idx,
-                        state,
-                        &mut env,
-                        types_env,
-                        strings,
-                        expressions,
-                        expression_types,
-                        expression_spans,
-                        types,
-                        errors,
-                    );
+                    let condition_type = infer_rec(*condition_idx, state);
+                    let bool_type = state
+                        .types_env
+                        .get(&state.strings.get_or_intern("Bool"))
+                        .unwrap()
+                        .typ;
                     add_error(
                         unify(
                             state,
-                            expression_spans[*condition_idx],
+                            state.expression_spans[*condition_idx],
                             condition_type,
                             None,
-                            types_env.get(&strings.get_or_intern("Bool")).unwrap().typ,
-                            types,
+                            bool_type,
                         ),
-                        errors,
+                        state.errors,
                     );
                 }
 
-                branch_types.push(infer_rec(
-                    branch.body,
-                    state,
-                    &mut env,
-                    types_env,
-                    strings,
-                    expressions,
-                    expression_types,
-                    expression_spans,
-                    types,
-                    errors,
-                ));
+                branch_types.push(infer_rec(branch.body, state));
+
+                std::mem::swap(state.env, &mut new_env);
             }
 
             let mut last_unified_span = None;
@@ -2125,14 +1978,13 @@ fn infer_rec<'ast>(
                     branch_type,
                     last_unified_span,
                     return_type,
-                    types,
                 ) {
                     // TODO: Right now we error with only the first branch to have a type mismatch,
                     // but ideally we would unify all and store the branches that have different
                     // types, eg: (all_that_unified, all_that_didnt) and emit a specific nice error
                     // message for it. For now this can do but it can be improved.
-                    add_error(Err(e), errors);
-                    return types.push_and_get_key(state.new_type_var());
+                    add_error(Err(e), state.errors);
+                    return state.types.push_and_get_key(state.type_vars.new_type_var());
                 } else {
                     last_unified_span = Some(branch.span);
                 }
@@ -2142,92 +1994,48 @@ fn infer_rec<'ast>(
         }
     };
 
-    expression_types[expression_index] = Some(typ);
+    state.expression_types[expression_index] = Some(typ);
 
     typ
 }
 
-fn infer_definitions<'ast>(
-    definitions: &'ast [TypedDefinition],
-    state: &mut State,
-    env: &mut PolyTypeEnv,
-    types_env: &PolyTypeEnv,
-    strings: &mut Strings,
-    expressions: &'ast ExpressionValues,
-    expression_types: &'ast mut ExpressionTypes,
-    expression_spans: &'ast ExpressionSpans,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
-) {
+fn infer_definitions<'ast>(definitions: &'ast [TypedDefinition], state: &mut State) {
     for typed_definition in definitions {
         if let Some(definition) = typed_definition.definition() {
             match &definition {
                 Definition::Lambda(identifier, lambda) => {
-                    state.enter_level();
-                    let t = infer_lambda(
-                        lambda,
-                        state,
-                        env,
-                        types_env,
-                        strings,
-                        expressions,
-                        expression_types,
-                        expression_spans,
-                        types,
-                        errors,
-                    );
-                    state.exit_level();
+                    state.type_vars.enter_level();
+                    let t = infer_lambda(lambda, state);
+                    state.type_vars.exit_level();
 
-                    let t = check_signature(typed_definition, t, state, types_env, types, errors);
+                    let t = check_signature(typed_definition, t, state);
 
-                    let t = state.generalize(t, types);
-                    env.insert(identifier.name, t);
+                    let t = state.type_vars.generalize(t, state.types);
+                    state.env.insert(identifier.name, t);
                 }
                 Definition::Pattern(pattern, value) => {
-                    state.enter_level();
-                    let t = infer_rec(
-                        *value,
-                        state,
-                        env,
-                        types_env,
-                        strings,
-                        expressions,
-                        expression_types,
-                        expression_spans,
-                        types,
-                        errors,
-                    );
-                    state.exit_level();
+                    state.type_vars.enter_level();
+                    let t = infer_rec(*value, state);
+                    state.type_vars.exit_level();
 
-                    let t = check_signature(typed_definition, t, state, types_env, types, errors);
+                    let t = check_signature(typed_definition, t, state);
 
-                    check_pattern_and_add_bindings(
-                        pattern,
-                        t,
-                        None,
-                        state,
-                        env,
-                        &mut Vec::new(),
-                        types_env,
-                        strings,
-                        types,
-                        errors,
-                    );
+                    check_pattern_and_add_bindings(pattern, t, None, state, &mut Vec::new());
                 }
             }
         } else if let Some(typ) = typed_definition.typ() {
-            let t = match type_from_signature(typ, state, types_env, types, errors) {
+            let t = match type_from_signature(typ, state) {
                 Ok(t) => t,
                 Err(err) => {
-                    errors.push(err);
-                    state.enter_level();
-                    let t = state.new_type_var();
-                    state.exit_level();
-                    types.push_and_get_key(t)
+                    state.errors.push(err);
+                    state.type_vars.enter_level();
+                    let t = state.type_vars.new_type_var();
+                    state.type_vars.exit_level();
+                    state.types.push_and_get_key(t)
                 }
             };
-            let t = state.generalize(t, types);
-            env.insert(typ.name.name, t);
+            let t = state.type_vars.generalize(t, state.types);
+            state.env.insert(typ.name.name, t);
         }
     }
 }
@@ -2235,18 +2043,17 @@ fn infer_definitions<'ast>(
 fn type_from_signature<'ast>(
     signature: &'ast TypeSignature,
     state: &mut State,
-    types_env: &PolyTypeEnv,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
 ) -> Result<typ::Index, Error> {
     let mut type_vars = TypeEnv::new();
-    state.enter_level();
+    state.type_vars.enter_level();
     for var in signature.typ.vars() {
-        type_vars.insert(var.name, types.push_and_get_key(state.new_type_var()));
+        type_vars.insert(
+            var.name,
+            state.types.push_and_get_key(state.type_vars.new_type_var()),
+        );
     }
-    let signature_type_result =
-        ast_type_to_type(&signature.typ, &type_vars, errors, state, types_env, types);
-    state.exit_level();
+    let signature_type_result = ast_type_to_type(&signature.typ, &type_vars, state);
+    state.type_vars.exit_level();
     signature_type_result
 }
 
@@ -2254,15 +2061,12 @@ fn check_signature<'ast>(
     typed_definition: &'ast TypedDefinition,
     typ: typ::Index,
     state: &mut State,
-    types_env: &PolyTypeEnv,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
 ) -> typ::Index {
     if let Some(signature) = typed_definition.typ() {
-        let signature_type = match type_from_signature(signature, state, types_env, types, errors) {
+        let signature_type = match type_from_signature(signature, state) {
             Ok(t) => t,
             Err(err) => {
-                errors.push(err);
+                state.errors.push(err);
                 return typ;
             }
         };
@@ -2270,10 +2074,12 @@ fn check_signature<'ast>(
         // TODO: This is kind of nasty
         // Clone the signature to avoid unifying the signature_type which we use to check if the
         // type is to general below
-        let signature_type_to_unify = state.generalize(signature_type, types);
-        state.enter_level();
-        let signature_type_to_unify = state.instantiate(&signature_type_to_unify, types);
-        state.exit_level();
+        let signature_type_to_unify = state.type_vars.generalize(signature_type, state.types);
+        state.type_vars.enter_level();
+        let signature_type_to_unify = state
+            .type_vars
+            .instantiate(&signature_type_to_unify, state.types);
+        state.type_vars.exit_level();
 
         if let Err(e) = unify(
             state,
@@ -2281,9 +2087,8 @@ fn check_signature<'ast>(
             typ,
             None,
             signature_type_to_unify,
-            types,
         ) {
-            errors.push(match e {
+            state.errors.push(match e {
                 Error::TypeMismatch {
                     actual_type_location,
                     ..
@@ -2296,8 +2101,8 @@ fn check_signature<'ast>(
             });
             typ
         } else {
-            if signature_is_too_generic(signature_type, typ, types) {
-                errors.push(Error::SignatureTooGeneral {
+            if signature_is_too_generic(signature_type, typ, state.types) {
+                state.errors.push(Error::SignatureTooGeneral {
                     signature_type_location: signature.name.span,
                     signature_type,
                     inferred_type: typ,
@@ -2315,42 +2120,51 @@ fn check_pattern_and_add_bindings(
     expected_pattern_type: typ::Index,
     expected_pattern_type_span: Option<Span>,
     state: &mut State,
-    env: &mut PolyTypeEnv,
     introduced_bindings: &mut Vec<(Identifier, typ::Index)>,
-    types_env: &PolyTypeEnv,
-    strings: &mut Strings,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
 ) {
     match &pattern.data {
         P::Hole => (),
         P::Identifier(x) => {
-            let t = state.generalize(expected_pattern_type, types);
+            let t = state
+                .type_vars
+                .generalize(expected_pattern_type, state.types);
             introduced_bindings.push((*x, t.typ));
-            env.insert(x.name, t);
+            state.env.insert(x.name, t);
         }
-        P::String_(_) => add_error(
-            unify(
-                state,
-                pattern.span,
-                types_env.get(&strings.get_or_intern("String")).unwrap().typ,
-                expected_pattern_type_span,
-                expected_pattern_type,
-                types,
-            ),
-            errors,
-        ),
-        P::Float(_) => add_error(
-            unify(
-                state,
-                pattern.span,
-                types_env.get(&strings.get_or_intern("Float")).unwrap().typ,
-                expected_pattern_type_span,
-                expected_pattern_type,
-                types,
-            ),
-            errors,
-        ),
+        P::String_(_) => {
+            let str_type = state
+                .types_env
+                .get(&state.strings.get_or_intern("String"))
+                .unwrap()
+                .typ;
+            add_error(
+                unify(
+                    state,
+                    pattern.span,
+                    str_type,
+                    expected_pattern_type_span,
+                    expected_pattern_type,
+                ),
+                state.errors,
+            )
+        }
+        P::Float(_) => {
+            let float_type = state
+                .types_env
+                .get(&state.strings.get_or_intern("Float"))
+                .unwrap()
+                .typ;
+            add_error(
+                unify(
+                    state,
+                    pattern.span,
+                    float_type,
+                    expected_pattern_type_span,
+                    expected_pattern_type,
+                ),
+                state.errors,
+            )
+        }
         P::Type {
             module,
             constructor,
@@ -2359,20 +2173,11 @@ fn check_pattern_and_add_bindings(
             // TODO: This is ugly and unnecessary, we could have AnyIdentifier be a trait, or
             // make the function take an thing that complies with an identifier trait.
             let identifier = AnyIdentifier::CapitalizedIdentifier(constructor.clone());
-            let constructor_type = infer_identifier(
-                module,
-                &identifier,
-                identifier.span(),
-                state,
-                env,
-                strings,
-                types,
-                errors,
-            );
+            let constructor_type = infer_identifier(module, &identifier, identifier.span(), state);
 
             let pattern_arity = pattern_params.len();
 
-            let constructor_return_type = match (pattern_arity, &types[constructor_type]) {
+            let constructor_return_type = match (pattern_arity, &state.types[constructor_type]) {
                 // Arities match, then check params against each other, and return the return type
                 (
                     n,
@@ -2391,12 +2196,7 @@ fn check_pattern_and_add_bindings(
                             *constructor_type_param,
                             None,
                             state,
-                            env,
                             introduced_bindings,
-                            types_env,
-                            strings,
-                            types,
-                            errors,
                         );
                     }
                     ret
@@ -2414,7 +2214,7 @@ fn check_pattern_and_add_bindings(
                 ) => {
                     let constructor_type_params = constructor_type_params.clone();
 
-                    errors.push(Error::WrongArity {
+                    state.errors.push(Error::WrongArity {
                         location: identifier.span(),
                         num_params_applied: pattern_arity,
                         num_params: constructor_type_params.len(),
@@ -2422,26 +2222,21 @@ fn check_pattern_and_add_bindings(
                     });
 
                     for (i, param) in pattern_params.iter().enumerate() {
-                        let expected_param_type = constructor_type_params
-                            .get(i)
-                            .copied()
-                            .unwrap_or_else(|| types.push_and_get_key(state.new_type_var()));
+                        let expected_param_type =
+                            constructor_type_params.get(i).copied().unwrap_or_else(|| {
+                                state.types.push_and_get_key(state.type_vars.new_type_var())
+                            });
 
                         check_pattern_and_add_bindings(
                             param,
                             expected_param_type,
                             None,
                             state,
-                            env,
                             introduced_bindings,
-                            types_env,
-                            strings,
-                            types,
-                            errors,
                         );
                     }
 
-                    types.push_and_get_key(state.new_type_var())
+                    state.types.push_and_get_key(state.type_vars.new_type_var())
                 }
 
                 // Just a type without arguments, arities match
@@ -2450,26 +2245,22 @@ fn check_pattern_and_add_bindings(
                 // Used the pattern with arguments, but the type is just a type not a function
                 (_n, Named { .. }) => {
                     let mut params = Vec::with_capacity(pattern_params.len());
-                    let ret = types.push_and_get_key(state.new_type_var());
+                    let ret = state.types.push_and_get_key(state.type_vars.new_type_var());
 
                     for param in pattern_params {
-                        let expected_param_type = types.push_and_get_key(state.new_type_var());
+                        let expected_param_type =
+                            state.types.push_and_get_key(state.type_vars.new_type_var());
                         params.push(expected_param_type);
                         check_pattern_and_add_bindings(
                             param,
                             expected_param_type,
                             None,
                             state,
-                            env,
                             introduced_bindings,
-                            types_env,
-                            strings,
-                            types,
-                            errors,
                         );
                     }
 
-                    let pattern_type = types.push_and_get_key(Fn {
+                    let pattern_type = state.types.push_and_get_key(Fn {
                         params: Rc::new(params),
                         ret,
                     });
@@ -2481,9 +2272,8 @@ fn check_pattern_and_add_bindings(
                             pattern_type,
                             None,
                             constructor_type,
-                            types,
                         ),
-                        errors,
+                        state.errors,
                     );
 
                     ret
@@ -2499,27 +2289,23 @@ fn check_pattern_and_add_bindings(
                     constructor_return_type,
                     expected_pattern_type_span,
                     expected_pattern_type,
-                    types,
                 ),
-                errors,
+                state.errors,
             );
         }
         P::Named { pattern, name } => {
-            let t = state.generalize(expected_pattern_type, types);
+            let t = state
+                .type_vars
+                .generalize(expected_pattern_type, state.types);
             introduced_bindings.push((*name, t.typ));
-            env.insert(name.name, t);
+            state.env.insert(name.name, t);
 
             check_pattern_and_add_bindings(
                 pattern,
                 expected_pattern_type,
                 expected_pattern_type_span,
                 state,
-                env,
                 introduced_bindings,
-                types_env,
-                strings,
-                types,
-                errors,
             )
         }
         P::Or(patterns) => {
@@ -2529,22 +2315,17 @@ fn check_pattern_and_add_bindings(
             // Then unify the patterns against each other, for better errors
             // And if they did, then unify with the expected_pattern_type
 
-            let all_patterns_type = types.push_and_get_key(state.new_type_var());
+            let all_patterns_type = state.types.push_and_get_key(state.type_vars.new_type_var());
             let mut pattern_types = Vec::with_capacity(patterns.len());
             let mut last_unified_span = None;
             for pattern in patterns {
-                let pattern_type = types.push_and_get_key(state.new_type_var());
+                let pattern_type = state.types.push_and_get_key(state.type_vars.new_type_var());
                 check_pattern_and_add_bindings(
                     pattern,
                     pattern_type,
                     None,
                     state,
-                    env,
                     &mut introduced_bindings,
-                    types_env,
-                    strings,
-                    types,
-                    errors,
                 );
                 if let Err(e) = unify(
                     state,
@@ -2552,13 +2333,12 @@ fn check_pattern_and_add_bindings(
                     pattern_type,
                     last_unified_span,
                     all_patterns_type,
-                    types,
                 ) {
                     // TODO: Right now we error with only the first pattern to have a type mismatch,
                     // but ideally we would unify all and store the patterns that have different
                     // types, eg: (all_that_unified, all_that_didnt) and emit a specific nice error
                     // message for it. For now this can do but it can be improved.
-                    add_error(Err(e), errors);
+                    add_error(Err(e), state.errors);
                     return;
                 } else {
                     last_unified_span = Some(pattern.span);
@@ -2573,10 +2353,9 @@ fn check_pattern_and_add_bindings(
                     pattern_type,
                     expected_pattern_type_span,
                     expected_pattern_type,
-                    types,
                 );
                 if result.is_err() {
-                    add_error(result, errors);
+                    add_error(result, state.errors);
                     return;
                 }
             }
@@ -2595,7 +2374,7 @@ fn check_pattern_and_add_bindings(
                                 names2: pattern_names,
                                 span2: pattern.span,
                             }),
-                            errors,
+                            state.errors,
                         );
                         return;
                     }
@@ -2616,10 +2395,9 @@ fn check_pattern_and_add_bindings(
                             *type_idx,
                             Some(identifier2.span),
                             *type_idx2,
-                            types,
                         );
                         if result.is_err() {
-                            add_error(result, errors);
+                            add_error(result, state.errors);
                             return;
                         }
                     }
@@ -2629,24 +2407,20 @@ fn check_pattern_and_add_bindings(
         P::Record(fields) => {
             let mut field_types = TypeEnv::new();
             for (identifier, field) in fields {
-                let expected_field_type = types.push_and_get_key(state.new_type_var());
+                let expected_field_type =
+                    state.types.push_and_get_key(state.type_vars.new_type_var());
                 field_types.insert(identifier.name, expected_field_type);
                 check_pattern_and_add_bindings(
                     field,
                     expected_field_type,
                     None,
                     state,
-                    env,
                     introduced_bindings,
-                    types_env,
-                    strings,
-                    types,
-                    errors,
                 );
             }
 
-            let base_record = types.push_and_get_key(state.new_type_var());
-            let pattern_type = types.push_and_get_key(RecordExt {
+            let base_record = state.types.push_and_get_key(state.type_vars.new_type_var());
+            let pattern_type = state.types.push_and_get_key(RecordExt {
                 base_record,
                 fields: Rc::new(field_types),
             });
@@ -2658,9 +2432,8 @@ fn check_pattern_and_add_bindings(
                     pattern_type,
                     expected_pattern_type_span,
                     expected_pattern_type,
-                    types,
                 ),
-                errors,
+                state.errors,
             );
         }
     }
@@ -2671,91 +2444,58 @@ fn infer_identifier(
     identifier: &AnyIdentifier,
     span: Span,
     state: &mut State,
-    env: &mut PolyTypeEnv,
-    strings: &mut Strings,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
 ) -> typ::Index {
     let name = if let Some(module) = module {
         // TODO: Check the module if it was imported, would make for a better error message
         // TODO: This should be pre-computed in the identifier to avoid doing this with
         // each node in the AST.
         let full_name = {
-            let module = strings.resolve(module.full_name);
-            let name = strings.resolve(identifier.name());
+            let module = state.strings.resolve(module.full_name);
+            let name = state.strings.resolve(identifier.name());
             format!("{module}.{name}")
         };
-        strings.get_or_intern(full_name)
+        state.strings.get_or_intern(full_name)
     } else {
         identifier.name()
     };
 
-    match env.get(&name) {
-        Some(s) => state.instantiate(s, types),
+    match state.env.get(&name) {
+        Some(s) => state.type_vars.instantiate(s, state.types),
         None => {
             add_error(
                 Err(Error::UndefinedIdentifier {
                     identifier: name,
                     location: span,
                 }),
-                errors,
+                state.errors,
             );
-            types.push_and_get_key(state.new_type_var())
+            state.types.push_and_get_key(state.type_vars.new_type_var())
         }
     }
 }
 
-fn infer_lambda<'ast>(
-    lambda: &'ast Lambda,
-    state: &mut State,
-    env: &mut PolyTypeEnv,
-    types_env: &PolyTypeEnv,
-    strings: &mut Strings,
-    expressions: &'ast ExpressionValues,
-    expression_types: &'ast mut ExpressionTypes,
-    expression_spans: &'ast ExpressionSpans,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
-) -> typ::Index {
+fn infer_lambda<'ast>(lambda: &'ast Lambda, state: &mut State) -> typ::Index {
     let param_types: Vec<typ::Index> = lambda
         .parameters
         .iter()
-        .map(|_| types.push_and_get_key(state.new_type_var()))
+        .map(|_| state.types.push_and_get_key(state.type_vars.new_type_var()))
         .collect();
 
-    let mut env = lambda.parameters.iter().zip(&param_types).fold(
-        env.clone(),
-        |mut env, (param, param_type)| {
-            check_pattern_and_add_bindings(
-                param,
-                *param_type,
-                None,
-                state,
-                &mut env,
-                &mut Vec::new(),
-                types_env,
-                strings,
-                types,
-                errors,
-            );
-            env
-        },
-    );
+    let mut new_env = state.env.clone();
+    std::mem::swap(state.env, &mut new_env);
 
-    let return_type = infer_rec(
-        lambda.body,
-        state,
-        &mut env,
-        types_env,
-        strings,
-        expressions,
-        expression_types,
-        expression_spans,
-        types,
-        errors,
-    );
+    lambda
+        .parameters
+        .iter()
+        .zip(&param_types)
+        .for_each(|(param, param_type)| {
+            check_pattern_and_add_bindings(param, *param_type, None, state, &mut Vec::new());
+        });
 
-    types.push_and_get_key(Fn {
+    let return_type = infer_rec(lambda.body, state);
+    std::mem::swap(state.env, &mut new_env);
+
+    state.types.push_and_get_key(Fn {
         params: Rc::new(param_types),
         ret: return_type,
     })
@@ -2766,56 +2506,21 @@ fn infer_fn_call<'ast, Args>(
     args: Args,
     expression: expression::Index,
     state: &mut State,
-    env: &mut PolyTypeEnv,
-    types_env: &PolyTypeEnv,
-    strings: &mut Strings,
-    expressions: &'ast ExpressionValues,
-    expression_types: &'ast mut ExpressionTypes,
-    expression_spans: &'ast ExpressionSpans,
-    types: &mut Types,
-    errors: &mut Vec<Error>,
 ) -> typ::Index
 where
     Args: Iterator<Item = expression::Index> + Clone,
 {
-    let fn_type = infer_rec(
-        f,
-        state,
-        env,
-        types_env,
-        strings,
-        expressions,
-        expression_types,
-        expression_spans,
-        types,
-        errors,
-    );
-    let param_types = match &types[fn_type] {
+    let fn_type = infer_rec(f, state);
+    let param_types = match &state.types[fn_type] {
         Fn { params, .. } => params.clone(),
         _ => Rc::new(Vec::new()),
     };
 
-    let arg_types: Vec<typ::Index> = args
-        .clone()
-        .map(|arg| {
-            infer_rec(
-                arg,
-                state,
-                env,
-                types_env,
-                strings,
-                expressions,
-                expression_types,
-                expression_spans,
-                types,
-                errors,
-            )
-        })
-        .collect();
+    let arg_types: Vec<typ::Index> = args.clone().map(|arg| infer_rec(arg, state)).collect();
 
-    let return_type = types.push_and_get_key(state.new_type_var());
+    let return_type = state.types.push_and_get_key(state.type_vars.new_type_var());
 
-    let call_type: typ::Index = types.push_and_get_key(Fn {
+    let call_type: typ::Index = state.types.push_and_get_key(Fn {
         params: Rc::new(arg_types.clone()),
         ret: return_type,
     });
@@ -2829,11 +2534,10 @@ where
             result.and_then(|_| {
                 unify(
                     state,
-                    expression_spans[arg],
+                    state.expression_spans[arg],
                     *arg_type,
                     None,
                     *param_type,
-                    types,
                 )
             })
         })
@@ -2841,14 +2545,13 @@ where
         .and_then(|_| {
             unify(
                 state,
-                expression_spans[expression],
+                state.expression_spans[expression],
                 call_type,
                 None,
                 fn_type,
-                types,
             )
         });
-    add_error(res, errors);
+    add_error(res, state.errors);
 
     return_type
 }
