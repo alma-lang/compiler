@@ -517,7 +517,7 @@ impl TypeVarsState {
             t: typ::Index,
             types: &mut Types,
         ) -> typ::Index {
-            match &types[t] {
+            match find_type(t, types) {
                 Named {
                     module,
                     name,
@@ -622,24 +622,25 @@ impl TypeVarsState {
     /* Find all type variables and wrap the type in a PolyType
      * e.g. generalize (a -> b -> b) = forall a b. a -> b -> b
      */
-    fn generalize(&self, t: typ::Index, types: &Types) -> PolyType {
+    fn generalize(&self, t: typ::Index, types: &mut Types) -> PolyType {
         let current_level = self.current_level;
 
         fn find_all_tvs(
             current_level: &Level,
             vars: &mut IndexSet<TypeVarId>,
-            t: &Type,
-            types: &Types,
+            t: typ::Index,
+            types: &mut Types,
         ) {
-            match t {
+            let t = find(t, types);
+            match &types[t] {
                 Named { params, .. } => {
-                    for param in params.iter() {
-                        find_all_tvs(current_level, vars, &types[*param], types);
+                    for param in params.clone().iter() {
+                        find_all_tvs(current_level, vars, *param, types);
                     }
                 }
 
                 Var(var) => match var {
-                    Bound(t) => find_all_tvs(current_level, vars, &types[*t], types),
+                    Bound(t) => find_all_tvs(current_level, vars, *t, types),
                     Unbound(n, level) => {
                         if level > current_level {
                             vars.insert(*n);
@@ -648,15 +649,17 @@ impl TypeVarsState {
                 },
 
                 Fn { params, ret } => {
-                    for param in &**params {
-                        find_all_tvs(current_level, vars, &types[*param], types);
+                    let ret = *ret;
+                    for param in &*(params).clone() {
+                        find_all_tvs(current_level, vars, *param, types);
                     }
-                    find_all_tvs(current_level, vars, &types[*ret], types);
+                    find_all_tvs(current_level, vars, ret, types);
                 }
 
                 Record { fields } => {
+                    let fields = fields.clone();
                     for t in fields.map().values() {
-                        find_all_tvs(current_level, vars, &types[*t], types);
+                        find_all_tvs(current_level, vars, *t, types);
                     }
                 }
 
@@ -664,10 +667,12 @@ impl TypeVarsState {
                     fields,
                     base_record,
                 } => {
+                    let fields = fields.clone();
+                    let base_record = *base_record;
                     for t in fields.map().values() {
-                        find_all_tvs(current_level, vars, &types[*t], types);
+                        find_all_tvs(current_level, vars, *t, types);
                     }
-                    find_all_tvs(current_level, vars, &types[*base_record], types);
+                    find_all_tvs(current_level, vars, base_record, types);
                 }
 
                 Alias {
@@ -675,16 +680,17 @@ impl TypeVarsState {
                     destination,
                     ..
                 } => {
-                    for (_name, param) in params.iter() {
-                        find_all_tvs(current_level, vars, &types[*param], types);
+                    let destination = *destination;
+                    for (_name, param) in params.clone().iter() {
+                        find_all_tvs(current_level, vars, *param, types);
                     }
-                    find_all_tvs(current_level, vars, &types[*destination], types)
+                    find_all_tvs(current_level, vars, destination, types)
                 }
             }
         }
 
         let mut tvs = IndexSet::new();
-        find_all_tvs(&current_level, &mut tvs, &types[t], types);
+        find_all_tvs(&current_level, &mut tvs, t, types);
         PolyType::new(tvs, t)
     }
 }
@@ -693,7 +699,7 @@ impl TypeVarsState {
  * Can a monomorphic Var(a) be found inside this type?
  */
 fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> bool {
-    match &types[t] {
+    match find_type(t, types) {
         Named { params, .. } => params
             .clone()
             .iter()
@@ -749,14 +755,25 @@ fn occurs(a_id: TypeVarId, a_level: Level, t: typ::Index, types: &mut Types) -> 
     }
 }
 
-pub fn find(typ: typ::Index, types: &Types) -> typ::Index {
+pub fn find(typ: typ::Index, types: &mut Types) -> typ::Index {
     match &types[typ] {
         Var(var) => match var {
-            Bound(t) => find(*t, types),
+            Bound(t) => {
+                let t = *t;
+                let t2 = find(t, types);
+                if t != t2 {
+                    types[typ] = Var(Bound(t2));
+                }
+                t2
+            }
             Unbound(_, _) => typ,
         },
         _ => typ,
     }
+}
+fn find_type(typ: typ::Index, types: &mut Types) -> &Type {
+    let t = find(typ, types);
+    &types[t]
 }
 
 fn flatten_record(typ: typ::Index, types: &mut Types) -> Option<typ::Index> {
@@ -842,6 +859,8 @@ fn unify_rec(
     span2: Option<Span>,
     typ2: typ::Index,
 ) -> Result<(), Error> {
+    let t1 = find(t1, &mut state.types);
+    let t2 = find(t2, &mut state.types);
     match (&state.types[t1], &state.types[t2]) {
         (
             Named {
@@ -1495,7 +1514,7 @@ fn ast_type_to_type<'ast>(
                 state.type_vars.enter_level();
                 let t = state.type_vars.instantiate(t, state.types);
                 state.type_vars.exit_level();
-                match &state.types[t] {
+                match find_type(t, state.types) {
                     Named { module, .. } => {
                         let module = *module;
                         let mut params_types = vec![];
@@ -2177,110 +2196,111 @@ fn check_pattern_and_add_bindings(
 
             let pattern_arity = pattern_params.len();
 
-            let constructor_return_type = match (pattern_arity, &state.types[constructor_type]) {
-                // Arities match, then check params against each other, and return the return type
-                (
-                    n,
-                    Fn {
-                        params: constructor_type_params,
-                        ret,
-                    },
-                ) if n == constructor_type_params.len() => {
-                    let constructor_type_params = constructor_type_params.clone();
-                    let ret = *ret;
-                    for (pattern_param, constructor_type_param) in
-                        pattern_params.iter().zip(&*constructor_type_params)
-                    {
-                        check_pattern_and_add_bindings(
-                            pattern_param,
-                            *constructor_type_param,
-                            None,
-                            state,
-                            introduced_bindings,
-                        );
-                    }
-                    ret
-                }
-
-                // Arities dont match. Check the arguments anyways to introduce bindings and avoid
-                // extra error messages, and make up variables as needed. Return a new variable to
-                // avoid unnecessary errors when matching against the expected type.
-                (
-                    _n,
-                    Fn {
-                        params: constructor_type_params,
-                        ..
-                    },
-                ) => {
-                    let constructor_type_params = constructor_type_params.clone();
-
-                    state.errors.push(Error::WrongArity {
-                        location: identifier.span(),
-                        num_params_applied: pattern_arity,
-                        num_params: constructor_type_params.len(),
-                        typ: constructor_type,
-                    });
-
-                    for (i, param) in pattern_params.iter().enumerate() {
-                        let expected_param_type =
-                            constructor_type_params.get(i).copied().unwrap_or_else(|| {
-                                state.types.push_and_get_key(state.type_vars.new_type_var())
-                            });
-
-                        check_pattern_and_add_bindings(
-                            param,
-                            expected_param_type,
-                            None,
-                            state,
-                            introduced_bindings,
-                        );
+            let constructor_return_type =
+                match (pattern_arity, find_type(constructor_type, state.types)) {
+                    // Arities match, then check params against each other, and return the return type
+                    (
+                        n,
+                        Fn {
+                            params: constructor_type_params,
+                            ret,
+                        },
+                    ) if n == constructor_type_params.len() => {
+                        let constructor_type_params = constructor_type_params.clone();
+                        let ret = *ret;
+                        for (pattern_param, constructor_type_param) in
+                            pattern_params.iter().zip(&*constructor_type_params)
+                        {
+                            check_pattern_and_add_bindings(
+                                pattern_param,
+                                *constructor_type_param,
+                                None,
+                                state,
+                                introduced_bindings,
+                            );
+                        }
+                        ret
                     }
 
-                    state.types.push_and_get_key(state.type_vars.new_type_var())
-                }
+                    // Arities dont match. Check the arguments anyways to introduce bindings and avoid
+                    // extra error messages, and make up variables as needed. Return a new variable to
+                    // avoid unnecessary errors when matching against the expected type.
+                    (
+                        _n,
+                        Fn {
+                            params: constructor_type_params,
+                            ..
+                        },
+                    ) => {
+                        let constructor_type_params = constructor_type_params.clone();
 
-                // Just a type without arguments, arities match
-                (0, Named { .. }) => constructor_type,
+                        state.errors.push(Error::WrongArity {
+                            location: identifier.span(),
+                            num_params_applied: pattern_arity,
+                            num_params: constructor_type_params.len(),
+                            typ: constructor_type,
+                        });
 
-                // Used the pattern with arguments, but the type is just a type not a function
-                (_n, Named { .. }) => {
-                    let mut params = Vec::with_capacity(pattern_params.len());
-                    let ret = state.types.push_and_get_key(state.type_vars.new_type_var());
+                        for (i, param) in pattern_params.iter().enumerate() {
+                            let expected_param_type =
+                                constructor_type_params.get(i).copied().unwrap_or_else(|| {
+                                    state.types.push_and_get_key(state.type_vars.new_type_var())
+                                });
 
-                    for param in pattern_params {
-                        let expected_param_type =
-                            state.types.push_and_get_key(state.type_vars.new_type_var());
-                        params.push(expected_param_type);
-                        check_pattern_and_add_bindings(
-                            param,
-                            expected_param_type,
-                            None,
-                            state,
-                            introduced_bindings,
-                        );
+                            check_pattern_and_add_bindings(
+                                param,
+                                expected_param_type,
+                                None,
+                                state,
+                                introduced_bindings,
+                            );
+                        }
+
+                        state.types.push_and_get_key(state.type_vars.new_type_var())
                     }
 
-                    let pattern_type = state.types.push_and_get_key(Fn {
-                        params: Rc::new(params),
-                        ret,
-                    });
+                    // Just a type without arguments, arities match
+                    (0, Named { .. }) => constructor_type,
 
-                    add_error(
-                        unify(
-                            state,
-                            identifier.span(),
-                            pattern_type,
-                            None,
-                            constructor_type,
-                        ),
-                        state.errors,
-                    );
+                    // Used the pattern with arguments, but the type is just a type not a function
+                    (_n, Named { .. }) => {
+                        let mut params = Vec::with_capacity(pattern_params.len());
+                        let ret = state.types.push_and_get_key(state.type_vars.new_type_var());
 
-                    ret
-                }
+                        for param in pattern_params {
+                            let expected_param_type =
+                                state.types.push_and_get_key(state.type_vars.new_type_var());
+                            params.push(expected_param_type);
+                            check_pattern_and_add_bindings(
+                                param,
+                                expected_param_type,
+                                None,
+                                state,
+                                introduced_bindings,
+                            );
+                        }
 
-                (_, _) => constructor_type,
-            };
+                        let pattern_type = state.types.push_and_get_key(Fn {
+                            params: Rc::new(params),
+                            ret,
+                        });
+
+                        add_error(
+                            unify(
+                                state,
+                                identifier.span(),
+                                pattern_type,
+                                None,
+                                constructor_type,
+                            ),
+                            state.errors,
+                        );
+
+                        ret
+                    }
+
+                    (_, _) => constructor_type,
+                };
 
             add_error(
                 unify(
@@ -2511,7 +2531,7 @@ where
     Args: Iterator<Item = expression::Index> + Clone,
 {
     let fn_type = infer_rec(f, state);
-    let param_types = match &state.types[fn_type] {
+    let param_types = match find_type(fn_type, state.types) {
         Fn { params, .. } => params.clone(),
         _ => Rc::new(Vec::new()),
     };
