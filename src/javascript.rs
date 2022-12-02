@@ -5,8 +5,7 @@ use crate::strings::Strings;
 use crate::{
     ast::{
         expression::{Expression as E, Lambda, Pattern, PatternData as P, UnaryData as U},
-        types::{self, TypeDefinition},
-        Definition, ExportData, Module, ModuleName, TypedDefinition,
+        types, Definition, ExportData, Module, ModuleName, TypedDefinition,
     },
     compiler,
 };
@@ -24,6 +23,60 @@ pub enum OutputFile {
     CopyFrom(String),
 }
 
+struct State<'a> {
+    code: String,
+    indent: usize,
+    path: &'a PathBuf,
+    module_output_path: PathBuf,
+    output: &'a Path,
+    compiler_state: &'a compiler::State,
+    module: &'a Module,
+    interface: &'a ModuleInterface,
+    expressions: &'a Expressions,
+    strings: &'a Strings,
+}
+impl<'a> State<'a> {
+    fn new(
+        module_idx: ModuleIndex,
+        output: &'a Path,
+        compiler_state: &'a compiler::State,
+        strings: &'a Strings,
+    ) -> Self {
+        let module = &compiler_state.modules[module_idx];
+        let path = &compiler_state.sources[compiler_state.module_to_source_idx[module_idx]].path;
+        let module_output_path = output
+            .join(&path)
+            .with_file_name(&format!("{}.js", module.name.to_string(strings)));
+        let interface = compiler_state.module_interfaces[module_idx]
+            .as_ref()
+            .unwrap_or_else(|| {
+                let name = module.name.to_string(strings);
+                panic!("Couldn't find the types for module {name}");
+            });
+        let expressions = &module.expressions;
+
+        Self {
+            indent: 0,
+            code: String::new(),
+            path,
+            module_output_path,
+            output,
+            compiler_state,
+            module,
+            interface,
+            expressions,
+            strings,
+        }
+    }
+
+    fn indent(&mut self) {
+        self.indent += INDENT;
+    }
+    fn outdent(&mut self) {
+        self.indent -= INDENT;
+    }
+}
+
 pub fn generate(
     sorted_modules: &[ModuleIndex],
     state: &compiler::State,
@@ -33,50 +86,36 @@ pub fn generate(
     let strings = &state.strings;
 
     for module_idx in sorted_modules {
-        let mut code = String::new();
-        let module_ast = &state.modules[*module_idx];
-        let path = &state.sources[state.module_to_source_idx[*module_idx]].path;
-        let module_output_path = output
-            .join(&path)
-            .with_file_name(&format!("{}.js", module_ast.name.to_string(strings)));
+        let mut state = State::new(*module_idx, output, state, strings);
 
         // Print types
         {
-            code.push_str("/*\n\nmodule ");
-            code.push_str(module_ast.name.to_string(strings));
-            code.push_str("\n\n");
-            state.module_interfaces[*module_idx]
-                .as_ref()
-                .unwrap()
-                .write_to_string(&mut code, strings, &state.types);
+            state.code.push_str("/*\n\nmodule ");
+            state
+                .code
+                .push_str(state.module.name.to_string(state.strings));
+            state.code.push_str("\n\n");
+            state
+                .interface
+                .write_to_string(&mut state.code, strings, &state.compiler_state.types);
 
-            code.push_str(
+            state.code.push_str(
                 "\n\n*/
 \n\n",
             );
         }
 
-        let expressions = &module_ast.expressions;
-        let maybe_out_ffi_file = generate_file(
-            &module_output_path,
-            &mut code,
-            output,
-            state,
-            module_ast,
-            state.module_interfaces[*module_idx]
-                .as_ref()
-                .unwrap_or_else(|| {
-                    let name = module_ast.name.to_string(strings);
-                    panic!("Couldn't find the types for module {name}");
-                }),
-            strings,
-            expressions,
-        );
+        let maybe_out_ffi_file = generate_file(&mut state);
 
         if let Some(out_ffi_file) = maybe_out_ffi_file {
             let ffi_file = {
-                let ffi_path = path.with_file_name(module_ffi_file_name(
-                    module_output_path.file_stem().unwrap().to_str().unwrap(),
+                let ffi_path = state.path.with_file_name(module_ffi_file_name(
+                    state
+                        .module_output_path
+                        .file_stem()
+                        .unwrap()
+                        .to_str()
+                        .unwrap(),
                 ));
                 ffi_path.to_str().unwrap().to_owned()
             };
@@ -91,151 +130,128 @@ pub fn generate(
         }
 
         files.push((
-            module_output_path.to_str().unwrap().to_owned(),
-            OutputFile::File(code),
+            state.module_output_path.to_str().unwrap().to_owned(),
+            OutputFile::File(state.code),
         ))
     }
 
     files
 }
 
-fn generate_file(
-    module_output_path: &Path,
-    code: &mut String,
-    output: &Path,
-    state: &compiler::State,
-    module: &Module,
-    _interface: &ModuleInterface,
-    strings: &Strings,
-    expressions: &Expressions,
-) -> Option<String> {
-    let indent = 0;
+fn generate_file(state: &mut State) -> Option<String> {
     let mut ffi_file = None;
 
-    if module.has_externals() {
-        code.push_str("import * as ");
-        module_ffi_full_name(code, &module.name, strings);
+    if state.module.has_externals() {
+        state.code.push_str("import * as ");
+        module_ffi_full_name(&mut state.code, &state.module.name, state.strings);
 
-        let ffi_path = module_output_path.with_file_name(module_ffi_file_name(
-            module_output_path.file_stem().unwrap().to_str().unwrap(),
-        ));
-        let module_output_dir = module_output_path.parent().unwrap();
+        let ffi_path = state
+            .module_output_path
+            .with_file_name(module_ffi_file_name(
+                state
+                    .module_output_path
+                    .file_stem()
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+            ));
+        let module_output_dir = state.module_output_path.parent().unwrap();
         let relative_path = get_relative_path(module_output_dir, &ffi_path);
         let ffi_path = ffi_path.to_str().unwrap();
         let relative_path = relative_path.to_str().unwrap();
-        generate_import_from_part_with_newline(code, relative_path);
+        generate_import_from_part_with_newline(&mut state.code, relative_path);
 
         ffi_file = Some(ffi_path.to_owned());
     }
 
-    if !module.imports.is_empty() {
-        code.push('\n');
-        generate_imports(
-            indent,
-            code,
-            module_output_path,
-            output,
-            state,
-            module,
-            strings,
-        );
+    if !state.module.imports.is_empty() {
+        state.code.push('\n');
+        generate_imports(state);
     }
 
-    if !module.type_definitions.is_empty() {
-        code.push('\n');
-        generate_types(indent, code, &module.type_definitions, strings);
+    if !state.module.type_definitions.is_empty() {
+        state.code.push('\n');
+        generate_types(state);
     }
 
-    if !module.definitions.is_empty() {
-        code.push('\n');
-        generate_definitions(
-            indent,
-            code,
-            true,
-            &module.name,
-            &module.definitions,
-            strings,
-            expressions,
-        );
+    if !state.module.definitions.is_empty() {
+        state.code.push('\n');
+        generate_definitions(state, &state.module.definitions, true);
     }
 
-    if !module.exports.is_empty() {
-        code.push('\n');
-        generate_exports(indent, code, module, strings);
+    if !state.module.exports.is_empty() {
+        state.code.push('\n');
+        generate_exports(state);
     }
 
     ffi_file
 }
 
-fn generate_imports(
-    indent: usize,
-    code: &mut String,
-    module_output_path: &Path,
-    output: &Path,
-    state: &compiler::State,
-    module: &Module,
-    strings: &Strings,
-) {
-    let module_output_dir = module_output_path.parent().unwrap();
-    for import in &module.imports {
+fn generate_imports(state: &mut State) {
+    let module_output_dir = state.module_output_path.parent().unwrap().to_path_buf();
+    for import in &state.module.imports {
         let import = &import;
         let import_output_path = {
-            let path = state.sources[state.module_to_source_idx[*state
+            let compiler_state = state.compiler_state;
+            let path = compiler_state.sources[compiler_state.module_to_source_idx[*compiler_state
                 .module_name_to_module_idx
                 .get(&import.module_name.full_name)
                 .unwrap()]]
             .path
-            .with_file_name(format!("{}.js", import.module_name.to_string(strings)));
-            let path = output.to_path_buf().join(path);
-            get_relative_path(module_output_dir, &path)
+            .with_file_name(format!(
+                "{}.js",
+                import.module_name.to_string(state.strings)
+            ));
+            let path = state.output.to_path_buf().join(path);
+            get_relative_path(&module_output_dir, &path)
         };
         let import_output_path = import_output_path.to_str().unwrap();
 
-        indented(code, indent, "");
-        code.push_str("import * as ");
+        indented(state, "");
+        state.code.push_str("import * as ");
         match &import.alias {
             Some(alias) => {
-                let alias = alias.to_string(strings);
-                code.push_str(alias);
+                let alias = alias.to_string(state.strings);
+                state.code.push_str(alias);
             }
             None => {
-                module_full_name(code, &import.module_name, strings);
+                module_full_name(&mut state.code, &import.module_name, state.strings);
             }
         }
-        generate_import_from_part_with_newline(code, import_output_path);
+        generate_import_from_part_with_newline(&mut state.code, import_output_path);
 
         if !import.exposing.is_empty() {
-            indented(code, indent, "import { ");
+            indented(state, "import { ");
             let mut first = true;
             for exposing in &import.exposing {
                 match &exposing.typ {
                     ExportData::Identifier(identifier) => {
                         if !first {
-                            code.push_str(", ");
+                            state.code.push_str(", ");
                         } else {
                             first = false;
                         }
-                        code.push_str(identifier.to_string(strings));
+                        state.code.push_str(identifier.to_string(state.strings));
                     }
                     ExportData::Type { constructors, .. } => {
                         if !constructors.is_empty() {
                             if !first {
-                                code.push_str(", ");
+                                state.code.push_str(", ");
                             } else {
                                 first = false;
                             }
                             for (i, constructor) in constructors.iter().enumerate() {
                                 if i > 0 {
-                                    code.push_str(", ");
+                                    state.code.push_str(", ");
                                 }
-                                code.push_str(constructor.to_string(strings));
+                                state.code.push_str(constructor.to_string(state.strings));
                             }
                         }
                     }
                 }
             }
-            code.push_str(" }");
-            generate_import_from_part_with_newline(code, import_output_path);
+            state.code.push_str(" }");
+            generate_import_from_part_with_newline(&mut state.code, import_output_path);
         }
     }
 }
@@ -253,18 +269,18 @@ fn generate_union_discriminant_field_value(code: &mut String, constructor_name: 
     write!(code, "\"{constructor_name}\"").unwrap();
 }
 
-fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], strings: &Strings) {
-    for (i, type_def) in types.iter().enumerate() {
+fn generate_types(state: &mut State) {
+    for (i, type_def) in state.module.type_definitions.iter().enumerate() {
         let type_def = &type_def;
         if i > 0 {
-            code.push('\n')
+            state.code.push('\n')
         }
         match &type_def.typ {
             types::TypeDefinitionData::Empty => (),
             types::TypeDefinitionData::Union { constructors } => {
-                let type_name = type_def.name.to_string(strings);
-                indented(code, indent, "");
-                writeln!(code, "// type {type_name}\n").unwrap();
+                let type_name = type_def.name.to_string(state.strings);
+                indented(state, "");
+                writeln!(state.code, "// type {type_name}\n").unwrap();
 
                 let max_params = constructors
                     .iter()
@@ -274,67 +290,76 @@ fn generate_types(indent: usize, code: &mut String, types: &[TypeDefinition], st
 
                 for (i, constructor) in constructors.iter().enumerate() {
                     if i > 0 {
-                        code.push('\n')
+                        state.code.push('\n')
                     }
                     let constructor = &constructor;
-                    let constructor_name = constructor.name.to_string(strings);
+                    let constructor_name = constructor.name.to_string(state.strings);
                     let num_params = constructor.params.len();
 
                     if num_params > 0 {
-                        indented(code, indent, "function ");
-                        code.push_str(constructor_name);
-                        code.push('(');
+                        indented(state, "function ");
+                        state.code.push_str(constructor_name);
+                        state.code.push('(');
                         for i in 0..min(num_params, max_params) {
                             if i > 0 {
-                                code.push_str(", ");
+                                state.code.push_str(", ");
                             }
-                            generate_union_field(code, i);
+                            generate_union_field(&mut state.code, i);
                         }
-                        code.push_str(") {\n");
+                        state.code.push_str(") {\n");
 
                         {
-                            let indent = add_indent(indent);
-                            line(code, indent, "return {");
+                            state.indent();
+                            line(state, "return {");
                             {
-                                let indent = add_indent(indent);
-                                indented(code, indent, "");
-                                write!(code, "{UNION_TYPE_FIELD}: ").unwrap();
-                                generate_union_discriminant_field_value(code, constructor_name);
-                                code.push_str(",\n");
+                                state.indent();
+                                indented(state, "");
+                                write!(state.code, "{UNION_TYPE_FIELD}: ").unwrap();
+                                generate_union_discriminant_field_value(
+                                    &mut state.code,
+                                    constructor_name,
+                                );
+                                state.code.push_str(",\n");
 
                                 for i in 0..max_params {
-                                    indented(code, indent, "");
+                                    indented(state, "");
                                     if i < num_params {
-                                        generate_union_field(code, i);
-                                        code.push_str(",\n");
+                                        generate_union_field(&mut state.code, i);
+                                        state.code.push_str(",\n");
                                     } else {
-                                        generate_union_field(code, i);
-                                        code.push_str(": null,\n");
+                                        generate_union_field(&mut state.code, i);
+                                        state.code.push_str(": null,\n");
                                     }
                                 }
+                                state.outdent();
                             }
-                            line(code, indent, "}");
+                            line(state, "}");
+                            state.outdent();
                         }
                     } else {
-                        indented(code, indent, "let ");
-                        code.push_str(constructor_name);
-                        code.push_str(" = {\n");
+                        indented(state, "let ");
+                        state.code.push_str(constructor_name);
+                        state.code.push_str(" = {\n");
                         {
-                            let indent = add_indent(indent);
-                            indented(code, indent, "");
-                            write!(code, "{UNION_TYPE_FIELD}: ").unwrap();
-                            generate_union_discriminant_field_value(code, constructor_name);
-                            code.push_str(",\n");
+                            state.indent();
+                            indented(state, "");
+                            write!(state.code, "{UNION_TYPE_FIELD}: ").unwrap();
+                            generate_union_discriminant_field_value(
+                                &mut state.code,
+                                constructor_name,
+                            );
+                            state.code.push_str(",\n");
 
                             for i in 0..max_params {
-                                indented(code, indent, "");
-                                generate_union_field(code, i);
-                                code.push_str(": null,\n");
+                                indented(state, "");
+                                generate_union_field(&mut state.code, i);
+                                state.code.push_str(": null,\n");
                             }
+                            state.outdent();
                         }
                     }
 
-                    line(code, indent, "}");
+                    line(state, "}");
                 }
             }
             types::TypeDefinitionData::Record(_) => (),
@@ -346,143 +371,102 @@ fn generate_union_field(code: &mut String, i: usize) {
     write!(code, "_{i}").unwrap();
 }
 
-fn generate_definitions(
-    indent: usize,
-    code: &mut String,
-    space_between: bool,
-    module_name: &ModuleName,
-    definitions: &[TypedDefinition],
-    strings: &Strings,
-    expressions: &Expressions,
-) {
+fn generate_definitions(state: &mut State, definitions: &[TypedDefinition], space_between: bool) {
     for (i, definition) in definitions.iter().enumerate() {
         if i > 0 && space_between {
-            code.push('\n')
+            state.code.push('\n')
         }
         match definition {
             TypedDefinition::External(typ) => {
-                let name = typ.name.to_string(strings);
+                let name = typ.name.to_string(state.strings);
 
-                indented(code, indent, "");
-                write!(code, "let {name} = ").unwrap();
-                module_ffi_full_name(code, module_name, strings);
-                writeln!(code, ".{name}").unwrap();
+                indented(state, "");
+                write!(state.code, "let {name} = ").unwrap();
+                module_ffi_full_name(&mut state.code, &state.module.name, state.strings);
+                writeln!(state.code, ".{name}").unwrap();
             }
             TypedDefinition::TypeSignature(typ) => {
-                indented(code, indent, "");
+                indented(state, "");
                 writeln!(
-                    code,
+                    state.code,
                     "let {type_name} = new Error(\"Unimplemented\")",
-                    type_name = typ.name.to_string(strings)
+                    type_name = typ.name.to_string(state.strings)
                 )
                 .unwrap();
             }
-            TypedDefinition::Typed(_typ, def) => {
-                generate_definition(indent, code, module_name, def, strings, expressions)
-            }
-            TypedDefinition::Untyped(def) => {
-                generate_definition(indent, code, module_name, def, strings, expressions)
-            }
+            TypedDefinition::Typed(_typ, def) => generate_definition(state, def),
+            TypedDefinition::Untyped(def) => generate_definition(state, def),
         }
     }
 }
 
-fn generate_definition(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
-    definition: &Definition,
-    strings: &Strings,
-    expressions: &Expressions,
-) {
+fn generate_definition(state: &mut State, definition: &Definition) {
     match definition {
         Definition::Lambda(name, lambda) => {
-            indented(code, indent, "");
-            generate_function(
-                indent,
-                code,
-                module_name,
-                name.to_string(strings),
-                lambda,
-                strings,
-                expressions,
-            );
-            code.push('\n');
+            indented(state, "");
+            generate_function(state, name.to_string(state.strings), lambda);
+            state.code.push('\n');
         }
-        Definition::Pattern(pattern, expression) => generate_let(
-            indent,
-            code,
-            module_name,
-            pattern,
-            *expression,
-            strings,
-            expressions,
-        ),
+        Definition::Pattern(pattern, expression) => generate_let(state, pattern, *expression),
     }
 }
 
-fn generate_exports(indent: usize, code: &mut String, module: &Module, strings: &Strings) {
-    line(code, indent, "export {");
+fn generate_exports(state: &mut State) {
+    line(state, "export {");
 
-    for export in &module.exports {
+    state.indent();
+    for export in &state.module.exports {
         match &export.typ {
             ExportData::Identifier(identifier) => {
-                indented(code, add_indent(indent), "");
-                writeln!(code, "{},", identifier.to_string(strings)).unwrap();
+                indented(state, "");
+                writeln!(state.code, "{},", identifier.to_string(state.strings)).unwrap();
             }
             ExportData::Type { constructors, name } => {
-                let indent = add_indent(indent);
                 if !constructors.is_empty() {
-                    indented(code, indent, "");
-                    writeln!(code, "// type {}", name.to_string(strings)).unwrap();
+                    indented(state, "");
+                    writeln!(state.code, "// type {}", name.to_string(state.strings)).unwrap();
                 }
                 for constructor in constructors {
-                    indented(code, indent, "");
-                    writeln!(code, "{},", constructor.to_string(strings)).unwrap();
+                    indented(state, "");
+                    writeln!(state.code, "{},", constructor.to_string(state.strings)).unwrap();
                 }
                 if !constructors.is_empty() {
-                    indented(code, indent, "");
-                    writeln!(code, "// end type {}", name.to_string(strings)).unwrap();
+                    indented(state, "");
+                    writeln!(state.code, "// end type {}", name.to_string(state.strings)).unwrap();
                 }
             }
         }
     }
+    state.outdent();
 
-    line(code, indent, "}");
+    line(state, "}");
 }
 
-fn generate_function(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
-    name: &str,
-    lambda: &Lambda,
-    strings: &Strings,
-    expressions: &Expressions,
-) {
-    write!(code, "function {name}(").unwrap();
+fn generate_function(state: &mut State, name: &str, lambda: &Lambda) {
+    write!(state.code, "function {name}(").unwrap();
 
     for (i, pattern) in lambda.parameters.iter().enumerate() {
         if i > 0 {
-            code.push_str(", ");
+            state.code.push_str(", ");
         }
         if pattern_needs_bindings(pattern) {
-            generate_binding_destructuring(code, pattern, strings);
+            generate_binding_destructuring(&mut state.code, pattern, state.strings);
         } else {
-            code.push('_');
+            state.code.push('_');
         }
     }
 
-    code.push_str(") {\n");
+    state.code.push_str(") {\n");
 
     {
-        let indent = add_indent(indent);
-        indented(code, indent, "return ");
-        generate_expression(indent, code, module_name, lambda.body, strings, expressions);
-        code.push('\n');
+        state.indent();
+        indented(state, "return ");
+        generate_expression(state, lambda.body);
+        state.code.push('\n');
+        state.outdent();
     }
 
-    indented(code, indent, "}");
+    indented(state, "}");
 }
 
 fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings: &Strings) {
@@ -543,109 +527,94 @@ fn generate_binding_destructuring(code: &mut String, pattern: &Pattern, strings:
     }
 }
 
-fn generate_let(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
-    pattern: &Pattern,
-    expression: expression::Index,
-    strings: &Strings,
-    expressions: &Expressions,
-) {
-    indented(code, indent, "");
+fn generate_let(state: &mut State, pattern: &Pattern, expression: expression::Index) {
+    indented(state, "");
     if pattern_needs_bindings(pattern) {
-        code.push_str("let ");
-        generate_binding_destructuring(code, pattern, strings);
-        code.push_str(" = ");
+        state.code.push_str("let ");
+        generate_binding_destructuring(&mut state.code, pattern, state.strings);
+        state.code.push_str(" = ");
     }
-    generate_expression(indent, code, module_name, expression, strings, expressions);
-    code.push('\n');
+    generate_expression(state, expression);
+    state.code.push('\n');
 }
 
-fn generate_expression(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
-    expression: expression::Index,
-    strings: &Strings,
-    expressions: &Expressions,
-) {
-    match &expressions.values[expression] {
-        E::Float(float) => write!(code, "{float}").unwrap(),
+fn generate_expression(state: &mut State, expression: expression::Index) {
+    match &state.expressions.values[expression] {
+        E::Float(float) => write!(state.code, "{float}").unwrap(),
 
         E::String_(string) => {
-            let escaped_string = strings.resolve(*string).replace('\n', "\\n");
-            write!(code, "\"{escaped_string}\"").unwrap()
+            let escaped_string = state.strings.resolve(*string).replace('\n', "\\n");
+            write!(state.code, "\"{escaped_string}\"").unwrap()
         }
 
         E::Identifier { module, identifier } => {
             // TODO: Generate True and False as true and false
             if let Some(module) = module {
-                module_full_name(code, module, strings);
-                code.push('.');
+                module_full_name(&mut state.code, module, state.strings);
+                state.code.push('.');
             }
 
-            code.push_str(identifier.to_string(strings));
+            state.code.push_str(identifier.to_string(state.strings));
         }
 
         E::Record { fields } => {
-            code.push_str("{\n");
+            state.code.push_str("{\n");
 
             {
-                let indent = add_indent(indent);
-
+                state.indent();
                 for (key, value) in fields {
-                    indented(code, indent, key.to_string(strings));
-                    code.push_str(": ");
-                    generate_expression(indent, code, module_name, *value, strings, expressions);
-                    code.push_str(",\n");
+                    indented(state, key.to_string(state.strings));
+                    state.code.push_str(": ");
+                    generate_expression(state, *value);
+                    state.code.push_str(",\n");
                 }
+                state.outdent();
             }
 
-            indented(code, indent, "}");
+            indented(state, "}");
         }
 
         E::RecordUpdate { record, fields } => {
-            code.push_str("{\n");
+            state.code.push_str("{\n");
 
             {
-                let indent = add_indent(indent);
-
-                indented(code, indent, "...");
-                generate_expression(indent, code, module_name, *record, strings, expressions);
-                code.push('\n');
+                state.indent();
+                indented(state, "...");
+                generate_expression(state, *record);
+                state.code.push('\n');
 
                 for (key, value) in fields {
-                    indented(code, indent, key.to_string(strings));
-                    code.push_str(": ");
-                    generate_expression(indent, code, module_name, *value, strings, expressions);
-                    code.push_str(",\n");
+                    indented(state, key.to_string(state.strings));
+                    state.code.push_str(": ");
+                    generate_expression(state, *value);
+                    state.code.push_str(",\n");
                 }
+                state.outdent();
             }
 
-            indented(code, indent, "}");
+            indented(state, "}");
         }
 
         E::PropertyAccess {
             expression,
             property,
         } => {
-            generate_expression(indent, code, module_name, *expression, strings, expressions);
-            code.push('.');
-            code.push_str(property.to_string(strings));
+            generate_expression(state, *expression);
+            state.code.push('.');
+            state.code.push_str(property.to_string(state.strings));
         }
 
         E::PropertyAccessLambda { property } => {
-            let property = property.to_string(strings);
-            write!(code, "(r => r.{property})").unwrap()
+            let property = property.to_string(state.strings);
+            write!(state.code, "(r => r.{property})").unwrap()
         }
 
         E::Unary { op, expression } => {
-            code.push(match &op.typ {
+            state.code.push(match &op.typ {
                 U::Not => '!',
                 U::Minus => '-',
             });
-            generate_expression(indent, code, module_name, *expression, strings, expressions);
+            generate_expression(state, *expression);
         }
 
         E::Binary {
@@ -670,67 +639,35 @@ fn generate_expression(
 
             if let Some(binop) = binop {
                 let [left, right] = arguments;
-                generate_binary_operator(
-                    indent,
-                    code,
-                    module_name,
-                    binop,
-                    *left,
-                    *right,
-                    strings,
-                    expressions,
-                )
+                generate_binary_operator(state, binop, *left, *right)
             } else {
-                generate_fn_call(
-                    indent,
-                    code,
-                    module_name,
-                    *expression,
-                    arguments,
-                    strings,
-                    expressions,
-                )
+                generate_fn_call(state, *expression, arguments)
             }
         }
 
         E::Lambda(lambda) => {
-            generate_function(indent, code, module_name, "", lambda, strings, expressions);
+            generate_function(state, "", lambda);
         }
 
         E::FnCall {
             function,
             arguments,
-        } => generate_fn_call(
-            indent,
-            code,
-            module_name,
-            *function,
-            arguments,
-            strings,
-            expressions,
-        ),
+        } => generate_fn_call(state, *function, arguments),
 
         E::Let { definitions, body } => {
-            code.push_str("function() {\n");
+            state.code.push_str("function() {\n");
 
             {
-                let indent = add_indent(indent);
-                generate_definitions(
-                    indent,
-                    code,
-                    false,
-                    module_name,
-                    definitions,
-                    strings,
-                    expressions,
-                );
+                state.indent();
+                generate_definitions(state, definitions, false);
 
-                indented(code, indent, "return ");
-                generate_expression(indent, code, module_name, *body, strings, expressions);
-                code.push('\n');
+                indented(state, "return ");
+                generate_expression(state, *body);
+                state.code.push('\n');
+                state.outdent();
             }
 
-            indented(code, indent, "}()");
+            indented(state, "}()");
         }
 
         E::If {
@@ -738,57 +675,52 @@ fn generate_expression(
             then,
             else_,
         } => {
-            code.push_str("function () {\n");
+            state.code.push_str("function () {\n");
             {
-                let indent = add_indent(indent);
-
-                indented(code, indent, "if (");
-                generate_expression(indent, code, module_name, *condition, strings, expressions);
-                code.push_str(") {\n");
-
-                {
-                    let indent = add_indent(indent);
-                    indented(code, indent, "return ");
-                    generate_expression(indent, code, module_name, *then, strings, expressions);
-                    code.push('\n');
-                }
-
-                line(code, indent, "} else {");
+                state.indent();
+                indented(state, "if (");
+                generate_expression(state, *condition);
+                state.code.push_str(") {\n");
 
                 {
-                    let indent = add_indent(indent);
-                    indented(code, indent, "return ");
-                    generate_expression(indent, code, module_name, *else_, strings, expressions);
-                    code.push('\n');
+                    state.indent();
+                    indented(state, "return ");
+                    generate_expression(state, *then);
+                    state.code.push('\n');
+                    state.outdent();
                 }
 
-                line(code, indent, "}");
+                line(state, "} else {");
+
+                {
+                    state.indent();
+                    indented(state, "return ");
+                    generate_expression(state, *else_);
+                    state.code.push('\n');
+                    state.outdent();
+                }
+
+                line(state, "}");
+                state.outdent();
             }
 
-            indented(code, indent, "}()");
+            indented(state, "}()");
         }
 
         E::PatternMatching {
             conditions,
             branches,
         } => {
-            code.push_str("function () {\n");
+            state.code.push_str("function () {\n");
             {
-                let indent = add_indent(indent);
+                state.indent();
 
                 for (i, condition) in conditions.iter().enumerate() {
-                    indented(code, indent, "let ");
-                    pattern_matching_expression_result(code, i);
-                    code.push_str(" = ");
-                    generate_expression(
-                        indent,
-                        code,
-                        module_name,
-                        *condition,
-                        strings,
-                        expressions,
-                    );
-                    code.push('\n');
+                    indented(state, "let ");
+                    pattern_matching_expression_result(&mut state.code, i);
+                    state.code.push_str(" = ");
+                    generate_expression(state, *condition);
+                    state.code.push('\n');
                 }
 
                 let mut names = FnvHashSet::default();
@@ -797,95 +729,60 @@ fn generate_expression(
                         pattern.data.get_bindings(&mut names);
                     }
                 }
-                generate_pattern_matching_bindings(code, indent, &names, strings);
+                generate_pattern_matching_bindings(state, &names);
 
                 for branch in branches {
-                    generate_pattern_matching_if(
-                        code,
-                        indent,
-                        &branch.patterns,
-                        |code, indent, module_name, expressions, strings| {
-                            if let Some(condition) = branch.condition {
-                                indented(code, indent, "if (");
-                                generate_expression(
-                                    indent,
-                                    code,
-                                    module_name,
-                                    condition,
-                                    strings,
-                                    expressions,
-                                );
-                                code.push_str(") {\n");
+                    generate_pattern_matching_if(state, &branch.patterns, |state| {
+                        if let Some(condition) = branch.condition {
+                            indented(state, "if (");
+                            generate_expression(state, condition);
+                            state.code.push_str(") {\n");
 
-                                {
-                                    let indent = add_indent(indent);
-                                    indented(code, indent, "return ");
-                                    generate_expression(
-                                        indent,
-                                        code,
-                                        module_name,
-                                        branch.body,
-                                        strings,
-                                        expressions,
-                                    );
-                                    code.push('\n');
-                                }
-
-                                line(code, indent, "}");
-                            } else {
-                                indented(code, indent, "return ");
-                                generate_expression(
-                                    indent,
-                                    code,
-                                    module_name,
-                                    branch.body,
-                                    strings,
-                                    expressions,
-                                );
-                                code.push('\n');
+                            {
+                                state.indent();
+                                indented(state, "return ");
+                                generate_expression(state, branch.body);
+                                state.code.push('\n');
+                                state.outdent();
                             }
-                        },
-                        module_name,
-                        expressions,
-                        strings,
-                    );
+
+                            line(state, "}");
+                        } else {
+                            indented(state, "return ");
+                            generate_expression(state, branch.body);
+                            state.code.push('\n');
+                        }
+                    });
                 }
 
-                code.push('\n');
-                line(
-                    code,
-                    indent,
-                    "throw new Error(\"Incomplete pattern match\")",
-                )
+                state.code.push('\n');
+                line(state, "throw new Error(\"Incomplete pattern match\")");
+                state.outdent();
             }
-            indented(code, indent, "}()");
+            indented(state, "}()");
         }
     };
 }
 
 fn generate_pattern_matching_if<'a, F>(
-    code: &mut String,
-    indent: usize,
+    state: &mut State,
     patterns: &'a Vec<Pattern>,
     generate_body: F,
-    module_name: &ModuleName,
-    expressions: &Expressions,
-    strings: &Strings,
 ) where
-    F: Fn(&mut String, usize, &ModuleName, &Expressions, &Strings),
+    F: Fn(&mut State),
 {
     let has_conditions = patterns
         .iter()
         .any(|pattern| pattern_has_pattern_matching_conditions(pattern));
     if has_conditions {
-        indented(code, indent, "if (");
+        indented(state, "if (");
         let mut first = true;
         for (i, pattern) in patterns.iter().enumerate() {
             if pattern_has_pattern_matching_conditions(pattern) {
                 if first {
                     first = false;
                 } else {
-                    code.push_str(" && ");
+                    state.code.push_str(" && ");
                 }
                 let result = {
                     let mut r = String::new();
@@ -893,43 +790,33 @@ fn generate_pattern_matching_if<'a, F>(
                     r
                 };
                 generate_pattern_matching_conditions(
-                    code,
+                    &mut state.code,
                     &mut vec![result.to_owned()],
                     pattern,
-                    strings,
+                    state.strings,
                 );
             }
         }
-        code.push_str(") {\n");
+        state.code.push_str(") {\n");
+        state.indent();
     }
-    {
-        let indent = if has_conditions {
-            add_indent(indent)
-        } else {
-            indent
-        };
-        generate_body(code, indent, module_name, expressions, strings);
-    }
+    generate_body(state);
     if has_conditions {
-        line(code, indent, "}");
+        state.outdent();
+        line(state, "}");
     }
 }
 
-fn generate_pattern_matching_bindings(
-    code: &mut String,
-    indent: usize,
-    names: &FnvHashSet<IdentifierName>,
-    strings: &Strings,
-) {
+fn generate_pattern_matching_bindings(state: &mut State, names: &FnvHashSet<IdentifierName>) {
     if !names.is_empty() {
-        indented(code, indent, "let ");
+        indented(state, "let ");
         for (i, name) in names.iter().enumerate() {
             if i > 0 {
-                code.push_str(", ");
+                state.code.push_str(", ");
             }
-            code.push_str(strings.resolve(*name));
+            state.code.push_str(state.strings.resolve(*name));
         }
-        code.push('\n');
+        state.code.push('\n');
     }
 }
 
@@ -1072,52 +959,36 @@ fn pattern_needs_bindings(pattern: &Pattern) -> bool {
 }
 
 fn generate_binary_operator(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
+    state: &mut State,
     binop: &str,
     left: expression::Index,
     right: expression::Index,
-    strings: &Strings,
-    expressions: &Expressions,
 ) {
-    code.push('(');
-    generate_expression(indent, code, module_name, left, strings, expressions);
-    write!(code, " {binop} ").unwrap();
-    generate_expression(indent, code, module_name, right, strings, expressions);
-    code.push(')');
+    state.code.push('(');
+    generate_expression(state, left);
+    write!(state.code, " {binop} ").unwrap();
+    generate_expression(state, right);
+    state.code.push(')');
 }
 
-fn generate_fn_call(
-    indent: usize,
-    code: &mut String,
-    module_name: &ModuleName,
-    fun: expression::Index,
-    params: &[expression::Index],
-    strings: &Strings,
-    expressions: &Expressions,
-) {
-    generate_expression(indent, code, module_name, fun, strings, expressions);
-    code.push('(');
+fn generate_fn_call(state: &mut State, fun: expression::Index, params: &[expression::Index]) {
+    generate_expression(state, fun);
+    state.code.push('(');
     for (i, param) in params.iter().enumerate() {
         if i > 0 {
-            code.push_str(", ");
+            state.code.push_str(", ");
         }
-        generate_expression(indent, code, module_name, *param, strings, expressions);
+        generate_expression(state, *param);
     }
-    code.push(')');
+    state.code.push(')');
 }
 
-fn add_indent(level: usize) -> usize {
-    level + INDENT
+fn indented(state: &mut State, line: &str) {
+    write!(state.code, "{0:indent$}{line}", "", indent = state.indent).unwrap();
 }
-
-fn indented(out: &mut String, indent: usize, line: &str) {
-    write!(out, "{0:indent$}{line}", "").unwrap();
-}
-fn line(out: &mut String, indent: usize, line: &str) {
-    indented(out, indent, line);
-    out.push('\n');
+fn line(state: &mut State, line: &str) {
+    indented(state, line);
+    state.code.push('\n');
 }
 
 fn module_full_name(out: &mut String, name: &ModuleName, strings: &Strings) {
