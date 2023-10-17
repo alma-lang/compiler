@@ -6,6 +6,7 @@ mod infer;
 mod javascript;
 mod module_interface;
 mod parser;
+mod pattern_matching;
 mod source;
 mod strings;
 mod token;
